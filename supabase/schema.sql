@@ -1,0 +1,281 @@
+-- Voz y Palabra · esquema inicial de base de datos (Fase 1)
+-- Copia y pega este archivo completo en Supabase → SQL Editor → New query → Run
+
+-- ============================================================
+-- 1. QUIÉN ES QUIÉN
+-- ============================================================
+
+create table docentes (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nombre text not null,
+  correo text not null,
+  created_at timestamptz not null default now()
+);
+
+create table grupos (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  codigo_acceso text not null unique,
+  docente_id uuid not null references docentes(id) on delete cascade,
+  ciclo_escolar text,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table estudiantes (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid unique references auth.users(id) on delete set null,
+  nombre text not null,
+  grupo_id uuid not null references grupos(id) on delete cascade,
+  pin_hash text,
+  created_at timestamptz not null default now()
+);
+
+-- ============================================================
+-- 2. QUÉ SE ENSEÑA
+-- ============================================================
+
+create table unidades (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  orden int not null,
+  descripcion text,
+  reto_comunicativo text
+);
+
+create table tipos_actividad (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  descripcion text
+);
+
+create table actividades (
+  id uuid primary key default gen_random_uuid(),
+  unidad_id uuid not null references unidades(id) on delete cascade,
+  tipo_id uuid not null references tipos_actividad(id),
+  titulo text not null,
+  instrucciones text,
+  contenido jsonb not null default '{}'::jsonb,
+  orden int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- ============================================================
+-- 3. QUÉ HACE EL ESTUDIANTE
+-- ============================================================
+
+create table entregas (
+  id uuid primary key default gen_random_uuid(),
+  estudiante_id uuid not null references estudiantes(id) on delete cascade,
+  actividad_id uuid not null references actividades(id) on delete cascade,
+  respuesta jsonb,
+  archivo_url text,
+  estado text not null default 'completada' check (estado in ('completada', 'pendiente_revision', 'revisada')),
+  created_at timestamptz not null default now(),
+  unique (estudiante_id, actividad_id)
+);
+
+create table reflexiones (
+  id uuid primary key default gen_random_uuid(),
+  estudiante_id uuid not null references estudiantes(id) on delete cascade,
+  actividad_id uuid references actividades(id) on delete cascade,
+  unidad_id uuid references unidades(id) on delete cascade,
+  texto text not null,
+  created_at timestamptz not null default now()
+);
+
+create table autoevaluaciones_confianza (
+  id uuid primary key default gen_random_uuid(),
+  estudiante_id uuid not null references estudiantes(id) on delete cascade,
+  unidad_id uuid not null references unidades(id) on delete cascade,
+  momento text not null check (momento in ('inicio', 'cierre')),
+  valor int not null check (valor between 0 and 100),
+  created_at timestamptz not null default now(),
+  unique (estudiante_id, unidad_id, momento)
+);
+
+-- ============================================================
+-- 4. MOTIVACIÓN
+-- ============================================================
+
+create table insignias (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  descripcion text,
+  icono text
+);
+
+create table insignias_otorgadas (
+  id uuid primary key default gen_random_uuid(),
+  estudiante_id uuid not null references estudiantes(id) on delete cascade,
+  insignia_id uuid not null references insignias(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (estudiante_id, insignia_id)
+);
+
+-- ============================================================
+-- 5. COMUNICACIÓN Y SEGUIMIENTO
+-- ============================================================
+
+create table retroalimentacion_docente (
+  id uuid primary key default gen_random_uuid(),
+  entrega_id uuid not null references entregas(id) on delete cascade,
+  docente_id uuid not null references docentes(id) on delete cascade,
+  comentario text not null,
+  created_at timestamptz not null default now()
+);
+
+create table avisos (
+  id uuid primary key default gen_random_uuid(),
+  docente_id uuid not null references docentes(id) on delete cascade,
+  grupo_id uuid references grupos(id) on delete cascade,
+  unidad_id uuid references unidades(id) on delete cascade,
+  titulo text not null,
+  mensaje text not null,
+  created_at timestamptz not null default now()
+);
+
+-- ============================================================
+-- 6. SEGURIDAD (RLS) — cada tabla protegida a nivel de base de datos
+-- ============================================================
+
+alter table docentes enable row level security;
+alter table grupos enable row level security;
+alter table estudiantes enable row level security;
+alter table unidades enable row level security;
+alter table tipos_actividad enable row level security;
+alter table actividades enable row level security;
+alter table entregas enable row level security;
+alter table reflexiones enable row level security;
+alter table autoevaluaciones_confianza enable row level security;
+alter table insignias enable row level security;
+alter table insignias_otorgadas enable row level security;
+alter table retroalimentacion_docente enable row level security;
+alter table avisos enable row level security;
+
+-- función auxiliar: ¿el usuario que hace la consulta es un estudiante, y cuál es su fila?
+create or replace function estudiante_actual()
+returns uuid
+language sql stable
+as $$
+  select id from estudiantes where auth_user_id = auth.uid()
+$$;
+
+-- docentes: solo ve y edita su propio perfil
+create policy "docente ve su propio perfil" on docentes
+  for select using (id = auth.uid());
+create policy "docente edita su propio perfil" on docentes
+  for update using (id = auth.uid());
+
+-- grupos: el docente administra los suyos; el estudiante solo lee el suyo
+create policy "docente administra sus grupos" on grupos
+  for all using (docente_id = auth.uid());
+create policy "estudiante lee su grupo" on grupos
+  for select using (id = (select grupo_id from estudiantes where id = estudiante_actual()));
+
+-- estudiantes: el docente administra los de sus grupos; el estudiante lee/edita su propia fila
+create policy "docente administra estudiantes de sus grupos" on estudiantes
+  for all using (grupo_id in (select id from grupos where docente_id = auth.uid()));
+create policy "estudiante lee su propia fila" on estudiantes
+  for select using (auth_user_id = auth.uid());
+create policy "estudiante edita su propia fila" on estudiantes
+  for update using (auth_user_id = auth.uid());
+
+-- unidades y tipos_actividad: catálogo de lectura abierta para cualquiera con sesión
+create policy "cualquiera con sesión lee unidades" on unidades
+  for select using (auth.role() = 'authenticated');
+create policy "docente administra unidades" on unidades
+  for all using (auth.jwt()->>'role' = 'authenticated' and exists (select 1 from docentes where id = auth.uid()));
+create policy "cualquiera con sesión lee tipos de actividad" on tipos_actividad
+  for select using (auth.role() = 'authenticated');
+
+-- actividades: lectura abierta con sesión; solo el docente administra
+create policy "cualquiera con sesión lee actividades" on actividades
+  for select using (auth.role() = 'authenticated');
+create policy "docente administra actividades" on actividades
+  for all using (exists (select 1 from docentes where id = auth.uid()));
+
+-- entregas: el estudiante ve y crea las suyas; el docente ve las de sus grupos
+create policy "estudiante administra sus entregas" on entregas
+  for all using (estudiante_id = estudiante_actual());
+create policy "docente ve entregas de sus grupos" on entregas
+  for select using (
+    estudiante_id in (
+      select e.id from estudiantes e join grupos g on g.id = e.grupo_id
+      where g.docente_id = auth.uid()
+    )
+  );
+
+-- reflexiones: mismo patrón que entregas
+create policy "estudiante administra sus reflexiones" on reflexiones
+  for all using (estudiante_id = estudiante_actual());
+create policy "docente ve reflexiones de sus grupos" on reflexiones
+  for select using (
+    estudiante_id in (
+      select e.id from estudiantes e join grupos g on g.id = e.grupo_id
+      where g.docente_id = auth.uid()
+    )
+  );
+
+-- autoevaluaciones_confianza: mismo patrón
+create policy "estudiante administra su confianza" on autoevaluaciones_confianza
+  for all using (estudiante_id = estudiante_actual());
+create policy "docente ve confianza de sus grupos" on autoevaluaciones_confianza
+  for select using (
+    estudiante_id in (
+      select e.id from estudiantes e join grupos g on g.id = e.grupo_id
+      where g.docente_id = auth.uid()
+    )
+  );
+
+-- insignias: catálogo de lectura abierta
+create policy "cualquiera con sesión lee insignias" on insignias
+  for select using (auth.role() = 'authenticated');
+
+-- insignias_otorgadas: el estudiante solo lee las suyas (se otorgan desde el servidor, no desde el navegador del estudiante)
+create policy "estudiante lee sus insignias" on insignias_otorgadas
+  for select using (estudiante_id = estudiante_actual());
+create policy "docente ve insignias de sus grupos" on insignias_otorgadas
+  for select using (
+    estudiante_id in (
+      select e.id from estudiantes e join grupos g on g.id = e.grupo_id
+      where g.docente_id = auth.uid()
+    )
+  );
+
+-- retroalimentacion_docente: el docente escribe; el estudiante dueño de la entrega la lee
+create policy "docente administra su retroalimentación" on retroalimentacion_docente
+  for all using (docente_id = auth.uid());
+create policy "estudiante lee retroalimentación de sus entregas" on retroalimentacion_docente
+  for select using (
+    entrega_id in (select id from entregas where estudiante_id = estudiante_actual())
+  );
+
+-- avisos: el docente administra; el estudiante lee los de su grupo o los globales
+create policy "docente administra sus avisos" on avisos
+  for all using (docente_id = auth.uid());
+create policy "estudiante lee avisos de su grupo" on avisos
+  for select using (
+    grupo_id is null
+    or grupo_id = (select grupo_id from estudiantes where id = estudiante_actual())
+  );
+
+-- ============================================================
+-- 7. DATOS INICIALES: los 9 tipos de actividad y las 3 unidades
+-- ============================================================
+
+insert into tipos_actividad (nombre, descripcion) values
+  ('clasificacion', 'Arrastra elementos a la categoría correcta'),
+  ('opcion_justificacion', 'Elige una opción y justifica en 1-2 líneas'),
+  ('redaccion_checklist', 'Redacta con un límite y autorrevisa con checklist'),
+  ('encontrar_corregir', 'Detecta errores marcados en un texto y los reescribe'),
+  ('constructor_ramificado', 'Elige una estructura y llena un esqueleto de párrafos'),
+  ('comparador', 'Analiza dos textos u opciones lado a lado'),
+  ('grabacion_rubrica', 'Graba su voz y se autoevalúa con una rúbrica'),
+  ('reflexion_confianza', 'Responde una reflexión o mueve un control de confianza'),
+  ('etiquetado_texto', 'Selecciona un fragmento de texto y le asigna una etiqueta');
+
+insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
+  ('De la lengua al texto', 1, 'Comunicación, lenguaje, lengua, habla, norma, niveles y funciones de la lengua, el texto y sus propiedades.', 'Entregar la idea central de un texto largo en 5 líneas.'),
+  ('Exposición escrita', 2, 'Rasgos del texto expositivo y los 5 modelos expositivos.', 'Redactar un texto expositivo bien estructurado.'),
+  ('Exposición oral', 3, 'Cualidades y técnicas de la exposición oral.', 'Exponer ante el grupo con seguridad.');
