@@ -1,23 +1,20 @@
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("unidades").select("id");
-  const count = data?.length ?? 0;
-
+export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white px-6 text-center dark:bg-black">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-6 text-center dark:bg-black">
       <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
         Voz y Palabra
       </h1>
       <p className="text-zinc-600 dark:text-zinc-400">
-        Expresión Oral y Escrita I · cimientos del proyecto en construcción
+        Expresión Oral y Escrita I
       </p>
-      <p className="rounded-full border border-zinc-200 px-4 py-2 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-        {error
-          ? "Sin conexión a la base de datos todavía"
-          : `Conectado a Supabase · ${count ?? 0} unidades cargadas`}
-      </p>
+      <Link
+        href="/ingreso"
+        className="rounded-lg bg-zinc-900 px-6 py-3 font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
+      >
+        Entrar
+      </Link>
     </div>
   );
 }
