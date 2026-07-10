@@ -14,6 +14,7 @@ const TIPOS_DISPONIBLES = [
   "redaccion_checklist",
   "etiquetado_texto",
   "constructor_ramificado",
+  "grabacion_rubrica",
 ];
 
 export default function NuevaActividad({
@@ -58,6 +59,11 @@ export default function NuevaActividad({
   // constructor_ramificado
   const [temaSugerido, setTemaSugerido] = useState("");
   const [secciones, setSecciones] = useState("");
+
+  // grabacion_rubrica
+  const [temaGrabacion, setTemaGrabacion] = useState("");
+  const [duracionSugerida, setDuracionSugerida] = useState("90");
+  const [rubrica, setRubrica] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +218,25 @@ export default function NuevaActividad({
         return;
       }
       contenido = { tema_sugerido: temaSugerido || null, secciones: listaSecciones };
+    } else if (nombreTipo === "grabacion_rubrica") {
+      const listaRubrica = rubrica
+        .split("\n")
+        .map((r) => r.trim())
+        .filter((r) => r.length > 0);
+      const duracion = parseInt(duracionSugerida, 10);
+      if (!temaGrabacion.trim()) {
+        setError("Escribe el tema o instrucción para la grabación.");
+        return;
+      }
+      if (listaRubrica.length < 2) {
+        setError("Escribe al menos 2 criterios de la rúbrica, uno por línea.");
+        return;
+      }
+      contenido = {
+        tema_sugerido: temaGrabacion,
+        duracion_sugerida_segundos: duracion || 90,
+        rubrica: listaRubrica,
+      };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -267,8 +292,8 @@ export default function NuevaActividad({
             <p className="text-sm text-amber-600 dark:text-amber-400">
               Este tipo estará disponible en una fase próxima. Por ahora puedes
               crear "opcion_justificacion", "clasificacion", "encontrar_corregir",
-              "comparador", "redaccion_checklist", "etiquetado_texto" o
-              "constructor_ramificado".
+              "comparador", "redaccion_checklist", "etiquetado_texto",
+              "constructor_ramificado" o "grabacion_rubrica".
             </p>
           )}
         </div>
@@ -523,6 +548,49 @@ export default function NuevaActividad({
                 placeholder={
                   "Tesis || Plantea una postura objetiva a favor de una idea\nAntítesis || Plantea la idea opuesta, también fundamentada\nSíntesis || Integra lo mejor de ambas y concluye"
                 }
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+          </>
+        )}
+
+        {nombreTipo === "grabacion_rubrica" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Tema o instrucción para la grabación
+              </label>
+              <textarea
+                required
+                value={temaGrabacion}
+                onChange={(e) => setTemaGrabacion(e.target.value)}
+                rows={3}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Duración sugerida (segundos)
+              </label>
+              <input
+                required
+                type="number"
+                min={10}
+                value={duracionSugerida}
+                onChange={(e) => setDuracionSugerida(e.target.value)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Criterios de la rúbrica (uno por línea)
+              </label>
+              <textarea
+                required
+                value={rubrica}
+                onChange={(e) => setRubrica(e.target.value)}
+                rows={4}
+                placeholder={"Claridad\nRitmo\nMuletillas\nVolumen"}
                 className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>

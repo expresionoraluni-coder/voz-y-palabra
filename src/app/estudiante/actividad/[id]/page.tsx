@@ -9,6 +9,7 @@ import RedaccionChecklist from "./redaccion-checklist";
 import EtiquetadoTexto from "./etiquetado-texto";
 import ConstructorRamificado from "./constructor-ramificado";
 import Reflexion from "./reflexion";
+import GrabacionRubrica from "./grabacion-rubrica";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -18,6 +19,7 @@ const TIPOS_CONSTRUIDOS = [
   "redaccion_checklist",
   "etiquetado_texto",
   "constructor_ramificado",
+  "grabacion_rubrica",
 ];
 
 export default async function ActividadEstudiante({
@@ -166,6 +168,22 @@ export default async function ActividadEstudiante({
             }
           }
           respuestaPrevia={respuesta as { tema: string; textos: string[] } | undefined}
+        />
+      )}
+      {nombreTipo === "grabacion_rubrica" && (
+        <GrabacionRubrica
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              tema_sugerido: string;
+              duracion_sugerida_segundos: number;
+              rubrica: string[];
+            }
+          }
+          respuestaPrevia={
+            respuesta as { autoevaluacion: Record<string, boolean>; reflexion: string } | undefined
+          }
         />
       )}
       {!TIPOS_CONSTRUIDOS.includes(nombreTipo ?? "") && (
