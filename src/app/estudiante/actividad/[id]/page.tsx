@@ -5,12 +5,14 @@ import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
 import EncontrarCorregir from "./encontrar-corregir";
 import Comparador from "./comparador";
+import RedaccionChecklist from "./redaccion-checklist";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
   "clasificacion",
   "encontrar_corregir",
   "comparador",
+  "redaccion_checklist",
 ];
 
 export default async function ActividadEstudiante({
@@ -109,6 +111,22 @@ export default async function ActividadEstudiante({
           estudianteId={estudiante.id}
           contenido={actividad.contenido as { conceptos: string[]; criterios: string[] }}
           respuestaPrevia={respuesta as { celdas: string[][] } | undefined}
+        />
+      )}
+      {nombreTipo === "redaccion_checklist" && (
+        <RedaccionChecklist
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              texto_fuente: string | null;
+              limite_palabras: number;
+              checklist: string[];
+            }
+          }
+          respuestaPrevia={
+            respuesta as { texto: string; checklist_marcado: boolean[] } | undefined
+          }
         />
       )}
       {!TIPOS_CONSTRUIDOS.includes(nombreTipo ?? "") && (

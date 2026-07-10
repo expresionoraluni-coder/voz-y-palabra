@@ -11,6 +11,7 @@ const TIPOS_DISPONIBLES = [
   "clasificacion",
   "encontrar_corregir",
   "comparador",
+  "redaccion_checklist",
 ];
 
 export default function NuevaActividad({
@@ -41,6 +42,11 @@ export default function NuevaActividad({
   // comparador
   const [conceptos, setConceptos] = useState("");
   const [criterios, setCriterios] = useState("");
+
+  // redaccion_checklist
+  const [textoFuente, setTextoFuente] = useState("");
+  const [limitePalabras, setLimitePalabras] = useState("80");
+  const [checklist, setChecklist] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +136,25 @@ export default function NuevaActividad({
         return;
       }
       contenido = { conceptos: listaConceptos, criterios: listaCriterios };
+    } else if (nombreTipo === "redaccion_checklist") {
+      const listaChecklist = checklist
+        .split("\n")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+      const limite = parseInt(limitePalabras, 10);
+      if (!limite || limite < 1) {
+        setError("Escribe un límite de palabras válido.");
+        return;
+      }
+      if (listaChecklist.length === 0) {
+        setError("Escribe al menos 1 punto de autorrevisión, uno por línea.");
+        return;
+      }
+      contenido = {
+        texto_fuente: textoFuente || null,
+        limite_palabras: limite,
+        checklist: listaChecklist,
+      };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -184,8 +209,8 @@ export default function NuevaActividad({
           {!disponible && tipoId && (
             <p className="text-sm text-amber-600 dark:text-amber-400">
               Este tipo estará disponible en una fase próxima. Por ahora puedes
-              crear "opcion_justificacion", "clasificacion", "encontrar_corregir" o
-              "comparador".
+              crear "opcion_justificacion", "clasificacion", "encontrar_corregir",
+              "comparador" o "redaccion_checklist".
             </p>
           )}
         </div>
@@ -326,6 +351,48 @@ export default function NuevaActividad({
                 onChange={(e) => setCriterios(e.target.value)}
                 rows={3}
                 placeholder={"¿Es exclusivo del ser humano?\n¿Es individual o social?"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+          </>
+        )}
+
+        {nombreTipo === "redaccion_checklist" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Texto fuente (opcional — el estudiante lo leerá antes de escribir)
+              </label>
+              <textarea
+                value={textoFuente}
+                onChange={(e) => setTextoFuente(e.target.value)}
+                rows={5}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Límite de palabras
+              </label>
+              <input
+                required
+                type="number"
+                min={1}
+                value={limitePalabras}
+                onChange={(e) => setLimitePalabras(e.target.value)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Checklist de autorrevisión (uno por línea)
+              </label>
+              <textarea
+                required
+                value={checklist}
+                onChange={(e) => setChecklist(e.target.value)}
+                rows={3}
+                placeholder={"Conservé la idea central\nEliminé ejemplos secundarios\nUsé mis propias palabras"}
                 className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>
