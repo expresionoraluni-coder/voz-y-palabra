@@ -6,7 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 
 type TipoActividad = { id: string; nombre: string; descripcion: string | null };
 
-const TIPOS_DISPONIBLES = ["opcion_justificacion", "clasificacion", "encontrar_corregir"];
+const TIPOS_DISPONIBLES = [
+  "opcion_justificacion",
+  "clasificacion",
+  "encontrar_corregir",
+  "comparador",
+];
 
 export default function NuevaActividad({
   params,
@@ -32,6 +37,10 @@ export default function NuevaActividad({
   // encontrar_corregir
   const [textoOriginal, setTextoOriginal] = useState("");
   const [pista, setPista] = useState("");
+
+  // comparador
+  const [conceptos, setConceptos] = useState("");
+  const [criterios, setCriterios] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +112,24 @@ export default function NuevaActividad({
         return;
       }
       contenido = { texto_original: textoOriginal, pista: pista || null };
+    } else if (nombreTipo === "comparador") {
+      const listaConceptos = conceptos
+        .split("\n")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+      const listaCriterios = criterios
+        .split("\n")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+      if (listaConceptos.length < 2) {
+        setError("Escribe al menos 2 conceptos a comparar, uno por línea.");
+        return;
+      }
+      if (listaCriterios.length < 1) {
+        setError("Escribe al menos 1 criterio de comparación, uno por línea.");
+        return;
+      }
+      contenido = { conceptos: listaConceptos, criterios: listaCriterios };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -157,7 +184,8 @@ export default function NuevaActividad({
           {!disponible && tipoId && (
             <p className="text-sm text-amber-600 dark:text-amber-400">
               Este tipo estará disponible en una fase próxima. Por ahora puedes
-              crear "opcion_justificacion", "clasificacion" o "encontrar_corregir".
+              crear "opcion_justificacion", "clasificacion", "encontrar_corregir" o
+              "comparador".
             </p>
           )}
         </div>
@@ -268,6 +296,37 @@ export default function NuevaActividad({
                 value={pista}
                 onChange={(e) => setPista(e.target.value)}
                 className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+          </>
+        )}
+
+        {nombreTipo === "comparador" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Conceptos a comparar (uno por línea)
+              </label>
+              <textarea
+                required
+                value={conceptos}
+                onChange={(e) => setConceptos(e.target.value)}
+                rows={3}
+                placeholder={"Comunicación\nLenguaje\nLengua\nHabla"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Criterios de comparación (uno por línea)
+              </label>
+              <textarea
+                required
+                value={criterios}
+                onChange={(e) => setCriterios(e.target.value)}
+                rows={3}
+                placeholder={"¿Es exclusivo del ser humano?\n¿Es individual o social?"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>
           </>

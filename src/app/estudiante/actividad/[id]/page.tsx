@@ -4,8 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
 import EncontrarCorregir from "./encontrar-corregir";
+import Comparador from "./comparador";
 
-const TIPOS_CONSTRUIDOS = ["opcion_justificacion", "clasificacion", "encontrar_corregir"];
+const TIPOS_CONSTRUIDOS = [
+  "opcion_justificacion",
+  "clasificacion",
+  "encontrar_corregir",
+  "comparador",
+];
 
 export default async function ActividadEstudiante({
   params,
@@ -95,6 +101,14 @@ export default async function ActividadEstudiante({
           respuestaPrevia={
             respuesta as { que_encontraste: string; version_corregida: string } | undefined
           }
+        />
+      )}
+      {nombreTipo === "comparador" && (
+        <Comparador
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={actividad.contenido as { conceptos: string[]; criterios: string[] }}
+          respuestaPrevia={respuesta as { celdas: string[][] } | undefined}
         />
       )}
       {!TIPOS_CONSTRUIDOS.includes(nombreTipo ?? "") && (
