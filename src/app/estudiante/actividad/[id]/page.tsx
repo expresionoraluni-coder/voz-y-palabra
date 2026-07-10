@@ -6,6 +6,7 @@ import Clasificacion from "./clasificacion";
 import EncontrarCorregir from "./encontrar-corregir";
 import Comparador from "./comparador";
 import RedaccionChecklist from "./redaccion-checklist";
+import EtiquetadoTexto from "./etiquetado-texto";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -13,6 +14,7 @@ const TIPOS_CONSTRUIDOS = [
   "encontrar_corregir",
   "comparador",
   "redaccion_checklist",
+  "etiquetado_texto",
 ];
 
 export default async function ActividadEstudiante({
@@ -127,6 +129,20 @@ export default async function ActividadEstudiante({
           respuestaPrevia={
             respuesta as { texto: string; checklist_marcado: boolean[] } | undefined
           }
+        />
+      )}
+      {nombreTipo === "etiquetado_texto" && (
+        <EtiquetadoTexto
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              contexto: string | null;
+              etiquetas: string[];
+              fragmentos: { texto: string; etiqueta_correcta: string }[];
+            }
+          }
+          respuestaPrevia={respuesta as { elegidas: string[] } | undefined}
         />
       )}
       {!TIPOS_CONSTRUIDOS.includes(nombreTipo ?? "") && (

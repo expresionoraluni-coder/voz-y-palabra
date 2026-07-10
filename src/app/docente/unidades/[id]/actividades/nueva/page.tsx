@@ -12,6 +12,7 @@ const TIPOS_DISPONIBLES = [
   "encontrar_corregir",
   "comparador",
   "redaccion_checklist",
+  "etiquetado_texto",
 ];
 
 export default function NuevaActividad({
@@ -47,6 +48,11 @@ export default function NuevaActividad({
   const [textoFuente, setTextoFuente] = useState("");
   const [limitePalabras, setLimitePalabras] = useState("80");
   const [checklist, setChecklist] = useState("");
+
+  // etiquetado_texto
+  const [contexto, setContexto] = useState("");
+  const [etiquetas, setEtiquetas] = useState("");
+  const [fragmentos, setFragmentos] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -155,6 +161,38 @@ export default function NuevaActividad({
         limite_palabras: limite,
         checklist: listaChecklist,
       };
+    } else if (nombreTipo === "etiquetado_texto") {
+      const listaEtiquetas = etiquetas
+        .split("\n")
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
+      const listaFragmentos = fragmentos
+        .split("\n")
+        .map((linea) => linea.trim())
+        .filter((linea) => linea.length > 0)
+        .map((linea) => {
+          const [texto, etiqueta] = linea.split("||").map((p) => p.trim());
+          return { texto, etiqueta_correcta: etiqueta };
+        });
+
+      if (listaEtiquetas.length < 2) {
+        setError("Escribe al menos 2 etiquetas, una por línea.");
+        return;
+      }
+      const fragmentoInvalido = listaFragmentos.find(
+        (f) => !f.texto || !f.etiqueta_correcta || !listaEtiquetas.includes(f.etiqueta_correcta),
+      );
+      if (listaFragmentos.length === 0 || fragmentoInvalido) {
+        setError(
+          'Cada fragmento debe tener el formato "texto || etiqueta", y la etiqueta debe ser una de las que escribiste arriba.',
+        );
+        return;
+      }
+      contenido = {
+        contexto: contexto || null,
+        etiquetas: listaEtiquetas,
+        fragmentos: listaFragmentos,
+      };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -210,7 +248,7 @@ export default function NuevaActividad({
             <p className="text-sm text-amber-600 dark:text-amber-400">
               Este tipo estará disponible en una fase próxima. Por ahora puedes
               crear "opcion_justificacion", "clasificacion", "encontrar_corregir",
-              "comparador" o "redaccion_checklist".
+              "comparador", "redaccion_checklist" o "etiquetado_texto".
             </p>
           )}
         </div>
@@ -393,6 +431,47 @@ export default function NuevaActividad({
                 onChange={(e) => setChecklist(e.target.value)}
                 rows={3}
                 placeholder={"Conservé la idea central\nEliminé ejemplos secundarios\nUsé mis propias palabras"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+          </>
+        )}
+
+        {nombreTipo === "etiquetado_texto" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Contexto (opcional — introduce la fuente, ej. "canción", "diálogo")
+              </label>
+              <input
+                value={contexto}
+                onChange={(e) => setContexto(e.target.value)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Etiquetas (una por línea)
+              </label>
+              <textarea
+                required
+                value={etiquetas}
+                onChange={(e) => setEtiquetas(e.target.value)}
+                rows={3}
+                placeholder={"Caló\nJerga\nRegionalismo\nModismo"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Fragmentos a etiquetar — formato: texto || etiqueta correcta
+              </label>
+              <textarea
+                required
+                value={fragmentos}
+                onChange={(e) => setFragmentos(e.target.value)}
+                rows={6}
+                placeholder={"Ya chole chango chilango || Caló\nEl que es perico dondequiera es verde || Modismo"}
                 className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>
