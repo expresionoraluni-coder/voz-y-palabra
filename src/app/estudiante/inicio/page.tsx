@@ -13,7 +13,7 @@ export default async function InicioEstudiante() {
 
   const { data: estudiante } = await supabase
     .from("estudiantes")
-    .select("id, nombre, grupos(nombre)")
+    .select("id, nombre, grupo_id, grupos(nombre)")
     .eq("auth_user_id", user.id)
     .single();
 
@@ -45,6 +45,13 @@ export default async function InicioEstudiante() {
 
   const puntos = (actividadesCompletadas ?? 0) * 10 + (totalReflexiones ?? 0) * 5;
 
+  const { data: avisos } = await supabase
+    .from("avisos")
+    .select("id, titulo, mensaje, created_at")
+    .or(`grupo_id.is.null,grupo_id.eq.${estudiante.grupo_id}`)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 bg-white px-6 py-10 dark:bg-black">
       <div className="flex items-center justify-between">
@@ -71,6 +78,20 @@ export default async function InicioEstudiante() {
           Ver mi portafolio
         </Link>
       </div>
+
+      {avisos && avisos.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {avisos.map((a) => (
+            <div
+              key={a.id}
+              className="rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-900"
+            >
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{a.titulo}</p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">{a.mensaje}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {insignias && insignias.length > 0 && (
         <div className="flex flex-col gap-2">

@@ -47,7 +47,7 @@ export default function RedaccionChecklist({
         estudiante_id: estudianteId,
         actividad_id: actividadId,
         respuesta: { texto, checklist_marcado: marcado },
-        estado: "completada",
+        estado: "pendiente_revision",
       },
       { onConflict: "estudiante_id,actividad_id" },
     );

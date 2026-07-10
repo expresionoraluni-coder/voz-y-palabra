@@ -42,7 +42,7 @@ export default function ConstructorRamificado({
         estudiante_id: estudianteId,
         actividad_id: actividadId,
         respuesta: { tema, textos },
-        estado: "completada",
+        estado: "pendiente_revision",
       },
       { onConflict: "estudiante_id,actividad_id" },
     );

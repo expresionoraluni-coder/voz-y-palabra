@@ -42,7 +42,7 @@ export default function EncontrarCorregir({
           que_encontraste: queEncontraste,
           version_corregida: versionCorregida,
         },
-        estado: "completada",
+        estado: "pendiente_revision",
       },
       { onConflict: "estudiante_id,actividad_id" },
     );
