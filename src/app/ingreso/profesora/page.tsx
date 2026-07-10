@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { UserRound, ArrowLeft, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { asegurarPerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
+import { Card } from "@/components/ui/card";
+import { Field, Label, Input, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function IngresoProfesora() {
   const router = useRouter();
@@ -70,66 +75,77 @@ export default function IngresoProfesora() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-6 dark:bg-black">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6">
+      <Link
+        href="/ingreso"
+        className="fixed left-6 top-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Volver
+      </Link>
+
+      <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+        <UserRound className="size-6" aria-hidden="true" />
+      </div>
+
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
         {modo === "entrar" ? "Iniciar sesión" : "Crear cuenta de profesora"}
       </h1>
-      {avisoConfirmacion ? (
-        <p className="max-w-sm text-center text-zinc-700 dark:text-zinc-300">
-          Te enviamos un correo a <strong>{correo}</strong> para confirmar tu cuenta.
-          Ábrelo y luego vuelve aquí a iniciar sesión.
-        </p>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-          {modo === "crear" && (
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">Nombre</label>
-              <input
+
+      <Card className="w-full max-w-sm p-6">
+        {avisoConfirmacion ? (
+          <div className="flex flex-col items-center gap-3 py-2 text-center">
+            <MailCheck className="size-8 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              Te enviamos un correo a <strong className="text-slate-900 dark:text-slate-50">{correo}</strong>{" "}
+              para confirmar tu cuenta. Ábrelo y luego vuelve aquí a iniciar sesión.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {modo === "crear" && (
+              <Field>
+                <Label htmlFor="nombre">Nombre</Label>
+                <Input id="nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+              </Field>
+            )}
+            <Field>
+              <Label htmlFor="correo">Correo</Label>
+              <Input
+                id="correo"
                 required
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                type="email"
+                value={correo}
+                onChange={(e) => setCorreo(e.target.value)}
+                autoComplete="email"
               />
-            </div>
-          )}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Correo</label>
-            <input
-              required
-              type="email"
-              value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Contraseña</label>
-            <input
-              required
-              type="password"
-              minLength={6}
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          <button
-            type="submit"
-            disabled={cargando}
-            className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-          >
-            {cargando ? "Un momento..." : modo === "entrar" ? "Entrar" : "Crear cuenta"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setModo(modo === "entrar" ? "crear" : "entrar")}
-            className="text-sm text-zinc-500 underline dark:text-zinc-400"
-          >
-            {modo === "entrar" ? "¿Primera vez? Crea tu cuenta" : "Ya tengo cuenta"}
-          </button>
-        </form>
-      )}
+            </Field>
+            <Field>
+              <Label htmlFor="contrasena">Contraseña</Label>
+              <Input
+                id="contrasena"
+                required
+                type="password"
+                minLength={6}
+                value={contrasena}
+                onChange={(e) => setContrasena(e.target.value)}
+                autoComplete={modo === "entrar" ? "current-password" : "new-password"}
+              />
+            </Field>
+            {error && <ErrorText>{error}</ErrorText>}
+            <Boton type="submit" cargando={cargando} className="w-full">
+              {cargando ? "Un momento..." : modo === "entrar" ? "Entrar" : "Crear cuenta"}
+            </Boton>
+            <button
+              type="button"
+              onClick={() => setModo(modo === "entrar" ? "crear" : "entrar")}
+              className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+            >
+              {modo === "entrar" ? "¿Primera vez? Crea tu cuenta" : "Ya tengo cuenta"}
+            </button>
+          </form>
+        )}
+      </Card>
     </div>
   );
 }

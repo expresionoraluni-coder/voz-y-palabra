@@ -1,12 +1,13 @@
 "use client";
 
+import { Printer } from "lucide-react";
+import Boton from "@/components/ui/button";
+
 export default function BotonImprimir() {
   return (
-    <button
-      onClick={() => window.print()}
-      className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 dark:border-zinc-700 dark:text-zinc-50"
-    >
+    <Boton variant="secondary" size="sm" onClick={() => window.print()}>
+      <Printer className="size-4" aria-hidden="true" />
       Descargar / imprimir
-    </button>
+    </Boton>
   );
 }

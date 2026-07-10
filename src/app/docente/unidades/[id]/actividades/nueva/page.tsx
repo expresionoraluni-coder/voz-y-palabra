@@ -2,7 +2,23 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
+import {
+  ListTree,
+  MessageSquareText,
+  ScanSearch,
+  Columns3,
+  PenLine,
+  Tags,
+  Workflow,
+  Mic,
+  LucideIcon,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import PageHeader from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
+import Alert from "@/components/ui/alert";
 
 type TipoActividad = { id: string; nombre: string; descripcion: string | null };
 
@@ -16,6 +32,17 @@ const TIPOS_DISPONIBLES = [
   "constructor_ramificado",
   "grabacion_rubrica",
 ];
+
+const ICONO_TIPO: Record<string, LucideIcon> = {
+  opcion_justificacion: MessageSquareText,
+  clasificacion: ListTree,
+  encontrar_corregir: ScanSearch,
+  comparador: Columns3,
+  redaccion_checklist: PenLine,
+  etiquetado_texto: Tags,
+  constructor_ramificado: Workflow,
+  grabacion_rubrica: Mic,
+};
 
 export default function NuevaActividad({
   params,
@@ -84,6 +111,7 @@ export default function NuevaActividad({
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
   const nombreTipo = tipoSeleccionado?.nombre;
   const disponible = TIPOS_DISPONIBLES.includes(nombreTipo ?? "");
+  const IconoTipo = ICONO_TIPO[nombreTipo ?? ""] ?? MessageSquareText;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -270,341 +298,304 @@ export default function NuevaActividad({
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 bg-white px-6 py-10 dark:bg-black">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Crear actividad
-      </h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">Tipo</label>
-          <select
-            value={tipoId}
-            onChange={(e) => setTipoId(e.target.value)}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          >
-            {tipos.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nombre}
-              </option>
-            ))}
-          </select>
-          {!disponible && tipoId && (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
-              Este tipo estará disponible en una fase próxima. Por ahora puedes
-              crear "opcion_justificacion", "clasificacion", "encontrar_corregir",
-              "comparador", "redaccion_checklist", "etiquetado_texto",
-              "constructor_ramificado" o "grabacion_rubrica".
-            </p>
-          )}
-        </div>
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+      <PageHeader
+        volverHref={`/docente/unidades/${unidadId}`}
+        eyebrow="Nueva actividad"
+        titulo="Crear actividad"
+      />
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">Título</label>
-          <input
-            required
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <Card className="flex flex-col gap-4 p-5">
+          <Field>
+            <Label htmlFor="tipo">Tipo de actividad</Label>
+            <Select id="tipo" value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
+              {tipos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nombre}
+                </option>
+              ))}
+            </Select>
+            {!disponible && tipoId && (
+              <HelpText>
+                Este tipo estará disponible en una fase próxima. Por ahora puedes crear
+                &quot;opcion_justificacion&quot;, &quot;clasificacion&quot;, &quot;encontrar_corregir&quot;,
+                &quot;comparador&quot;, &quot;redaccion_checklist&quot;, &quot;etiquetado_texto&quot;,
+                &quot;constructor_ramificado&quot; o &quot;grabacion_rubrica&quot;.
+              </HelpText>
+            )}
+          </Field>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
-            Instrucciones
-          </label>
-          <textarea
-            value={instrucciones}
-            onChange={(e) => setInstrucciones(e.target.value)}
-            rows={2}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
+          <Field>
+            <Label htmlFor="titulo">Título</Label>
+            <Input id="titulo" required value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+          </Field>
 
-        {nombreTipo === "opcion_justificacion" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Pregunta
-              </label>
-              <input
-                required
-                value={pregunta}
-                onChange={(e) => setPregunta(e.target.value)}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
+          <Field>
+            <Label htmlFor="instrucciones">Instrucciones</Label>
+            <Textarea
+              id="instrucciones"
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+            />
+          </Field>
+        </Card>
+
+        {disponible && (
+          <Card className="flex flex-col gap-4 p-5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                <IconoTipo className="size-4" aria-hidden="true" />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                Contenido — {nombreTipo?.replaceAll("_", " ")}
+              </h2>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Opciones (una por línea)
-              </label>
-              <textarea
-                required
-                value={opciones}
-                onChange={(e) => setOpciones(e.target.value)}
-                rows={4}
-                placeholder={"Nivel coloquial\nNivel técnico-científico\nNivel literario"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
+
+            {nombreTipo === "opcion_justificacion" && (
+              <>
+                <Field>
+                  <Label htmlFor="pregunta">Pregunta</Label>
+                  <Input id="pregunta" required value={pregunta} onChange={(e) => setPregunta(e.target.value)} />
+                </Field>
+                <Field>
+                  <Label htmlFor="opciones">Opciones (una por línea)</Label>
+                  <Textarea
+                    id="opciones"
+                    required
+                    value={opciones}
+                    onChange={(e) => setOpciones(e.target.value)}
+                    rows={4}
+                    placeholder={"Nivel coloquial\nNivel técnico-científico\nNivel literario"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "clasificacion" && (
+              <>
+                <Field>
+                  <Label htmlFor="categorias">Categorías (una por línea)</Label>
+                  <Textarea
+                    id="categorias"
+                    required
+                    value={categorias}
+                    onChange={(e) => setCategorias(e.target.value)}
+                    rows={3}
+                    placeholder={"Emisor\nReceptor\nMensaje"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="elementos">Elementos a clasificar — formato: texto || categoría correcta</Label>
+                  <Textarea
+                    id="elementos"
+                    required
+                    value={elementos}
+                    onChange={(e) => setElementos(e.target.value)}
+                    rows={6}
+                    placeholder={
+                      "Quien construye y envía el mensaje || Emisor\nQuien recibe e interpreta el mensaje || Receptor"
+                    }
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "encontrar_corregir" && (
+              <>
+                <Field>
+                  <Label htmlFor="textoOriginal">Texto con el error (el estudiante lo verá tal cual)</Label>
+                  <Textarea
+                    id="textoOriginal"
+                    required
+                    value={textoOriginal}
+                    onChange={(e) => setTextoOriginal(e.target.value)}
+                    rows={5}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="pista">Pista (opcional, se muestra si el estudiante la pide)</Label>
+                  <Input id="pista" value={pista} onChange={(e) => setPista(e.target.value)} />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "comparador" && (
+              <>
+                <Field>
+                  <Label htmlFor="conceptos">Conceptos a comparar (uno por línea)</Label>
+                  <Textarea
+                    id="conceptos"
+                    required
+                    value={conceptos}
+                    onChange={(e) => setConceptos(e.target.value)}
+                    rows={3}
+                    placeholder={"Comunicación\nLenguaje\nLengua\nHabla"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="criterios">Criterios de comparación (uno por línea)</Label>
+                  <Textarea
+                    id="criterios"
+                    required
+                    value={criterios}
+                    onChange={(e) => setCriterios(e.target.value)}
+                    rows={3}
+                    placeholder={"¿Es exclusivo del ser humano?\n¿Es individual o social?"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "redaccion_checklist" && (
+              <>
+                <Field>
+                  <Label htmlFor="textoFuente">Texto fuente (opcional — el estudiante lo leerá antes de escribir)</Label>
+                  <Textarea
+                    id="textoFuente"
+                    value={textoFuente}
+                    onChange={(e) => setTextoFuente(e.target.value)}
+                    rows={5}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="limitePalabras">Límite de palabras</Label>
+                  <Input
+                    id="limitePalabras"
+                    required
+                    type="number"
+                    min={1}
+                    value={limitePalabras}
+                    onChange={(e) => setLimitePalabras(e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="checklist">Checklist de autorrevisión (uno por línea)</Label>
+                  <Textarea
+                    id="checklist"
+                    required
+                    value={checklist}
+                    onChange={(e) => setChecklist(e.target.value)}
+                    rows={3}
+                    placeholder={"Conservé la idea central\nEliminé ejemplos secundarios\nUsé mis propias palabras"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "etiquetado_texto" && (
+              <>
+                <Field>
+                  <Label htmlFor="contexto">Contexto (opcional — introduce la fuente, ej. &quot;canción&quot;, &quot;diálogo&quot;)</Label>
+                  <Input id="contexto" value={contexto} onChange={(e) => setContexto(e.target.value)} />
+                </Field>
+                <Field>
+                  <Label htmlFor="etiquetas">Etiquetas (una por línea)</Label>
+                  <Textarea
+                    id="etiquetas"
+                    required
+                    value={etiquetas}
+                    onChange={(e) => setEtiquetas(e.target.value)}
+                    rows={3}
+                    placeholder={"Caló\nJerga\nRegionalismo\nModismo"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="fragmentos">Fragmentos a etiquetar — formato: texto || etiqueta correcta</Label>
+                  <Textarea
+                    id="fragmentos"
+                    required
+                    value={fragmentos}
+                    onChange={(e) => setFragmentos(e.target.value)}
+                    rows={6}
+                    placeholder={"Ya chole chango chilango || Caló\nEl que es perico dondequiera es verde || Modismo"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "constructor_ramificado" && (
+              <>
+                <Field>
+                  <Label htmlFor="temaSugerido">Tema sugerido (opcional)</Label>
+                  <Textarea
+                    id="temaSugerido"
+                    value={temaSugerido}
+                    onChange={(e) => setTemaSugerido(e.target.value)}
+                    rows={2}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="secciones">Secciones del esqueleto — formato: nombre || guía para el estudiante</Label>
+                  <Textarea
+                    id="secciones"
+                    required
+                    value={secciones}
+                    onChange={(e) => setSecciones(e.target.value)}
+                    rows={5}
+                    placeholder={
+                      "Tesis || Plantea una postura objetiva a favor de una idea\nAntítesis || Plantea la idea opuesta, también fundamentada\nSíntesis || Integra lo mejor de ambas y concluye"
+                    }
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "grabacion_rubrica" && (
+              <>
+                <Field>
+                  <Label htmlFor="temaGrabacion">Tema o instrucción para la grabación</Label>
+                  <Textarea
+                    id="temaGrabacion"
+                    required
+                    value={temaGrabacion}
+                    onChange={(e) => setTemaGrabacion(e.target.value)}
+                    rows={3}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="duracionSugerida">Duración sugerida (segundos)</Label>
+                  <Input
+                    id="duracionSugerida"
+                    required
+                    type="number"
+                    min={10}
+                    value={duracionSugerida}
+                    onChange={(e) => setDuracionSugerida(e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="rubrica">Criterios de la rúbrica (uno por línea)</Label>
+                  <Textarea
+                    id="rubrica"
+                    required
+                    value={rubrica}
+                    onChange={(e) => setRubrica(e.target.value)}
+                    rows={4}
+                    placeholder={"Claridad\nRitmo\nMuletillas\nVolumen"}
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </>
+            )}
+          </Card>
         )}
 
-        {nombreTipo === "clasificacion" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Categorías (una por línea)
-              </label>
-              <textarea
-                required
-                value={categorias}
-                onChange={(e) => setCategorias(e.target.value)}
-                rows={3}
-                placeholder={"Emisor\nReceptor\nMensaje"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Elementos a clasificar — formato: texto || categoría correcta
-              </label>
-              <textarea
-                required
-                value={elementos}
-                onChange={(e) => setElementos(e.target.value)}
-                rows={6}
-                placeholder={
-                  "Quien construye y envía el mensaje || Emisor\nQuien recibe e interpreta el mensaje || Receptor"
-                }
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
-        )}
+        {error && <Alert tono="error">{error}</Alert>}
 
-        {nombreTipo === "encontrar_corregir" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Texto con el error (el estudiante lo verá tal cual)
-              </label>
-              <textarea
-                required
-                value={textoOriginal}
-                onChange={(e) => setTextoOriginal(e.target.value)}
-                rows={5}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Pista (opcional, se muestra si el estudiante la pide)
-              </label>
-              <input
-                value={pista}
-                onChange={(e) => setPista(e.target.value)}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
-        )}
-
-        {nombreTipo === "comparador" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Conceptos a comparar (uno por línea)
-              </label>
-              <textarea
-                required
-                value={conceptos}
-                onChange={(e) => setConceptos(e.target.value)}
-                rows={3}
-                placeholder={"Comunicación\nLenguaje\nLengua\nHabla"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Criterios de comparación (uno por línea)
-              </label>
-              <textarea
-                required
-                value={criterios}
-                onChange={(e) => setCriterios(e.target.value)}
-                rows={3}
-                placeholder={"¿Es exclusivo del ser humano?\n¿Es individual o social?"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
-        )}
-
-        {nombreTipo === "redaccion_checklist" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Texto fuente (opcional — el estudiante lo leerá antes de escribir)
-              </label>
-              <textarea
-                value={textoFuente}
-                onChange={(e) => setTextoFuente(e.target.value)}
-                rows={5}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Límite de palabras
-              </label>
-              <input
-                required
-                type="number"
-                min={1}
-                value={limitePalabras}
-                onChange={(e) => setLimitePalabras(e.target.value)}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Checklist de autorrevisión (uno por línea)
-              </label>
-              <textarea
-                required
-                value={checklist}
-                onChange={(e) => setChecklist(e.target.value)}
-                rows={3}
-                placeholder={"Conservé la idea central\nEliminé ejemplos secundarios\nUsé mis propias palabras"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
-        )}
-
-        {nombreTipo === "etiquetado_texto" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Contexto (opcional — introduce la fuente, ej. "canción", "diálogo")
-              </label>
-              <input
-                value={contexto}
-                onChange={(e) => setContexto(e.target.value)}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Etiquetas (una por línea)
-              </label>
-              <textarea
-                required
-                value={etiquetas}
-                onChange={(e) => setEtiquetas(e.target.value)}
-                rows={3}
-                placeholder={"Caló\nJerga\nRegionalismo\nModismo"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Fragmentos a etiquetar — formato: texto || etiqueta correcta
-              </label>
-              <textarea
-                required
-                value={fragmentos}
-                onChange={(e) => setFragmentos(e.target.value)}
-                rows={6}
-                placeholder={"Ya chole chango chilango || Caló\nEl que es perico dondequiera es verde || Modismo"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
-        )}
-
-        {nombreTipo === "constructor_ramificado" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Tema sugerido (opcional)
-              </label>
-              <textarea
-                value={temaSugerido}
-                onChange={(e) => setTemaSugerido(e.target.value)}
-                rows={2}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Secciones del esqueleto — formato: nombre || guía para el estudiante
-              </label>
-              <textarea
-                required
-                value={secciones}
-                onChange={(e) => setSecciones(e.target.value)}
-                rows={5}
-                placeholder={
-                  "Tesis || Plantea una postura objetiva a favor de una idea\nAntítesis || Plantea la idea opuesta, también fundamentada\nSíntesis || Integra lo mejor de ambas y concluye"
-                }
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
-        )}
-
-        {nombreTipo === "grabacion_rubrica" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Tema o instrucción para la grabación
-              </label>
-              <textarea
-                required
-                value={temaGrabacion}
-                onChange={(e) => setTemaGrabacion(e.target.value)}
-                rows={3}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Duración sugerida (segundos)
-              </label>
-              <input
-                required
-                type="number"
-                min={10}
-                value={duracionSugerida}
-                onChange={(e) => setDuracionSugerida(e.target.value)}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-zinc-600 dark:text-zinc-400">
-                Criterios de la rúbrica (uno por línea)
-              </label>
-              <textarea
-                required
-                value={rubrica}
-                onChange={(e) => setRubrica(e.target.value)}
-                rows={4}
-                placeholder={"Claridad\nRitmo\nMuletillas\nVolumen"}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-            </div>
-          </>
-        )}
-
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={cargando}
-          className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-        >
+        <Boton type="submit" disabled={cargando} cargando={cargando} className="self-start">
           {cargando ? "Creando..." : "Crear actividad"}
-        </button>
+        </Boton>
       </form>
     </div>
   );

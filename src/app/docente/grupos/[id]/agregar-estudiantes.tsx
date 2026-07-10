@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { UserPlus, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Field, Label, Textarea, HelpText, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function AgregarEstudiantes({ grupoId }: { grupoId: string }) {
   const router = useRouter();
@@ -48,31 +52,35 @@ export default function AgregarEstudiantes({ grupoId }: { grupoId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <label className="text-sm text-zinc-600 dark:text-zinc-400">
-        Agregar estudiantes (un nombre por línea — puedes pegar una columna
-        completa desde Excel)
-      </label>
-      <textarea
-        value={nombres}
-        onChange={(e) => setNombres(e.target.value)}
-        rows={5}
-        placeholder={"Ana Torres\nLuis Martínez\nSofía Ramírez"}
-        className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-      />
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {agregados !== null && (
-        <p className="text-sm text-green-600 dark:text-green-400">
-          {agregados} estudiante(s) agregado(s).
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={cargando}
-        className="self-start rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
-        {cargando ? "Agregando..." : "Agregar"}
-      </button>
-    </form>
+    <Card className="flex flex-col gap-4 p-5">
+      <div className="flex items-center gap-2">
+        <UserPlus className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Agregar estudiantes</p>
+      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <Field>
+          <Label htmlFor="nombres">Un nombre por línea</Label>
+          <Textarea
+            id="nombres"
+            value={nombres}
+            onChange={(e) => setNombres(e.target.value)}
+            rows={5}
+            placeholder={"Ana Torres\nLuis Martínez\nSofía Ramírez"}
+            className="font-mono"
+          />
+          <HelpText>Puedes pegar una columna completa copiada desde Excel.</HelpText>
+        </Field>
+        {error && <ErrorText>{error}</ErrorText>}
+        {agregados !== null && (
+          <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="size-4" aria-hidden="true" />
+            {agregados} estudiante(s) agregado(s)
+          </p>
+        )}
+        <Boton type="submit" variant="secondary" size="sm" cargando={cargando} className="self-start">
+          {cargando ? "Agregando..." : "Agregar"}
+        </Boton>
+      </form>
+    </Card>
   );
 }

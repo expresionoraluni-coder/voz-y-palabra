@@ -2,7 +2,10 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Mic, Square, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Textarea, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function GrabacionRubrica({
   actividadId,
@@ -88,37 +91,46 @@ export default function GrabacionRubrica({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="text-zinc-700 dark:text-zinc-300">{contenido.tema_sugerido}</p>
-      <p className="text-xs text-zinc-500 dark:text-zinc-500">
-        Duración sugerida: ~{contenido.duracion_sugerida_segundos} segundos.
-      </p>
-
-      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-          Graba tu voz (queda solo en tu navegador, nunca se sube a ningún lado)
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <div>
+        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          {contenido.tema_sugerido}
         </p>
-        <div className="flex items-center gap-3">
-          {!grabando ? (
-            <button
-              type="button"
-              onClick={iniciarGrabacion}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white"
-            >
-              ● Grabar
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={detenerGrabacion}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
-            >
-              ■ Detener
-            </button>
-          )}
-          {grabando && <span className="text-sm text-red-600">Grabando...</span>}
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+          Duración sugerida: ~{contenido.duracion_sugerida_segundos} segundos
+        </p>
+      </div>
+
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 px-6 py-8 dark:border-slate-800">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <ShieldCheck className="size-3.5" aria-hidden="true" />
+          Se queda solo en tu navegador — nunca se sube a ningún lado
         </div>
-        {errorMic && <p className="text-sm text-red-600 dark:text-red-400">{errorMic}</p>}
+
+        <button
+          type="button"
+          onClick={grabando ? detenerGrabacion : iniciarGrabacion}
+          className={`relative flex size-16 items-center justify-center rounded-full text-white shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+            grabando
+              ? "bg-red-600 shadow-red-600/30 focus-visible:ring-red-500"
+              : "bg-indigo-600 shadow-indigo-600/30 hover:bg-indigo-700 focus-visible:ring-indigo-500"
+          }`}
+          aria-label={grabando ? "Detener grabación" : "Iniciar grabación"}
+        >
+          {grabando && (
+            <span className="absolute inset-0 animate-ping rounded-full bg-red-500/50" aria-hidden="true" />
+          )}
+          {grabando ? (
+            <Square className="size-6 fill-current" aria-hidden="true" />
+          ) : (
+            <Mic className="size-6" aria-hidden="true" />
+          )}
+        </button>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          {grabando ? "Grabando..." : audioUrl ? "Toca para grabar de nuevo" : "Toca para grabar"}
+        </p>
+
+        {errorMic && <ErrorText>{errorMic}</ErrorText>}
         {audioUrl && (
           <audio controls src={audioUrl} className="w-full">
             Tu navegador no soporta audio.
@@ -126,43 +138,39 @@ export default function GrabacionRubrica({
         )}
       </div>
 
-      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+      <div className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800">
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
           Escúchate y autoevalúate
         </p>
         {contenido.rubrica.map((criterio) => (
-          <label key={criterio} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-            <input type="checkbox" checked={autoevaluacion[criterio] ?? false} onChange={() => alternar(criterio)} />
+          <label key={criterio} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={autoevaluacion[criterio] ?? false}
+              onChange={() => alternar(criterio)}
+              className="size-4 rounded border-slate-300 accent-indigo-600 dark:border-slate-600"
+            />
             {criterio}
           </label>
         ))}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm text-zinc-600 dark:text-zinc-400">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
           ¿Qué te gustaría mejorar la próxima vez?
         </label>
-        <textarea
-          value={reflexion}
-          onChange={(e) => setReflexion(e.target.value)}
-          rows={3}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
+        <Textarea value={reflexion} onChange={(e) => setReflexion(e.target.value)} rows={3} />
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
       {guardado && (
-        <p className="text-sm text-green-600 dark:text-green-400">
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">
           Guardado. Tu grabación no se guarda en ningún lado — solo tu autoevaluación.
         </p>
       )}
-      <button
-        type="submit"
-        disabled={cargando}
-        className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      <Boton type="submit" cargando={cargando}>
         {cargando ? "Guardando..." : "Guardar mi autoevaluación"}
-      </button>
+      </Boton>
     </form>
   );
 }

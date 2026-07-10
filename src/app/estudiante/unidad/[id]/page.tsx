@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
+import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import Confianza from "./confianza";
+import PageHeader from "@/components/ui/page-header";
+import { CardLink } from "@/components/ui/card";
+import ProgressBar from "@/components/ui/progress-bar";
+import EmptyState from "@/components/ui/empty-state";
 
 export default async function UnidadEstudiante({
   params,
@@ -49,53 +54,65 @@ export default async function UnidadEstudiante({
     actividades?.filter((a) => Array.isArray(a.entregas) && a.entregas.length > 0)
       .length ?? 0;
   const unidadCompleta = totalActividades > 0 && completadas === totalActividades;
+  const pct = totalActividades > 0 ? Math.round((completadas / totalActividades) * 100) : 0;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 bg-white px-6 py-10 dark:bg-black">
-      <div>
-        <Link
-          href="/estudiante/inicio"
-          className="text-sm text-zinc-500 underline dark:text-zinc-400"
-        >
-          ← Volver
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Unidad {unidad.orden}. {unidad.nombre}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-          Reto: {unidad.reto_comunicativo}
-        </p>
-      </div>
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+      <PageHeader
+        volverHref="/estudiante/inicio"
+        eyebrow={`Unidad ${unidad.orden}`}
+        titulo={unidad.nombre}
+        descripcion={unidad.reto_comunicativo}
+      />
+
+      {totalActividades > 0 && (
+        <div className="flex items-center gap-3">
+          <ProgressBar porcentaje={pct} />
+          <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-500">
+            {completadas}/{totalActividades}
+          </span>
+        </div>
+      )}
 
       {!confianzaInicio && (
         <Confianza estudianteId={estudiante.id} unidadId={id} momento="inicio" />
       )}
 
       {!actividades || actividades.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-500">
-          Todavía no hay actividades publicadas en esta unidad.
-        </p>
+        <EmptyState
+          icon={TrendingUp}
+          titulo="Todavía no hay actividades publicadas"
+          descripcion="Tu profesora las agregará pronto."
+        />
       ) : (
-        <ul className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {actividades.map((a) => {
             const completada = Array.isArray(a.entregas) && a.entregas.length > 0;
             return (
-              <li key={a.id}>
-                <Link
-                  href={`/estudiante/actividad/${a.id}`}
-                  className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                >
-                  <span className="font-medium text-zinc-900 dark:text-zinc-50">
+              <Link key={a.id} href={`/estudiante/actividad/${a.id}`}>
+                <CardLink className="flex items-center gap-3 px-4 py-3.5">
+                  {completada ? (
+                    <CheckCircle2 className="size-5 shrink-0 text-emerald-500" aria-hidden="true" />
+                  ) : (
+                    <Circle className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
+                  )}
+                  <span className="flex-1 font-medium text-slate-900 dark:text-slate-50">
                     {a.titulo}
                   </span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-500">
-                    {completada ? "✓ Completada" : "Sin empezar"}
+                  <span
+                    className={
+                      completada
+                        ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                        : "text-xs text-slate-400 dark:text-slate-600"
+                    }
+                  >
+                    {completada ? "Completada" : "Sin empezar"}
                   </span>
-                </Link>
-              </li>
+                </CardLink>
+              </Link>
             );
           })}
-        </ul>
+        </div>
       )}
 
       {unidadCompleta && !confianzaCierre && (
@@ -103,10 +120,13 @@ export default async function UnidadEstudiante({
       )}
 
       {confianzaInicio && confianzaCierre && (
-        <p className="rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-          Tu confianza pasó de {confianzaInicio.valor}% a {confianzaCierre.valor}% en
-          esta unidad.
-        </p>
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/40">
+          <TrendingUp className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            Tu confianza pasó de <strong className="text-slate-900 dark:text-slate-50">{confianzaInicio.valor}%</strong> a{" "}
+            <strong className="text-slate-900 dark:text-slate-50">{confianzaCierre.valor}%</strong> en esta unidad.
+          </p>
+        </div>
       )}
     </div>
   );

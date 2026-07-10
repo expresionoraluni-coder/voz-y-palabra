@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Gauge } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui/card";
+import { ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function Confianza({
   estudianteId,
@@ -36,12 +40,15 @@ export default function Confianza({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800">
-      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-        {momento === "inicio"
-          ? "¿Qué tan seguro te sientes con este tema, antes de empezar?"
-          : "Terminaste la unidad. ¿Qué tan seguro te sientes ahora?"}
-      </p>
+    <Card className="flex flex-col gap-3 p-5">
+      <div className="flex items-center gap-2">
+        <Gauge className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
+          {momento === "inicio"
+            ? "¿Qué tan seguro te sientes con este tema, antes de empezar?"
+            : "Terminaste la unidad. ¿Qué tan seguro te sientes ahora?"}
+        </p>
+      </div>
       <div className="flex items-center gap-3">
         <input
           type="range"
@@ -50,20 +57,16 @@ export default function Confianza({
           step={5}
           value={valor}
           onChange={(e) => setValor(Number(e.target.value))}
-          className="flex-1"
+          className="h-2 flex-1 cursor-pointer accent-indigo-600"
         />
-        <span className="w-10 text-right text-sm text-zinc-600 dark:text-zinc-400">
+        <span className="w-12 text-right text-sm font-semibold text-slate-700 dark:text-slate-300">
           {valor}%
         </span>
       </div>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      <button
-        onClick={guardar}
-        disabled={cargando}
-        className="self-start rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      {error && <ErrorText>{error}</ErrorText>}
+      <Boton onClick={guardar} cargando={cargando} size="sm" className="self-start">
         {cargando ? "Guardando..." : "Continuar"}
-      </button>
-    </div>
+      </Boton>
+    </Card>
   );
 }

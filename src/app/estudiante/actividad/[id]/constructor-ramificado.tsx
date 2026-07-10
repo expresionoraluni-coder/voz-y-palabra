@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Field, Label, Input, Textarea, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 type Seccion = { nombre: string; guia: string };
 
@@ -59,55 +61,49 @@ export default function ConstructorRamificado({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {contenido.tema_sugerido && (
-        <p className="text-sm text-zinc-500 dark:text-zinc-500">
-          {contenido.tema_sugerido}
-        </p>
+        <p className="text-sm text-slate-500 dark:text-slate-500">{contenido.tema_sugerido}</p>
       )}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm text-zinc-600 dark:text-zinc-400">
-          Tu tema
-        </label>
-        <input
-          required
-          value={tema}
-          onChange={(e) => setTema(e.target.value)}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
+      <Field>
+        <Label htmlFor="tema">Tu tema</Label>
+        <Input id="tema" required value={tema} onChange={(e) => setTema(e.target.value)} />
+      </Field>
+
+      <div className="flex flex-col gap-4">
+        {contenido.secciones.map((s, i) => (
+          <div key={i} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                {i + 1}
+              </span>
+              {i < contenido.secciones.length - 1 && (
+                <span className="mt-1 w-px flex-1 bg-slate-200 dark:bg-slate-800" />
+              )}
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5 pb-1">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{s.nombre}</p>
+              {s.guia && <p className="text-xs text-slate-500 dark:text-slate-500">{s.guia}</p>}
+              <Textarea
+                required
+                value={textos[i] ?? ""}
+                onChange={(e) => actualizar(i, e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+        ))}
       </div>
 
-      {contenido.secciones.map((s, i) => (
-        <div key={i} className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-            {s.nombre}
-          </label>
-          {s.guia && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-500">{s.guia}</p>
-          )}
-          <textarea
-            required
-            value={textos[i] ?? ""}
-            onChange={(e) => actualizar(i, e.target.value)}
-            rows={4}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-      ))}
-
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
       {guardado && (
-        <p className="text-sm text-green-600 dark:text-green-400">
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">
           Guardado. Puedes seguir puliendo tu texto cuando quieras.
         </p>
       )}
-      <button
-        type="submit"
-        disabled={cargando}
-        className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      <Boton type="submit" cargando={cargando}>
         {cargando ? "Guardando..." : "Guardar mi texto"}
-      </button>
+      </Boton>
     </form>
   );
 }

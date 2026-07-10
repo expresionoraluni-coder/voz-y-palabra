@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BookOpen, ChevronRight, Plus, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
+import Avatar from "@/components/ui/avatar";
+import { CardLink } from "@/components/ui/card";
+import Boton from "@/components/ui/button";
+import EmptyState from "@/components/ui/empty-state";
 
 export default async function DashboardDocente() {
   const supabase = await createClient();
@@ -30,74 +35,76 @@ export default async function DashboardDocente() {
     .order("orden");
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 bg-white px-6 py-10 dark:bg-black">
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Hola, {docente.nombre}
-        </h1>
+        <div className="flex items-center gap-3">
+          <Avatar nombre={docente.nombre} />
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            Hola, {docente.nombre.split(" ")[0]}
+          </h1>
+        </div>
         <CerrarSesion />
       </div>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
-            Tus grupos
-          </h2>
-          <Link
-            href="/docente/grupos/nuevo"
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
-          >
-            Crear grupo
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Tus grupos</h2>
+          <Link href="/docente/grupos/nuevo">
+            <Boton size="sm">
+              <Plus className="size-4" aria-hidden="true" />
+              Crear grupo
+            </Boton>
           </Link>
         </div>
         {!grupos || grupos.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">
-            Todavía no tienes grupos. Crea el primero para generar su código de acceso.
-          </p>
+          <EmptyState
+            icon={Users}
+            titulo="Todavía no tienes grupos"
+            descripcion="Crea el primero para generar su código de acceso."
+          />
         ) : (
-          <ul className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             {grupos.map((g) => (
-              <li key={g.id}>
-                <Link
-                  href={`/docente/grupos/${g.id}`}
-                  className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                >
-                  <span className="font-medium text-zinc-900 dark:text-zinc-50">
-                    {g.nombre}
-                  </span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-500">
-                    código: {g.codigo_acceso} ·{" "}
-                    {Array.isArray(g.estudiantes) ? g.estudiantes[0]?.count ?? 0 : 0}{" "}
-                    estudiantes
-                  </span>
-                </Link>
-              </li>
+              <Link key={g.id} href={`/docente/grupos/${g.id}`}>
+                <CardLink className="flex items-center gap-4 px-4 py-3.5">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                    <Users className="size-4" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-900 dark:text-slate-50">{g.nombre}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-500">
+                      Código {g.codigo_acceso} ·{" "}
+                      {Array.isArray(g.estudiantes) ? g.estudiantes[0]?.count ?? 0 : 0} estudiantes
+                    </p>
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                </CardLink>
+              </Link>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
-          Unidades del curso
-        </h2>
-        <ul className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Unidades del curso</h2>
+        <div className="flex flex-col gap-2">
           {unidades?.map((u) => (
-            <li key={u.id}>
-              <Link
-                href={`/docente/unidades/${u.id}`}
-                className="block rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-              >
-                <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                  Unidad {u.orden}. {u.nombre}
-                </p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-500">
-                  Reto: {u.reto_comunicativo}
-                </p>
-              </Link>
-            </li>
+            <Link key={u.id} href={`/docente/unidades/${u.id}`}>
+              <CardLink className="flex items-center gap-4 px-4 py-3.5">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <BookOpen className="size-4" aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-slate-900 dark:text-slate-50">
+                    Unidad {u.orden}. {u.nombre}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-500">{u.reto_comunicativo}</p>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+              </CardLink>
+            </Link>
           ))}
-        </ul>
+        </div>
       </section>
     </div>
   );

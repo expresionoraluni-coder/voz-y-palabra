@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function OpcionJustificacion({
   actividadId,
@@ -53,53 +56,62 @@ export default function OpcionJustificacion({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="font-medium text-zinc-900 dark:text-zinc-50">
-        {contenido.pregunta}
-      </p>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <p className="font-medium text-slate-900 dark:text-slate-50">{contenido.pregunta}</p>
       <div className="flex flex-col gap-2">
-        {contenido.opciones.map((op) => (
-          <label
-            key={op}
-            className="flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 dark:border-zinc-800"
-          >
-            <input
-              type="radio"
-              name="opcion"
-              value={op}
-              checked={opcion === op}
-              onChange={() => setOpcion(op)}
-              required
-            />
-            <span className="text-zinc-900 dark:text-zinc-50">{op}</span>
-          </label>
-        ))}
+        {contenido.opciones.map((op) => {
+          const seleccionada = opcion === op;
+          return (
+            <label
+              key={op}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
+                seleccionada
+                  ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/50"
+                  : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="opcion"
+                value={op}
+                checked={seleccionada}
+                onChange={() => setOpcion(op)}
+                required
+                className="sr-only"
+              />
+              <span
+                className={`flex size-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                  seleccionada
+                    ? "border-indigo-600 bg-indigo-600"
+                    : "border-slate-300 dark:border-slate-600"
+                }`}
+              >
+                {seleccionada && <Check className="size-2.5 text-white" strokeWidth={3} aria-hidden="true" />}
+              </span>
+              <span className="text-sm text-slate-900 dark:text-slate-50">{op}</span>
+            </label>
+          );
+        })}
       </div>
-      <div className="flex flex-col gap-1">
-        <label className="text-sm text-zinc-600 dark:text-zinc-400">
-          ¿Por qué elegiste esa opción?
-        </label>
-        <textarea
+      <Field>
+        <Label htmlFor="justificacion">¿Por qué elegiste esa opción?</Label>
+        <Textarea
+          id="justificacion"
           required
           value={justificacion}
           onChange={(e) => setJustificacion(e.target.value)}
           rows={3}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         />
-      </div>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      </Field>
+      {error && <ErrorText>{error}</ErrorText>}
       {guardado && (
-        <p className="text-sm text-green-600 dark:text-green-400">
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">
           Guardado. Puedes cambiar tu respuesta cuando quieras.
         </p>
       )}
-      <button
-        type="submit"
-        disabled={cargando}
-        className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      <Boton type="submit" cargando={cargando}>
         {cargando ? "Guardando..." : "Guardar mi respuesta"}
-      </button>
+      </Boton>
     </form>
   );
 }

@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { GraduationCap, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Field, Label, Input, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function IngresoEstudiante() {
   const router = useRouter();
@@ -60,44 +65,58 @@ export default function IngresoEstudiante() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-6 dark:bg-black">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Entrar como estudiante
-      </h1>
-      <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
-            Código de grupo
-          </label>
-          <input
-            required
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            placeholder="Ej. 1IM4-2026"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
-            Tu nombre (como lo escribió tu profesora)
-          </label>
-          <input
-            required
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            placeholder="Ej. Ana Torres"
-          />
-        </div>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={cargando}
-          className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          {cargando ? "Entrando..." : "Entrar"}
-        </button>
-      </form>
+    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6">
+      <Link
+        href="/ingreso"
+        className="fixed left-6 top-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Volver
+      </Link>
+
+      <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+        <GraduationCap className="size-6" aria-hidden="true" />
+      </div>
+
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+          Entrar como estudiante
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
+          Sin correo, sin contraseña — solo tu nombre y el código de tu grupo
+        </p>
+      </div>
+
+      <Card className="w-full max-w-sm p-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Field>
+            <Label htmlFor="codigo">Código de grupo</Label>
+            <Input
+              id="codigo"
+              required
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+              placeholder="Ej. 1IM4-2026"
+              autoComplete="off"
+            />
+          </Field>
+          <Field>
+            <Label htmlFor="nombre">Tu nombre (como lo escribió tu profesora)</Label>
+            <Input
+              id="nombre"
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej. Ana Torres"
+              autoComplete="off"
+            />
+          </Field>
+          {error && <ErrorText>{error}</ErrorText>}
+          <Boton type="submit" cargando={cargando} className="w-full">
+            {cargando ? "Entrando..." : "Entrar"}
+          </Boton>
+        </form>
+      </Card>
     </div>
   );
 }

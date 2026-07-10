@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
+import { ChevronRight, ClipboardCheck, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
+import PageHeader from "@/components/ui/page-header";
+import { Card, CardLink } from "@/components/ui/card";
+import MetricCard from "@/components/ui/metric-card";
+import ProgressBar from "@/components/ui/progress-bar";
+import Alert from "@/components/ui/alert";
+import Avatar from "@/components/ui/avatar";
+import EmptyState from "@/components/ui/empty-state";
 
 const DIAS_INACTIVIDAD = 10;
 
@@ -103,98 +111,86 @@ export default async function DetalleGrupo({
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 bg-white px-6 py-10 dark:bg-black">
-      <div>
-        <Link href="/docente/dashboard" className="text-sm text-zinc-500 underline dark:text-zinc-400">
-          ← Volver
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {grupo.nombre}
-        </h1>
-        <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-          Código de acceso:{" "}
-          <span className="rounded bg-zinc-100 px-2 py-1 font-mono text-lg font-semibold dark:bg-zinc-900">
-            {grupo.codigo_acceso}
-          </span>
-        </p>
-      </div>
+    <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-6 py-10">
+      <PageHeader
+        volverHref="/docente/dashboard"
+        titulo={grupo.nombre}
+        descripcion={
+          <>
+            Código de acceso:{" "}
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {grupo.codigo_acceso}
+            </span>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-500">Avance promedio</p>
-          <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">{avancePromedio}%</p>
-        </div>
-        <div className="rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-500">Activos esta semana</p>
-          <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {activosSemana}/{estudiantes?.length ?? 0}
-          </p>
-        </div>
-        <div className="rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-500">Por revisar</p>
-          <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">{entregasPorRevisar.length}</p>
-        </div>
-        <div className="rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-500">Estudiantes</p>
-          <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">{estudiantes?.length ?? 0}</p>
-        </div>
+        <MetricCard etiqueta="Avance promedio" valor={`${avancePromedio}%`} icon={TrendingUp} tono="indigo" />
+        <MetricCard
+          etiqueta="Activos esta semana"
+          valor={`${activosSemana}/${estudiantes?.length ?? 0}`}
+          icon={Users}
+          tono="emerald"
+        />
+        <MetricCard
+          etiqueta="Por revisar"
+          valor={entregasPorRevisar.length}
+          icon={ClipboardCheck}
+          tono="amber"
+        />
+        <MetricCard etiqueta="Estudiantes" valor={estudiantes?.length ?? 0} icon={Users} tono="slate" />
       </div>
 
       {alertas.length > 0 && (
-        <section className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950">
-          <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Alertas</p>
-          {alertas.map((a, i) => (
-            <p key={i} className="text-sm text-amber-800 dark:text-amber-300">
-              {a}
-            </p>
-          ))}
-        </section>
+        <Alert tono="warning" titulo="Alertas">
+          <ul className="flex flex-col gap-1">
+            {alertas.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ul>
+        </Alert>
       )}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">Avance por unidad</h2>
-        {avancePorUnidad.map((u) => (
-          <div key={u.id}>
-            <div className="mb-1 flex justify-between text-sm text-zinc-600 dark:text-zinc-400">
-              <span>
-                Unidad {u.orden}. {u.nombre}
-              </span>
-              <span>{u.porcentaje}%</span>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h2>
+        <Card className="flex flex-col gap-4 p-5">
+          {avancePorUnidad.map((u) => (
+            <div key={u.id}>
+              <div className="mb-1.5 flex justify-between text-sm">
+                <span className="text-slate-700 dark:text-slate-300">
+                  Unidad {u.orden}. {u.nombre}
+                </span>
+                <span className="font-medium text-slate-900 dark:text-slate-50">{u.porcentaje}%</span>
+              </div>
+              <ProgressBar porcentaje={u.porcentaje} />
             </div>
-            <div className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-900">
-              <div
-                className="h-2 rounded-full bg-zinc-900 dark:bg-zinc-50"
-                style={{ width: `${u.porcentaje}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          ))}
+        </Card>
       </section>
 
       {entregasPorRevisar.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
             Entregas por revisar
           </h2>
-          <ul className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             {entregasPorRevisar.map((en) => {
               const est = porEstudiante.find((e) => e.id === en.estudiante_id);
               const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
               return (
-                <li key={en.id}>
-                  <Link
-                    href={`/docente/estudiantes/${en.estudiante_id}`}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-2 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                  >
-                    <span className="text-zinc-900 dark:text-zinc-50">
-                      {est?.nombre} · {act?.titulo}
+                <Link key={en.id} href={`/docente/estudiantes/${en.estudiante_id}`}>
+                  <CardLink className="flex items-center gap-3 px-4 py-3">
+                    <span className="size-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
+                    <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
+                      <strong className="font-medium">{est?.nombre}</strong> · {act?.titulo}
                     </span>
-                    <span className="text-sm text-zinc-500 dark:text-zinc-500">Revisar →</span>
-                  </Link>
-                </li>
+                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Revisar</span>
+                  </CardLink>
+                </Link>
               );
             })}
-          </ul>
+          </div>
         </section>
       )}
 
@@ -202,28 +198,32 @@ export default async function DetalleGrupo({
 
       <AgregarEstudiantes grupoId={grupo.id} />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
           Estudiantes ({estudiantes?.length ?? 0})
         </h2>
         {!estudiantes || estudiantes.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">
-            Todavía no hay estudiantes en este grupo.
-          </p>
+          <EmptyState icon={Users} titulo="Todavía no hay estudiantes en este grupo" />
         ) : (
-          <ul className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             {porEstudiante.map((e) => (
-              <li key={e.id}>
-                <Link
-                  href={`/docente/estudiantes/${e.id}`}
-                  className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-2 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                >
-                  <span className="text-zinc-900 dark:text-zinc-50">{e.nombre}</span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-500">{e.avance}%</span>
-                </Link>
-              </li>
+              <Link key={e.id} href={`/docente/estudiantes/${e.id}`}>
+                <CardLink className="flex items-center gap-3 px-4 py-3">
+                  <Avatar nombre={e.nombre} size="sm" />
+                  <span className="flex-1 text-sm font-medium text-slate-900 dark:text-slate-50">
+                    {e.nombre}
+                  </span>
+                  <div className="flex w-24 items-center gap-2">
+                    <ProgressBar porcentaje={e.avance} />
+                    <span className="w-8 shrink-0 text-right text-xs text-slate-500 dark:text-slate-500">
+                      {e.avance}%
+                    </span>
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                </CardLink>
+              </Link>
             ))}
-          </ul>
+          </div>
         )}
       </section>
     </div>

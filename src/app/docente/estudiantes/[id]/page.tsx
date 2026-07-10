@@ -1,8 +1,14 @@
-import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
+import { Award, FileText, Quote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import ComentarioEntrega from "./comentario-entrega";
+import PageHeader from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import Badge from "@/components/ui/badge";
+import ProgressBar from "@/components/ui/progress-bar";
+import Avatar from "@/components/ui/avatar";
+import EmptyState from "@/components/ui/empty-state";
 
 export default async function FichaEstudiante({
   params,
@@ -61,17 +67,17 @@ export default async function FichaEstudiante({
   const avanceGeneral = totalActividades > 0 ? Math.round(((entregas?.length ?? 0) / totalActividades) * 100) : 0;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 bg-white px-6 py-10 dark:bg-black">
-      <div>
-        <Link href={`/docente/grupos/${estudiante.grupo_id}`} className="text-sm text-zinc-500 underline dark:text-zinc-400">
-          ← {grupo?.nombre}
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {estudiante.nombre}
-        </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-500">
-          Avance general: {avanceGeneral}% · {entregas?.length ?? 0}/{totalActividades} actividades
-        </p>
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
+      <div className="flex items-start gap-4">
+        <Avatar nombre={estudiante.nombre} size="lg" />
+        <div className="flex-1">
+          <PageHeader
+            volverHref={`/docente/grupos/${estudiante.grupo_id}`}
+            volverTexto={grupo?.nombre ?? "Grupo"}
+            titulo={estudiante.nombre}
+            descripcion={`Avance general: ${avanceGeneral}% · ${entregas?.length ?? 0}/${totalActividades} actividades`}
+          />
+        </div>
       </div>
 
       {insignias && insignias.length > 0 && (
@@ -79,86 +85,98 @@ export default async function FichaEstudiante({
           {insignias.map((i, idx) => {
             const ins = Array.isArray(i.insignias) ? i.insignias[0] : i.insignias;
             return (
-              <span
-                key={idx}
-                className="rounded-full border border-zinc-200 px-3 py-1 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
-              >
+              <Badge key={idx} tono="warning">
+                <Award className="size-3" aria-hidden="true" />
                 {ins?.nombre}
-              </span>
+              </Badge>
             );
           })}
         </div>
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">Avance y confianza por unidad</h2>
-        {unidades?.map((u) => {
-          const hechas = entregas?.filter((en) => {
-            const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
-            return act?.unidad_id === u.id;
-          }).length ?? 0;
-          const pct = u.actividades.length > 0 ? Math.round((hechas / u.actividades.length) * 100) : 0;
-          const inicio = confianzas?.find((c) => c.unidad_id === u.id && c.momento === "inicio");
-          const cierre = confianzas?.find((c) => c.unidad_id === u.id && c.momento === "cierre");
-          return (
-            <div key={u.id}>
-              <div className="mb-1 flex justify-between text-sm text-zinc-600 dark:text-zinc-400">
-                <span>Unidad {u.orden}. {u.nombre}</span>
-                <span>{pct}% avance</span>
-              </div>
-              <div className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-900">
-                <div className="h-2 rounded-full bg-zinc-900 dark:bg-zinc-50" style={{ width: `${pct}%` }} />
-              </div>
-              {inicio && (
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                  confianza: {inicio.valor}% al inicio {cierre ? `→ ${cierre.valor}% al cierre` : "(sin cierre aún)"}
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </section>
-
-      {reflexiones && reflexiones.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">Reflexiones recientes</h2>
-          {reflexiones.map((r, i) => {
-            const act = Array.isArray(r.actividades) ? r.actividades[0] : r.actividades;
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+          Avance y confianza por unidad
+        </h2>
+        <Card className="flex flex-col gap-4 p-5">
+          {unidades?.map((u) => {
+            const hechas = entregas?.filter((en) => {
+              const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
+              return act?.unidad_id === u.id;
+            }).length ?? 0;
+            const pct = u.actividades.length > 0 ? Math.round((hechas / u.actividades.length) * 100) : 0;
+            const inicio = confianzas?.find((c) => c.unidad_id === u.id && c.momento === "inicio");
+            const cierre = confianzas?.find((c) => c.unidad_id === u.id && c.momento === "cierre");
             return (
-              <div key={i} className="rounded-lg border border-zinc-200 px-4 py-2 dark:border-zinc-800">
-                <p className="text-xs text-zinc-500 dark:text-zinc-500">{act?.titulo}</p>
-                <p className="text-sm text-zinc-800 dark:text-zinc-200">{r.texto}</p>
+              <div key={u.id}>
+                <div className="mb-1.5 flex justify-between text-sm">
+                  <span className="text-slate-700 dark:text-slate-300">
+                    Unidad {u.orden}. {u.nombre}
+                  </span>
+                  <span className="font-medium text-slate-900 dark:text-slate-50">{pct}%</span>
+                </div>
+                <ProgressBar porcentaje={pct} />
+                {inicio && (
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-500">
+                    Confianza: {inicio.valor}% al inicio{" "}
+                    {cierre ? `→ ${cierre.valor}% al cierre` : "(sin cierre aún)"}
+                  </p>
+                )}
               </div>
             );
           })}
+        </Card>
+      </section>
+
+      {reflexiones && reflexiones.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            Reflexiones recientes
+          </h2>
+          <div className="flex flex-col gap-2">
+            {reflexiones.map((r, i) => {
+              const act = Array.isArray(r.actividades) ? r.actividades[0] : r.actividades;
+              return (
+                <Card key={i} className="flex gap-2.5 p-3.5">
+                  <Quote className="mt-0.5 size-3.5 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">{act?.titulo}</p>
+                    <p className="text-sm text-slate-800 dark:text-slate-200">{r.texto}</p>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </section>
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">Entregas</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Entregas</h2>
         {!entregas || entregas.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">Todavía no hay entregas.</p>
+          <EmptyState icon={FileText} titulo="Todavía no hay entregas" />
         ) : (
-          entregas.map((en) => {
-            const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
-            const tipo = act ? (Array.isArray(act.tipos_actividad) ? act.tipos_actividad[0] : act.tipos_actividad) : undefined;
-            return (
-              <div key={en.id} className="rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium text-zinc-900 dark:text-zinc-50">{act?.titulo}</p>
-                  {en.estado === "pendiente_revision" && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                      Por revisar
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {resumenRespuesta(tipo?.nombre, en.respuesta ?? {})}
-                </p>
-                <ComentarioEntrega entregaId={en.id} pendienteRevision={en.estado === "pendiente_revision"} />
-              </div>
-            );
-          })
+          <div className="flex flex-col gap-2.5">
+            {entregas.map((en) => {
+              const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
+              const tipo = act
+                ? Array.isArray(act.tipos_actividad)
+                  ? act.tipos_actividad[0]
+                  : act.tipos_actividad
+                : undefined;
+              return (
+                <Card key={en.id} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-slate-900 dark:text-slate-50">{act?.titulo}</p>
+                    {en.estado === "pendiente_revision" && <Badge tono="warning">Por revisar</Badge>}
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    {resumenRespuesta(tipo?.nombre, en.respuesta ?? {})}
+                  </p>
+                  <ComentarioEntrega entregaId={en.id} pendienteRevision={en.estado === "pendiente_revision"} />
+                </Card>
+              );
+            })}
+          </div>
         )}
       </section>
     </div>

@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Field, Input, Textarea, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 type Aviso = { id: string; titulo: string; mensaje: string; created_at: string };
 
@@ -51,42 +55,46 @@ export default function Avisos({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">Avisos</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <input
-          required
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Título"
-          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-        <textarea
-          required
-          value={mensaje}
-          onChange={(e) => setMensaje(e.target.value)}
-          rows={2}
-          placeholder="Mensaje"
-          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={cargando}
-          className="self-start rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          {cargando ? "Publicando..." : "Publicar aviso"}
-        </button>
-      </form>
-      {avisos.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {avisos.map((a) => (
-            <li key={a.id} className="rounded-lg border border-zinc-200 px-4 py-2 dark:border-zinc-800">
-              <p className="font-medium text-zinc-900 dark:text-zinc-50">{a.titulo}</p>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">{a.mensaje}</p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Avisos</h2>
+      <Card className="flex flex-col gap-4 p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <Field>
+            <Input
+              required
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Título"
+            />
+          </Field>
+          <Field>
+            <Textarea
+              required
+              value={mensaje}
+              onChange={(e) => setMensaje(e.target.value)}
+              rows={2}
+              placeholder="Mensaje"
+            />
+          </Field>
+          {error && <ErrorText>{error}</ErrorText>}
+          <Boton type="submit" variant="secondary" size="sm" cargando={cargando} className="self-start">
+            {cargando ? "Publicando..." : "Publicar aviso"}
+          </Boton>
+        </form>
+
+        {avisos.length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+            {avisos.map((a) => (
+              <div key={a.id} className="flex gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
+                <Bell className="mt-0.5 size-4 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{a.titulo}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{a.mensaje}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </section>
   );
 }

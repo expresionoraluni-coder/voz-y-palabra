@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Boton from "@/components/ui/button";
 
 export default function CerrarSesion() {
   const router = useRouter();
@@ -14,11 +16,9 @@ export default function CerrarSesion() {
   }
 
   return (
-    <button
-      onClick={salir}
-      className="text-sm text-zinc-500 underline dark:text-zinc-400"
-    >
-      Cerrar sesión
-    </button>
+    <Boton variant="ghost" size="sm" onClick={salir}>
+      <LogOut className="size-4" aria-hidden="true" />
+      Salir
+    </Boton>
   );
 }

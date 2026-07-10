@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Lightbulb } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function EncontrarCorregir({
   actividadId,
@@ -59,8 +62,8 @@ export default function EncontrarCorregir({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="rounded-lg bg-zinc-100 px-4 py-3 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <div className="rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
         {contenido.texto_original}
       </div>
 
@@ -68,56 +71,50 @@ export default function EncontrarCorregir({
         <button
           type="button"
           onClick={() => setMostrarPista(true)}
-          className="self-start text-sm text-zinc-500 underline dark:text-zinc-400"
+          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
         >
+          <Lightbulb className="size-4" aria-hidden="true" />
           Mostrar pista
         </button>
       )}
       {contenido.pista && mostrarPista && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Pista: {contenido.pista}
+        <p className="flex items-start gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+          <Lightbulb className="mt-0.5 size-4 shrink-0 text-indigo-500" aria-hidden="true" />
+          {contenido.pista}
         </p>
       )}
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm text-zinc-600 dark:text-zinc-400">
-          ¿Qué encontraste que está mal?
-        </label>
-        <textarea
+      <Field>
+        <Label htmlFor="que-encontraste">¿Qué encontraste que está mal?</Label>
+        <Textarea
+          id="que-encontraste"
           required
           value={queEncontraste}
           onChange={(e) => setQueEncontraste(e.target.value)}
           rows={2}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm text-zinc-600 dark:text-zinc-400">
-          Tu versión corregida
-        </label>
-        <textarea
+      <Field>
+        <Label htmlFor="version-corregida">Tu versión corregida</Label>
+        <Textarea
+          id="version-corregida"
           required
           value={versionCorregida}
           onChange={(e) => setVersionCorregida(e.target.value)}
           rows={5}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         />
-      </div>
+      </Field>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
       {guardado && (
-        <p className="text-sm text-green-600 dark:text-green-400">
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">
           Guardado. Puedes cambiar tu respuesta cuando quieras.
         </p>
       )}
-      <button
-        type="submit"
-        disabled={cargando}
-        className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      <Boton type="submit" cargando={cargando}>
         {cargando ? "Guardando..." : "Guardar mi respuesta"}
-      </button>
+      </Boton>
     </form>
   );
 }

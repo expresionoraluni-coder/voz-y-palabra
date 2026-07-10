@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Select, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 type Fragmento = { texto: string; etiqueta_correcta: string };
 
@@ -64,49 +67,46 @@ export default function EtiquetadoTexto({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       {contenido.contexto && (
-        <p className="text-sm text-zinc-500 dark:text-zinc-500">{contenido.contexto}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-500">{contenido.contexto}</p>
       )}
       {contenido.fragmentos.map((f, i) => (
         <div
           key={i}
-          className="flex flex-col gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+          className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800"
         >
-          <p className="text-zinc-900 dark:text-zinc-50">&ldquo;{f.texto}&rdquo;</p>
-          <select
-            value={elegidas[i]}
-            onChange={(e) => actualizar(i, e.target.value)}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          >
+          <p className="text-sm italic text-slate-900 dark:text-slate-50">&ldquo;{f.texto}&rdquo;</p>
+          <Select value={elegidas[i]} onChange={(e) => actualizar(i, e.target.value)}>
             <option value="">Elige una etiqueta</option>
             {contenido.etiquetas.map((e) => (
               <option key={e} value={e}>
                 {e}
               </option>
             ))}
-          </select>
+          </Select>
           {resultado && (
             <p
-              className={
+              className={`flex items-center gap-1.5 text-sm ${
                 resultado[i]
-                  ? "text-sm text-green-600 dark:text-green-400"
-                  : "text-sm text-red-600 dark:text-red-400"
-              }
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
             >
-              {resultado[i] ? "✓ Correcto" : `✗ Era: ${f.etiqueta_correcta}`}
+              {resultado[i] ? (
+                <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+              ) : (
+                <XCircle className="size-4 shrink-0" aria-hidden="true" />
+              )}
+              {resultado[i] ? "Correcto" : `Era: ${f.etiqueta_correcta}`}
             </p>
           )}
         </div>
       ))}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      <button
-        type="submit"
-        disabled={cargando}
-        className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      {error && <ErrorText>{error}</ErrorText>}
+      <Boton type="submit" cargando={cargando}>
         {cargando ? "Guardando..." : "Guardar y revisar"}
-      </button>
+      </Boton>
     </form>
   );
 }

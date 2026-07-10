@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { generarCodigoAcceso } from "@/lib/codigo-acceso";
+import PageHeader from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function NuevoGrupo() {
   const router = useRouter();
@@ -51,43 +56,43 @@ export default function NuevoGrupo() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-6 dark:bg-black">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Crear grupo
-      </h1>
-      <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
-            Nombre del grupo
-          </label>
-          <input
-            required
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej. 1IM4"
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
+    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-6 py-10">
+      <PageHeader
+        volverHref="/docente/dashboard"
+        titulo="Crear grupo"
+        descripcion="El código de acceso se genera automáticamente."
+      />
+      <Card className="flex flex-col gap-5 p-6">
+        <div className="flex size-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+          <Users className="size-5" aria-hidden="true" />
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-zinc-600 dark:text-zinc-400">
-            Ciclo escolar (opcional)
-          </label>
-          <input
-            value={cicloEscolar}
-            onChange={(e) => setCicloEscolar(e.target.value)}
-            placeholder="Ej. 2026-A"
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        <button
-          type="submit"
-          disabled={cargando}
-          className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          {cargando ? "Creando..." : "Crear grupo"}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Field>
+            <Label htmlFor="nombre">Nombre del grupo</Label>
+            <Input
+              id="nombre"
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej. 1IM4"
+            />
+          </Field>
+          <Field>
+            <Label htmlFor="ciclo">Ciclo escolar (opcional)</Label>
+            <Input
+              id="ciclo"
+              value={cicloEscolar}
+              onChange={(e) => setCicloEscolar(e.target.value)}
+              placeholder="Ej. 2026-A"
+            />
+            <HelpText>Te sirve para diferenciar grupos de distintos semestres.</HelpText>
+          </Field>
+          {error && <ErrorText>{error}</ErrorText>}
+          <Boton type="submit" cargando={cargando} className="w-full">
+            {cargando ? "Creando..." : "Crear grupo"}
+          </Boton>
+        </form>
+      </Card>
     </div>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Lightbulb, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Textarea, ErrorText } from "@/components/ui/field";
+import Boton from "@/components/ui/button";
 
 export default function Reflexion({
   actividadId,
@@ -46,29 +49,38 @@ export default function Reflexion({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-2 rounded-lg bg-zinc-100 px-4 py-3 dark:bg-zinc-900"
+      className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 dark:border-indigo-900 dark:bg-indigo-950/40"
     >
-      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-        Antes de seguir: ¿qué fue lo más difícil de este ejercicio?
-      </p>
-      <textarea
+      <div className="flex items-center gap-2">
+        <Lightbulb className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
+          Antes de seguir: ¿qué fue lo más difícil de este ejercicio?
+        </p>
+      </div>
+      <Textarea
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
         rows={2}
         placeholder="Escribe una idea breve"
-        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+        className="bg-white dark:bg-slate-950"
       />
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
       {guardado && (
-        <p className="text-sm text-green-600 dark:text-green-400">Guardado.</p>
+        <p className="flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
+          <Check className="size-3.5" aria-hidden="true" />
+          Guardado
+        </p>
       )}
-      <button
+      <Boton
         type="submit"
-        disabled={cargando || !texto.trim()}
-        className="self-start rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50"
+        variant="secondary"
+        size="sm"
+        disabled={!texto.trim()}
+        cargando={cargando}
+        className="self-start"
       >
         {cargando ? "Guardando..." : "Guardar reflexión"}
-      </button>
+      </Boton>
     </form>
   );
 }
