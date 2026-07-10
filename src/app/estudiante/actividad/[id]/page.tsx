@@ -2,10 +2,16 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OpcionJustificacion from "./opcion-justificacion";
+import Clasificacion from "./clasificacion";
 
 type ContenidoOpcionJustificacion = {
   pregunta: string;
   opciones: string[];
+};
+
+type ContenidoClasificacion = {
+  categorias: string[];
+  elementos: { texto: string; categoria_correcta: string }[];
 };
 
 export default async function ActividadEstudiante({
@@ -64,7 +70,7 @@ export default async function ActividadEstudiante({
         )}
       </div>
 
-      {tipo?.nombre === "opcion_justificacion" ? (
+      {tipo?.nombre === "opcion_justificacion" && (
         <OpcionJustificacion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
@@ -75,7 +81,18 @@ export default async function ActividadEstudiante({
               | undefined
           }
         />
-      ) : (
+      )}
+      {tipo?.nombre === "clasificacion" && (
+        <Clasificacion
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={actividad.contenido as ContenidoClasificacion}
+          respuestaPrevia={
+            entregaExistente?.respuesta as { elegidas: string[] } | undefined
+          }
+        />
+      )}
+      {tipo?.nombre !== "opcion_justificacion" && tipo?.nombre !== "clasificacion" && (
         <p className="text-sm text-zinc-500 dark:text-zinc-500">
           Este tipo de actividad estará disponible en una fase próxima.
         </p>

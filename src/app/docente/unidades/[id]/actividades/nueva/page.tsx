@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 
 type TipoActividad = { id: string; nombre: string; descripcion: string | null };
 
+const TIPOS_DISPONIBLES = ["opcion_justificacion", "clasificacion"];
+
 export default function NuevaActividad({
   params,
 }: {
@@ -18,8 +20,15 @@ export default function NuevaActividad({
   const [tipoId, setTipoId] = useState("");
   const [titulo, setTitulo] = useState("");
   const [instrucciones, setInstrucciones] = useState("");
+
+  // opcion_justificacion
   const [pregunta, setPregunta] = useState("");
   const [opciones, setOpciones] = useState("");
+
+  // clasificacion
+  const [categorias, setCategorias] = useState("");
+  const [elementos, setElementos] = useState("");
+
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,30 +40,61 @@ export default function NuevaActividad({
       .order("nombre")
       .then(({ data }) => {
         setTipos(data ?? []);
-        const opcionJustificacion = data?.find((t) => t.nombre === "opcion_justificacion");
-        if (opcionJustificacion) setTipoId(opcionJustificacion.id);
+        const primero = data?.find((t) => t.nombre === "opcion_justificacion");
+        if (primero) setTipoId(primero.id);
       });
   }, []);
 
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
-  const esOpcionJustificacion = tipoSeleccionado?.nombre === "opcion_justificacion";
+  const nombreTipo = tipoSeleccionado?.nombre;
+  const disponible = TIPOS_DISPONIBLES.includes(nombreTipo ?? "");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!esOpcionJustificacion) {
-      setError("Este tipo de actividad todavía no está disponible para crear — llega en una fase próxima.");
-      return;
-    }
+    let contenido: Record<string, unknown> | null = null;
 
-    const listaOpciones = opciones
-      .split("\n")
-      .map((o) => o.trim())
-      .filter((o) => o.length > 0);
+    if (nombreTipo === "opcion_justificacion") {
+      const listaOpciones = opciones
+        .split("\n")
+        .map((o) => o.trim())
+        .filter((o) => o.length > 0);
+      if (listaOpciones.length < 2) {
+        setError("Escribe al menos 2 opciones, una por línea.");
+        return;
+      }
+      contenido = { pregunta, opciones: listaOpciones };
+    } else if (nombreTipo === "clasificacion") {
+      const listaCategorias = categorias
+        .split("\n")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0);
+      const listaElementos = elementos
+        .split("\n")
+        .map((linea) => linea.trim())
+        .filter((linea) => linea.length > 0)
+        .map((linea) => {
+          const [texto, categoria] = linea.split("||").map((p) => p.trim());
+          return { texto, categoria_correcta: categoria };
+        });
 
-    if (listaOpciones.length < 2) {
-      setError("Escribe al menos 2 opciones, una por línea.");
+      if (listaCategorias.length < 2) {
+        setError("Escribe al menos 2 categorías, una por línea.");
+        return;
+      }
+      const elementoInvalido = listaElementos.find(
+        (el) => !el.texto || !el.categoria_correcta || !listaCategorias.includes(el.categoria_correcta),
+      );
+      if (listaElementos.length === 0 || elementoInvalido) {
+        setError(
+          'Cada elemento debe tener el formato "texto || categoría", y la categoría debe ser una de las que escribiste arriba.',
+        );
+        return;
+      }
+      contenido = { categorias: listaCategorias, elementos: listaElementos };
+    } else {
+      setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
     }
 
@@ -71,7 +111,7 @@ export default function NuevaActividad({
       tipo_id: tipoId,
       titulo,
       instrucciones,
-      contenido: { pregunta, opciones: listaOpciones },
+      contenido,
       orden: (count ?? 0) + 1,
     });
 
@@ -104,10 +144,10 @@ export default function NuevaActividad({
               </option>
             ))}
           </select>
-          {!esOpcionJustificacion && tipoId && (
+          {!disponible && tipoId && (
             <p className="text-sm text-amber-600 dark:text-amber-400">
-              Este tipo estará disponible en una fase próxima. Por ahora solo se
-              puede crear "opcion_justificacion".
+              Este tipo estará disponible en una fase próxima. Por ahora puedes
+              crear "opcion_justificacion" o "clasificacion".
             </p>
           )}
         </div>
@@ -134,7 +174,7 @@ export default function NuevaActividad({
           />
         </div>
 
-        {esOpcionJustificacion && (
+        {nombreTipo === "opcion_justificacion" && (
           <>
             <div className="flex flex-col gap-1">
               <label className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -157,6 +197,39 @@ export default function NuevaActividad({
                 onChange={(e) => setOpciones(e.target.value)}
                 rows={4}
                 placeholder={"Nivel coloquial\nNivel técnico-científico\nNivel literario"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+          </>
+        )}
+
+        {nombreTipo === "clasificacion" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Categorías (una por línea)
+              </label>
+              <textarea
+                required
+                value={categorias}
+                onChange={(e) => setCategorias(e.target.value)}
+                rows={3}
+                placeholder={"Emisor\nReceptor\nMensaje"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Elementos a clasificar — formato: texto || categoría correcta
+              </label>
+              <textarea
+                required
+                value={elementos}
+                onChange={(e) => setElementos(e.target.value)}
+                rows={6}
+                placeholder={
+                  "Quien construye y envía el mensaje || Emisor\nQuien recibe e interpreta el mensaje || Receptor"
+                }
                 className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>
