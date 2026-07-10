@@ -8,6 +8,7 @@ import Comparador from "./comparador";
 import RedaccionChecklist from "./redaccion-checklist";
 import EtiquetadoTexto from "./etiquetado-texto";
 import ConstructorRamificado from "./constructor-ramificado";
+import Reflexion from "./reflexion";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -58,6 +59,13 @@ export default async function ActividadEstudiante({
     .maybeSingle();
 
   const respuesta = entregaExistente?.respuesta;
+
+  const { data: reflexionExistente } = await supabase
+    .from("reflexiones")
+    .select("texto")
+    .eq("actividad_id", id)
+    .eq("estudiante_id", estudiante.id)
+    .maybeSingle();
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 bg-white px-6 py-10 dark:bg-black">
@@ -164,6 +172,14 @@ export default async function ActividadEstudiante({
         <p className="text-sm text-zinc-500 dark:text-zinc-500">
           Este tipo de actividad estará disponible en una fase próxima.
         </p>
+      )}
+
+      {entregaExistente && (
+        <Reflexion
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          textoPrevio={reflexionExistente?.texto}
+        />
       )}
     </div>
   );

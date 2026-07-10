@@ -42,6 +42,13 @@ export default async function InicioEstudiante() {
         <CerrarSesion />
       </div>
 
+      <Link
+        href="/estudiante/portafolio"
+        className="self-start text-sm text-zinc-600 underline dark:text-zinc-400"
+      >
+        Ver mi portafolio
+      </Link>
+
       <ul className="flex flex-col gap-2">
         {unidades?.map((u) => (
           <li key={u.id}>

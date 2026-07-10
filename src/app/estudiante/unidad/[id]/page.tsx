@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import Confianza from "./confianza";
 
 export default async function UnidadEstudiante({
   params,
@@ -34,6 +35,21 @@ export default async function UnidadEstudiante({
     .eq("unidad_id", id)
     .order("orden");
 
+  const { data: confianzas } = await supabase
+    .from("autoevaluaciones_confianza")
+    .select("momento, valor")
+    .eq("estudiante_id", estudiante.id)
+    .eq("unidad_id", id);
+
+  const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
+  const confianzaCierre = confianzas?.find((c) => c.momento === "cierre");
+
+  const totalActividades = actividades?.length ?? 0;
+  const completadas =
+    actividades?.filter((a) => Array.isArray(a.entregas) && a.entregas.length > 0)
+      .length ?? 0;
+  const unidadCompleta = totalActividades > 0 && completadas === totalActividades;
+
   return (
     <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 bg-white px-6 py-10 dark:bg-black">
       <div>
@@ -50,6 +66,10 @@ export default async function UnidadEstudiante({
           Reto: {unidad.reto_comunicativo}
         </p>
       </div>
+
+      {!confianzaInicio && (
+        <Confianza estudianteId={estudiante.id} unidadId={id} momento="inicio" />
+      )}
 
       {!actividades || actividades.length === 0 ? (
         <p className="text-sm text-zinc-500 dark:text-zinc-500">
@@ -76,6 +96,17 @@ export default async function UnidadEstudiante({
             );
           })}
         </ul>
+      )}
+
+      {unidadCompleta && !confianzaCierre && (
+        <Confianza estudianteId={estudiante.id} unidadId={id} momento="cierre" />
+      )}
+
+      {confianzaInicio && confianzaCierre && (
+        <p className="rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+          Tu confianza pasó de {confianzaInicio.valor}% a {confianzaCierre.valor}% en
+          esta unidad.
+        </p>
       )}
     </div>
   );
