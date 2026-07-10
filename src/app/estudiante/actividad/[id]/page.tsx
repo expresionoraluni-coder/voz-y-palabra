@@ -3,16 +3,9 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
+import EncontrarCorregir from "./encontrar-corregir";
 
-type ContenidoOpcionJustificacion = {
-  pregunta: string;
-  opciones: string[];
-};
-
-type ContenidoClasificacion = {
-  categorias: string[];
-  elementos: { texto: string; categoria_correcta: string }[];
-};
+const TIPOS_CONSTRUIDOS = ["opcion_justificacion", "clasificacion", "encontrar_corregir"];
 
 export default async function ActividadEstudiante({
   params,
@@ -43,6 +36,7 @@ export default async function ActividadEstudiante({
   const tipo = Array.isArray(actividad.tipos_actividad)
     ? actividad.tipos_actividad[0]
     : actividad.tipos_actividad;
+  const nombreTipo = tipo?.nombre;
 
   const { data: entregaExistente } = await supabase
     .from("entregas")
@@ -50,6 +44,8 @@ export default async function ActividadEstudiante({
     .eq("actividad_id", id)
     .eq("estudiante_id", estudiante.id)
     .maybeSingle();
+
+  const respuesta = entregaExistente?.respuesta;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col gap-6 bg-white px-6 py-10 dark:bg-black">
@@ -70,29 +66,38 @@ export default async function ActividadEstudiante({
         )}
       </div>
 
-      {tipo?.nombre === "opcion_justificacion" && (
+      {nombreTipo === "opcion_justificacion" && (
         <OpcionJustificacion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={actividad.contenido as ContenidoOpcionJustificacion}
-          respuestaPrevia={
-            entregaExistente?.respuesta as
-              | { opcion: string; justificacion: string }
-              | undefined
-          }
+          contenido={actividad.contenido as { pregunta: string; opciones: string[] }}
+          respuestaPrevia={respuesta as { opcion: string; justificacion: string } | undefined}
         />
       )}
-      {tipo?.nombre === "clasificacion" && (
+      {nombreTipo === "clasificacion" && (
         <Clasificacion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={actividad.contenido as ContenidoClasificacion}
+          contenido={
+            actividad.contenido as {
+              categorias: string[];
+              elementos: { texto: string; categoria_correcta: string }[];
+            }
+          }
+          respuestaPrevia={respuesta as { elegidas: string[] } | undefined}
+        />
+      )}
+      {nombreTipo === "encontrar_corregir" && (
+        <EncontrarCorregir
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={actividad.contenido as { texto_original: string; pista: string | null }}
           respuestaPrevia={
-            entregaExistente?.respuesta as { elegidas: string[] } | undefined
+            respuesta as { que_encontraste: string; version_corregida: string } | undefined
           }
         />
       )}
-      {tipo?.nombre !== "opcion_justificacion" && tipo?.nombre !== "clasificacion" && (
+      {!TIPOS_CONSTRUIDOS.includes(nombreTipo ?? "") && (
         <p className="text-sm text-zinc-500 dark:text-zinc-500">
           Este tipo de actividad estará disponible en una fase próxima.
         </p>

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type TipoActividad = { id: string; nombre: string; descripcion: string | null };
 
-const TIPOS_DISPONIBLES = ["opcion_justificacion", "clasificacion"];
+const TIPOS_DISPONIBLES = ["opcion_justificacion", "clasificacion", "encontrar_corregir"];
 
 export default function NuevaActividad({
   params,
@@ -28,6 +28,10 @@ export default function NuevaActividad({
   // clasificacion
   const [categorias, setCategorias] = useState("");
   const [elementos, setElementos] = useState("");
+
+  // encontrar_corregir
+  const [textoOriginal, setTextoOriginal] = useState("");
+  const [pista, setPista] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +97,12 @@ export default function NuevaActividad({
         return;
       }
       contenido = { categorias: listaCategorias, elementos: listaElementos };
+    } else if (nombreTipo === "encontrar_corregir") {
+      if (!textoOriginal.trim()) {
+        setError("Escribe el texto que contiene el error.");
+        return;
+      }
+      contenido = { texto_original: textoOriginal, pista: pista || null };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -147,7 +157,7 @@ export default function NuevaActividad({
           {!disponible && tipoId && (
             <p className="text-sm text-amber-600 dark:text-amber-400">
               Este tipo estará disponible en una fase próxima. Por ahora puedes
-              crear "opcion_justificacion" o "clasificacion".
+              crear "opcion_justificacion", "clasificacion" o "encontrar_corregir".
             </p>
           )}
         </div>
@@ -231,6 +241,33 @@ export default function NuevaActividad({
                   "Quien construye y envía el mensaje || Emisor\nQuien recibe e interpreta el mensaje || Receptor"
                 }
                 className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+          </>
+        )}
+
+        {nombreTipo === "encontrar_corregir" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Texto con el error (el estudiante lo verá tal cual)
+              </label>
+              <textarea
+                required
+                value={textoOriginal}
+                onChange={(e) => setTextoOriginal(e.target.value)}
+                rows={5}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Pista (opcional, se muestra si el estudiante la pide)
+              </label>
+              <input
+                value={pista}
+                onChange={(e) => setPista(e.target.value)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>
           </>
