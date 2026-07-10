@@ -13,6 +13,7 @@ const TIPOS_DISPONIBLES = [
   "comparador",
   "redaccion_checklist",
   "etiquetado_texto",
+  "constructor_ramificado",
 ];
 
 export default function NuevaActividad({
@@ -53,6 +54,10 @@ export default function NuevaActividad({
   const [contexto, setContexto] = useState("");
   const [etiquetas, setEtiquetas] = useState("");
   const [fragmentos, setFragmentos] = useState("");
+
+  // constructor_ramificado
+  const [temaSugerido, setTemaSugerido] = useState("");
+  const [secciones, setSecciones] = useState("");
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,6 +198,20 @@ export default function NuevaActividad({
         etiquetas: listaEtiquetas,
         fragmentos: listaFragmentos,
       };
+    } else if (nombreTipo === "constructor_ramificado") {
+      const listaSecciones = secciones
+        .split("\n")
+        .map((linea) => linea.trim())
+        .filter((linea) => linea.length > 0)
+        .map((linea) => {
+          const [nombre, guia] = linea.split("||").map((p) => p.trim());
+          return { nombre, guia: guia || "" };
+        });
+      if (listaSecciones.length < 2) {
+        setError('Escribe al menos 2 secciones, formato: "nombre || guía", una por línea.');
+        return;
+      }
+      contenido = { tema_sugerido: temaSugerido || null, secciones: listaSecciones };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -248,7 +267,8 @@ export default function NuevaActividad({
             <p className="text-sm text-amber-600 dark:text-amber-400">
               Este tipo estará disponible en una fase próxima. Por ahora puedes
               crear "opcion_justificacion", "clasificacion", "encontrar_corregir",
-              "comparador", "redaccion_checklist" o "etiquetado_texto".
+              "comparador", "redaccion_checklist", "etiquetado_texto" o
+              "constructor_ramificado".
             </p>
           )}
         </div>
@@ -472,6 +492,37 @@ export default function NuevaActividad({
                 onChange={(e) => setFragmentos(e.target.value)}
                 rows={6}
                 placeholder={"Ya chole chango chilango || Caló\nEl que es perico dondequiera es verde || Modismo"}
+                className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+          </>
+        )}
+
+        {nombreTipo === "constructor_ramificado" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Tema sugerido (opcional)
+              </label>
+              <textarea
+                value={temaSugerido}
+                onChange={(e) => setTemaSugerido(e.target.value)}
+                rows={2}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400">
+                Secciones del esqueleto — formato: nombre || guía para el estudiante
+              </label>
+              <textarea
+                required
+                value={secciones}
+                onChange={(e) => setSecciones(e.target.value)}
+                rows={5}
+                placeholder={
+                  "Tesis || Plantea una postura objetiva a favor de una idea\nAntítesis || Plantea la idea opuesta, también fundamentada\nSíntesis || Integra lo mejor de ambas y concluye"
+                }
                 className="rounded-lg border border-zinc-300 px-4 py-2 font-mono text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>

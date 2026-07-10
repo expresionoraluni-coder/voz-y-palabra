@@ -7,6 +7,7 @@ import EncontrarCorregir from "./encontrar-corregir";
 import Comparador from "./comparador";
 import RedaccionChecklist from "./redaccion-checklist";
 import EtiquetadoTexto from "./etiquetado-texto";
+import ConstructorRamificado from "./constructor-ramificado";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -15,6 +16,7 @@ const TIPOS_CONSTRUIDOS = [
   "comparador",
   "redaccion_checklist",
   "etiquetado_texto",
+  "constructor_ramificado",
 ];
 
 export default async function ActividadEstudiante({
@@ -143,6 +145,19 @@ export default async function ActividadEstudiante({
             }
           }
           respuestaPrevia={respuesta as { elegidas: string[] } | undefined}
+        />
+      )}
+      {nombreTipo === "constructor_ramificado" && (
+        <ConstructorRamificado
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              tema_sugerido: string | null;
+              secciones: { nombre: string; guia: string }[];
+            }
+          }
+          respuestaPrevia={respuesta as { tema: string; textos: string[] } | undefined}
         />
       )}
       {!TIPOS_CONSTRUIDOS.includes(nombreTipo ?? "") && (
