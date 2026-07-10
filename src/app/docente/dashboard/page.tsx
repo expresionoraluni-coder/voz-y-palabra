@@ -26,7 +26,7 @@ export default async function DashboardDocente() {
 
   const { data: unidades } = await supabase
     .from("unidades")
-    .select("nombre, orden, reto_comunicativo")
+    .select("id, nombre, orden, reto_comunicativo")
     .order("orden");
 
   return (
@@ -83,16 +83,18 @@ export default async function DashboardDocente() {
         </h2>
         <ul className="flex flex-col gap-2">
           {unidades?.map((u) => (
-            <li
-              key={u.nombre}
-              className="rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
-            >
-              <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                Unidad {u.orden}. {u.nombre}
-              </p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-500">
-                Reto: {u.reto_comunicativo}
-              </p>
+            <li key={u.id}>
+              <Link
+                href={`/docente/unidades/${u.id}`}
+                className="block rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+              >
+                <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                  Unidad {u.orden}. {u.nombre}
+                </p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-500">
+                  Reto: {u.reto_comunicativo}
+                </p>
+              </Link>
             </li>
           ))}
         </ul>
