@@ -18,8 +18,11 @@ export default function IngresoEstudiante() {
 
     const supabase = createClient();
 
-    const { data: sesion } = await supabase.auth.getSession();
-    if (!sesion.session) {
+    // Se valida contra el servidor (no solo lo guardado localmente): si la
+    // sesión ya no existe de verdad (por ejemplo, quedó "fantasma" en el
+    // navegador), esto lo detecta y crea una sesión nueva.
+    const { data: usuario, error: usuarioError } = await supabase.auth.getUser();
+    if (usuarioError || !usuario.user) {
       const { error: authError } = await supabase.auth.signInAnonymously();
       if (authError) {
         setError("No pudimos iniciar tu sesión, intenta de nuevo.");
@@ -28,10 +31,23 @@ export default function IngresoEstudiante() {
       }
     }
 
-    const { error: rpcError } = await supabase.rpc("ingresar_estudiante", {
+    let { error: rpcError } = await supabase.rpc("ingresar_estudiante", {
       p_codigo: codigo,
       p_nombre: nombre,
     });
+
+    // Segundo intento de seguridad: si la sesión resultó inválida justo al
+    // usarla, se descarta, se crea una nueva y se reintenta una sola vez.
+    if (rpcError?.message.includes("foreign key constraint")) {
+      await supabase.auth.signOut();
+      const { error: retryAuthError } = await supabase.auth.signInAnonymously();
+      if (!retryAuthError) {
+        ({ error: rpcError } = await supabase.rpc("ingresar_estudiante", {
+          p_codigo: codigo,
+          p_nombre: nombre,
+        }));
+      }
+    }
 
     if (rpcError) {
       setError(rpcError.message);
