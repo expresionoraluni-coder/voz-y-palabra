@@ -11,6 +11,7 @@ import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
 import Avatar from "@/components/ui/avatar";
 import EmptyState from "@/components/ui/empty-state";
+import { temaUnidad } from "@/lib/unidad-tema";
 
 const DIAS_INACTIVIDAD = 10;
 
@@ -163,7 +164,7 @@ export default async function DetalleGrupo({
                 </span>
                 <span className="font-medium text-slate-900 dark:text-slate-50">{u.porcentaje}%</span>
               </div>
-              <ProgressBar porcentaje={u.porcentaje} />
+              <ProgressBar porcentaje={u.porcentaje} gradiente={temaUnidad(u.orden).barra} />
             </div>
           ))}
         </Card>

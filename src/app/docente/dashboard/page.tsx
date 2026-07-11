@@ -7,6 +7,7 @@ import Avatar from "@/components/ui/avatar";
 import { CardLink } from "@/components/ui/card";
 import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
+import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function DashboardDocente() {
   const supabase = await createClient();
@@ -89,22 +90,25 @@ export default async function DashboardDocente() {
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Unidades del curso</h2>
         <div className="flex flex-col gap-2">
-          {unidades?.map((u) => (
-            <Link key={u.id} href={`/docente/unidades/${u.id}`}>
-              <CardLink className="flex items-center gap-4 px-4 py-3.5">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                  <BookOpen className="size-4" aria-hidden="true" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-slate-900 dark:text-slate-50">
-                    Unidad {u.orden}. {u.nombre}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-500">{u.reto_comunicativo}</p>
-                </div>
-                <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-              </CardLink>
-            </Link>
-          ))}
+          {unidades?.map((u) => {
+            const tema = temaUnidad(u.orden);
+            return (
+              <Link key={u.id} href={`/docente/unidades/${u.id}`}>
+                <CardLink className="flex items-center gap-4 px-4 py-3.5">
+                  <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tema.icono}`}>
+                    <BookOpen className="size-4" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-900 dark:text-slate-50">
+                      Unidad {u.orden}. {u.nombre}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-500">{u.reto_comunicativo}</p>
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                </CardLink>
+              </Link>
+            );
+          })}
         </div>
       </section>
     </div>

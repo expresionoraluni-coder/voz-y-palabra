@@ -29,7 +29,7 @@ export default async function Portafolio() {
       `id, nombre, orden,
        actividades(id, titulo, tipos_actividad(nombre),
          entregas(respuesta, created_at),
-         reflexiones(texto)
+         reflexiones(texto, momento)
        )`,
     )
     .order("orden");
@@ -89,7 +89,8 @@ export default async function Portafolio() {
               {actividadesCompletadas.map((a) => {
                 const tipo = Array.isArray(a.tipos_actividad) ? a.tipos_actividad[0] : a.tipos_actividad;
                 const entrega = Array.isArray(a.entregas) ? a.entregas[0] : a.entregas;
-                const reflexion = Array.isArray(a.reflexiones) ? a.reflexiones[0] : a.reflexiones;
+                const reflexiones = Array.isArray(a.reflexiones) ? a.reflexiones : [a.reflexiones];
+                const reflexion = reflexiones.find((r) => r?.momento === "cierre");
                 return (
                   <Card key={a.id} className="p-4">
                     <p className="font-medium text-slate-900 dark:text-slate-50">{a.titulo}</p>

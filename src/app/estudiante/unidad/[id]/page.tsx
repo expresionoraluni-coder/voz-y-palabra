@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/page-header";
 import { CardLink } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
 import EmptyState from "@/components/ui/empty-state";
+import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function UnidadEstudiante({
   params,
@@ -55,6 +56,7 @@ export default async function UnidadEstudiante({
       .length ?? 0;
   const unidadCompleta = totalActividades > 0 && completadas === totalActividades;
   const pct = totalActividades > 0 ? Math.round((completadas / totalActividades) * 100) : 0;
+  const tema = temaUnidad(unidad.orden);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
@@ -67,7 +69,7 @@ export default async function UnidadEstudiante({
 
       {totalActividades > 0 && (
         <div className="flex items-center gap-3">
-          <ProgressBar porcentaje={pct} />
+          <ProgressBar porcentaje={pct} gradiente={tema.barra} />
           <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-500">
             {completadas}/{totalActividades}
           </span>

@@ -321,3 +321,16 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --
 -- 5. Insignias 'Unidad 3 completa' y 'Voz y Palabra completo' agregadas al
 --    catálogo, con su lógica correspondiente en verificar_insignias().
+--
+-- 6. Predicción antes de cada actividad (ciclo predicción → cierre):
+--    - reflexiones.momento ('prediccion' | 'cierre'), default 'cierre' para
+--      no romper filas existentes. El unique constraint pasó de
+--      (estudiante_id, actividad_id) a (estudiante_id, actividad_id, momento)
+--      porque ahora puede haber dos filas legítimas por actividad.
+--    - el estudiante predice qué se le va a dificultar antes de ver el
+--      contenido de la actividad; al cerrar, la reflexión le muestra de
+--      vuelta su propia predicción y le pregunta qué tan cierta fue.
+--    - verificar_insignias() solo cuenta momento='cierre' para 'Primera
+--      reflexión' y 'Mente reflexiva', para no inflar el conteo con
+--      predicciones. Lo mismo aplica a los puntos en /estudiante/inicio y a
+--      las consultas de reflexiones del portafolio y la ficha del docente.

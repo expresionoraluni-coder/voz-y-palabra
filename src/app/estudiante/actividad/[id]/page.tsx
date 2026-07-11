@@ -10,6 +10,7 @@ import RedaccionChecklist from "./redaccion-checklist";
 import EtiquetadoTexto from "./etiquetado-texto";
 import ConstructorRamificado from "./constructor-ramificado";
 import Reflexion from "./reflexion";
+import Prediccion from "./prediccion";
 import GrabacionRubrica from "./grabacion-rubrica";
 
 const TIPOS_CONSTRUIDOS = [
@@ -63,11 +64,20 @@ export default async function ActividadEstudiante({
 
   const respuesta = entregaExistente?.respuesta;
 
+  const { data: prediccionExistente } = await supabase
+    .from("reflexiones")
+    .select("texto")
+    .eq("actividad_id", id)
+    .eq("estudiante_id", estudiante.id)
+    .eq("momento", "prediccion")
+    .maybeSingle();
+
   const { data: reflexionExistente } = await supabase
     .from("reflexiones")
     .select("texto")
     .eq("actividad_id", id)
     .eq("estudiante_id", estudiante.id)
+    .eq("momento", "cierre")
     .maybeSingle();
 
   return (
@@ -78,6 +88,9 @@ export default async function ActividadEstudiante({
         descripcion={actividad.instrucciones}
       />
 
+      {!prediccionExistente && !entregaExistente ? (
+        <Prediccion actividadId={actividad.id} estudianteId={estudiante.id} />
+      ) : (
       <Card className="p-5 sm:p-6">
       {nombreTipo === "opcion_justificacion" && (
         <OpcionJustificacion
@@ -183,12 +196,14 @@ export default async function ActividadEstudiante({
         </p>
       )}
       </Card>
+      )}
 
       {entregaExistente && (
         <Reflexion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
           textoPrevio={reflexionExistente?.texto}
+          prediccionTexto={prediccionExistente?.texto}
         />
       )}
     </div>

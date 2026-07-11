@@ -9,6 +9,8 @@ import Badge from "@/components/ui/badge";
 import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
+import CelebracionInsignia from "../celebracion-insignia";
+import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function InicioEstudiante({
   searchParams,
@@ -46,7 +48,8 @@ export default async function InicioEstudiante({
     supabase
       .from("reflexiones")
       .select("id", { count: "exact", head: true })
-      .eq("estudiante_id", estudiante.id),
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "cierre"),
   ]);
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
@@ -61,6 +64,7 @@ export default async function InicioEstudiante({
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
+      <CelebracionInsignia insignias={insignias ?? []} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar nombre={estudiante.nombre} />
@@ -146,12 +150,15 @@ export default async function InicioEstudiante({
             const total = u.actividades.length;
             const hechas = u.actividades.filter((a) => idsCompletadas.has(a.id)).length;
             const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
+            const tema = temaUnidad(u.orden);
             return (
               <Link key={u.id} href={`/estudiante/unidad/${u.id}`}>
                 <CardLink className="flex flex-col gap-3 p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                      <div
+                        className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg font-semibold ${tema.icono}`}
+                      >
                         <BookOpen className="size-4" aria-hidden="true" />
                       </div>
                       <div>
@@ -170,7 +177,7 @@ export default async function InicioEstudiante({
                   </div>
                   {total > 0 && (
                     <div className="flex items-center gap-3 pl-12">
-                      <ProgressBar porcentaje={pct} />
+                      <ProgressBar porcentaje={pct} gradiente={tema.barra} />
                       <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-500">
                         {hechas}/{total}
                       </span>

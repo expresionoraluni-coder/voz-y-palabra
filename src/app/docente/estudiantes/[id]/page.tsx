@@ -10,6 +10,7 @@ import Badge from "@/components/ui/badge";
 import ProgressBar from "@/components/ui/progress-bar";
 import Avatar from "@/components/ui/avatar";
 import EmptyState from "@/components/ui/empty-state";
+import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function FichaEstudiante({
   params,
@@ -56,6 +57,7 @@ export default async function FichaEstudiante({
       .from("reflexiones")
       .select("texto, created_at, actividades(titulo)")
       .eq("estudiante_id", id)
+      .eq("momento", "cierre")
       .order("created_at", { ascending: false })
       .limit(5),
     supabase
@@ -117,7 +119,7 @@ export default async function FichaEstudiante({
                   </span>
                   <span className="font-medium text-slate-900 dark:text-slate-50">{pct}%</span>
                 </div>
-                <ProgressBar porcentaje={pct} />
+                <ProgressBar porcentaje={pct} gradiente={temaUnidad(u.orden).barra} />
                 {inicio && (
                   <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-500">
                     Confianza: {inicio.valor}% al inicio{" "}
