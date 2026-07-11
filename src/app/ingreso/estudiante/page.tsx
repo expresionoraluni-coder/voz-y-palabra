@@ -6,13 +6,14 @@ import Link from "next/link";
 import { GraduationCap, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Field, Label, Input, ErrorText } from "@/components/ui/field";
+import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
 export default function IngresoEstudiante() {
   const router = useRouter();
   const [codigo, setCodigo] = useState("");
   const [nombre, setNombre] = useState("");
+  const [nip, setNip] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,9 +37,10 @@ export default function IngresoEstudiante() {
       }
     }
 
-    let { error: rpcError } = await supabase.rpc("ingresar_estudiante", {
+    let { data: resultado, error: rpcError } = await supabase.rpc("ingresar_estudiante", {
       p_codigo: codigo,
       p_nombre: nombre,
+      p_nip: nip,
     });
 
     // Segundo intento de seguridad: si la sesión resultó inválida justo al
@@ -47,9 +49,10 @@ export default function IngresoEstudiante() {
       await supabase.auth.signOut();
       const { error: retryAuthError } = await supabase.auth.signInAnonymously();
       if (!retryAuthError) {
-        ({ error: rpcError } = await supabase.rpc("ingresar_estudiante", {
+        ({ data: resultado, error: rpcError } = await supabase.rpc("ingresar_estudiante", {
           p_codigo: codigo,
           p_nombre: nombre,
+          p_nip: nip,
         }));
       }
     }
@@ -60,7 +63,8 @@ export default function IngresoEstudiante() {
       return;
     }
 
-    router.push("/estudiante/inicio");
+    const nipNuevo = resultado?.[0]?.nip_nuevo;
+    router.push(nipNuevo ? "/estudiante/inicio?nip=nuevo" : "/estudiante/inicio");
     router.refresh();
   }
 
@@ -83,7 +87,7 @@ export default function IngresoEstudiante() {
           Entrar como estudiante
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
-          Sin correo, sin contraseña — solo tu nombre y el código de tu grupo
+          Sin correo, sin contraseña — solo tu nombre, el código de tu grupo y tu NIP
         </p>
       </div>
 
@@ -110,6 +114,25 @@ export default function IngresoEstudiante() {
               placeholder="Ej. Ana Torres"
               autoComplete="off"
             />
+          </Field>
+          <Field>
+            <Label htmlFor="nip">Tu NIP (4 dígitos)</Label>
+            <Input
+              id="nip"
+              required
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              value={nip}
+              onChange={(e) => setNip(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="••••"
+              autoComplete="off"
+            />
+            <HelpText>
+              La primera vez que entres, este NIP se guarda para que solo tú puedas volver a usar tu
+              nombre. Invéntalo y no lo olvides.
+            </HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">

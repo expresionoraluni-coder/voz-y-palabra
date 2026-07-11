@@ -5,15 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserRound, ArrowLeft, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { asegurarPerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
+import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
 import { Card } from "@/components/ui/card";
-import { Field, Label, Input, ErrorText } from "@/components/ui/field";
+import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
 export default function IngresoProfesora() {
   const router = useRouter();
   const [modo, setModo] = useState<"entrar" | "crear">("entrar");
-  const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -38,39 +37,30 @@ export default function IngresoProfesora() {
         setCargando(false);
         return;
       }
-      const { error: perfilError } = await asegurarPerfilDocente(supabase, data.user);
-      if (perfilError) {
-        setError(perfilError.message);
-        setCargando(false);
-        return;
-      }
-    } else {
-      const { data, error: authError } = await supabase.auth.signUp({
-        email: correo,
-        password: contrasena,
-        options: { data: { nombre } },
-      });
-      if (authError || !data.user) {
-        setError(authError?.message ?? "No pudimos crear tu cuenta.");
-        setCargando(false);
-        return;
-      }
 
-      if (!data.session) {
-        setAvisoConfirmacion(true);
-        setCargando(false);
-        return;
-      }
-
-      const { error: perfilError } = await asegurarPerfilDocente(supabase, data.user);
-      if (perfilError) {
-        setError(perfilError.message);
-        setCargando(false);
-        return;
-      }
+      const tienePerfil = await existePerfilDocente(supabase, data.user.id);
+      router.push(tienePerfil ? "/docente/dashboard" : "/ingreso/profesora/verificar");
+      router.refresh();
+      return;
     }
 
-    router.push("/docente/dashboard");
+    const { data, error: authError } = await supabase.auth.signUp({
+      email: correo,
+      password: contrasena,
+    });
+    if (authError || !data.user) {
+      setError(authError?.message ?? "No pudimos crear tu cuenta.");
+      setCargando(false);
+      return;
+    }
+
+    if (!data.session) {
+      setAvisoConfirmacion(true);
+      setCargando(false);
+      return;
+    }
+
+    router.push("/ingreso/profesora/verificar");
     router.refresh();
   }
 
@@ -104,10 +94,10 @@ export default function IngresoProfesora() {
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {modo === "crear" && (
-              <Field>
-                <Label htmlFor="nombre">Nombre</Label>
-                <Input id="nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
-              </Field>
+              <HelpText>
+                Después de crear tu cuenta te pediremos tu nombre y el código de invitación de
+                profesoras del piloto.
+              </HelpText>
             )}
             <Field>
               <Label htmlFor="correo">Correo</Label>

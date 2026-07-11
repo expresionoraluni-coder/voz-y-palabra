@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Award, Bell, BookOpen, ChevronRight, FolderHeart, Sparkles } from "lucide-react";
+import { Award, Bell, BookOpen, ChevronRight, FolderHeart, KeyRound, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
@@ -8,8 +8,14 @@ import { CardLink } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
 import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
+import Alert from "@/components/ui/alert";
 
-export default async function InicioEstudiante() {
+export default async function InicioEstudiante({
+  searchParams,
+}: {
+  searchParams: Promise<{ nip?: string }>;
+}) {
+  const { nip } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -70,9 +76,20 @@ export default async function InicioEstudiante() {
         <CerrarSesion />
       </div>
 
+      {nip === "nuevo" && (
+        <Alert tono="success" titulo="Tu NIP quedó guardado">
+          <span className="flex items-center gap-1.5">
+            <KeyRound className="size-3.5 shrink-0" aria-hidden="true" />
+            Apúntalo: la próxima vez que entres con tu nombre, te lo vamos a pedir.
+          </span>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <MetricCard etiqueta="Puntos" valor={puntos} icon={Sparkles} tono="indigo" />
-        <MetricCard etiqueta="Insignias" valor={insignias?.length ?? 0} icon={Award} tono="amber" />
+        <Link href="/estudiante/insignias">
+          <MetricCard etiqueta="Insignias" valor={insignias?.length ?? 0} icon={Award} tono="amber" />
+        </Link>
       </div>
 
       <Link
@@ -102,17 +119,24 @@ export default async function InicioEstudiante() {
       )}
 
       {insignias && insignias.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Tus insignias</p>
-          <div className="flex flex-wrap gap-2">
-            {insignias.map((i: { nombre: string; descripcion: string }) => (
-              <Badge key={i.nombre} tono="warning" title={i.descripcion}>
-                <Award className="size-3" aria-hidden="true" />
-                {i.nombre}
-              </Badge>
-            ))}
-          </div>
-        </div>
+        <Link href="/estudiante/insignias">
+          <CardLink className="flex items-center justify-between gap-3 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {insignias.slice(0, 4).map((i: { nombre: string; descripcion: string }) => (
+                <Badge key={i.nombre} tono="warning" title={i.descripcion}>
+                  <Award className="size-3" aria-hidden="true" />
+                  {i.nombre}
+                </Badge>
+              ))}
+              {insignias.length > 4 && (
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-500">
+                  +{insignias.length - 4} más
+                </span>
+              )}
+            </div>
+            <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+          </CardLink>
+        </Link>
       )}
 
       <div className="flex flex-col gap-3">

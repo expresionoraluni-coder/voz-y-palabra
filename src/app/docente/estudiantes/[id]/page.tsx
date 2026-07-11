@@ -3,6 +3,7 @@ import { Award, FileText, Quote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import ComentarioEntrega from "./comentario-entrega";
+import ReiniciarNip from "./reiniciar-nip";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
@@ -76,6 +77,7 @@ export default async function FichaEstudiante({
             volverTexto={grupo?.nombre ?? "Grupo"}
             titulo={estudiante.nombre}
             descripcion={`Avance general: ${avanceGeneral}% · ${entregas?.length ?? 0}/${totalActividades} actividades`}
+            accion={<ReiniciarNip estudianteId={estudiante.id} nombre={estudiante.nombre} />}
           />
         </div>
       </div>

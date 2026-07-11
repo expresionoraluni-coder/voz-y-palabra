@@ -27,7 +27,7 @@ create table estudiantes (
   auth_user_id uuid unique references auth.users(id) on delete set null,
   nombre text not null,
   grupo_id uuid not null references grupos(id) on delete cascade,
-  pin_hash text,
+  nip_hash text,
   created_at timestamptz not null default now()
 );
 
@@ -279,3 +279,45 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
   ('De la lengua al texto', 1, 'Comunicación, lenguaje, lengua, habla, norma, niveles y funciones de la lengua, el texto y sus propiedades.', 'Entregar la idea central de un texto largo en 5 líneas.'),
   ('Exposición escrita', 2, 'Rasgos del texto expositivo y los 5 modelos expositivos.', 'Redactar un texto expositivo bien estructurado.'),
   ('Exposición oral', 3, 'Cualidades y técnicas de la exposición oral.', 'Exponer ante el grupo con seguridad.');
+
+-- ============================================================
+-- 8. CAMBIOS APLICADOS DESPUÉS DE ESTE ARCHIVO (directo en producción)
+-- ============================================================
+-- Este archivo es la foto del esquema inicial (Fase 1); varias correcciones
+-- y features posteriores se aplicaron directo en Supabase y no siempre se
+-- reflejaron aquí. Las más importantes, por si hay que reconstruir desde cero:
+--
+-- 1. estudiante_actual() y grupo_del_estudiante_actual() se volvieron
+--    SECURITY DEFINER para romper una recursión infinita en las políticas
+--    de "grupos" y "estudiantes".
+-- 2. reflexiones_unica_por_actividad: constraint único completo en
+--    (estudiante_id, actividad_id) en vez de un índice parcial (PostgREST
+--    no puede inferir on_conflict contra índices parciales).
+--
+-- 3. Gate de registro docente (código de invitación):
+--    - tabla configuracion_plataforma (clave, valor) sin políticas RLS
+--      (solo accesible vía funciones SECURITY DEFINER). Guarda el hash
+--      (pgcrypto) del código de invitación bajo la clave
+--      'codigo_invitacion_docente_hash'.
+--    - se eliminó la policy "docente crea su propio perfil" (insert
+--      directo a la tabla docentes ya no está permitido para nadie).
+--    - función crear_perfil_docente(p_nombre, p_codigo_invitacion) es el
+--      único camino para crear una fila en docentes: verifica el código
+--      contra el hash guardado antes de insertar. Sin este código, un
+--      usuario autenticado puede iniciar sesión pero nunca obtiene perfil
+--      docente (ver /ingreso/profesora/verificar en el frontend).
+--
+-- 4. NIP de estudiantes (evita suplantación por nombre):
+--    - columna estudiantes.nip_hash (reemplaza al pin_hash original de
+--      este archivo, que nunca se llegó a usar).
+--    - ingresar_estudiante(p_codigo, p_nombre, p_nip) ahora exige un NIP
+--      de 4 dígitos: si nip_hash es null, lo registra (primera vez); si ya
+--      existe, debe coincidir para poder re-vincular auth_user_id. Antes,
+--      cualquiera que escribiera el nombre correcto se re-vinculaba sin
+--      más validación.
+--    - función reiniciar_nip_estudiante(p_estudiante_id) permite a la
+--      docente dueña del grupo borrar el nip_hash de un estudiante que lo
+--      olvidó, para que pueda registrar uno nuevo en su siguiente ingreso.
+--
+-- 5. Insignias 'Unidad 3 completa' y 'Voz y Palabra completo' agregadas al
+--    catálogo, con su lógica correspondiente en verificar_insignias().

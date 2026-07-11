@@ -22,11 +22,12 @@ export default async function DashboardDocente() {
     .eq("id", user.id)
     .single();
 
-  if (!docente) redirect("/ingreso/profesora");
+  if (!docente) redirect("/ingreso/profesora/verificar");
 
   const { data: grupos } = await supabase
     .from("grupos")
     .select("id, nombre, codigo_acceso, estudiantes(count)")
+    .eq("docente_id", user.id)
     .order("created_at", { ascending: false });
 
   const { data: unidades } = await supabase
