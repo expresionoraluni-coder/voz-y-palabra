@@ -41,6 +41,11 @@ export default function EtiquetadoTexto({
       return;
     }
 
+    const aciertos = contenido.fragmentos.map((f, i) => f.etiqueta_correcta === elegidas[i]);
+    const puntajeAuto = Math.round(
+      (aciertos.filter(Boolean).length / contenido.fragmentos.length) * 100,
+    );
+
     setCargando(true);
     const supabase = createClient();
     const { error: upsertError } = await supabase.from("entregas").upsert(
@@ -49,6 +54,7 @@ export default function EtiquetadoTexto({
         actividad_id: actividadId,
         respuesta: { elegidas },
         estado: "completada",
+        puntaje_auto: puntajeAuto,
       },
       { onConflict: "estudiante_id,actividad_id" },
     );
@@ -59,9 +65,7 @@ export default function EtiquetadoTexto({
       return;
     }
 
-    setResultado(
-      contenido.fragmentos.map((f, i) => f.etiqueta_correcta === elegidas[i]),
-    );
+    setResultado(aciertos);
     setCargando(false);
     router.refresh();
   }

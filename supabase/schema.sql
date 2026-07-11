@@ -343,3 +343,25 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --    fila actual — solo después de validar el NIP cuando ya existía, para
 --    no debilitar la protección contra suplantación (un intento con NIP
 --    incorrecto no libera nada).
+--
+-- 8. Datos reales de desempeño en entregas (antes solo existía "entregado
+--    o no", el dashboard de la docente no tenía forma de saber si las
+--    respuestas eran buenas):
+--    - entregas.puntaje_auto (0-100, nullable): calculado en el navegador
+--      al entregar, solo para clasificacion y etiquetado_texto (los únicos
+--      tipos con respuesta objetivamente correcta definida en `contenido`).
+--    - entregas.evaluacion_docente ('logrado'|'en_proceso'|'necesita_apoyo',
+--      nullable): juicio cualitativo rápido de la docente al revisar una
+--      entrega abierta (opción_justificación, encontrar_corregir,
+--      comparador, redacción_checklist, constructor_ramificado,
+--      grabación_rúbrica), capturado desde el mismo componente de
+--      comentarios. Existe una policy UPDATE para docentes en "entregas"
+--      ("docente actualiza estado de entregas de sus grupos") que no está
+--      en este archivo porque se agregó directo en producción.
+--    - El dashboard de grupo agrega precisión promedio por tipo de
+--      actividad (ordenada de peor a mejor) y distribución de evaluación
+--      cualitativa; también se añadió una alerta de sobreconfianza real
+--      (confianza declarada alta pero puntaje_auto promedio bajo, no solo
+--      "dice sentirse seguro pero no ha hecho nada").
+--    - /estudiante/inicio sugiere repasar (práctica de recuperación) las
+--      actividades auto-calificadas con puntaje_auto < 70.

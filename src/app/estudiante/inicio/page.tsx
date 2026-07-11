@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Award, Bell, BookOpen, ChevronRight, FolderHeart, KeyRound, Sparkles } from "lucide-react";
+import { Award, Bell, BookOpen, ChevronRight, FolderHeart, KeyRound, RotateCcw, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
@@ -44,7 +44,10 @@ export default async function InicioEstudiante({
   const { data: insignias } = await supabase.rpc("verificar_insignias");
 
   const [{ data: entregas }, { count: totalReflexiones }] = await Promise.all([
-    supabase.from("entregas").select("actividad_id").eq("estudiante_id", estudiante.id),
+    supabase
+      .from("entregas")
+      .select("actividad_id, puntaje_auto, actividades(titulo)")
+      .eq("estudiante_id", estudiante.id),
     supabase
       .from("reflexiones")
       .select("id", { count: "exact", head: true })
@@ -54,6 +57,10 @@ export default async function InicioEstudiante({
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
   const puntos = idsCompletadas.size * 10 + (totalReflexiones ?? 0) * 5;
+
+  const paraRepasar = (entregas ?? [])
+    .filter((e) => e.puntaje_auto !== null && e.puntaje_auto < 70)
+    .slice(0, 3);
 
   const { data: avisos } = await supabase
     .from("avisos")
@@ -141,6 +148,30 @@ export default async function InicioEstudiante({
             <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
           </CardLink>
         </Link>
+      )}
+
+      {paraRepasar.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-slate-900 dark:text-slate-50">
+            <RotateCcw className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+            Para repasar
+          </p>
+          <div className="flex flex-col gap-2">
+            {paraRepasar.map((e) => {
+              const act = Array.isArray(e.actividades) ? e.actividades[0] : e.actividades;
+              return (
+                <Link key={e.actividad_id} href={`/estudiante/actividad/${e.actividad_id}`}>
+                  <CardLink className="flex items-center gap-3 px-4 py-3">
+                    <span className="flex-1 text-sm font-medium text-slate-900 dark:text-slate-50">
+                      {act?.titulo}
+                    </span>
+                    <Badge tono="warning">{e.puntaje_auto}% correcto</Badge>
+                  </CardLink>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div className="flex flex-col gap-3">

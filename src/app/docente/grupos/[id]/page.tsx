@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ChevronRight, ClipboardCheck, TrendingUp, Users } from "lucide-react";
+import { ChevronRight, ClipboardCheck, ThumbsUp, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
@@ -58,7 +58,9 @@ export default async function DetalleGrupo({
   const { data: entregas } = idsEstudiantes.length
     ? await supabase
         .from("entregas")
-        .select("id, estudiante_id, actividad_id, estado, created_at, actividades(titulo, unidad_id)")
+        .select(
+          "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, actividades(titulo, unidad_id, tipos_actividad(nombre))",
+        )
         .in("estudiante_id", idsEstudiantes)
     : { data: [] };
 
@@ -93,6 +95,43 @@ export default async function DetalleGrupo({
     };
   });
 
+  // Precisión promedio por tipo de actividad: solo clasificación y etiquetado
+  // de texto tienen respuesta objetivamente correcta y guardan puntaje_auto.
+  // Ordenado de peor a mejor para que salte a la vista dónde intervenir.
+  const precisionPorTipo = Object.values(
+    (entregas ?? [])
+      .filter((en) => en.puntaje_auto !== null)
+      .reduce(
+        (acc, en) => {
+          const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
+          const tipo = act
+            ? Array.isArray(act.tipos_actividad)
+              ? act.tipos_actividad[0]
+              : act.tipos_actividad
+            : undefined;
+          const nombre = tipo?.nombre ?? "otro";
+          acc[nombre] ??= { nombre, suma: 0, total: 0 };
+          acc[nombre].suma += en.puntaje_auto ?? 0;
+          acc[nombre].total += 1;
+          return acc;
+        },
+        {} as Record<string, { nombre: string; suma: number; total: number }>,
+      ),
+  )
+    .map((x) => ({ nombre: x.nombre, promedio: Math.round(x.suma / x.total), n: x.total }))
+    .sort((a, b) => a.promedio - b.promedio);
+
+  // Evaluación cualitativa: lo que la docente ya juzgó en entregas abiertas
+  // (opción-justificación, encontrar-corregir, comparador, etc.).
+  const evaluacionDistribucion = { logrado: 0, en_proceso: 0, necesita_apoyo: 0 };
+  for (const en of entregas ?? []) {
+    if (en.evaluacion_docente) {
+      evaluacionDistribucion[en.evaluacion_docente as keyof typeof evaluacionDistribucion] += 1;
+    }
+  }
+  const totalEvaluadas =
+    evaluacionDistribucion.logrado + evaluacionDistribucion.en_proceso + evaluacionDistribucion.necesita_apoyo;
+
   const alertas: string[] = [];
   for (const e of porEstudiante) {
     if (e.totalEntregas === 0) {
@@ -108,6 +147,20 @@ export default async function DetalleGrupo({
     if (!est) continue;
     if (c.valor >= 70 && est.totalEntregas === 0) {
       alertas.push(`${est.nombre} dice sentirse seguro pero no ha completado actividades.`);
+      continue;
+    }
+    if (c.valor >= 70 && est.totalEntregas > 0) {
+      const misPuntajes = (entregas ?? []).filter(
+        (en) => en.estudiante_id === est.id && en.puntaje_auto !== null,
+      );
+      if (misPuntajes.length > 0) {
+        const promedio = misPuntajes.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / misPuntajes.length;
+        if (promedio < 50) {
+          alertas.push(
+            `${est.nombre} dice sentirse seguro pero su precisión real es de ${Math.round(promedio)}%.`,
+          );
+        }
+      }
     }
   }
 
@@ -169,6 +222,61 @@ export default async function DetalleGrupo({
           ))}
         </Card>
       </section>
+
+      {precisionPorTipo.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            Precisión por tipo de actividad
+          </h2>
+          <Card className="flex flex-col gap-4 p-5">
+            {precisionPorTipo.map((t) => (
+              <div key={t.nombre}>
+                <div className="mb-1.5 flex justify-between text-sm">
+                  <span className="capitalize text-slate-700 dark:text-slate-300">
+                    {t.nombre.replaceAll("_", " ")}
+                  </span>
+                  <span className="font-medium text-slate-900 dark:text-slate-50">
+                    {t.promedio}% · {t.n} {t.n === 1 ? "entrega" : "entregas"}
+                  </span>
+                </div>
+                <ProgressBar
+                  porcentaje={t.promedio}
+                  gradiente={
+                    t.promedio >= 70
+                      ? "from-emerald-500 to-emerald-600"
+                      : t.promedio >= 40
+                        ? "from-amber-500 to-amber-600"
+                        : "from-red-500 to-red-600"
+                  }
+                />
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
+
+      {totalEvaluadas > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            Evaluación cualitativa de la docente
+          </h2>
+          <div className="grid grid-cols-3 gap-3">
+            <MetricCard etiqueta="Logrado" valor={evaluacionDistribucion.logrado} icon={ThumbsUp} tono="emerald" />
+            <MetricCard
+              etiqueta="En proceso"
+              valor={evaluacionDistribucion.en_proceso}
+              icon={TrendingUp}
+              tono="amber"
+            />
+            <MetricCard
+              etiqueta="Necesita apoyo"
+              valor={evaluacionDistribucion.necesita_apoyo}
+              icon={ClipboardCheck}
+              tono="slate"
+            />
+          </div>
+        </section>
+      )}
 
       {entregasPorRevisar.length > 0 && (
         <section className="flex flex-col gap-3">

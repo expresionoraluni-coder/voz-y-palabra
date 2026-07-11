@@ -46,7 +46,9 @@ export default async function FichaEstudiante({
       .order("orden"),
     supabase
       .from("entregas")
-      .select("id, respuesta, estado, created_at, actividades(titulo, unidad_id, tipos_actividad(nombre))")
+      .select(
+        "id, respuesta, estado, created_at, puntaje_auto, evaluacion_docente, actividades(titulo, unidad_id, tipos_actividad(nombre))",
+      )
       .eq("estudiante_id", id)
       .order("created_at", { ascending: false }),
     supabase
@@ -167,16 +169,36 @@ export default async function FichaEstudiante({
                   ? act.tipos_actividad[0]
                   : act.tipos_actividad
                 : undefined;
+              const EVALUACION_BADGE = {
+                logrado: { texto: "Logrado", tono: "success" as const },
+                en_proceso: { texto: "En proceso", tono: "warning" as const },
+                necesita_apoyo: { texto: "Necesita apoyo", tono: "error" as const },
+              };
+              const evaluacionBadge = en.evaluacion_docente
+                ? EVALUACION_BADGE[en.evaluacion_docente as keyof typeof EVALUACION_BADGE]
+                : null;
               return (
                 <Card key={en.id} className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <p className="font-medium text-slate-900 dark:text-slate-50">{act?.titulo}</p>
-                    {en.estado === "pendiente_revision" && <Badge tono="warning">Por revisar</Badge>}
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {en.puntaje_auto !== null && (
+                        <Badge tono={en.puntaje_auto >= 70 ? "success" : en.puntaje_auto >= 40 ? "warning" : "error"}>
+                          {en.puntaje_auto}% correcto
+                        </Badge>
+                      )}
+                      {evaluacionBadge && <Badge tono={evaluacionBadge.tono}>{evaluacionBadge.texto}</Badge>}
+                      {en.estado === "pendiente_revision" && <Badge tono="warning">Por revisar</Badge>}
+                    </div>
                   </div>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     {resumenRespuesta(tipo?.nombre, en.respuesta ?? {})}
                   </p>
-                  <ComentarioEntrega entregaId={en.id} pendienteRevision={en.estado === "pendiente_revision"} />
+                  <ComentarioEntrega
+                    entregaId={en.id}
+                    pendienteRevision={en.estado === "pendiente_revision"}
+                    evaluacionInicial={en.evaluacion_docente as "logrado" | "en_proceso" | "necesita_apoyo" | null}
+                  />
                 </Card>
               );
             })}

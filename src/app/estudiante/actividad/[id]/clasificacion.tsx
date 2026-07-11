@@ -41,6 +41,11 @@ export default function Clasificacion({
       return;
     }
 
+    const aciertos = contenido.elementos.map((el, i) => el.categoria_correcta === elegidas[i]);
+    const puntajeAuto = Math.round(
+      (aciertos.filter(Boolean).length / contenido.elementos.length) * 100,
+    );
+
     setCargando(true);
     const supabase = createClient();
     const { error: upsertError } = await supabase.from("entregas").upsert(
@@ -49,6 +54,7 @@ export default function Clasificacion({
         actividad_id: actividadId,
         respuesta: { elegidas },
         estado: "completada",
+        puntaje_auto: puntajeAuto,
       },
       { onConflict: "estudiante_id,actividad_id" },
     );
@@ -59,9 +65,7 @@ export default function Clasificacion({
       return;
     }
 
-    setResultado(
-      contenido.elementos.map((el, i) => el.categoria_correcta === elegidas[i]),
-    );
+    setResultado(aciertos);
     setCargando(false);
     router.refresh();
   }
