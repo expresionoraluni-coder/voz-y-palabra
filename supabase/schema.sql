@@ -334,3 +334,12 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --      reflexión' y 'Mente reflexiva', para no inflar el conteo con
 --      predicciones. Lo mismo aplica a los puntos en /estudiante/inicio y a
 --      las consultas de reflexiones del portafolio y la ficha del docente.
+--
+-- 7. Fix: "duplicate key value violates unique constraint
+--    estudiantes_auth_user_id_key" al entrar con un nombre distinto sin
+--    cerrar sesión (mismo dispositivo/sesión ya ligado a otro estudiante).
+--    ingresar_estudiante() ahora libera (auth_user_id = null) cualquier otra
+--    fila que ya tuviera ligada esta sesión, justo antes de ligarla a la
+--    fila actual — solo después de validar el NIP cuando ya existía, para
+--    no debilitar la protección contra suplantación (un intento con NIP
+--    incorrecto no libera nada).
