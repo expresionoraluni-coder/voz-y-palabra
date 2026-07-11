@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ListChecks } from "lucide-react";
+import { ListChecks, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { analizarTexto } from "@/lib/analisis-texto";
 
 function contarPalabras(texto: string) {
   return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
@@ -33,6 +34,7 @@ export default function RedaccionChecklist({
 
   const palabras = contarPalabras(texto);
   const excedido = palabras > contenido.limite_palabras;
+  const analisis = useMemo(() => analizarTexto(texto), [texto]);
 
   function alternar(i: number) {
     setMarcado((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
@@ -49,7 +51,15 @@ export default function RedaccionChecklist({
       {
         estudiante_id: estudianteId,
         actividad_id: actividadId,
-        respuesta: { texto, checklist_marcado: marcado },
+        respuesta: {
+          texto,
+          checklist_marcado: marcado,
+          analisisTexto: {
+            variedadLexica: analisis.variedadLexica,
+            muletillas: analisis.muletillasDetectadas.length,
+            conectores: analisis.conectoresUsados.length,
+          },
+        },
         estado: "pendiente_revision",
       },
       { onConflict: "estudiante_id,actividad_id" },
@@ -89,6 +99,46 @@ export default function RedaccionChecklist({
           {palabras} / {contenido.limite_palabras} palabras
         </p>
       </div>
+
+      {palabras >= 15 && (
+        <div className="flex flex-col gap-2 rounded-xl bg-slate-50 p-3.5 text-xs dark:bg-slate-800/60">
+          <p className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+            <Sparkles className="size-3.5 text-indigo-500" aria-hidden="true" />
+            Lectura automática de tu texto
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-slate-500 dark:text-slate-500">
+            <span>
+              Variedad léxica:{" "}
+              <strong
+                className={
+                  analisis.variedadLexica >= 60
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }
+              >
+                {analisis.variedadLexica}%
+              </strong>
+            </span>
+            <span>Oraciones: {analisis.oraciones}</span>
+            {analisis.oracionesLargas > 0 && (
+              <span className="text-amber-600 dark:text-amber-400">
+                {analisis.oracionesLargas} oración(es) muy larga(s)
+              </span>
+            )}
+          </div>
+          {analisis.muletillasDetectadas.length > 0 && (
+            <p className="text-amber-600 dark:text-amber-400">
+              Repites bastante:{" "}
+              {analisis.muletillasDetectadas.map((m) => `"${m.palabra}" (${m.veces})`).join(", ")}
+            </p>
+          )}
+          {analisis.conectoresUsados.length > 0 && (
+            <p className="text-emerald-600 dark:text-emerald-400">
+              Buen uso de conectores: {analisis.conectoresUsados.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800">
         <p className="flex items-center gap-1.5 text-sm font-medium text-slate-900 dark:text-slate-50">

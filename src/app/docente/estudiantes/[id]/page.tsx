@@ -194,6 +194,30 @@ export default async function FichaEstudiante({
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     {resumenRespuesta(tipo?.nombre, en.respuesta ?? {})}
                   </p>
+                  {(() => {
+                    const r = (en.respuesta ?? {}) as {
+                      analisisAudio?: { duracionSegundos: number; numPausas: number; tiempoPausadoSegundos: number };
+                      analisisTexto?: { variedadLexica: number; muletillas: number; conectores: number };
+                    };
+                    if (r.analisisAudio) {
+                      return (
+                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                          {r.analisisAudio.duracionSegundos}s de grabación · {r.analisisAudio.numPausas} pausa(s)
+                          detectada(s) ({r.analisisAudio.tiempoPausadoSegundos}s en silencio)
+                        </p>
+                      );
+                    }
+                    if (r.analisisTexto) {
+                      return (
+                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                          Variedad léxica: {r.analisisTexto.variedadLexica}%
+                          {r.analisisTexto.muletillas > 0 && ` · ${r.analisisTexto.muletillas} muletilla(s)`}
+                          {r.analisisTexto.conectores > 0 && ` · ${r.analisisTexto.conectores} conector(es)`}
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                   <ComentarioEntrega
                     entregaId={en.id}
                     pendienteRevision={en.estado === "pendiente_revision"}

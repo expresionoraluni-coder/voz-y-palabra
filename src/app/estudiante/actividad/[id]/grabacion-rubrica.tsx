@@ -2,10 +2,11 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Square, ShieldCheck } from "lucide-react";
+import { Mic, Square, ShieldCheck, Timer, Waves } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { analizarAudio, AnalisisAudio } from "@/lib/analisis-audio";
 
 export default function GrabacionRubrica({
   actividadId,
@@ -16,11 +17,17 @@ export default function GrabacionRubrica({
   actividadId: string;
   estudianteId: string;
   contenido: { tema_sugerido: string; duracion_sugerida_segundos: number; rubrica: string[] };
-  respuestaPrevia?: { autoevaluacion: Record<string, boolean>; reflexion: string };
+  respuestaPrevia?: {
+    autoevaluacion: Record<string, boolean>;
+    reflexion: string;
+    analisisAudio?: { duracionSegundos: number; numPausas: number; tiempoPausadoSegundos: number };
+  };
 }) {
   const router = useRouter();
   const [grabando, setGrabando] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [analizando, setAnalizando] = useState(false);
+  const [analisis, setAnalisis] = useState<AnalisisAudio | null>(null);
   const [errorMic, setErrorMic] = useState<string | null>(null);
   const [autoevaluacion, setAutoevaluacion] = useState<Record<string, boolean>>(
     respuestaPrevia?.autoevaluacion ?? Object.fromEntries(contenido.rubrica.map((r) => [r, false])),
@@ -35,6 +42,7 @@ export default function GrabacionRubrica({
 
   async function iniciarGrabacion() {
     setErrorMic(null);
+    setAnalisis(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
@@ -44,6 +52,12 @@ export default function GrabacionRubrica({
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((t) => t.stop());
+
+        setAnalizando(true);
+        analizarAudio(blob)
+          .then(setAnalisis)
+          .catch(() => setAnalisis(null))
+          .finally(() => setAnalizando(false));
       };
       recorder.start();
       mediaRecorderRef.current = recorder;
@@ -73,7 +87,17 @@ export default function GrabacionRubrica({
       {
         estudiante_id: estudianteId,
         actividad_id: actividadId,
-        respuesta: { autoevaluacion, reflexion },
+        respuesta: {
+          autoevaluacion,
+          reflexion,
+          analisisAudio: analisis
+            ? {
+                duracionSegundos: Math.round(analisis.duracionSegundos),
+                numPausas: analisis.pausas.length,
+                tiempoPausadoSegundos: Math.round(analisis.tiempoPausadoSegundos),
+              }
+            : respuestaPrevia?.analisisAudio,
+        },
         estado: "completada",
       },
       { onConflict: "estudiante_id,actividad_id" },
@@ -135,6 +159,43 @@ export default function GrabacionRubrica({
           <audio controls src={audioUrl} className="w-full">
             Tu navegador no soporta audio.
           </audio>
+        )}
+
+        {analizando && <p className="text-xs text-slate-400 dark:text-slate-500">Analizando tu grabación...</p>}
+
+        {analisis && (
+          <div className="w-full rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/60">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <Timer className="size-3.5" aria-hidden="true" />
+                {Math.round(analisis.duracionSegundos)}s de grabación
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Waves className="size-3.5" aria-hidden="true" />
+                {analisis.pausas.length === 0
+                  ? "Sin pausas largas"
+                  : `${analisis.pausas.length} ${analisis.pausas.length === 1 ? "pausa" : "pausas"} · ${Math.round(analisis.tiempoPausadoSegundos)}s en silencio`}
+              </span>
+            </div>
+            {analisis.duracionSegundos > 0 && (
+              <div className="relative mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-indigo-500">
+                {analisis.pausas.map((p, i) => (
+                  <span
+                    key={i}
+                    className="absolute inset-y-0 bg-slate-300 dark:bg-slate-600"
+                    style={{
+                      left: `${(p.inicio / analisis.duracionSegundos) * 100}%`,
+                      width: `${((p.fin - p.inicio) / analisis.duracionSegundos) * 100}%`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Detectado automáticamente por volumen, sin escuchar ni guardar tu audio. Una pausa breve para
+              respirar está bien — muchas pausas largas seguidas suelen indicar que conviene ensayar más.
+            </p>
+          </div>
         )}
       </div>
 
