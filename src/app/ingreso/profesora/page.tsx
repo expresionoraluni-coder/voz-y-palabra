@@ -15,6 +15,7 @@ export default function IngresoProfesora() {
   const [modo, setModo] = useState<"entrar" | "crear">("entrar");
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
+  const [contrasenaConfirmar, setContrasenaConfirmar] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avisoConfirmacion, setAvisoConfirmacion] = useState(false);
@@ -23,6 +24,12 @@ export default function IngresoProfesora() {
     e.preventDefault();
     setError(null);
     setAvisoConfirmacion(false);
+
+    if (modo === "crear" && contrasena !== contrasenaConfirmar) {
+      setError("Las dos contraseñas no coinciden — revísalas.");
+      return;
+    }
+
     setCargando(true);
 
     const supabase = createClient();
@@ -122,13 +129,41 @@ export default function IngresoProfesora() {
                 autoComplete={modo === "entrar" ? "current-password" : "new-password"}
               />
             </Field>
+            {modo === "crear" && (
+              <Field>
+                <Label htmlFor="contrasenaConfirmar">Confirma tu contraseña</Label>
+                <Input
+                  id="contrasenaConfirmar"
+                  required
+                  type="password"
+                  minLength={6}
+                  value={contrasenaConfirmar}
+                  onChange={(e) => setContrasenaConfirmar(e.target.value)}
+                  autoComplete="new-password"
+                />
+                {contrasenaConfirmar.length > 0 && contrasenaConfirmar !== contrasena && (
+                  <ErrorText>No coincide con la contraseña de arriba.</ErrorText>
+                )}
+              </Field>
+            )}
             {error && <ErrorText>{error}</ErrorText>}
-            <Boton type="submit" cargando={cargando} className="w-full">
+            <Boton
+              type="submit"
+              cargando={cargando}
+              disabled={
+                modo === "crear" && contrasenaConfirmar.length > 0 && contrasenaConfirmar !== contrasena
+              }
+              className="w-full"
+            >
               {cargando ? "Un momento..." : modo === "entrar" ? "Entrar" : "Crear cuenta"}
             </Boton>
             <button
               type="button"
-              onClick={() => setModo(modo === "entrar" ? "crear" : "entrar")}
+              onClick={() => {
+                setModo(modo === "entrar" ? "crear" : "entrar");
+                setContrasenaConfirmar("");
+                setError(null);
+              }}
               className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             >
               {modo === "entrar" ? "¿Primera vez? Crea tu cuenta" : "Ya tengo cuenta"}

@@ -591,3 +591,26 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       elementos se detectaron y cuáles son. Verificado en vivo pegando
 --       "Segunda opción partida\npor accidente" — el contador mostró 4
 --       chips en vez de 3, haciendo visible el error antes de guardar.
+--
+-- 16. Confirmación doble al crear un NIP o una contraseña por primera vez
+--     (patrón clásico de todo sistema de credenciales, a pedido del
+--     usuario):
+--     - función estudiante_tiene_nip(p_codigo, p_nombre) — SECURITY
+--       DEFINER, solo devuelve un booleano (si ya existe nip_hash), nunca
+--       el hash ni ningún otro dato. Se llama al perder el foco en
+--       "código" o "nombre" en /ingreso/estudiante, para saber si esta
+--       persona está creando su NIP por primera vez.
+--     - El campo "Confirma tu NIP" solo aparece cuando esa función
+--       responde que todavía no hay NIP guardado — así no se le pide a un
+--       estudiante que ya tiene cuenta que capture su NIP dos veces en
+--       cada login, solo la primera vez. El botón "Entrar" se deshabilita
+--       mientras los dos campos no coincidan.
+--     - Mismo patrón en /ingreso/profesora, pero sin RPC: el campo
+--       "Confirma tu contraseña" solo se muestra en modo "crear cuenta"
+--       (ese estado ya se conoce en el cliente), con la misma validación
+--       de que coincidan antes de permitir el envío.
+--     - Verificado en vivo: con un estudiante sin NIP aparece el campo de
+--       confirmación y el botón se deshabilita si no coinciden; con un
+--       estudiante que ya tiene NIP no aparece y el login normal sigue
+--       funcionando; en el registro de docente, contraseñas distintas
+--       deshabilitan "Crear cuenta" con el mensaje de error visible.
