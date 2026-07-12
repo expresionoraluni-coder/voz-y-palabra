@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Award, Bell, BookOpen, ChevronRight, FolderHeart, KeyRound, RotateCcw, Sparkles } from "lucide-react";
+import {
+  Award,
+  Bell,
+  Check,
+  ChevronRight,
+  Flame,
+  FolderHeart,
+  KeyRound,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
@@ -11,6 +21,7 @@ import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
 import CelebracionInsignia from "../celebracion-insignia";
 import { temaUnidad } from "@/lib/unidad-tema";
+import { calcularRacha } from "@/lib/racha";
 
 export default async function InicioEstudiante({
   searchParams,
@@ -46,7 +57,7 @@ export default async function InicioEstudiante({
   const [{ data: entregas }, { count: totalReflexiones }] = await Promise.all([
     supabase
       .from("entregas")
-      .select("actividad_id, puntaje_auto, actividades(titulo)")
+      .select("actividad_id, puntaje_auto, created_at, actividades(titulo)")
       .eq("estudiante_id", estudiante.id),
     supabase
       .from("reflexiones")
@@ -57,10 +68,21 @@ export default async function InicioEstudiante({
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
   const puntos = idsCompletadas.size * 10 + (totalReflexiones ?? 0) * 5;
+  const racha = calcularRacha((entregas ?? []).map((e) => e.created_at));
 
   const paraRepasar = (entregas ?? [])
     .filter((e) => e.puntaje_auto !== null && e.puntaje_auto < 70)
     .slice(0, 3);
+
+  // Progreso por unidad, precalculado una vez para usarlo tanto en el
+  // resumen de puntos como en la ruta de aprendizaje.
+  const unidadesConProgreso = (unidades ?? []).map((u) => {
+    const total = u.actividades.length;
+    const hechas = u.actividades.filter((a) => idsCompletadas.has(a.id)).length;
+    const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
+    return { ...u, total, hechas, pct };
+  });
+  const indiceActiva = unidadesConProgreso.findIndex((u) => u.pct < 100);
 
   const { data: avisos } = await supabase
     .from("avisos")
@@ -94,6 +116,18 @@ export default async function InicioEstudiante({
             Apúntalo: la próxima vez que entres con tu nombre, te lo vamos a pedir.
           </span>
         </Alert>
+      )}
+
+      {racha > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 px-5 py-4 text-white shadow-lg shadow-orange-500/25">
+          <Flame className="size-8 shrink-0" aria-hidden="true" />
+          <div>
+            <p className="text-2xl font-bold leading-tight">
+              {racha} {racha === 1 ? "día" : "días"} seguidos
+            </p>
+            <p className="text-sm text-orange-50">Sigue así — no rompas tu racha hoy.</p>
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-3">
@@ -176,45 +210,68 @@ export default async function InicioEstudiante({
 
       <div className="flex flex-col gap-3">
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Tu ruta</p>
-        <div className="flex flex-col gap-3">
-          {unidades?.map((u) => {
-            const total = u.actividades.length;
-            const hechas = u.actividades.filter((a) => idsCompletadas.has(a.id)).length;
-            const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
+        <div className="relative flex flex-col gap-6">
+          <div
+            className="absolute bottom-7 left-[27px] top-7 w-0.5 bg-gradient-to-b from-violet-300 via-teal-300 to-rose-300 dark:from-violet-800 dark:via-teal-800 dark:to-rose-800"
+            aria-hidden="true"
+          />
+          {unidadesConProgreso.map((u, idx) => {
             const tema = temaUnidad(u.orden);
+            const completa = u.pct === 100;
+            const activa = idx === indiceActiva || (indiceActiva === -1 && idx === unidadesConProgreso.length - 1);
             return (
-              <Link key={u.id} href={`/estudiante/unidad/${u.id}`}>
-                <CardLink className="flex flex-col gap-3 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg font-semibold ${tema.icono}`}
-                      >
-                        <BookOpen className="size-4" aria-hidden="true" />
-                      </div>
+              <Link key={u.id} href={`/estudiante/unidad/${u.id}`} className="relative">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`relative z-10 flex size-14 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-sm dark:border-slate-950 ${
+                      completa
+                        ? `bg-gradient-to-br ${tema.barra} text-white`
+                        : activa
+                          ? `bg-gradient-to-br ${tema.barra} text-white`
+                          : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
+                    }`}
+                  >
+                    {activa && !completa && (
+                      <span
+                        className={`absolute inset-0 -z-10 animate-ping rounded-full bg-gradient-to-br opacity-40 ${tema.barra}`}
+                        aria-hidden="true"
+                      />
+                    )}
+                    {completa ? (
+                      <Check className="size-6" aria-hidden="true" strokeWidth={3} />
+                    ) : (
+                      <span className="text-lg font-bold">{u.orden}</span>
+                    )}
+                  </div>
+                  <div
+                    className={`flex-1 rounded-2xl border p-4 transition-colors ${
+                      activa
+                        ? "border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
+                        : "border-transparent bg-transparent hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-medium text-slate-900 dark:text-slate-50">
+                        <p className="font-semibold text-slate-900 dark:text-slate-50">
                           Unidad {u.orden}. {u.nombre}
                         </p>
-                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-500">
-                          {u.reto_comunicativo}
-                        </p>
+                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-500">{u.reto_comunicativo}</p>
                       </div>
+                      <ChevronRight
+                        className="mt-1 size-4 shrink-0 text-slate-300 dark:text-slate-600"
+                        aria-hidden="true"
+                      />
                     </div>
-                    <ChevronRight
-                      className="mt-1 size-4 shrink-0 text-slate-300 dark:text-slate-600"
-                      aria-hidden="true"
-                    />
+                    {u.total > 0 && (
+                      <div className="mt-3 flex items-center gap-3">
+                        <ProgressBar porcentaje={u.pct} gradiente={tema.barra} />
+                        <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-500">
+                          {u.hechas}/{u.total}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {total > 0 && (
-                    <div className="flex items-center gap-3 pl-12">
-                      <ProgressBar porcentaje={pct} gradiente={tema.barra} />
-                      <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-500">
-                        {hechas}/{total}
-                      </span>
-                    </div>
-                  )}
-                </CardLink>
+                </div>
               </Link>
             );
           })}
