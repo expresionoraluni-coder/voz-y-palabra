@@ -34,6 +34,8 @@ export default function RedaccionChecklist({
 
   const palabras = contarPalabras(texto);
   const excedido = palabras > contenido.limite_palabras;
+  const minimoPalabras = Math.max(15, Math.round(contenido.limite_palabras * 0.5));
+  const muyCorto = palabras < minimoPalabras;
   const analisis = useMemo(() => analizarTexto(texto), [texto]);
 
   function alternar(i: number) {
@@ -44,6 +46,12 @@ export default function RedaccionChecklist({
     e.preventDefault();
     setError(null);
     setGuardado(false);
+
+    if (muyCorto) {
+      setError(`Tu texto es muy corto — escribe al menos ${minimoPalabras} palabras antes de entregar.`);
+      return;
+    }
+
     setCargando(true);
 
     const supabase = createClient();
@@ -93,10 +101,11 @@ export default function RedaccionChecklist({
         />
         <p
           className={`self-end text-xs font-medium ${
-            excedido ? "text-red-600 dark:text-red-400" : "text-slate-400 dark:text-slate-500"
+            excedido || muyCorto ? "text-red-600 dark:text-red-400" : "text-slate-400 dark:text-slate-500"
           }`}
         >
           {palabras} / {contenido.limite_palabras} palabras
+          {muyCorto && ` (mínimo ${minimoPalabras})`}
         </p>
       </div>
 

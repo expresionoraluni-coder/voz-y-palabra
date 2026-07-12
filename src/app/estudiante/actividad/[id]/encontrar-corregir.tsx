@@ -7,6 +7,14 @@ import { createClient } from "@/lib/supabase/client";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
+function normalizar(texto: string) {
+  return texto.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function contarPalabras(texto: string) {
+  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
+}
+
 export default function EncontrarCorregir({
   actividadId,
   estudianteId,
@@ -34,6 +42,16 @@ export default function EncontrarCorregir({
     e.preventDefault();
     setError(null);
     setGuardado(false);
+
+    if (contarPalabras(queEncontraste) < 4) {
+      setError("Cuéntanos con un poco más de detalle qué encontraste mal.");
+      return;
+    }
+    if (normalizar(versionCorregida) === normalizar(contenido.texto_original)) {
+      setError("Tu versión corregida es igual al texto original — ¿ya corregiste el error?");
+      return;
+    }
+
     setCargando(true);
 
     const supabase = createClient();

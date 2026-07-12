@@ -5,8 +5,13 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Field, Label, Input, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { similitudTexto } from "@/lib/similitud-texto";
 
 type Seccion = { nombre: string; guia: string };
+
+function contarPalabras(texto: string) {
+  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
+}
 
 export default function ConstructorRamificado({
   actividadId,
@@ -36,6 +41,23 @@ export default function ConstructorRamificado({
     e.preventDefault();
     setError(null);
     setGuardado(false);
+
+    for (let i = 0; i < textos.length; i++) {
+      if (contarPalabras(textos[i]) < 8) {
+        setError(`Desarrolla un poco más la sección "${contenido.secciones[i].nombre}" antes de guardar.`);
+        return;
+      }
+    }
+
+    for (let i = 0; i < textos.length - 1; i++) {
+      if (similitudTexto(textos[i], textos[i + 1]) > 0.75) {
+        setError(
+          `"${contenido.secciones[i].nombre}" y "${contenido.secciones[i + 1].nombre}" se parecen mucho — revisa que cada sección aporte algo distinto.`,
+        );
+        return;
+      }
+    }
+
     setCargando(true);
 
     const supabase = createClient();

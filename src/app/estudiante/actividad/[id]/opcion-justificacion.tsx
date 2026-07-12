@@ -7,6 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
+function contarPalabras(texto: string) {
+  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
+}
+
 export default function OpcionJustificacion({
   actividadId,
   estudianteId,
@@ -31,6 +35,12 @@ export default function OpcionJustificacion({
     e.preventDefault();
     setError(null);
     setGuardado(false);
+
+    if (contarPalabras(justificacion) < 6) {
+      setError("Explica un poco más tu razonamiento antes de guardar.");
+      return;
+    }
+
     setCargando(true);
 
     const supabase = createClient();

@@ -76,10 +76,21 @@ export default function GrabacionRubrica({
     setAutoevaluacion((prev) => ({ ...prev, [criterio]: !prev[criterio] }));
   }
 
+  const DURACION_MINIMA_SEGUNDOS = 8;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setGuardado(false);
+
+    const duracionActual = analisis?.duracionSegundos ?? respuestaPrevia?.analisisAudio?.duracionSegundos ?? 0;
+    if (duracionActual < DURACION_MINIMA_SEGUNDOS) {
+      setError(
+        `Tu grabación es muy corta — graba al menos ${DURACION_MINIMA_SEGUNDOS} segundos antes de guardar.`,
+      );
+      return;
+    }
+
     setCargando(true);
 
     const supabase = createClient();

@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { similitudTexto } from "@/lib/similitud-texto";
+
+function contarPalabras(texto: string) {
+  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
+}
 
 export default function Comparador({
   actividadId,
@@ -39,6 +44,29 @@ export default function Comparador({
     e.preventDefault();
     setError(null);
     setGuardado(false);
+
+    for (const fila of celdas) {
+      for (const celda of fila) {
+        if (contarPalabras(celda) < 2) {
+          setError("Completa todas las celdas con al menos unas palabras antes de guardar.");
+          return;
+        }
+      }
+    }
+
+    for (let i = 0; i < celdas.length; i++) {
+      for (let j = 0; j < celdas[i].length; j++) {
+        for (let k = j + 1; k < celdas[i].length; k++) {
+          if (similitudTexto(celdas[i][j], celdas[i][k]) > 0.8) {
+            setError(
+              `Tus respuestas para "${contenido.conceptos[j]}" y "${contenido.conceptos[k]}" en "${contenido.criterios[i]}" se parecen mucho — ¿hay una diferencia real ahí?`,
+            );
+            return;
+          }
+        }
+      }
+    }
+
     setCargando(true);
 
     const supabase = createClient();
