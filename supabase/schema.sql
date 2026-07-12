@@ -365,3 +365,20 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --      "dice sentirse seguro pero no ha hecho nada").
 --    - /estudiante/inicio sugiere repasar (práctica de recuperación) las
 --      actividades auto-calificadas con puntaje_auto < 70.
+--
+-- 9. Baja de estudiantes (para cuando dan de baja la materia):
+--    - estudiantes.activo boolean not null default true.
+--    - ingresar_estudiante() rechaza el login si activo = false, con un
+--      mensaje explícito ("Tu cuenta fue dada de baja...").
+--    - la docente puede dar de baja (reversible, conserva el historial) o
+--      eliminar (permanente, borra entregas/reflexiones/insignias por
+--      cascada) desde la ficha del estudiante. El roster del grupo y sus
+--      métricas (avance promedio, activos esta semana, etc.) solo
+--      consideran estudiantes activos; los dados de baja aparecen en una
+--      sección aparte al final, con opción de reactivar.
+--
+-- 10. Ayuda visible cuando el estudiante olvida su NIP: tras 3 intentos
+--     fallidos seguidos en /ingreso/estudiante, se muestra un aviso
+--     indicándole que le pida a su profesora que reinicie su NIP desde su
+--     ficha (botón "Reiniciar NIP", ya existente). Es un contador del lado
+--     del cliente, no un bloqueo — no impide seguir intentando.

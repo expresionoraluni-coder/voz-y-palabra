@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GraduationCap, ArrowLeft } from "lucide-react";
+import { GraduationCap, ArrowLeft, LifeBuoy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import Alert from "@/components/ui/alert";
+
+const NIP_INCORRECTO = "Tu NIP no es correcto.";
+const INTENTOS_PARA_AYUDA = 3;
 
 export default function IngresoEstudiante() {
   const router = useRouter();
@@ -16,6 +20,7 @@ export default function IngresoEstudiante() {
   const [nip, setNip] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [intentosNipFallidos, setIntentosNipFallidos] = useState(0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,6 +64,7 @@ export default function IngresoEstudiante() {
 
     if (rpcError) {
       setError(rpcError.message);
+      setIntentosNipFallidos((n) => (rpcError.message === NIP_INCORRECTO ? n + 1 : n));
       setCargando(false);
       return;
     }
@@ -140,6 +146,18 @@ export default function IngresoEstudiante() {
           </Boton>
         </form>
       </Card>
+
+      {intentosNipFallidos >= INTENTOS_PARA_AYUDA && (
+        <div className="w-full max-w-sm">
+          <Alert tono="info" titulo="¿Ya no te acuerdas de tu NIP?">
+            <span className="flex items-start gap-1.5">
+              <LifeBuoy className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              Pídele a tu profesora que lo reinicie desde tu ficha — ella puede hacerlo en un momento, y
+              luego podrás crear uno nuevo la próxima vez que entres.
+            </span>
+          </Alert>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import ComentarioEntrega from "./comentario-entrega";
 import ReiniciarNip from "./reiniciar-nip";
+import GestionEstudiante from "./gestion-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
@@ -26,7 +27,7 @@ export default async function FichaEstudiante({
 
   const { data: estudiante } = await supabase
     .from("estudiantes")
-    .select("id, nombre, grupo_id, grupos(nombre)")
+    .select("id, nombre, grupo_id, activo, grupos(nombre)")
     .eq("id", id)
     .single();
   if (!estudiante) notFound();
@@ -84,6 +85,18 @@ export default async function FichaEstudiante({
             accion={<ReiniciarNip estudianteId={estudiante.id} nombre={estudiante.nombre} />}
           />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3.5 dark:border-slate-800 dark:bg-slate-900">
+        <Badge tono={estudiante.activo ? "success" : "neutral"}>
+          {estudiante.activo ? "Activa en el grupo" : "Dada de baja"}
+        </Badge>
+        <GestionEstudiante
+          estudianteId={estudiante.id}
+          nombre={estudiante.nombre}
+          activo={estudiante.activo}
+          grupoId={estudiante.grupo_id}
+        />
       </div>
 
       {insignias && insignias.length > 0 && (

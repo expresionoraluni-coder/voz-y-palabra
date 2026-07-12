@@ -29,6 +29,7 @@ export default async function DashboardDocente() {
     .from("grupos")
     .select("id, nombre, codigo_acceso, estudiantes(count)")
     .eq("docente_id", user.id)
+    .eq("estudiantes.activo", true)
     .order("created_at", { ascending: false });
 
   const { data: unidades } = await supabase

@@ -38,12 +38,24 @@ export default async function DetalleGrupo({
 
   const [
     { data: estudiantes },
+    { data: estudiantesBaja },
     { data: unidades },
     { data: actividades },
     { data: confianzas },
     { data: avisos },
   ] = await Promise.all([
-    supabase.from("estudiantes").select("id, nombre, created_at").eq("grupo_id", id).order("nombre"),
+    supabase
+      .from("estudiantes")
+      .select("id, nombre, created_at")
+      .eq("grupo_id", id)
+      .eq("activo", true)
+      .order("nombre"),
+    supabase
+      .from("estudiantes")
+      .select("id, nombre")
+      .eq("grupo_id", id)
+      .eq("activo", false)
+      .order("nombre"),
     supabase.from("unidades").select("id, nombre, orden").order("orden"),
     supabase.from("actividades").select("id, unidad_id"),
     supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor"),
@@ -335,6 +347,27 @@ export default async function DetalleGrupo({
           </div>
         )}
       </section>
+
+      {estudiantesBaja && estudiantesBaja.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-slate-500 dark:text-slate-500">
+            Dados de baja ({estudiantesBaja.length})
+          </h2>
+          <div className="flex flex-col gap-2">
+            {estudiantesBaja.map((e) => (
+              <Link key={e.id} href={`/docente/estudiantes/${e.id}`}>
+                <CardLink className="flex items-center gap-3 px-4 py-3 opacity-60">
+                  <Avatar nombre={e.nombre} size="sm" />
+                  <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {e.nombre}
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                </CardLink>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
