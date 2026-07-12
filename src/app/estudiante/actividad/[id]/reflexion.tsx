@@ -6,16 +6,32 @@ import { createClient } from "@/lib/supabase/client";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
+function mensajeCalibracion(confianza: number, puntajeAuto: number): string {
+  const confianzaPct = (confianza - 1) * 25;
+  const diferencia = confianzaPct - puntajeAuto;
+  if (diferencia > 25) {
+    return `Te sentías muy seguro (${confianza}/5) pero acertaste ${puntajeAuto}% — antes de confiar tanto, vale la pena repasar de nuevo.`;
+  }
+  if (diferencia < -25) {
+    return `Te sentías poco seguro (${confianza}/5) y acertaste ${puntajeAuto}% — sabes más de lo que crees.`;
+  }
+  return `Tu confianza (${confianza}/5) estuvo bien calibrada con tu resultado (${puntajeAuto}%).`;
+}
+
 export default function Reflexion({
   actividadId,
   estudianteId,
   textoPrevio,
   prediccionTexto,
+  confianzaPrevia,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
   textoPrevio?: string;
   prediccionTexto?: string;
+  confianzaPrevia?: number | null;
+  puntajeAuto?: number | null;
 }) {
   const [texto, setTexto] = useState(textoPrevio ?? "");
   const [cargando, setCargando] = useState(false);
@@ -65,6 +81,11 @@ export default function Reflexion({
       {prediccionTexto && (
         <p className="rounded-lg bg-white px-3 py-2 text-sm italic text-slate-600 dark:bg-slate-950 dark:text-slate-400">
           Dijiste que te costaría: "{prediccionTexto}"
+        </p>
+      )}
+      {confianzaPrevia != null && puntajeAuto != null && (
+        <p className="rounded-lg bg-white px-3 py-2 text-sm text-slate-600 dark:bg-slate-950 dark:text-slate-400">
+          {mensajeCalibracion(confianzaPrevia, puntajeAuto)}
         </p>
       )}
       <Textarea

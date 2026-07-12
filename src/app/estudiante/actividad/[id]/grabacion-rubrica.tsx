@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Square, ShieldCheck, Timer, Waves } from "lucide-react";
+import { Mic, Square, ShieldCheck, Timer, Waves, AudioLines } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -20,7 +20,12 @@ export default function GrabacionRubrica({
   respuestaPrevia?: {
     autoevaluacion: Record<string, boolean>;
     reflexion: string;
-    analisisAudio?: { duracionSegundos: number; numPausas: number; tiempoPausadoSegundos: number };
+    analisisAudio?: {
+      duracionSegundos: number;
+      numPausas: number;
+      tiempoPausadoSegundos: number;
+      consistenciaVolumen?: number | null;
+    };
   };
 }) {
   const router = useRouter();
@@ -106,6 +111,7 @@ export default function GrabacionRubrica({
                 duracionSegundos: Math.round(analisis.duracionSegundos),
                 numPausas: analisis.pausas.length,
                 tiempoPausadoSegundos: Math.round(analisis.tiempoPausadoSegundos),
+                consistenciaVolumen: analisis.consistenciaVolumen,
               }
             : respuestaPrevia?.analisisAudio,
         },
@@ -187,6 +193,21 @@ export default function GrabacionRubrica({
                   ? "Sin pausas largas"
                   : `${analisis.pausas.length} ${analisis.pausas.length === 1 ? "pausa" : "pausas"} · ${Math.round(analisis.tiempoPausadoSegundos)}s en silencio`}
               </span>
+              {analisis.consistenciaVolumen !== null && (
+                <span className="flex items-center gap-1.5">
+                  <AudioLines className="size-3.5" aria-hidden="true" />
+                  Volumen{" "}
+                  <strong
+                    className={
+                      analisis.consistenciaVolumen >= 60
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-amber-600 dark:text-amber-400"
+                    }
+                  >
+                    {analisis.consistenciaVolumen >= 60 ? "estable" : "irregular"}
+                  </strong>
+                </span>
+              )}
             </div>
             {analisis.duracionSegundos > 0 && (
               <div className="relative mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-indigo-500">

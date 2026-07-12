@@ -33,6 +33,86 @@ const CONECTORES = [
   "puesto que",
 ];
 
+const PALABRAS_VACIAS = new Set([
+  "para",
+  "como",
+  "pero",
+  "esto",
+  "esta",
+  "estos",
+  "estas",
+  "ese",
+  "esa",
+  "esos",
+  "esas",
+  "cuando",
+  "donde",
+  "porque",
+  "también",
+  "entre",
+  "sobre",
+  "hasta",
+  "desde",
+  "todo",
+  "toda",
+  "todos",
+  "todas",
+  "otro",
+  "otra",
+  "otros",
+  "otras",
+  "mucho",
+  "mucha",
+  "muchos",
+  "muchas",
+  "poco",
+  "poca",
+  "tanto",
+  "tanta",
+  "cual",
+  "cuales",
+  "quien",
+  "quienes",
+  "según",
+  "sino",
+  "sido",
+  "siendo",
+  "están",
+  "estar",
+  "hacer",
+  "hace",
+  "hacen",
+  "puede",
+  "pueden",
+  "debe",
+  "deben",
+  "solo",
+  "sólo",
+]);
+
+/** Palabras de contenido más frecuentes de un texto (sin palabras vacías). */
+function palabrasClave(texto: string, top = 6): string[] {
+  const palabras = texto.toLowerCase().match(/[a-záéíóúñü]{4,}/g) ?? [];
+  const conteo = new Map<string, number>();
+  for (const p of palabras) {
+    if (PALABRAS_VACIAS.has(p)) continue;
+    conteo.set(p, (conteo.get(p) ?? 0) + 1);
+  }
+  return [...conteo.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, top)
+    .map(([p]) => p);
+}
+
+export type OverlapFuente = { retomadas: string[]; total: number };
+
+/** De las palabras más frecuentes del texto fuente, cuáles retoma el resumen del estudiante. */
+export function overlapConFuente(textoFuente: string, textoEstudiante: string): OverlapFuente {
+  const clave = palabrasClave(textoFuente);
+  const normalizado = textoEstudiante.toLowerCase();
+  return { retomadas: clave.filter((p) => normalizado.includes(p)), total: clave.length };
+}
+
 export type AnalisisTexto = {
   palabras: number;
   oraciones: number;

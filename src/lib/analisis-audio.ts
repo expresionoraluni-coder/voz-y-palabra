@@ -2,6 +2,8 @@ export type AnalisisAudio = {
   duracionSegundos: number;
   pausas: { inicio: number; fin: number }[];
   tiempoPausadoSegundos: number;
+  /** 0-100: qué tan constante fue el volumen mientras hablaba (100 = muy estable). null si no hubo suficiente habla para medir. */
+  consistenciaVolumen: number | null;
 };
 
 const TAMANO_VENTANA_SEGUNDOS = 0.05;
@@ -58,7 +60,20 @@ export async function analizarAudio(blob: Blob): Promise<AnalisisAudio> {
 
     const tiempoPausadoSegundos = pausas.reduce((s, p) => s + (p.fin - p.inicio), 0);
 
-    return { duracionSegundos: audioBuffer.duration, pausas, tiempoPausadoSegundos };
+    // Consistencia de volumen: coeficiente de variación de las ventanas
+    // donde sí había habla (se excluyen los silencios, que inflarían la
+    // varianza sin decir nada sobre la proyección de la voz).
+    const ventanasHabladas = ventanas.filter((v) => v >= umbral);
+    let consistenciaVolumen: number | null = null;
+    if (ventanasHabladas.length >= 5) {
+      const media = ventanasHabladas.reduce((s, v) => s + v, 0) / ventanasHabladas.length;
+      const varianza =
+        ventanasHabladas.reduce((s, v) => s + (v - media) ** 2, 0) / ventanasHabladas.length;
+      const coefVariacion = media > 0 ? Math.sqrt(varianza) / media : 0;
+      consistenciaVolumen = Math.round(Math.max(0, Math.min(100, 100 - coefVariacion * 100)));
+    }
+
+    return { duracionSegundos: audioBuffer.duration, pausas, tiempoPausadoSegundos, consistenciaVolumen };
   } finally {
     ctx.close();
   }

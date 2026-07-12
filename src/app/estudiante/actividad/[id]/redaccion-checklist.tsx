@@ -6,7 +6,7 @@ import { ListChecks, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
-import { analizarTexto } from "@/lib/analisis-texto";
+import { analizarTexto, overlapConFuente } from "@/lib/analisis-texto";
 
 function contarPalabras(texto: string) {
   return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
@@ -37,6 +37,10 @@ export default function RedaccionChecklist({
   const minimoPalabras = Math.max(15, Math.round(contenido.limite_palabras * 0.5));
   const muyCorto = palabras < minimoPalabras;
   const analisis = useMemo(() => analizarTexto(texto), [texto]);
+  const overlap = useMemo(
+    () => (contenido.texto_fuente ? overlapConFuente(contenido.texto_fuente, texto) : null),
+    [contenido.texto_fuente, texto],
+  );
 
   function alternar(i: number) {
     setMarcado((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
@@ -66,6 +70,8 @@ export default function RedaccionChecklist({
             variedadLexica: analisis.variedadLexica,
             muletillas: analisis.muletillasDetectadas.length,
             conectores: analisis.conectoresUsados.length,
+            ideasFuenteRetomadas: overlap?.retomadas.length,
+            ideasFuenteTotal: overlap?.total,
           },
         },
         estado: "pendiente_revision",
@@ -144,6 +150,18 @@ export default function RedaccionChecklist({
           {analisis.conectoresUsados.length > 0 && (
             <p className="text-emerald-600 dark:text-emerald-400">
               Buen uso de conectores: {analisis.conectoresUsados.join(", ")}
+            </p>
+          )}
+          {overlap && overlap.total > 0 && (
+            <p
+              className={
+                overlap.retomadas.length >= overlap.total / 2
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400"
+              }
+            >
+              Retomas {overlap.retomadas.length} de {overlap.total} ideas clave del texto fuente
+              {overlap.retomadas.length > 0 && `: ${overlap.retomadas.join(", ")}`}
             </p>
           )}
         </div>

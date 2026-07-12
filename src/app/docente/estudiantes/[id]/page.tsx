@@ -40,6 +40,7 @@ export default async function FichaEstudiante({
     { data: confianzas },
     { data: reflexiones },
     { data: insignias },
+    { data: predicciones },
   ] = await Promise.all([
     supabase
       .from("unidades")
@@ -48,7 +49,7 @@ export default async function FichaEstudiante({
     supabase
       .from("entregas")
       .select(
-        "id, respuesta, estado, created_at, puntaje_auto, evaluacion_docente, actividades(titulo, unidad_id, tipos_actividad(nombre))",
+        "id, actividad_id, respuesta, estado, created_at, puntaje_auto, evaluacion_docente, actividades(titulo, unidad_id, tipos_actividad(nombre))",
       )
       .eq("estudiante_id", id)
       .order("created_at", { ascending: false }),
@@ -67,6 +68,12 @@ export default async function FichaEstudiante({
       .from("insignias_otorgadas")
       .select("insignias(nombre)")
       .eq("estudiante_id", id),
+    supabase
+      .from("reflexiones")
+      .select("actividad_id, confianza")
+      .eq("estudiante_id", id)
+      .eq("momento", "prediccion")
+      .not("confianza", "is", null),
   ]);
 
   const totalActividades = unidades?.reduce((s, u) => s + u.actividades.length, 0) ?? 0;
@@ -190,6 +197,12 @@ export default async function FichaEstudiante({
               const evaluacionBadge = en.evaluacion_docente
                 ? EVALUACION_BADGE[en.evaluacion_docente as keyof typeof EVALUACION_BADGE]
                 : null;
+              const prediccion = predicciones?.find((p) => p.actividad_id === en.actividad_id);
+              let toneConfianza: "neutral" | "warning" = "neutral";
+              if (prediccion && en.puntaje_auto !== null) {
+                const confianzaPct = (prediccion.confianza - 1) * 25;
+                if (Math.abs(confianzaPct - en.puntaje_auto) > 25) toneConfianza = "warning";
+              }
               return (
                 <Card key={en.id} className="p-4">
                   <div className="flex items-center justify-between gap-2">
@@ -200,6 +213,7 @@ export default async function FichaEstudiante({
                           {en.puntaje_auto}% correcto
                         </Badge>
                       )}
+                      {prediccion && <Badge tono={toneConfianza}>Confianza {prediccion.confianza}/5</Badge>}
                       {evaluacionBadge && <Badge tono={evaluacionBadge.tono}>{evaluacionBadge.texto}</Badge>}
                       {en.estado === "pendiente_revision" && <Badge tono="warning">Por revisar</Badge>}
                     </div>
@@ -209,7 +223,12 @@ export default async function FichaEstudiante({
                   </p>
                   {(() => {
                     const r = (en.respuesta ?? {}) as {
-                      analisisAudio?: { duracionSegundos: number; numPausas: number; tiempoPausadoSegundos: number };
+                      analisisAudio?: {
+                        duracionSegundos: number;
+                        numPausas: number;
+                        tiempoPausadoSegundos: number;
+                        consistenciaVolumen?: number | null;
+                      };
                       analisisTexto?: { variedadLexica: number; muletillas: number; conectores: number };
                     };
                     if (r.analisisAudio) {
@@ -217,6 +236,8 @@ export default async function FichaEstudiante({
                         <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                           {r.analisisAudio.duracionSegundos}s de grabación · {r.analisisAudio.numPausas} pausa(s)
                           detectada(s) ({r.analisisAudio.tiempoPausadoSegundos}s en silencio)
+                          {r.analisisAudio.consistenciaVolumen != null &&
+                            ` · volumen ${r.analisisAudio.consistenciaVolumen >= 60 ? "estable" : "irregular"}`}
                         </p>
                       );
                     }

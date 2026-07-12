@@ -412,8 +412,36 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       específica en todo el grupo. Mismos datos ya guardados, solo más
 --       finos. Verificado en vivo con datos reales del "circuito de la
 --       comunicación".
---     - Pendiente del análisis original, no implementado todavía: overlap
---       de vocabulario con el texto_fuente en redaccion_checklist,
---       varianza de volumen en grabacion_rubrica, calendario de repaso
---       espaciado, y calibración de confianza por actividad (no solo por
---       unidad).
+--     - Overlap de vocabulario con la fuente (redaccion_checklist): compara
+--       las palabras de contenido más frecuentes de contenido.texto_fuente
+--       (sin palabras vacías) contra el texto del estudiante y muestra
+--       "retomas X de Y ideas clave" (ver src/lib/analisis-texto.ts,
+--       overlapConFuente/palabrasClave). Aviso suave, no bloquea.
+--     - Consistencia de volumen (grabacion_rubrica): coeficiente de
+--       variación de las ventanas de amplitud donde sí hubo habla (excluye
+--       silencios), invertido a una escala 0-100 donde 100 = muy estable
+--       (ver src/lib/analisis-audio.ts, campo consistenciaVolumen). Se
+--       muestra como "volumen estable/irregular" tanto al estudiante como
+--       en la ficha de la docente. null si hubo menos de 5 ventanas
+--       habladas (grabación demasiado corta o silenciosa para medir).
+--     - Calibración de confianza por actividad (no solo por unidad):
+--       reflexiones.confianza (int 1-5, nullable, solo para
+--       momento='prediccion') — el estudiante declara qué tan seguro se
+--       siente justo antes de empezar la actividad, además de su
+--       predicción de texto libre ya existente. Al cerrar (momento=
+--       'cierre'), si la actividad es de las auto-calificadas
+--       (entregas.puntaje_auto no nulo), se compara la confianza declarada
+--       (escalada a 0-100) contra el puntaje real y se le muestra al
+--       estudiante un mensaje de calibración concreto (sobreconfianza,
+--       subconfianza o bien calibrado). La ficha de la docente muestra la
+--       confianza declarada junto al % de acierto por entrega, con aviso
+--       visual cuando el desajuste supera 25 puntos. Verificado en vivo:
+--       confianza 5/5 declarada + 14% de acierto real produjo el mensaje de
+--       sobreconfianza esperado.
+--
+-- 12. Pendiente de análisis, no implementado todavía (a pedido del usuario,
+--     que quiere evaluar antes de tocar código): calendario de repaso
+--     espaciado vinculado a fechas que suba la docente (evaluaciones,
+--     entregas), y una bitácora/plan de trabajo del estudiante — ambos como
+--     herramientas de metacognición y autorregulación más allá de las
+--     actividades de expresión en sí.

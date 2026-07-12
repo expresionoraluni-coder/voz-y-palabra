@@ -16,6 +16,7 @@ export default function Prediccion({
 }) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
+  const [confianza, setConfianza] = useState<number | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +32,7 @@ export default function Prediccion({
         actividad_id: actividadId,
         momento: "prediccion",
         texto,
+        confianza,
       },
       { onConflict: "estudiante_id,actividad_id,momento" },
     );
@@ -63,6 +65,33 @@ export default function Prediccion({
         placeholder="Una idea breve — al final vamos a ver si acertaste"
         className="bg-white dark:bg-slate-950"
       />
+      <div className="flex flex-col gap-1.5">
+        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+          ¿Qué tan seguro te sientes de que te va a ir bien?
+        </p>
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setConfianza(n)}
+              aria-pressed={confianza === n}
+              aria-label={`${n} de 5`}
+              className={`flex h-8 flex-1 items-center justify-center rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                confianza === n
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white text-slate-400 hover:bg-indigo-100 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-indigo-950"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-between text-[11px] text-slate-400 dark:text-slate-500">
+          <span>Nada seguro</span>
+          <span>Muy seguro</span>
+        </div>
+      </div>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton type="submit" size="sm" disabled={!texto.trim()} cargando={cargando} className="self-start">
         {cargando ? "Guardando..." : "Empezar la actividad"}

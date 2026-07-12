@@ -57,7 +57,7 @@ export default async function ActividadEstudiante({
 
   const { data: entregaExistente } = await supabase
     .from("entregas")
-    .select("respuesta")
+    .select("respuesta, puntaje_auto")
     .eq("actividad_id", id)
     .eq("estudiante_id", estudiante.id)
     .maybeSingle();
@@ -66,7 +66,7 @@ export default async function ActividadEstudiante({
 
   const { data: prediccionExistente } = await supabase
     .from("reflexiones")
-    .select("texto")
+    .select("texto, confianza")
     .eq("actividad_id", id)
     .eq("estudiante_id", estudiante.id)
     .eq("momento", "prediccion")
@@ -213,6 +213,8 @@ export default async function ActividadEstudiante({
           estudianteId={estudiante.id}
           textoPrevio={reflexionExistente?.texto}
           prediccionTexto={prediccionExistente?.texto}
+          confianzaPrevia={prediccionExistente?.confianza ?? null}
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
     </div>
