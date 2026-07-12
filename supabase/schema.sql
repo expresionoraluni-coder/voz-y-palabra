@@ -404,9 +404,16 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       existentes de estos dos tipos ya tienen ideas_clave rellenado
 --       directo en producción (el usuario autorizó completar esto sin
 --       pedírselo a la docente).
---     - Pendiente del análisis original, no implementado todavía: matriz
---       de confusión por elemento en clasificacion/etiquetado_texto,
---       overlap de vocabulario con el texto_fuente en redaccion_checklist,
+--     - Matriz de confusión por elemento (clasificacion/etiquetado_texto):
+--       en el dashboard de grupo, sección "Dónde se equivoca el grupo" —
+--       compara respuesta.elegidas contra categoria_correcta/
+--       etiqueta_correcta elemento por elemento (no solo el % del tipo
+--       completo) y agrega cuántas veces se repite cada confusión
+--       específica en todo el grupo. Mismos datos ya guardados, solo más
+--       finos. Verificado en vivo con datos reales del "circuito de la
+--       comunicación".
+--     - Pendiente del análisis original, no implementado todavía: overlap
+--       de vocabulario con el texto_fuente en redaccion_checklist,
 --       varianza de volumen en grabacion_rubrica, calendario de repaso
 --       espaciado, y calibración de confianza por actividad (no solo por
 --       unidad).

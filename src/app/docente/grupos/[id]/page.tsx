@@ -71,7 +71,7 @@ export default async function DetalleGrupo({
     ? await supabase
         .from("entregas")
         .select(
-          "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, actividades(titulo, unidad_id, tipos_actividad(nombre))",
+          "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta, actividades(titulo, unidad_id, contenido, tipos_actividad(nombre))",
         )
         .in("estudiante_id", idsEstudiantes)
     : { data: [] };
@@ -132,6 +132,40 @@ export default async function DetalleGrupo({
   )
     .map((x) => ({ nombre: x.nombre, promedio: Math.round(x.suma / x.total), n: x.total }))
     .sort((a, b) => a.promedio - b.promedio);
+
+  // Matriz de confusión por elemento: no solo "clasificación va al 69%",
+  // sino "el grupo confunde 'Receptor' con 'Emisor' en 5 entregas" — mismo
+  // dato ya guardado en respuesta.elegidas, solo que agregado más fino.
+  const confusionMap = new Map<string, { elemento: string; correcta: string; elegida: string; veces: number }>();
+  for (const en of entregas ?? []) {
+    const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
+    const tipo = act
+      ? Array.isArray(act.tipos_actividad)
+        ? act.tipos_actividad[0]
+        : act.tipos_actividad
+      : undefined;
+    if (!act || (tipo?.nombre !== "clasificacion" && tipo?.nombre !== "etiquetado_texto")) continue;
+
+    const contenido = act.contenido as {
+      elementos?: { texto: string; categoria_correcta: string }[];
+      fragmentos?: { texto: string; etiqueta_correcta: string }[];
+    };
+    const items = (contenido.elementos ?? contenido.fragmentos ?? []).map((it) => ({
+      texto: it.texto,
+      correcta: "categoria_correcta" in it ? it.categoria_correcta : it.etiqueta_correcta,
+    }));
+    const elegidas = (en.respuesta as { elegidas?: string[] } | null)?.elegidas ?? [];
+
+    items.forEach((item, i) => {
+      const elegida = elegidas[i];
+      if (!elegida || elegida === item.correcta) return;
+      const key = `${item.texto}|||${elegida}`;
+      const existente = confusionMap.get(key);
+      if (existente) existente.veces += 1;
+      else confusionMap.set(key, { elemento: item.texto, correcta: item.correcta, elegida, veces: 1 });
+    });
+  }
+  const confusionesTop = [...confusionMap.values()].sort((a, b) => b.veces - a.veces).slice(0, 5);
 
   // Evaluación cualitativa: lo que la docente ya juzgó en entregas abiertas
   // (opción-justificación, encontrar-corregir, comparador, etc.).
@@ -261,6 +295,28 @@ export default async function DetalleGrupo({
                         : "from-red-500 to-red-600"
                   }
                 />
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
+
+      {confusionesTop.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            Dónde se equivoca el grupo
+          </h2>
+          <Card className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+            {confusionesTop.map((c, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                <span className="text-slate-700 dark:text-slate-300">
+                  <strong className="font-medium text-slate-900 dark:text-slate-50">"{c.elemento}"</strong> se
+                  confunde con <strong className="font-medium text-amber-600 dark:text-amber-400">{c.elegida}</strong>{" "}
+                  <span className="text-slate-400 dark:text-slate-500">(era {c.correcta})</span>
+                </span>
+                <span className="shrink-0 text-xs font-medium text-slate-400 dark:text-slate-500">
+                  {c.veces} {c.veces === 1 ? "vez" : "veces"}
+                </span>
               </div>
             ))}
           </Card>
