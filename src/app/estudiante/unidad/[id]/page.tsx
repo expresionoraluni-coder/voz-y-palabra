@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import Confianza from "./confianza";
+import Bitacora from "./bitacora";
 import PageHeader from "@/components/ui/page-header";
 import { CardLink } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
@@ -47,6 +48,13 @@ export default async function UnidadEstudiante({
     .eq("estudiante_id", estudiante.id)
     .eq("unidad_id", id);
 
+  const { data: bitacora } = await supabase
+    .from("bitacora")
+    .select("meta, cumplida")
+    .eq("estudiante_id", estudiante.id)
+    .eq("unidad_id", id)
+    .maybeSingle();
+
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
   const confianzaCierre = confianzas?.find((c) => c.momento === "cierre");
 
@@ -75,6 +83,14 @@ export default async function UnidadEstudiante({
           </span>
         </div>
       )}
+
+      <Bitacora
+        estudianteId={estudiante.id}
+        unidadId={id}
+        metaPrevia={bitacora?.meta ?? null}
+        cumplidaPrevia={bitacora?.cumplida ?? false}
+        avancePct={pct}
+      />
 
       {!confianzaInicio && (
         <Confianza estudianteId={estudiante.id} unidadId={id} momento="inicio" />

@@ -439,9 +439,40 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       confianza 5/5 declarada + 14% de acierto real produjo el mensaje de
 --       sobreconfianza esperado.
 --
--- 12. Pendiente de análisis, no implementado todavía (a pedido del usuario,
---     que quiere evaluar antes de tocar código): calendario de repaso
---     espaciado vinculado a fechas que suba la docente (evaluaciones,
---     entregas), y una bitácora/plan de trabajo del estudiante — ambos como
---     herramientas de metacognición y autorregulación más allá de las
---     actividades de expresión en sí.
+-- 12. Metacognición y autorregulación más allá de las actividades (las tres
+--     herramientas del análisis previo, aprobadas por el usuario):
+--     - tabla eventos (docente_id, grupo_id, unidad_id not null, titulo,
+--       tipo check in examen/proyecto/entrega/otro, fecha date): la docente
+--       carga fechas reales desde /docente/grupos/[id] (componente
+--       eventos.tsx, mismo patrón que avisos.tsx). El unidad_id es
+--       obligatorio a propósito — es el "conector" que le permite a la
+--       plataforma generar recomendaciones sin IA: src/lib/eventos.ts
+--       define, por tipo de evento, la frase conectora ("Repasa antes de tu
+--       examen", "Antes de tu proyecto, revisa", etc.).
+--     - tabla bitacora (estudiante_id, unidad_id, meta, cumplida, unique
+--       estudiante+unidad): meta de texto libre por unidad (fijación de
+--       metas, Locke & Latham), editable, con marca de cumplida. Visible en
+--       /estudiante/unidad/[id] (bitacora.tsx) y también en la ficha de la
+--       docente (docente/estudiantes/[id]) porque el usuario pidió que
+--       fuera útil para ambos.
+--     - /estudiante/calendario: mezcla los eventos reales del grupo con
+--       repasos sugeridos (src/lib/calendario-repaso.ts, intervalos
+--       crecientes 2/5/10/21 días desde el intento con puntaje_auto < 70,
+--       práctica espaciada) en una sola línea de tiempo ordenada por fecha.
+--       Cada evento con unidad_id muestra qué actividades de esa unidad
+--       conviene repasar o todavía no se han hecho.
+--     - /estudiante/progreso ("Mi progreso"): la misma agregación de
+--       precisión por tipo de actividad y variedad léxica que ya existía en
+--       el dashboard de la docente, filtrada al propio estudiante — nunca
+--       comparada contra el grupo, para que sea autoconocimiento y no
+--       competencia.
+--     - Campanita de recordatorios en /estudiante/inicio: eventos que
+--       caen dentro de los próximos 7 días + aviso si todavía no hay meta
+--       de bitácora para la unidad activa. No es una tabla de
+--       notificaciones nueva, se calcula al cargar la página (no hay layout
+--       compartido entre pantallas de estudiante, así que vive en el hub).
+--     - Verificado en vivo con datos de prueba aislados: el examen de
+--       Unidad 1 a 4 días generó correctamente "Repasa antes de tu examen:
+--       [3 actividades sin hacer]"; la bitácora guardó y marcó cumplida
+--       correctamente; el recordatorio combinado (evento + bitácora sin
+--       meta) apareció en /estudiante/inicio.

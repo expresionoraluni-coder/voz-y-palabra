@@ -1,5 +1,5 @@
 import { redirect, notFound } from "next/navigation";
-import { Award, FileText, Quote } from "lucide-react";
+import { Award, FileText, NotebookPen, Quote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import ComentarioEntrega from "./comentario-entrega";
@@ -76,6 +76,11 @@ export default async function FichaEstudiante({
       .not("confianza", "is", null),
   ]);
 
+  const { data: bitacoras } = await supabase
+    .from("bitacora")
+    .select("unidad_id, meta, cumplida")
+    .eq("estudiante_id", id);
+
   const totalActividades = unidades?.reduce((s, u) => s + u.actividades.length, 0) ?? 0;
   const avanceGeneral = totalActividades > 0 ? Math.round(((entregas?.length ?? 0) / totalActividades) * 100) : 0;
 
@@ -133,6 +138,7 @@ export default async function FichaEstudiante({
             const pct = u.actividades.length > 0 ? Math.round((hechas / u.actividades.length) * 100) : 0;
             const inicio = confianzas?.find((c) => c.unidad_id === u.id && c.momento === "inicio");
             const cierre = confianzas?.find((c) => c.unidad_id === u.id && c.momento === "cierre");
+            const bitacora = bitacoras?.find((b) => b.unidad_id === u.id);
             return (
               <div key={u.id}>
                 <div className="mb-1.5 flex justify-between text-sm">
@@ -146,6 +152,19 @@ export default async function FichaEstudiante({
                   <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-500">
                     Confianza: {inicio.valor}% al inicio{" "}
                     {cierre ? `→ ${cierre.valor}% al cierre` : "(sin cierre aún)"}
+                  </p>
+                )}
+                {bitacora && (
+                  <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
+                    <NotebookPen className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                    <span>
+                      Meta: "{bitacora.meta}"{" "}
+                      {bitacora.cumplida ? (
+                        <span className="text-emerald-600 dark:text-emerald-400">(cumplida)</span>
+                      ) : (
+                        "(en curso)"
+                      )}
+                    </span>
                   </p>
                 )}
               </div>

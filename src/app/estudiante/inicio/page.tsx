@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import {
   Award,
   Bell,
+  CalendarDays,
   Check,
   ChevronRight,
   Flame,
   FolderHeart,
   KeyRound,
+  LineChart,
   RotateCcw,
   Sparkles,
 } from "lucide-react";
@@ -22,6 +24,7 @@ import Alert from "@/components/ui/alert";
 import CelebracionInsignia from "../celebracion-insignia";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
+import { diasFaltantes, textoFaltan } from "@/lib/eventos";
 
 export default async function InicioEstudiante({
   searchParams,
@@ -83,13 +86,43 @@ export default async function InicioEstudiante({
     return { ...u, total, hechas, pct };
   });
   const indiceActiva = unidadesConProgreso.findIndex((u) => u.pct < 100);
+  const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
-  const { data: avisos } = await supabase
-    .from("avisos")
-    .select("id, titulo, mensaje, created_at")
-    .or(`grupo_id.is.null,grupo_id.eq.${estudiante.grupo_id}`)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const [{ data: avisos }, { data: eventosProximos }, { data: bitacoraActiva }] = await Promise.all([
+    supabase
+      .from("avisos")
+      .select("id, titulo, mensaje, created_at")
+      .or(`grupo_id.is.null,grupo_id.eq.${estudiante.grupo_id}`)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("eventos")
+      .select("id, titulo, fecha")
+      .eq("grupo_id", estudiante.grupo_id)
+      .gte("fecha", new Date().toISOString().slice(0, 10))
+      .order("fecha")
+      .limit(3),
+    unidadActiva
+      ? supabase
+          .from("bitacora")
+          .select("id")
+          .eq("estudiante_id", estudiante.id)
+          .eq("unidad_id", unidadActiva.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const recordatorios: { texto: string; href: string }[] = [];
+  for (const ev of eventosProximos ?? []) {
+    const dias = diasFaltantes(ev.fecha);
+    if (dias <= 7) recordatorios.push({ texto: `${ev.titulo} — ${textoFaltan(dias)}`, href: "/estudiante/calendario" });
+  }
+  if (unidadActiva && !bitacoraActiva) {
+    recordatorios.push({
+      texto: `Aún no defines tu meta para Unidad ${unidadActiva.orden}`,
+      href: `/estudiante/unidad/${unidadActiva.id}`,
+    });
+  }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -137,14 +170,52 @@ export default async function InicioEstudiante({
         </Link>
       </div>
 
-      <Link
-        href="/estudiante/portafolio"
-        className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-      >
-        <FolderHeart className="size-4" aria-hidden="true" />
-        Ver mi portafolio
-        <ChevronRight className="size-3.5" aria-hidden="true" />
-      </Link>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        <Link
+          href="/estudiante/portafolio"
+          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+        >
+          <FolderHeart className="size-4" aria-hidden="true" />
+          Ver mi portafolio
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/estudiante/calendario"
+          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+        >
+          <CalendarDays className="size-4" aria-hidden="true" />
+          Ver mi calendario
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/estudiante/progreso"
+          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+        >
+          <LineChart className="size-4" aria-hidden="true" />
+          Mi progreso
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        </Link>
+      </div>
+
+      {recordatorios.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3.5 dark:border-amber-900 dark:bg-amber-950/40">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-slate-900 dark:text-slate-50">
+            <Bell className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            Recordatorios
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {recordatorios.map((r, i) => (
+              <Link
+                key={i}
+                href={r.href}
+                className="text-sm text-slate-700 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+              >
+                {r.texto}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {avisos && avisos.length > 0 && (
         <div className="flex flex-col gap-2">

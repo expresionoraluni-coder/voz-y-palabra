@@ -4,6 +4,7 @@ import { ChevronRight, ClipboardCheck, ThumbsUp, TrendingUp, Users } from "lucid
 import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
+import Eventos from "./eventos";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import MetricCard from "@/components/ui/metric-card";
@@ -43,6 +44,7 @@ export default async function DetalleGrupo({
     { data: actividades },
     { data: confianzas },
     { data: avisos },
+    { data: eventos },
   ] = await Promise.all([
     supabase
       .from("estudiantes")
@@ -64,6 +66,7 @@ export default async function DetalleGrupo({
       .select("id, titulo, mensaje, created_at")
       .eq("grupo_id", id)
       .order("created_at", { ascending: false }),
+    supabase.from("eventos").select("id, titulo, tipo, fecha, unidad_id").eq("grupo_id", id),
   ]);
 
   const idsEstudiantes = estudiantes?.map((e) => e.id) ?? [];
@@ -370,6 +373,8 @@ export default async function DetalleGrupo({
           </div>
         </section>
       )}
+
+      <Eventos grupoId={grupo.id} unidades={unidades ?? []} eventos={eventos ?? []} />
 
       <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
 
