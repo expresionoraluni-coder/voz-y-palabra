@@ -22,38 +22,31 @@ export default async function UnidadEstudiante({
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
 
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .single();
+  const [{ data: estudiante }, { data: unidad }, { data: actividades }] = await Promise.all([
+    supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
+    supabase.from("unidades").select("id, nombre, orden, reto_comunicativo").eq("id", id).single(),
+    supabase
+      .from("actividades")
+      .select("id, titulo, instrucciones, entregas(id)")
+      .eq("unidad_id", id)
+      .order("orden"),
+  ]);
   if (!estudiante) redirect("/ingreso/estudiante");
-
-  const { data: unidad } = await supabase
-    .from("unidades")
-    .select("id, nombre, orden, reto_comunicativo")
-    .eq("id", id)
-    .single();
   if (!unidad) notFound();
 
-  const { data: actividades } = await supabase
-    .from("actividades")
-    .select("id, titulo, instrucciones, entregas(id)")
-    .eq("unidad_id", id)
-    .order("orden");
-
-  const { data: confianzas } = await supabase
-    .from("autoevaluaciones_confianza")
-    .select("momento, valor")
-    .eq("estudiante_id", estudiante.id)
-    .eq("unidad_id", id);
-
-  const { data: bitacora } = await supabase
-    .from("bitacora")
-    .select("meta, cumplida")
-    .eq("estudiante_id", estudiante.id)
-    .eq("unidad_id", id)
-    .maybeSingle();
+  const [{ data: confianzas }, { data: bitacora }] = await Promise.all([
+    supabase
+      .from("autoevaluaciones_confianza")
+      .select("momento, valor")
+      .eq("estudiante_id", estudiante.id)
+      .eq("unidad_id", id),
+    supabase
+      .from("bitacora")
+      .select("meta, cumplida")
+      .eq("estudiante_id", estudiante.id)
+      .eq("unidad_id", id)
+      .maybeSingle(),
+  ]);
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
   const confianzaCierre = confianzas?.find((c) => c.momento === "cierre");
@@ -121,7 +114,7 @@ export default async function UnidadEstudiante({
                     className={
                       completada
                         ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
-                        : "text-xs text-slate-400 dark:text-slate-600"
+                        : "text-xs text-slate-500 dark:text-slate-400"
                     }
                   >
                     {completada ? "Completada" : "Sin empezar"}

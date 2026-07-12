@@ -114,7 +114,7 @@ export default function Eventos({
               <Input required type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </Field>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             La unidad que elijas es lo que le permite a la plataforma sugerirle a tus estudiantes qué
             repasar antes de esta fecha.
           </p>

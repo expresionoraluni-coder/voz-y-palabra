@@ -21,10 +21,21 @@ import Badge from "@/components/ui/badge";
 import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
-import CelebracionInsignia from "../celebracion-insignia";
+import CelebracionInsignia from "@/app/estudiante/celebracion-insignia";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
+
+const MENSAJES_RACHA = [
+  "Se nota la constancia.",
+  "Llevas un buen ritmo de práctica.",
+  "Cada día suma más de lo que parece.",
+  "Estás construyendo un hábito real.",
+];
+
+function mensajeRacha(racha: number): string {
+  return MENSAJES_RACHA[racha % MENSAJES_RACHA.length];
+}
 
 export default async function InicioEstudiante({
   searchParams,
@@ -158,7 +169,7 @@ export default async function InicioEstudiante({
             <p className="text-2xl font-bold leading-tight">
               {racha} {racha === 1 ? "día" : "días"} seguidos
             </p>
-            <p className="text-sm text-orange-50">Sigue así — no rompas tu racha hoy.</p>
+            <p className="text-sm text-orange-50">{mensajeRacha(racha)}</p>
           </div>
         </div>
       )}
@@ -299,7 +310,7 @@ export default async function InicioEstudiante({
                         ? `bg-gradient-to-br ${tema.barra} text-white`
                         : activa
                           ? `bg-gradient-to-br ${tema.barra} text-white`
-                          : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
+                          : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                     }`}
                   >
                     {activa && !completa && (

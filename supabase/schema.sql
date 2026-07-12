@@ -469,10 +469,50 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     - Campanita de recordatorios en /estudiante/inicio: eventos que
 --       caen dentro de los próximos 7 días + aviso si todavía no hay meta
 --       de bitácora para la unidad activa. No es una tabla de
---       notificaciones nueva, se calcula al cargar la página (no hay layout
---       compartido entre pantallas de estudiante, así que vive en el hub).
+--       notificaciones nueva, se calcula al cargar la página.
 --     - Verificado en vivo con datos de prueba aislados: el examen de
 --       Unidad 1 a 4 días generó correctamente "Repasa antes de tu examen:
 --       [3 actividades sin hacer]"; la bitácora guardó y marcó cumplida
 --       correctamente; el recordatorio combinado (evento + bitácora sin
 --       meta) apareció en /estudiante/inicio.
+--
+-- 13. Auditoría global de experiencia del estudiante (análisis previo
+--     compartido con el usuario, aprobado completo — "atiende todo"):
+--     - Contraste: se descubrió que text-slate-400 sobre fondo claro da
+--       2.56:1 (falla WCAG AA, que exige 4.5:1) — se cambió a
+--       text-slate-500 claro / text-slate-400 oscuro en los ~15 usos reales
+--       de texto (no en placeholders ni estados disabled, que están
+--       exentos). Aplicado también en pantallas de la docente por
+--       consistencia del mismo token de diseño.
+--     - El slider de confianza (0-100%) ahora tiene botones -5/+5 junto al
+--       range, para no depender de arrastrar (WCAG 2.5.7).
+--     - Navegación: src/app/estudiante/(hub)/ es un route group nuevo con
+--       layout.tsx compartido + bottom-nav.tsx (Inicio/Calendario/
+--       Progreso/Portafolio/Insignias) — agrupa inicio, calendario,
+--       progreso, portafolio, insignias y unidad/[id] (NO actividad/[id],
+--       que se mantiene a pantalla completa sin distracciones). Los route
+--       groups no cambian la URL, así que ningún link existente se rompió.
+--     - Rendimiento percibido: las consultas independientes en
+--       estudiante/actividad/[id] y estudiante/unidad/[id] se agruparon en
+--       Promise.all en vez de awaits secuenciales.
+--     - El NIP ahora tiene un botón de mostrar/ocultar (ojo) en vez de
+--       quedar siempre oculto — evita typos silenciosos sin agregar
+--       fricción de doble captura en cada login.
+--     - Corregido el texto de instrucciones de "El circuito de la
+--       comunicación" (decía "arrastra", el control real es un selector).
+--     - El mensaje de racha ya no está enmarcado en pérdida ("no rompas tu
+--       racha"): rota entre frases de logro.
+--     - middleware.ts: el auth.getUser() ahora está en try/catch — si
+--       Supabase no responde, la petición sigue como sesión no verificada
+--       en vez de tumbar la página completa.
+--     - Se intentó agregar loading.tsx (esqueleto de carga) en
+--       src/app/estudiante/ y actividad/[id]/, pero durante la
+--       verificación en vivo se observó que, con ese archivo presente,
+--       redirect() a /ingreso/estudiante desde una página sin sesión se
+--       quedaba mostrando el esqueleto indefinidamente en vez de
+--       redirigir. No se logró aislar con certeza si la causa real era
+--       loading.tsx o un estado corrupto del servidor de desarrollo tras
+--       muchos hot-reloads seguidos — ante la duda, se revirtió: el riesgo
+--       de romper el flujo de acceso pesa más que la mejora de percepción
+--       de carga. Si se retoma, probar en un entorno limpio y de forma
+--       aislada antes de confiar en el resultado.

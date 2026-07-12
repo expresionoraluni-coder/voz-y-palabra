@@ -23,7 +23,13 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // Si Supabase no responde (red caída, error transitorio), se sigue como
+    // sesión no verificada en vez de tumbar la petición completa — cada
+    // página ya redirige a /ingreso si no encuentra usuario.
+  }
 
   return response;
 }

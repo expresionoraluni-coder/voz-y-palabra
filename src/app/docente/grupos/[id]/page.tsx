@@ -315,9 +315,9 @@ export default async function DetalleGrupo({
                 <span className="text-slate-700 dark:text-slate-300">
                   <strong className="font-medium text-slate-900 dark:text-slate-50">"{c.elemento}"</strong> se
                   confunde con <strong className="font-medium text-amber-600 dark:text-amber-400">{c.elegida}</strong>{" "}
-                  <span className="text-slate-400 dark:text-slate-500">(era {c.correcta})</span>
+                  <span className="text-slate-500 dark:text-slate-400">(era {c.correcta})</span>
                 </span>
-                <span className="shrink-0 text-xs font-medium text-slate-400 dark:text-slate-500">
+                <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
                   {c.veces} {c.veces === 1 ? "vez" : "veces"}
                 </span>
               </div>

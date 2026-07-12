@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Gauge } from "lucide-react";
+import { Gauge, Minus, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { ErrorText } from "@/components/ui/field";
@@ -50,6 +50,15 @@ export default function Confianza({
         </p>
       </div>
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setValor((v) => Math.max(0, v - 5))}
+          disabled={valor <= 0}
+          aria-label="Bajar 5%"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+        >
+          <Minus className="size-4" aria-hidden="true" />
+        </button>
         <input
           type="range"
           min={0}
@@ -59,6 +68,15 @@ export default function Confianza({
           onChange={(e) => setValor(Number(e.target.value))}
           className="h-2 flex-1 cursor-pointer accent-indigo-600"
         />
+        <button
+          type="button"
+          onClick={() => setValor((v) => Math.min(100, v + 5))}
+          disabled={valor >= 100}
+          aria-label="Subir 5%"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+        </button>
         <span className="w-12 text-right text-sm font-semibold text-slate-700 dark:text-slate-300">
           {valor}%
         </span>

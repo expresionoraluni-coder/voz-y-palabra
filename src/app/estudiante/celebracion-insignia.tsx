@@ -48,11 +48,11 @@ export default function CelebracionInsignia({ insignias }: { insignias: Insignia
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
               ¡Nueva insignia! {i.nombre}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-500">{i.descripcion}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{i.descripcion}</p>
           </div>
           <button
             onClick={() => descartar(i.nombre)}
-            className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-300"
             aria-label="Cerrar"
           >
             <X className="size-4" aria-hidden="true" />

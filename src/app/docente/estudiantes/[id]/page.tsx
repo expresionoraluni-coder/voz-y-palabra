@@ -252,7 +252,7 @@ export default async function FichaEstudiante({
                     };
                     if (r.analisisAudio) {
                       return (
-                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                           {r.analisisAudio.duracionSegundos}s de grabación · {r.analisisAudio.numPausas} pausa(s)
                           detectada(s) ({r.analisisAudio.tiempoPausadoSegundos}s en silencio)
                           {r.analisisAudio.consistenciaVolumen != null &&
@@ -262,7 +262,7 @@ export default async function FichaEstudiante({
                     }
                     if (r.analisisTexto) {
                       return (
-                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                           Variedad léxica: {r.analisisTexto.variedadLexica}%
                           {r.analisisTexto.muletillas > 0 && ` · ${r.analisisTexto.muletillas} muletilla(s)`}
                           {r.analisisTexto.conectores > 0 && ` · ${r.analisisTexto.conectores} conector(es)`}

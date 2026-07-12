@@ -107,7 +107,7 @@ export default function RedaccionChecklist({
         />
         <p
           className={`self-end text-xs font-medium ${
-            excedido || muyCorto ? "text-red-600 dark:text-red-400" : "text-slate-400 dark:text-slate-500"
+            excedido || muyCorto ? "text-red-600 dark:text-red-400" : "text-slate-500 dark:text-slate-400"
           }`}
         >
           {palabras} / {contenido.limite_palabras} palabras

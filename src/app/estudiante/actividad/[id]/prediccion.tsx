@@ -80,14 +80,14 @@ export default function Prediccion({
               className={`flex h-8 flex-1 items-center justify-center rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 confianza === n
                   ? "bg-indigo-600 text-white"
-                  : "bg-white text-slate-400 hover:bg-indigo-100 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-indigo-950"
+                  : "bg-white text-slate-500 hover:bg-indigo-100 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-indigo-950"
               }`}
             >
               {n}
             </button>
           ))}
         </div>
-        <div className="flex justify-between text-[11px] text-slate-400 dark:text-slate-500">
+        <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
           <span>Nada seguro</span>
           <span>Muy seguro</span>
         </div>

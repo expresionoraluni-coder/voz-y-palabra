@@ -36,18 +36,15 @@ export default async function ActividadEstudiante({
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
 
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .single();
+  const [{ data: estudiante }, { data: actividad }] = await Promise.all([
+    supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
+    supabase
+      .from("actividades")
+      .select("id, unidad_id, titulo, instrucciones, contenido, tipos_actividad(nombre)")
+      .eq("id", id)
+      .single(),
+  ]);
   if (!estudiante) redirect("/ingreso/estudiante");
-
-  const { data: actividad } = await supabase
-    .from("actividades")
-    .select("id, unidad_id, titulo, instrucciones, contenido, tipos_actividad(nombre)")
-    .eq("id", id)
-    .single();
   if (!actividad) notFound();
 
   const tipo = Array.isArray(actividad.tipos_actividad)
@@ -55,30 +52,31 @@ export default async function ActividadEstudiante({
     : actividad.tipos_actividad;
   const nombreTipo = tipo?.nombre;
 
-  const { data: entregaExistente } = await supabase
-    .from("entregas")
-    .select("respuesta, puntaje_auto")
-    .eq("actividad_id", id)
-    .eq("estudiante_id", estudiante.id)
-    .maybeSingle();
+  const [{ data: entregaExistente }, { data: prediccionExistente }, { data: reflexionExistente }] =
+    await Promise.all([
+      supabase
+        .from("entregas")
+        .select("respuesta, puntaje_auto")
+        .eq("actividad_id", id)
+        .eq("estudiante_id", estudiante.id)
+        .maybeSingle(),
+      supabase
+        .from("reflexiones")
+        .select("texto, confianza")
+        .eq("actividad_id", id)
+        .eq("estudiante_id", estudiante.id)
+        .eq("momento", "prediccion")
+        .maybeSingle(),
+      supabase
+        .from("reflexiones")
+        .select("texto")
+        .eq("actividad_id", id)
+        .eq("estudiante_id", estudiante.id)
+        .eq("momento", "cierre")
+        .maybeSingle(),
+    ]);
 
   const respuesta = entregaExistente?.respuesta;
-
-  const { data: prediccionExistente } = await supabase
-    .from("reflexiones")
-    .select("texto, confianza")
-    .eq("actividad_id", id)
-    .eq("estudiante_id", estudiante.id)
-    .eq("momento", "prediccion")
-    .maybeSingle();
-
-  const { data: reflexionExistente } = await supabase
-    .from("reflexiones")
-    .select("texto")
-    .eq("actividad_id", id)
-    .eq("estudiante_id", estudiante.id)
-    .eq("momento", "cierre")
-    .maybeSingle();
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col gap-6 px-6 py-10">

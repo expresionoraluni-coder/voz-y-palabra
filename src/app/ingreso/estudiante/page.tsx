@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GraduationCap, ArrowLeft, LifeBuoy } from "lucide-react";
+import { GraduationCap, ArrowLeft, LifeBuoy, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
@@ -21,6 +21,7 @@ export default function IngresoEstudiante() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [intentosNipFallidos, setIntentosNipFallidos] = useState(0);
+  const [nipVisible, setNipVisible] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,18 +124,29 @@ export default function IngresoEstudiante() {
           </Field>
           <Field>
             <Label htmlFor="nip">Tu NIP (4 dígitos)</Label>
-            <Input
-              id="nip"
-              required
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]{4}"
-              maxLength={4}
-              value={nip}
-              onChange={(e) => setNip(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              placeholder="••••"
-              autoComplete="off"
-            />
+            <div className="relative">
+              <Input
+                id="nip"
+                required
+                type={nipVisible ? "text" : "password"}
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                value={nip}
+                onChange={(e) => setNip(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="••••"
+                autoComplete="off"
+                className="pr-11"
+              />
+              <button
+                type="button"
+                onClick={() => setNipVisible((v) => !v)}
+                aria-label={nipVisible ? "Ocultar NIP" : "Mostrar NIP"}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                {nipVisible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
+              </button>
+            </div>
             <HelpText>
               La primera vez que entres, este NIP se guarda para que solo tú puedas volver a usar tu
               nombre. Invéntalo y no lo olvides.

@@ -61,7 +61,7 @@ export default async function InsigniasEstudiante() {
                 className={`relative flex size-16 shrink-0 items-center justify-center rounded-full ${
                   obtenida
                     ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/30"
-                    : "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
+                    : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 }`}
               >
                 <Icono className="size-7" aria-hidden="true" />

@@ -137,7 +137,7 @@ export default function GrabacionRubrica({
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
           {contenido.tema_sugerido}
         </p>
-        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Duración sugerida: ~{contenido.duracion_sugerida_segundos} segundos
         </p>
       </div>
@@ -178,7 +178,7 @@ export default function GrabacionRubrica({
           </audio>
         )}
 
-        {analizando && <p className="text-xs text-slate-400 dark:text-slate-500">Analizando tu grabación...</p>}
+        {analizando && <p className="text-xs text-slate-500 dark:text-slate-400">Analizando tu grabación...</p>}
 
         {analisis && (
           <div className="w-full rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/60">
@@ -223,7 +223,7 @@ export default function GrabacionRubrica({
                 ))}
               </div>
             )}
-            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+            <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
               Detectado automáticamente por volumen, sin escuchar ni guardar tu audio. Una pausa breve para
               respirar está bien — muchas pausas largas seguidas suelen indicar que conviene ensayar más.
             </p>
