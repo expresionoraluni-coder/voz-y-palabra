@@ -1,0 +1,38 @@
+import { redirect, notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import ActividadForm from "../../actividad-form";
+
+export default async function EditarActividad({
+  params,
+}: {
+  params: Promise<{ id: string; actividadId: string }>;
+}) {
+  const { id: unidadId, actividadId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/ingreso/profesora");
+
+  const { data: actividad } = await supabase
+    .from("actividades")
+    .select("id, titulo, instrucciones, contenido, tipos_actividad(nombre)")
+    .eq("id", actividadId)
+    .single();
+  if (!actividad) notFound();
+
+  const tipo = Array.isArray(actividad.tipos_actividad) ? actividad.tipos_actividad[0] : actividad.tipos_actividad;
+
+  return (
+    <ActividadForm
+      unidadId={unidadId}
+      actividadInicial={{
+        id: actividad.id,
+        tipoNombre: tipo?.nombre ?? "",
+        titulo: actividad.titulo,
+        instrucciones: actividad.instrucciones ?? "",
+        contenido: (actividad.contenido as Record<string, unknown>) ?? {},
+      }}
+    />
+  );
+}

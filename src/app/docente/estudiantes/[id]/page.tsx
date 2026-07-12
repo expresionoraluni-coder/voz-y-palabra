@@ -1,5 +1,5 @@
 import { redirect, notFound } from "next/navigation";
-import { Award, FileText, NotebookPen, Quote } from "lucide-react";
+import { Award, FileText, MessageSquareText, NotebookPen, Quote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import ComentarioEntrega from "./comentario-entrega";
@@ -80,6 +80,15 @@ export default async function FichaEstudiante({
     .from("bitacora")
     .select("unidad_id, meta, cumplida")
     .eq("estudiante_id", id);
+
+  const idsEntregas = (entregas ?? []).map((en) => en.id);
+  const { data: comentarios } = idsEntregas.length
+    ? await supabase
+        .from("retroalimentacion_docente")
+        .select("entrega_id, comentario, created_at")
+        .in("entrega_id", idsEntregas)
+        .order("created_at", { ascending: false })
+    : { data: [] };
 
   const totalActividades = unidades?.reduce((s, u) => s + u.actividades.length, 0) ?? 0;
   const avanceGeneral = totalActividades > 0 ? Math.round(((entregas?.length ?? 0) / totalActividades) * 100) : 0;
@@ -271,6 +280,22 @@ export default async function FichaEstudiante({
                     }
                     return null;
                   })()}
+                  {comentarios
+                    ?.filter((c) => c.entrega_id === en.id)
+                    .map((c, i) => (
+                      <p
+                        key={i}
+                        className="mt-2 flex items-start gap-1.5 border-t border-slate-100 pt-2 text-sm text-slate-700 dark:border-slate-800 dark:text-slate-300"
+                      >
+                        <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                        <span>
+                          {c.comentario}{" "}
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            ({new Date(c.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short" })})
+                          </span>
+                        </span>
+                      </p>
+                    ))}
                   <ComentarioEntrega
                     entregaId={en.id}
                     pendienteRevision={en.estado === "pendiente_revision"}

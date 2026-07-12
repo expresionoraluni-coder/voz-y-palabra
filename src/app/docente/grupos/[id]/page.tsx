@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ChevronRight, ClipboardCheck, ThumbsUp, TrendingUp, Users } from "lucide-react";
+import { ChevronRight, ClipboardCheck, Minus, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
@@ -136,6 +136,31 @@ export default async function DetalleGrupo({
     .map((x) => ({ nombre: x.nombre, promedio: Math.round(x.suma / x.total), n: x.total }))
     .sort((a, b) => a.promedio - b.promedio);
 
+  // Tendencia de precisión: compara el promedio de puntaje_auto de los
+  // últimos 7 días contra los 7 anteriores — calculado en vivo a partir de
+  // las entregas ya cargadas, sin guardar snapshots ni tabla nueva.
+  const hace7dias = hoy - 7 * 24 * 60 * 60 * 1000;
+  const hace14dias = hoy - 14 * 24 * 60 * 60 * 1000;
+  const promedioPuntaje = (arr: typeof entregas) => {
+    const conPuntaje = (arr ?? []).filter((en) => en.puntaje_auto !== null);
+    return conPuntaje.length > 0
+      ? Math.round(conPuntaje.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / conPuntaje.length)
+      : null;
+  };
+  const precisionSemanaActual = promedioPuntaje(
+    (entregas ?? []).filter((en) => new Date(en.created_at).getTime() >= hace7dias),
+  );
+  const precisionSemanaAnterior = promedioPuntaje(
+    (entregas ?? []).filter((en) => {
+      const t = new Date(en.created_at).getTime();
+      return t >= hace14dias && t < hace7dias;
+    }),
+  );
+  const tendenciaPrecision =
+    precisionSemanaActual !== null && precisionSemanaAnterior !== null
+      ? precisionSemanaActual - precisionSemanaAnterior
+      : null;
+
   // Matriz de confusión por elemento: no solo "clasificación va al 69%",
   // sino "el grupo confunde 'Receptor' con 'Emisor' en 5 entregas" — mismo
   // dato ya guardado en respuesta.elegidas, solo que agregado más fino.
@@ -228,7 +253,23 @@ export default async function DetalleGrupo({
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <nav className="sticky top-0 z-10 -mx-6 flex gap-1 border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+        {[
+          { href: "#resumen", etiqueta: "Resumen" },
+          { href: "#estudiantes", etiqueta: "Estudiantes" },
+          { href: "#contenido", etiqueta: "Contenido" },
+        ].map((t) => (
+          <a
+            key={t.href}
+            href={t.href}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200/60 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50"
+          >
+            {t.etiqueta}
+          </a>
+        ))}
+      </nav>
+
+      <div id="resumen" className="scroll-mt-16 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <MetricCard etiqueta="Avance promedio" valor={`${avancePromedio}%`} icon={TrendingUp} tono="indigo" />
         <MetricCard
           etiqueta="Activos esta semana"
@@ -274,9 +315,34 @@ export default async function DetalleGrupo({
 
       {precisionPorTipo.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Precisión por tipo de actividad
-          </h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+              Precisión por tipo de actividad
+            </h2>
+            {tendenciaPrecision !== null && tendenciaPrecision !== 0 && (
+              <span
+                className={`flex items-center gap-1 text-xs font-medium ${
+                  tendenciaPrecision > 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {tendenciaPrecision > 0 ? (
+                  <TrendingUp className="size-3.5" aria-hidden="true" />
+                ) : (
+                  <TrendingDown className="size-3.5" aria-hidden="true" />
+                )}
+                {tendenciaPrecision > 0 ? "+" : ""}
+                {tendenciaPrecision} pts vs. semana pasada
+              </span>
+            )}
+            {tendenciaPrecision === 0 && (
+              <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <Minus className="size-3.5" aria-hidden="true" />
+                Igual que la semana pasada
+              </span>
+            )}
+          </div>
           <Card className="flex flex-col gap-4 p-5">
             {precisionPorTipo.map((t) => (
               <div key={t.nombre}>
@@ -374,10 +440,12 @@ export default async function DetalleGrupo({
         </section>
       )}
 
-      <Eventos grupoId={grupo.id} unidades={unidades ?? []} eventos={eventos ?? []} />
+      <div id="contenido" className="scroll-mt-16 flex flex-col gap-8">
+        <Eventos grupoId={grupo.id} unidades={unidades ?? []} eventos={eventos ?? []} />
+        <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
+      </div>
 
-      <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
-
+      <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
       <AgregarEstudiantes grupoId={grupo.id} />
 
       <section className="flex flex-col gap-3">
@@ -429,6 +497,7 @@ export default async function DetalleGrupo({
           </div>
         </section>
       )}
+      </div>
     </div>
   );
 }

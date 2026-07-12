@@ -516,3 +516,46 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       de romper el flujo de acceso pesa más que la mejora de percepción
 --       de carga. Si se retoma, probar en un entorno limpio y de forma
 --       aislada antes de confiar en el resultado.
+--
+-- 14. Auditoría global de experiencia de la docente (análisis previo
+--     compartido con el usuario, aprobado completo — "atiende todo"):
+--     - Editor de actividades reutilizable: src/app/docente/unidades/[id]/
+--       actividades/actividad-form.tsx es ahora el único formulario, usado
+--       tanto por .../nueva (insert) como por
+--       .../[actividadId]/editar (update, ruta nueva). El tipo de
+--       actividad no se puede cambiar en modo edición (bloquearía la forma
+--       del contenido guardado). Cada tarjeta de actividad en
+--       docente/unidades/[id] ahora enlaza a editar en vez de ser texto
+--       estático.
+--     - Clasificación y etiquetado_texto: los elementos/fragmentos ya no
+--       se escriben como "texto || categoría" en un textarea — son filas
+--       con un input de texto y un <select> poblado en vivo desde las
+--       categorías/etiquetas ya escritas arriba, con agregar/quitar fila y
+--       un panel de vista previa. Los otros 7 tipos siguen en texto plano
+--       por ahora (rollout incremental, como se propuso en el análisis).
+--     - Borrador en localStorage (solo modo creación, clave
+--       "voz-y-palabra:borrador-actividad:<unidadId>"): se restaura una
+--       vez al montar el formulario y se limpia al guardar con éxito.
+--     - avisos.tsx ahora tiene botón de eliminar (mismo patrón que ya
+--       existía en eventos.tsx).
+--     - docente/estudiantes/[id]: se muestra el historial de
+--       retroalimentacion_docente debajo de cada entrega — antes se
+--       guardaba pero nunca se volvía a leer en ningún lado.
+--     - docente/grupos/[id]: barra de pestañas pegajosa (Resumen ·
+--       Estudiantes · Contenido) con anclas a las secciones existentes —
+--       no se partió la página, solo se agregó navegación interna.
+--     - docente/dashboard: cada tarjeta de grupo muestra un badge de
+--       "N por revisar" (cuenta agregada de entregas pendientes),
+--       calculado en el mismo query, sin tabla nueva.
+--     - Tendencia de precisión sin infraestructura nueva: se compara el
+--       promedio de puntaje_auto de los últimos 7 días contra los 7
+--       anteriores, calculado en vivo a partir de las entregas ya
+--       cargadas (no hay snapshots guardados) — se muestra como flecha
+--       junto a "Precisión por tipo de actividad" en la página de grupo.
+--     - Verificado en vivo con docente y grupo de prueba aislados: crear
+--       una actividad de clasificación con la nueva UI de filas guardó el
+--       JSON exacto que esperan las demás pantallas; editarla y cambiar el
+--       título persistió correctamente; el badge "por revisar" reflejó una
+--       entrega de prueba; un comentario guardado se mostró después de
+--       recargar la página; un aviso se creó y se borró correctamente; el
+--       borrador de localStorage sobrevivió una recarga completa.

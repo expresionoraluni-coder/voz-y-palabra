@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpen, ChevronRight, Plus, Users } from "lucide-react";
+import { BookOpen, ChevronRight, ClipboardCheck, Plus, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
 import { CardLink } from "@/components/ui/card";
+import Badge from "@/components/ui/badge";
 import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import { temaUnidad } from "@/lib/unidad-tema";
@@ -36,6 +37,18 @@ export default async function DashboardDocente() {
     .from("unidades")
     .select("id, nombre, orden, reto_comunicativo")
     .order("orden");
+
+  const { data: entregasPorRevisar } = await supabase
+    .from("entregas")
+    .select("estudiantes(grupo_id)")
+    .eq("estado", "pendiente_revision");
+
+  const porRevisarPorGrupo = new Map<string, number>();
+  for (const en of entregasPorRevisar ?? []) {
+    const est = Array.isArray(en.estudiantes) ? en.estudiantes[0] : en.estudiantes;
+    if (!est?.grupo_id) continue;
+    porRevisarPorGrupo.set(est.grupo_id, (porRevisarPorGrupo.get(est.grupo_id) ?? 0) + 1);
+  }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -80,6 +93,12 @@ export default async function DashboardDocente() {
                       {Array.isArray(g.estudiantes) ? g.estudiantes[0]?.count ?? 0 : 0} estudiantes
                     </p>
                   </div>
+                  {(porRevisarPorGrupo.get(g.id) ?? 0) > 0 && (
+                    <Badge tono="warning">
+                      <ClipboardCheck className="size-3" aria-hidden="true" />
+                      {porRevisarPorGrupo.get(g.id)} por revisar
+                    </Badge>
+                  )}
                   <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                 </CardLink>
               </Link>
