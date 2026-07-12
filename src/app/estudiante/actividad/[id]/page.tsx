@@ -96,7 +96,9 @@ export default async function ActividadEstudiante({
         <OpcionJustificacion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={actividad.contenido as { pregunta: string; opciones: string[] }}
+          contenido={
+            actividad.contenido as { pregunta: string; opciones: string[]; ideas_clave?: string[] }
+          }
           respuestaPrevia={respuesta as { opcion: string; justificacion: string } | undefined}
         />
       )}
@@ -117,7 +119,14 @@ export default async function ActividadEstudiante({
         <EncontrarCorregir
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={actividad.contenido as { texto_original: string; pista: string | null }}
+          contenido={
+            actividad.contenido as {
+              texto_original: string;
+              pista: string | null;
+              fragmento_erroneo?: string;
+              ideas_clave?: string[];
+            }
+          }
           respuestaPrevia={
             respuesta as { que_encontraste: string; version_corregida: string } | undefined
           }

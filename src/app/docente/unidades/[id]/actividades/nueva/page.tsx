@@ -60,6 +60,7 @@ export default function NuevaActividad({
   // opcion_justificacion
   const [pregunta, setPregunta] = useState("");
   const [opciones, setOpciones] = useState("");
+  const [ideasClave, setIdeasClave] = useState("");
 
   // clasificacion
   const [categorias, setCategorias] = useState("");
@@ -68,6 +69,8 @@ export default function NuevaActividad({
   // encontrar_corregir
   const [textoOriginal, setTextoOriginal] = useState("");
   const [pista, setPista] = useState("");
+  const [fragmentoErroneo, setFragmentoErroneo] = useState("");
+  const [ideasClaveError, setIdeasClaveError] = useState("");
 
   // comparador
   const [conceptos, setConceptos] = useState("");
@@ -128,7 +131,15 @@ export default function NuevaActividad({
         setError("Escribe al menos 2 opciones, una por línea.");
         return;
       }
-      contenido = { pregunta, opciones: listaOpciones };
+      const listaIdeasClave = ideasClave
+        .split("\n")
+        .map((i) => i.trim())
+        .filter((i) => i.length > 0);
+      contenido = {
+        pregunta,
+        opciones: listaOpciones,
+        ideas_clave: listaIdeasClave.length > 0 ? listaIdeasClave : undefined,
+      };
     } else if (nombreTipo === "clasificacion") {
       const listaCategorias = categorias
         .split("\n")
@@ -162,7 +173,16 @@ export default function NuevaActividad({
         setError("Escribe el texto que contiene el error.");
         return;
       }
-      contenido = { texto_original: textoOriginal, pista: pista || null };
+      const listaIdeasClaveError = ideasClaveError
+        .split("\n")
+        .map((i) => i.trim())
+        .filter((i) => i.length > 0);
+      contenido = {
+        texto_original: textoOriginal,
+        pista: pista || null,
+        fragmento_erroneo: fragmentoErroneo.trim() || undefined,
+        ideas_clave: listaIdeasClaveError.length > 0 ? listaIdeasClaveError : undefined,
+      };
     } else if (nombreTipo === "comparador") {
       const listaConceptos = conceptos
         .split("\n")
@@ -371,6 +391,23 @@ export default function NuevaActividad({
                     className="font-mono text-sm"
                   />
                 </Field>
+                <Field>
+                  <Label htmlFor="ideasClave">
+                    Ideas clave esperadas en la justificación (opcional, una por línea)
+                  </Label>
+                  <Textarea
+                    id="ideasClave"
+                    value={ideasClave}
+                    onChange={(e) => setIdeasClave(e.target.value)}
+                    rows={3}
+                    placeholder={"terminología\nespecializado\nformal"}
+                    className="font-mono text-sm"
+                  />
+                  <HelpText>
+                    Mientras el estudiante escribe, le avisamos si su justificación menciona estas ideas —
+                    no bloquea el envío, solo lo invita a ampliar.
+                  </HelpText>
+                </Field>
               </>
             )}
 
@@ -420,6 +457,36 @@ export default function NuevaActividad({
                 <Field>
                   <Label htmlFor="pista">Pista (opcional, se muestra si el estudiante la pide)</Label>
                   <Input id="pista" value={pista} onChange={(e) => setPista(e.target.value)} />
+                </Field>
+                <Field>
+                  <Label htmlFor="fragmentoErroneo">
+                    Fragmento exacto con el error (opcional — solo si el error es puntual, ej. una palabra
+                    mal escrita)
+                  </Label>
+                  <Input
+                    id="fragmentoErroneo"
+                    value={fragmentoErroneo}
+                    onChange={(e) => setFragmentoErroneo(e.target.value)}
+                    placeholder="ej. aiga"
+                  />
+                  <HelpText>
+                    Le avisamos al estudiante si "qué encontraste" menciona este fragmento — no bloquea el
+                    envío, solo confirma que va por buen camino.
+                  </HelpText>
+                </Field>
+                <Field>
+                  <Label htmlFor="ideasClaveError">
+                    Ideas clave esperadas (opcional — úsalo en vez del fragmento si el error es de
+                    estructura/coherencia, no una palabra puntual)
+                  </Label>
+                  <Textarea
+                    id="ideasClaveError"
+                    value={ideasClaveError}
+                    onChange={(e) => setIdeasClaveError(e.target.value)}
+                    rows={2}
+                    placeholder={"tema\nrelación\ndistintos"}
+                    className="font-mono text-sm"
+                  />
                 </Field>
               </>
             )}

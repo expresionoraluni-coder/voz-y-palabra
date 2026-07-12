@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lightbulb } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { ideasClaveMencionadas } from "@/lib/ideas-clave";
 
 function normalizar(texto: string) {
   return texto.trim().toLowerCase().replace(/\s+/g, " ");
@@ -23,7 +24,7 @@ export default function EncontrarCorregir({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { texto_original: string; pista: string | null };
+  contenido: { texto_original: string; pista: string | null; fragmento_erroneo?: string; ideas_clave?: string[] };
   respuestaPrevia?: { que_encontraste: string; version_corregida: string };
 }) {
   const router = useRouter();
@@ -37,6 +38,14 @@ export default function EncontrarCorregir({
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const mencionaFragmento = contenido.fragmento_erroneo
+    ? normalizar(queEncontraste).includes(normalizar(contenido.fragmento_erroneo))
+    : null;
+  const ideasMencionadas = useMemo(
+    () => ideasClaveMencionadas(queEncontraste, contenido.ideas_clave ?? []),
+    [queEncontraste, contenido.ideas_clave],
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,6 +121,31 @@ export default function EncontrarCorregir({
           rows={2}
         />
       </Field>
+      {contarPalabras(queEncontraste) >= 4 && mencionaFragmento !== null && (
+        <p
+          className={`flex items-start gap-1.5 text-xs ${
+            mencionaFragmento
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-amber-600 dark:text-amber-400"
+          }`}
+        >
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          {mencionaFragmento
+            ? "Señalas el fragmento que marcamos como el error."
+            : "No vemos que menciones el fragmento específico con el error — revisa de nuevo."}
+        </p>
+      )}
+      {contarPalabras(queEncontraste) >= 4 &&
+        mencionaFragmento === null &&
+        contenido.ideas_clave &&
+        contenido.ideas_clave.length > 0 && (
+          <p className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
+            <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
+            {ideasMencionadas.length === 0
+              ? "Aún no mencionas ninguna de las ideas que esperábamos — ¿qué más notaste?"
+              : `Mencionas ${ideasMencionadas.length} de ${contenido.ideas_clave.length} ideas que esperábamos.`}
+          </p>
+        )}
 
       <Field>
         <Label htmlFor="version-corregida">Tu versión corregida</Label>

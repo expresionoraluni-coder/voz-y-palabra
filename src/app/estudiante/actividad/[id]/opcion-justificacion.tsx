@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, Lightbulb } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { ideasClaveMencionadas } from "@/lib/ideas-clave";
 
 function contarPalabras(texto: string) {
   return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
@@ -19,7 +20,7 @@ export default function OpcionJustificacion({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { pregunta: string; opciones: string[] };
+  contenido: { pregunta: string; opciones: string[]; ideas_clave?: string[] };
   respuestaPrevia?: { opcion: string; justificacion: string };
 }) {
   const router = useRouter();
@@ -30,6 +31,11 @@ export default function OpcionJustificacion({
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ideasMencionadas = useMemo(
+    () => ideasClaveMencionadas(justificacion, contenido.ideas_clave ?? []),
+    [justificacion, contenido.ideas_clave],
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,6 +119,14 @@ export default function OpcionJustificacion({
           rows={3}
         />
       </Field>
+      {contenido.ideas_clave && contenido.ideas_clave.length > 0 && contarPalabras(justificacion) >= 4 && (
+        <p className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
+          {ideasMencionadas.length === 0
+            ? "Aún no mencionas ninguna de las ideas que esperábamos en tu justificación — ¿qué más notaste?"
+            : `Mencionas ${ideasMencionadas.length} de ${contenido.ideas_clave.length} ideas que esperábamos.`}
+        </p>
+      )}
       {error && <ErrorText>{error}</ErrorText>}
       {guardado && (
         <p className="text-sm text-emerald-600 dark:text-emerald-400">

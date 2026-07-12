@@ -382,3 +382,31 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     indicándole que le pida a su profesora que reinicie su NIP desde su
 --     ficha (botón "Reiniciar NIP", ya existente). Es un contador del lado
 --     del cliente, no un bloqueo — no impide seguir intentando.
+--
+-- 11. Actividades más útiles, sin IA (análisis completo compartido con el
+--     usuario antes de implementar):
+--     - Bloqueos anti-payasada (impiden entregar, no solo avisan):
+--       redaccion_checklist exige un mínimo de palabras (mitad del límite,
+--       piso de 15); encontrar_corregir bloquea si la corrección es igual
+--       al texto original y exige detalle mínimo en "qué encontraste";
+--       grabacion_rubrica exige ≥8s de grabación; comparador y
+--       constructor_ramificado exigen mínimo de palabras por campo y
+--       bloquean si dos campos que deberían contrastar son casi idénticos
+--       (similitud de Jaccard sobre palabras de 3+ letras, ver
+--       src/lib/similitud-texto.ts); opcion_justificacion exige mínimo de
+--       palabras en la justificación.
+--     - Ideas clave / fragmento marcado (avisos suaves, no bloquean):
+--       opcion_justificacion y encontrar_corregir aceptan un campo opcional
+--       en `contenido` — ideas_clave (string[], comparación por palabra
+--       clave insensible a acentos, ver src/lib/ideas-clave.ts) y,
+--       exclusivo de encontrar_corregir, fragmento_erroneo (string, para
+--       errores puntuales en vez de estructurales). Las 5 actividades
+--       existentes de estos dos tipos ya tienen ideas_clave rellenado
+--       directo en producción (el usuario autorizó completar esto sin
+--       pedírselo a la docente).
+--     - Pendiente del análisis original, no implementado todavía: matriz
+--       de confusión por elemento en clasificacion/etiquetado_texto,
+--       overlap de vocabulario con el texto_fuente en redaccion_checklist,
+--       varianza de volumen en grabacion_rubrica, calendario de repaso
+--       espaciado, y calibración de confianza por actividad (no solo por
+--       unidad).
