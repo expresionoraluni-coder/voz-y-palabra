@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
 import Eventos from "./eventos";
+import EliminarGrupo from "./eliminar-grupo";
+import ExportarGrupo from "./exportar-grupo";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import MetricCard from "@/components/ui/metric-card";
@@ -449,9 +451,14 @@ export default async function DetalleGrupo({
       <AgregarEstudiantes grupoId={grupo.id} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-          Estudiantes ({estudiantes?.length ?? 0})
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            Estudiantes ({estudiantes?.length ?? 0})
+          </h2>
+          {estudiantes && estudiantes.length > 0 && (
+            <ExportarGrupo nombreGrupo={grupo.nombre} estudiantes={porEstudiante} />
+          )}
+        </div>
         {!estudiantes || estudiantes.length === 0 ? (
           <EmptyState icon={Users} titulo="Todavía no hay estudiantes en este grupo" />
         ) : (
@@ -497,6 +504,15 @@ export default async function DetalleGrupo({
           </div>
         </section>
       )}
+
+      <section className="flex flex-col gap-3 border-t border-slate-200 pt-6 dark:border-slate-800">
+        <h2 className="text-sm font-medium text-slate-500 dark:text-slate-500">Zona de riesgo</h2>
+        <EliminarGrupo
+          grupoId={grupo.id}
+          nombreGrupo={grupo.nombre}
+          totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
+        />
+      </section>
       </div>
     </div>
   );

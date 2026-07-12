@@ -68,6 +68,28 @@ function claveBorrador(unidadId: string) {
   return `voz-y-palabra:borrador-actividad:${unidadId}`;
 }
 
+/**
+ * Un salto de línea de más (pegar desde Word, un Enter por accidente) parte
+ * un elemento en dos sin avisar. Mostrar cada línea detectada como chip
+ * hace ese error visible antes de guardar, en vez de descubrirlo después.
+ */
+function ContadorLineas({ texto, singular, plural }: { texto: string; singular: string; plural: string }) {
+  const items = lineas(texto);
+  if (items.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+      <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
+        {items.length} {items.length === 1 ? singular : plural}:
+      </span>
+      {items.map((item, i) => (
+        <Badge key={i} tono="neutral">
+          {item}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
 export default function ActividadForm({
   unidadId,
   actividadInicial,
@@ -553,6 +575,7 @@ export default function ActividadForm({
                     placeholder={"Nivel coloquial\nNivel técnico-científico\nNivel literario"}
                     className="font-mono text-sm"
                   />
+                  <ContadorLineas texto={opciones} singular="opción" plural="opciones" />
                 </Field>
                 <Field>
                   <Label htmlFor="ideasClave">
@@ -587,6 +610,7 @@ export default function ActividadForm({
                     placeholder={"Emisor\nReceptor\nMensaje"}
                     className="font-mono text-sm"
                   />
+                  <ContadorLineas texto={categorias} singular="categoría" plural="categorías" />
                 </Field>
                 <Field>
                   <Label>Elementos a clasificar</Label>
@@ -662,6 +686,7 @@ export default function ActividadForm({
                     placeholder={"Comunicación\nLenguaje\nLengua\nHabla"}
                     className="font-mono text-sm"
                   />
+                  <ContadorLineas texto={conceptos} singular="concepto" plural="conceptos" />
                 </Field>
                 <Field>
                   <Label htmlFor="criterios">Criterios de comparación (uno por línea)</Label>
@@ -674,6 +699,7 @@ export default function ActividadForm({
                     placeholder={"¿Es exclusivo del ser humano?\n¿Es individual o social?"}
                     className="font-mono text-sm"
                   />
+                  <ContadorLineas texto={criterios} singular="criterio" plural="criterios" />
                 </Field>
               </>
             )}
@@ -711,6 +737,7 @@ export default function ActividadForm({
                     placeholder={"Conservé la idea central\nEliminé ejemplos secundarios\nUsé mis propias palabras"}
                     className="font-mono text-sm"
                   />
+                  <ContadorLineas texto={checklist} singular="punto" plural="puntos" />
                 </Field>
               </>
             )}
@@ -732,6 +759,7 @@ export default function ActividadForm({
                     placeholder={"Caló\nJerga\nRegionalismo\nModismo"}
                     className="font-mono text-sm"
                   />
+                  <ContadorLineas texto={etiquetas} singular="etiqueta" plural="etiquetas" />
                 </Field>
                 <Field>
                   <Label>Fragmentos a etiquetar</Label>
@@ -807,6 +835,7 @@ export default function ActividadForm({
                     placeholder={"Claridad\nRitmo\nMuletillas\nVolumen"}
                     className="font-mono text-sm"
                   />
+                  <ContadorLineas texto={rubrica} singular="criterio" plural="criterios" />
                 </Field>
               </>
             )}

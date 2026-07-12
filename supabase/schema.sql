@@ -559,3 +559,35 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       entrega de prueba; un comentario guardado se mostró después de
 --       recargar la página; un aviso se creó y se borró correctamente; el
 --       borrador de localStorage sobrevivió una recarga completa.
+--
+-- 15. A pedido directo del usuario (no parte del análisis anterior):
+--     - Eliminar grupo: nuevo componente eliminar-grupo.tsx en la "Zona de
+--       riesgo" al fondo de la página de grupo — pide escribir el nombre
+--       exacto del grupo para habilitar el botón (mismo nivel de fricción
+--       que borrar un repositorio en GitHub). Se verificó primero que las
+--       3 foreign keys que apuntan a grupos.id (estudiantes, avisos,
+--       eventos) ya tenían ON DELETE CASCADE, y que desde estudiantes
+--       cascada correctamente a entregas/reflexiones/autoevaluaciones_
+--       confianza/insignias_otorgadas/bitácora — un solo DELETE FROM
+--       grupos limpia todo sin dejar filas huérfanas. Verificado en vivo
+--       con un grupo y estudiante de prueba: ambos desaparecieron tras
+--       confirmar.
+--     - Exportar a Excel: exportar-grupo.tsx genera un CSV en el navegador
+--       (Blob + descarga), sin librería nueva ni round-trip al servidor —
+--       Excel abre CSV de forma nativa. Se eligió CSV sobre .xlsx real
+--       para no agregar una dependencia por un caso de uso que no
+--       necesita múltiples hojas ni formato. Columnas: nombre, avance %,
+--       entregas, última actividad, días sin actividad — el mismo dato
+--       que ya se calcula para la lista de estudiantes de la página,
+--       reutilizado tal cual. Incluye BOM UTF-8 para que los acentos no
+--       se rompan al abrir en Excel. Verificado en vivo: el CSV generado
+--       tiene el encabezado y la fila esperados.
+--     - Vista previa de conteo en campos "una por línea": la docente
+--       reportó que un salto de línea accidental (pegar desde Word, un
+--       Enter de más) parte un elemento en dos sin ningún aviso. Se
+--       agregó ContadorLineas en actividad-form.tsx — una fila de chips
+--       en vivo debajo de opciones/categorías/conceptos/criterios/
+--       checklist/etiquetas/rúbrica mostrando exactamente cuántos
+--       elementos se detectaron y cuáles son. Verificado en vivo pegando
+--       "Segunda opción partida\npor accidente" — el contador mostró 4
+--       chips en vez de 3, haciendo visible el error antes de guardar.
