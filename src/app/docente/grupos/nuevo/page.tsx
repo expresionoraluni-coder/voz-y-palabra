@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { generarCodigoAcceso } from "@/lib/codigo-acceso";
+import { mensajeError } from "@/lib/mensaje-error";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
@@ -46,7 +47,7 @@ export default function NuevoGrupo() {
       .single();
 
     if (insertError || !data) {
-      setError(insertError?.message ?? "No pudimos crear el grupo.");
+      setError(mensajeError(insertError, { "23505": "Ese código de grupo ya existe, intenta de nuevo." }));
       setCargando(false);
       return;
     }

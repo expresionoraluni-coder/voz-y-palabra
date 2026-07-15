@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, Square, ShieldCheck, Timer, Waves, AudioLines } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { analizarAudio, AnalisisAudio } from "@/lib/analisis-audio";
@@ -121,7 +122,7 @@ export default function GrabacionRubrica({
     );
 
     if (upsertError) {
-      setError(upsertError.message);
+      setError(mensajeError(upsertError));
       setCargando(false);
       return;
     }

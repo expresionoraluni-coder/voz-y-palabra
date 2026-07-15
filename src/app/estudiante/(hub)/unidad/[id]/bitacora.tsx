@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, NotebookPen } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -37,7 +38,7 @@ export default function Bitacora({
       { onConflict: "estudiante_id,unidad_id" },
     );
     if (upsertError) {
-      setError(upsertError.message);
+      setError(mensajeError(upsertError));
       setCargando(false);
       return;
     }

@@ -93,13 +93,22 @@ export default function IngresoEstudiante() {
 
     if (rpcError) {
       setError(rpcError.message);
-      setIntentosNipFallidos((n) => (rpcError.message === NIP_INCORRECTO ? n + 1 : n));
       setCargando(false);
       return;
     }
 
-    const nipNuevo = resultado?.[0]?.nip_nuevo;
-    router.push(nipNuevo ? "/estudiante/inicio?nip=nuevo" : "/estudiante/inicio");
+    // NIP incorrecto y "ya bloqueado" ya no llegan como rpcError: la función
+    // los devuelve como dato para que el contador de intentos fallidos sí
+    // quede guardado (una excepción deshace todo lo hecho en esa llamada).
+    const fila = resultado?.[0];
+    if (fila?.error) {
+      setError(fila.error);
+      setIntentosNipFallidos((n) => (fila.error === NIP_INCORRECTO ? n + 1 : n));
+      setCargando(false);
+      return;
+    }
+
+    router.push(fila?.nip_nuevo ? "/estudiante/inicio?nip=nuevo" : "/estudiante/inicio");
     router.refresh();
   }
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
@@ -60,7 +61,7 @@ export default function Clasificacion({
     );
 
     if (upsertError) {
-      setError(upsertError.message);
+      setError(mensajeError(upsertError));
       setCargando(false);
       return;
     }

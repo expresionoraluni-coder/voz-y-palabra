@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Lightbulb, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
@@ -56,7 +57,7 @@ export default function Reflexion({
     );
 
     if (upsertError) {
-      setError(upsertError.message);
+      setError(mensajeError(upsertError));
       setCargando(false);
       return;
     }

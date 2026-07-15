@@ -45,13 +45,23 @@ export default function VerificarDocente() {
     setCargando(true);
 
     const supabase = createClient();
-    const { error: rpcError } = await supabase.rpc("crear_perfil_docente", {
+    const { data: mensajeError, error: rpcError } = await supabase.rpc("crear_perfil_docente", {
       p_nombre: nombre,
       p_codigo_invitacion: codigoInvitacion,
     });
 
     if (rpcError) {
       setError(rpcError.message);
+      setCargando(false);
+      return;
+    }
+
+    // Código incorrecto y "ya bloqueado" ya no llegan como rpcError: la
+    // función los devuelve como texto para que el contador de intentos
+    // fallidos sí quede guardado (una excepción deshace todo lo hecho en
+    // esa llamada, incluido el conteo).
+    if (mensajeError) {
+      setError(mensajeError);
       setCargando(false);
       return;
     }

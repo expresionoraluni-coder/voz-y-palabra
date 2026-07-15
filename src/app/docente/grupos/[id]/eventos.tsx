@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -55,7 +56,7 @@ export default function Eventos({
       .from("eventos")
       .insert({ docente_id: user.id, grupo_id: grupoId, unidad_id: unidadId, titulo, tipo, fecha });
     if (insertError) {
-      setError(insertError.message);
+      setError(mensajeError(insertError));
       setCargando(false);
       return;
     }

@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui/field";
@@ -391,7 +392,7 @@ export default function ActividadForm({
         .update({ titulo, instrucciones, contenido })
         .eq("id", actividadInicial!.id);
       if (updateError) {
-        setError(updateError.message);
+        setError(mensajeError(updateError));
         setCargando(false);
         return;
       }
@@ -410,7 +411,7 @@ export default function ActividadForm({
         orden: (count ?? 0) + 1,
       });
       if (insertError) {
-        setError(insertError.message);
+        setError(mensajeError(insertError));
         setCargando(false);
         return;
       }

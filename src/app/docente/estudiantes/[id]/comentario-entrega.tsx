@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCirclePlus, ThumbsUp, TrendingUp, LifeBuoy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
@@ -68,7 +69,7 @@ export default function ComentarioEntrega({
         .from("retroalimentacion_docente")
         .insert({ entrega_id: entregaId, docente_id: user.id, comentario });
       if (comentarioError) {
-        setError(comentarioError.message);
+        setError(mensajeError(comentarioError));
         setCargando(false);
         return;
       }
@@ -78,7 +79,7 @@ export default function ComentarioEntrega({
     if (pendienteRevision) cambios.estado = "revisada";
     const { error: entregaError } = await supabase.from("entregas").update(cambios).eq("id", entregaId);
     if (entregaError) {
-      setError(entregaError.message);
+      setError(mensajeError(entregaError));
       setCargando(false);
       return;
     }

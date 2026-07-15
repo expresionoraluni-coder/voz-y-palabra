@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -51,7 +52,7 @@ export default function Avisos({
       .from("avisos")
       .insert({ docente_id: user.id, grupo_id: grupoId, titulo, mensaje });
     if (insertError) {
-      setError(insertError.message);
+      setError(mensajeError(insertError));
       setCargando(false);
       return;
     }

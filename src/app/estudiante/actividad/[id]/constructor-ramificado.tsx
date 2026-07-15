@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Field, Label, Input, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { similitudTexto } from "@/lib/similitud-texto";
@@ -72,7 +73,7 @@ export default function ConstructorRamificado({
     );
 
     if (upsertError) {
-      setError(upsertError.message);
+      setError(mensajeError(upsertError));
       setCargando(false);
       return;
     }

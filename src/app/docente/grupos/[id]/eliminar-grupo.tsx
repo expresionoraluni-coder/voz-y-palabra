@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Input, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -29,7 +30,7 @@ export default function EliminarGrupo({
     const supabase = createClient();
     const { error: delError } = await supabase.from("grupos").delete().eq("id", grupoId);
     if (delError) {
-      setError(delError.message);
+      setError(mensajeError(delError));
       setCargando(false);
       return;
     }

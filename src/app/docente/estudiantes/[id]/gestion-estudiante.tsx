@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, UserCheck, UserX } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import Boton from "@/components/ui/button";
 import { ErrorText } from "@/components/ui/field";
 
@@ -32,7 +33,7 @@ export default function GestionEstudiante({
       .update({ activo: false })
       .eq("id", estudianteId);
     if (updError) {
-      setError(updError.message);
+      setError(mensajeError(updError));
       setCargando(false);
       return;
     }
@@ -50,7 +51,7 @@ export default function GestionEstudiante({
       .update({ activo: true })
       .eq("id", estudianteId);
     if (updError) {
-      setError(updError.message);
+      setError(mensajeError(updError));
       setCargando(false);
       return;
     }
@@ -64,7 +65,7 @@ export default function GestionEstudiante({
     const supabase = createClient();
     const { error: delError } = await supabase.from("estudiantes").delete().eq("id", estudianteId);
     if (delError) {
-      setError(delError.message);
+      setError(mensajeError(delError));
       setCargando(false);
       return;
     }

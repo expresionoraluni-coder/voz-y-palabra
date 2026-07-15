@@ -103,7 +103,7 @@ export default function IngresoProfesora() {
             {modo === "crear" && (
               <HelpText>
                 Después de crear tu cuenta te pediremos tu nombre y el código de invitación de
-                profesoras del piloto.
+                profesoras del piloto. Usa al menos 8 caracteres.
               </HelpText>
             )}
             <Field>
@@ -123,7 +123,7 @@ export default function IngresoProfesora() {
                 id="contrasena"
                 required
                 type="password"
-                minLength={6}
+                minLength={8}
                 value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
                 autoComplete={modo === "entrar" ? "current-password" : "new-password"}
@@ -136,7 +136,7 @@ export default function IngresoProfesora() {
                   id="contrasenaConfirmar"
                   required
                   type="password"
-                  minLength={6}
+                  minLength={8}
                   value={contrasenaConfirmar}
                   onChange={(e) => setContrasenaConfirmar(e.target.value)}
                   autoComplete="new-password"

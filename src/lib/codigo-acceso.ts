@@ -8,9 +8,11 @@ export function generarCodigoAcceso(nombreGrupo: string): string {
     .slice(0, 6)
     .toUpperCase() || "GRUPO";
 
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
   let sufijo = "";
   for (let i = 0; i < 4; i++) {
-    sufijo += ALFABETO[Math.floor(Math.random() * ALFABETO.length)];
+    sufijo += ALFABETO[bytes[i] % ALFABETO.length];
   }
 
   return `${prefijo}-${sufijo}`;

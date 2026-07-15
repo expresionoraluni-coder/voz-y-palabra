@@ -8,6 +8,16 @@ import { Card } from "@/components/ui/card";
 import { Field, Label, Textarea, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
+function parsearFila(linea: string): { nombre: string; boleta: string } | null {
+  // Excel pega columnas separadas por tabulador; si alguien escribe a mano,
+  // aceptamos coma como alternativa.
+  const partes = linea.includes("\t") ? linea.split("\t") : linea.split(",");
+  const nombre = (partes[0] ?? "").trim();
+  const boleta = (partes[1] ?? "").trim();
+  if (!nombre) return null;
+  return { nombre, boleta };
+}
+
 export default function AgregarEstudiantes({ grupoId }: { grupoId: string }) {
   const router = useRouter();
   const [nombres, setNombres] = useState("");
@@ -22,24 +32,30 @@ export default function AgregarEstudiantes({ grupoId }: { grupoId: string }) {
 
     const lista = nombres
       .split("\n")
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0);
+      .map(parsearFila)
+      .filter((f): f is { nombre: string; boleta: string } => f !== null);
 
     if (lista.length === 0) return;
+
+    const sinBoleta = lista.find((f) => f.boleta.length < 4);
+    if (sinBoleta) {
+      setError(`Falta la boleta de "${sinBoleta.nombre}" (mínimo 4 dígitos) — su NIP inicial se genera de ahí.`);
+      return;
+    }
 
     setCargando(true);
     const supabase = createClient();
 
-    const { data, error: insertError } = await supabase
-      .from("estudiantes")
-      .insert(lista.map((nombre) => ({ nombre, grupo_id: grupoId })))
-      .select();
+    const { data, error: rpcError } = await supabase.rpc("agregar_estudiantes_con_boleta", {
+      p_grupo_id: grupoId,
+      p_estudiantes: lista,
+    });
 
-    if (insertError) {
+    if (rpcError) {
       setError(
-        insertError.code === "23505"
-          ? "Uno o más nombres ya están en este grupo (no se permiten nombres repetidos)."
-          : insertError.message,
+        rpcError.message.includes("duplicate key")
+          ? "Uno o más nombres o boletas ya están en este grupo (no se permiten repetidos)."
+          : rpcError.message,
       );
       setCargando(false);
       return;
@@ -59,16 +75,20 @@ export default function AgregarEstudiantes({ grupoId }: { grupoId: string }) {
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <Field>
-          <Label htmlFor="nombres">Un nombre por línea</Label>
+          <Label htmlFor="nombres">Nombre y boleta, uno por línea</Label>
           <Textarea
             id="nombres"
             value={nombres}
             onChange={(e) => setNombres(e.target.value)}
             rows={5}
-            placeholder={"Ana Torres\nLuis Martínez\nSofía Ramírez"}
+            placeholder={"Ana Torres, 20260001\nLuis Martínez, 20260002\nSofía Ramírez, 20260003"}
             className="font-mono"
           />
-          <HelpText>Puedes pegar una columna completa copiada desde Excel.</HelpText>
+          <HelpText>
+            Puedes pegar dos columnas completas copiadas desde Excel (nombre y boleta). Su NIP inicial
+            serán los últimos 4 dígitos de la boleta — se lo puedes decir así el primer día, y ellos lo
+            pueden cambiar si lo olvidan pidiéndote que se los reinicies.
+          </HelpText>
         </Field>
         {error && <ErrorText>{error}</ErrorText>}
         {agregados !== null && (

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Gauge, Minus, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -31,7 +32,7 @@ export default function Confianza({
       { onConflict: "estudiante_id,unidad_id,momento" },
     );
     if (upsertError) {
-      setError(upsertError.message);
+      setError(mensajeError(upsertError));
       setCargando(false);
       return;
     }
