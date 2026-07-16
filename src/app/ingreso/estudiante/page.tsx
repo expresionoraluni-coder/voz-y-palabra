@@ -187,9 +187,9 @@ export default function IngresoEstudiante() {
               </button>
             </div>
             <HelpText>
-              {primeraVez === false
-                ? "Es el NIP que ya tienes guardado — si tu profesora te dio de alta con tu boleta, son los últimos 4 dígitos. Te vamos a pedir que lo cambies por uno propio en cuanto entres."
-                : "La primera vez que entres, este NIP se guarda para que solo tú puedas volver a usar tu nombre. Invéntalo y no lo olvides."}
+              {primeraVez === true
+                ? "La primera vez que entres, este NIP se guarda para que solo tú puedas volver a usar tu nombre. Invéntalo y no lo olvides."
+                : "Es tu boleta escolar (los últimos 4 dígitos). En cuanto entres te vamos a pedir que lo cambies por uno propio."}
             </HelpText>
           </Field>
           {primeraVez && (
