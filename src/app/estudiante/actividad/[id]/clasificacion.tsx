@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
@@ -21,20 +19,27 @@ export default function Clasificacion({
   contenido: { categorias: string[]; elementos: Elemento[] };
   respuestaPrevia?: { elegidas: string[] };
 }) {
-  const router = useRouter();
+  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
   const [elegidas, setElegidas] = useState<string[]>(
     respuestaPrevia?.elegidas ?? contenido.elementos.map(() => ""),
   );
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<boolean[] | null>(null);
+  // Si ya había una entrega previa, se muestra directo como calificada — si
+  // no, alguien podría ver "Era: X" y reenviar corregido para sacar 100%.
+  const [resultado, setResultado] = useState<boolean[] | null>(
+    respuestaPrevia
+      ? contenido.elementos.map((el, i) => el.categoria_correcta === respuestaPrevia.elegidas[i])
+      : null,
+  );
+  const bloqueado = resultado !== null;
 
   function actualizar(indice: number, valor: string) {
+    if (bloqueado) return;
     setElegidas((prev) => prev.map((v, i) => (i === indice ? valor : v)));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (bloqueado) return;
     setError(null);
 
     if (elegidas.some((v) => !v)) {
@@ -47,28 +52,12 @@ export default function Clasificacion({
       (aciertos.filter(Boolean).length / contenido.elementos.length) * 100,
     );
 
-    setCargando(true);
-    const supabase = createClient();
-    const { error: upsertError } = await supabase.from("entregas").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        respuesta: { elegidas },
-        estado: "completada",
-        puntaje_auto: puntajeAuto,
-      },
-      { onConflict: "estudiante_id,actividad_id" },
-    );
-
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
-
-    setResultado(aciertos);
-    setCargando(false);
-    router.refresh();
+    const ok = await guardar({
+      respuesta: { elegidas },
+      estado: "completada",
+      puntaje_auto: puntajeAuto,
+    });
+    if (ok) setResultado(aciertos);
   }
 
   return (
@@ -79,7 +68,7 @@ export default function Clasificacion({
           className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800"
         >
           <p className="text-sm text-slate-900 dark:text-slate-50">{el.texto}</p>
-          <Select value={elegidas[i]} onChange={(e) => actualizar(i, e.target.value)}>
+          <Select value={elegidas[i]} disabled={bloqueado} onChange={(e) => actualizar(i, e.target.value)}>
             <option value="">Elige una categoría</option>
             {contenido.categorias.map((c) => (
               <option key={c} value={c}>
@@ -106,9 +95,11 @@ export default function Clasificacion({
         </div>
       ))}
       {error && <ErrorText>{error}</ErrorText>}
-      <Boton type="submit" cargando={cargando}>
-        {cargando ? "Guardando..." : "Guardar y revisar"}
-      </Boton>
+      {!bloqueado && (
+        <Boton type="submit" cargando={cargando}>
+          {cargando ? "Guardando..." : "Guardar y revisar"}
+        </Boton>
+      )}
     </form>
   );
 }

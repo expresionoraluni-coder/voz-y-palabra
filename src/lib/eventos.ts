@@ -7,11 +7,17 @@ export const TIPOS_EVENTO: Record<TipoEvento, { etiqueta: string; conector: stri
   otro: { etiqueta: "Otro", conector: "Antes de este evento, repasa" },
 };
 
+import { hoyMexico } from "./fecha-mexico";
+
+const UN_DIA_MS = 1000 * 60 * 60 * 24;
+
 export function diasFaltantes(fecha: string): number {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const objetivo = new Date(fecha + "T00:00:00");
-  return Math.round((objetivo.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+  // Ambas fechas se anclan a medianoche UTC de su propio día calendario, no
+  // a la hora local del servidor — así la resta da una diferencia de días
+  // calendario limpia, sin que la zona horaria del servidor la corra.
+  const hoy = new Date(hoyMexico() + "T00:00:00Z");
+  const objetivo = new Date(fecha + "T00:00:00Z");
+  return Math.round((objetivo.getTime() - hoy.getTime()) / UN_DIA_MS);
 }
 
 export function textoFaltan(dias: number): string {

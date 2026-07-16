@@ -1,35 +1,12 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import {
-  ListTree,
-  MessageSquareText,
-  ScanSearch,
-  Columns3,
-  PenLine,
-  Tags,
-  Workflow,
-  Mic,
-  ListChecks,
-  Pencil,
-  Plus,
-  LucideIcon,
-} from "lucide-react";
+import { ListChecks, Pencil, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { CardLink } from "@/components/ui/card";
 import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
-
-const ICONO_TIPO: Record<string, LucideIcon> = {
-  opcion_justificacion: MessageSquareText,
-  clasificacion: ListTree,
-  encontrar_corregir: ScanSearch,
-  comparador: Columns3,
-  redaccion_checklist: PenLine,
-  etiquetado_texto: Tags,
-  constructor_ramificado: Workflow,
-  grabacion_rubrica: Mic,
-};
+import { ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 
 export default async function DetalleUnidadDocente({
   params,

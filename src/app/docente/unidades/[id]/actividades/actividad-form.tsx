@@ -2,21 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ListTree,
-  MessageSquareText,
-  ScanSearch,
-  Columns3,
-  PenLine,
-  Tags,
-  Workflow,
-  Mic,
-  LucideIcon,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { MessageSquareText, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
+import { ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui/field";
@@ -46,17 +35,6 @@ const TIPOS_DISPONIBLES = [
   "constructor_ramificado",
   "grabacion_rubrica",
 ];
-
-const ICONO_TIPO: Record<string, LucideIcon> = {
-  opcion_justificacion: MessageSquareText,
-  clasificacion: ListTree,
-  encontrar_corregir: ScanSearch,
-  comparador: Columns3,
-  redaccion_checklist: PenLine,
-  etiquetado_texto: Tags,
-  constructor_ramificado: Workflow,
-  grabacion_rubrica: Mic,
-};
 
 function lineas(texto: string): string[] {
   return texto

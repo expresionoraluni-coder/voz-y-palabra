@@ -1,17 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ListChecks, Sparkles } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { analizarTexto, overlapConFuente } from "@/lib/analisis-texto";
-
-function contarPalabras(texto: string) {
-  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
-}
+import { contarPalabras } from "@/lib/contar-palabras";
 
 export default function RedaccionChecklist({
   actividadId,
@@ -24,14 +19,11 @@ export default function RedaccionChecklist({
   contenido: { texto_fuente: string | null; limite_palabras: number; checklist: string[] };
   respuestaPrevia?: { texto: string; checklist_marcado: boolean[] };
 }) {
-  const router = useRouter();
+  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
   const [texto, setTexto] = useState(respuestaPrevia?.texto ?? "");
   const [marcado, setMarcado] = useState<boolean[]>(
     respuestaPrevia?.checklist_marcado ?? contenido.checklist.map(() => false),
   );
-  const [cargando, setCargando] = useState(false);
-  const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const palabras = contarPalabras(texto);
   const excedido = palabras > contenido.limite_palabras;
@@ -50,45 +42,30 @@ export default function RedaccionChecklist({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setGuardado(false);
 
     if (muyCorto) {
       setError(`Tu texto es muy corto — escribe al menos ${minimoPalabras} palabras antes de entregar.`);
       return;
     }
-
-    setCargando(true);
-
-    const supabase = createClient();
-    const { error: upsertError } = await supabase.from("entregas").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        respuesta: {
-          texto,
-          checklist_marcado: marcado,
-          analisisTexto: {
-            variedadLexica: analisis.variedadLexica,
-            muletillas: analisis.muletillasDetectadas.length,
-            conectores: analisis.conectoresUsados.length,
-            ideasFuenteRetomadas: overlap?.retomadas.length,
-            ideasFuenteTotal: overlap?.total,
-          },
-        },
-        estado: "pendiente_revision",
-      },
-      { onConflict: "estudiante_id,actividad_id" },
-    );
-
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
+    if (excedido) {
+      setError(`Tu texto pasa el límite — recórtalo a ${contenido.limite_palabras} palabras o menos antes de entregar.`);
       return;
     }
 
-    setGuardado(true);
-    setCargando(false);
-    router.refresh();
+    await guardar({
+      respuesta: {
+        texto,
+        checklist_marcado: marcado,
+        analisisTexto: {
+          variedadLexica: analisis.variedadLexica,
+          muletillas: analisis.muletillasDetectadas.length,
+          conectores: analisis.conectoresUsados.length,
+          ideasFuenteRetomadas: overlap?.retomadas.length,
+          ideasFuenteTotal: overlap?.total,
+        },
+      },
+      estado: "pendiente_revision",
+    });
   }
 
   return (

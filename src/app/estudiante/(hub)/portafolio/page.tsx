@@ -1,43 +1,39 @@
-import { redirect } from "next/navigation";
 import { FolderHeart, Quote, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { requireEstudiante } from "@/lib/requerir-estudiante";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import BotonImprimir from "./boton-imprimir";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
 
+type Grupo = { nombre: string } | { nombre: string }[] | null;
+
 export default async function Portafolio() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/estudiante");
-
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id, nombre, grupos(nombre)")
-    .eq("auth_user_id", user.id)
-    .single();
-  if (!estudiante) redirect("/ingreso/estudiante");
+  const estudiante = await requireEstudiante<{ id: string; nombre: string; grupos: Grupo }>(
+    supabase,
+    "id, nombre, grupos(nombre)",
+  );
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
-  const { data: unidades } = await supabase
-    .from("unidades")
-    .select(
-      `id, nombre, orden,
-       actividades(id, titulo, tipos_actividad(nombre),
-         entregas(respuesta, created_at),
-         reflexiones(texto, momento)
-       )`,
-    )
-    .order("orden");
-
-  const { data: confianzas } = await supabase
-    .from("autoevaluaciones_confianza")
-    .select("unidad_id, momento, valor")
-    .eq("estudiante_id", estudiante.id);
+  const [{ data: unidades }, { data: confianzas }] = await Promise.all([
+    supabase
+      .from("unidades")
+      .select(
+        `id, nombre, orden,
+         actividades(id, titulo, tipos_actividad(nombre),
+           entregas(respuesta, created_at),
+           reflexiones(texto, momento)
+         )`,
+      )
+      .order("orden"),
+    supabase
+      .from("autoevaluaciones_confianza")
+      .select("unidad_id, momento, valor")
+      .eq("estudiante_id", estudiante.id),
+  ]);
 
   const secciones = (unidades ?? []).map((u) => {
     const confInicio = confianzas?.find((c) => c.unidad_id === u.id && c.momento === "inicio");

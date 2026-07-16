@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
 import { LineChart } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
@@ -8,17 +8,7 @@ import EmptyState from "@/components/ui/empty-state";
 
 export default async function ProgresoEstudiante() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/estudiante");
-
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .single();
-  if (!estudiante) redirect("/ingreso/estudiante");
+  const estudiante = await requireEstudiante(supabase);
 
   const { data: entregas } = await supabase
     .from("entregas")

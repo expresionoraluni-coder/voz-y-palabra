@@ -1,17 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Check, Lightbulb } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { ideasClaveMencionadas } from "@/lib/ideas-clave";
-
-function contarPalabras(texto: string) {
-  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
-}
+import { contarPalabras } from "@/lib/contar-palabras";
 
 export default function OpcionJustificacion({
   actividadId,
@@ -24,14 +19,11 @@ export default function OpcionJustificacion({
   contenido: { pregunta: string; opciones: string[]; ideas_clave?: string[] };
   respuestaPrevia?: { opcion: string; justificacion: string };
 }) {
-  const router = useRouter();
+  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
   const [opcion, setOpcion] = useState(respuestaPrevia?.opcion ?? "");
   const [justificacion, setJustificacion] = useState(
     respuestaPrevia?.justificacion ?? "",
   );
-  const [cargando, setCargando] = useState(false);
-  const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const ideasMencionadas = useMemo(
     () => ideasClaveMencionadas(justificacion, contenido.ideas_clave ?? []),
@@ -41,35 +33,13 @@ export default function OpcionJustificacion({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setGuardado(false);
 
     if (contarPalabras(justificacion) < 6) {
       setError("Explica un poco más tu razonamiento antes de guardar.");
       return;
     }
 
-    setCargando(true);
-
-    const supabase = createClient();
-    const { error: upsertError } = await supabase.from("entregas").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        respuesta: { opcion, justificacion },
-        estado: "completada",
-      },
-      { onConflict: "estudiante_id,actividad_id" },
-    );
-
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
-
-    setGuardado(true);
-    setCargando(false);
-    router.refresh();
+    await guardar({ respuesta: { opcion, justificacion }, estado: "pendiente_revision" });
   }
 
   return (

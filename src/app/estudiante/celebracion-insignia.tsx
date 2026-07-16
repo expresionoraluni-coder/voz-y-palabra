@@ -5,17 +5,28 @@ import { Award, X } from "lucide-react";
 
 type Insignia = { nombre: string; descripcion: string };
 
-const CLAVE_ALMACENAMIENTO = "vyp_insignias_vistas";
+function claveAlmacenamiento(estudianteId: string) {
+  // Por estudiante: en equipos compartidos del plantel, dos alumnos en el
+  // mismo navegador no deben compartir qué insignias ya "vio" el otro.
+  return `vyp_insignias_vistas:${estudianteId}`;
+}
 
-export default function CelebracionInsignia({ insignias }: { insignias: Insignia[] }) {
+export default function CelebracionInsignia({
+  insignias,
+  estudianteId,
+}: {
+  insignias: Insignia[];
+  estudianteId: string;
+}) {
   const [nuevas, setNuevas] = useState<Insignia[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const clave = claveAlmacenamiento(estudianteId);
 
     let vistas: string[] = [];
     try {
-      vistas = JSON.parse(localStorage.getItem(CLAVE_ALMACENAMIENTO) ?? "[]");
+      vistas = JSON.parse(localStorage.getItem(clave) ?? "[]");
     } catch {
       vistas = [];
     }
@@ -23,10 +34,15 @@ export default function CelebracionInsignia({ insignias }: { insignias: Insignia
     const encontradas = insignias.filter((i) => !vistas.includes(i.nombre));
     if (encontradas.length > 0) setNuevas(encontradas);
 
-    localStorage.setItem(CLAVE_ALMACENAMIENTO, JSON.stringify(insignias.map((i) => i.nombre)));
+    try {
+      localStorage.setItem(clave, JSON.stringify(insignias.map((i) => i.nombre)));
+    } catch {
+      // Safari privado o cuota llena: no pasa nada grave, en la próxima
+      // visita puede volver a mostrar una insignia ya vista.
+    }
     // Solo debe correr cuando cambia el conjunto de insignias otorgadas, no en cada render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [insignias.map((i) => i.nombre).join(",")]);
+  }, [estudianteId, insignias.map((i) => i.nombre).join(",")]);
 
   if (nuevas.length === 0) return null;
 

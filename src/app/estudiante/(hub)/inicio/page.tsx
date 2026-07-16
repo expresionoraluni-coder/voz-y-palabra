@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   Award,
   Bell,
@@ -10,10 +9,12 @@ import {
   FolderHeart,
   KeyRound,
   LineChart,
+  Map,
   RotateCcw,
   Sparkles,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { requireEstudiante } from "@/lib/requerir-estudiante";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
 import { CardLink } from "@/components/ui/card";
@@ -21,10 +22,14 @@ import Badge from "@/components/ui/badge";
 import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
+import EmptyState from "@/components/ui/empty-state";
 import CelebracionInsignia from "@/app/estudiante/celebracion-insignia";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
+import { proximoRepaso } from "@/lib/calendario-repaso";
+
+type Grupo = { nombre: string } | { nombre: string }[] | null;
 
 const MENSAJES_RACHA = [
   "Se nota la constancia.",
@@ -44,31 +49,29 @@ export default async function InicioEstudiante({
 }) {
   const { nip } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/ingreso/estudiante");
-
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id, nombre, grupo_id, grupos(nombre)")
-    .eq("auth_user_id", user.id)
-    .single();
-
-  if (!estudiante) redirect("/ingreso/estudiante");
+  const estudiante = await requireEstudiante<{
+    id: string;
+    nombre: string;
+    grupo_id: string;
+    grupos: Grupo;
+  }>(supabase, "id, nombre, grupo_id, grupos(nombre)");
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
-  const { data: unidades } = await supabase
-    .from("unidades")
-    .select("id, nombre, orden, reto_comunicativo, actividades(id)")
-    .order("orden");
-
-  // Revisa y otorga insignias nuevas cada vez que el estudiante visita su inicio.
-  const { data: insignias } = await supabase.rpc("verificar_insignias");
-
-  const [{ data: entregas }, { count: totalReflexiones }] = await Promise.all([
+  // Ninguna de las 4 depende de las demás — antes unidades e insignias se
+  // esperaban una tras otra antes de siquiera llegar a este grupo.
+  const [
+    { data: unidades },
+    { data: insignias },
+    { data: entregas },
+    { count: totalReflexiones },
+  ] = await Promise.all([
+    supabase
+      .from("unidades")
+      .select("id, nombre, orden, reto_comunicativo, actividades(id)")
+      .order("orden"),
+    // Revisa y otorga insignias nuevas cada vez que el estudiante visita su inicio.
+    supabase.rpc("verificar_insignias"),
     supabase
       .from("entregas")
       .select("actividad_id, puntaje_auto, created_at, actividades(titulo)")
@@ -84,8 +87,18 @@ export default async function InicioEstudiante({
   const puntos = idsCompletadas.size * 10 + (totalReflexiones ?? 0) * 5;
   const racha = calcularRacha((entregas ?? []).map((e) => e.created_at));
 
+  // Prioriza vencidos y, entre los vigentes, el repaso más próximo — antes
+  // salían en el orden arbitrario en que llegaban de Supabase.
   const paraRepasar = (entregas ?? [])
     .filter((e) => e.puntaje_auto !== null && e.puntaje_auto < 70)
+    .map((e) => ({ ...e, repaso: proximoRepaso(e.created_at) }))
+    .sort((a, b) =>
+      a.repaso.vencido !== b.repaso.vencido
+        ? a.repaso.vencido
+          ? -1
+          : 1
+        : a.repaso.fecha.localeCompare(b.repaso.fecha),
+    )
     .slice(0, 3);
 
   // Progreso por unidad, precalculado una vez para usarlo tanto en el
@@ -137,7 +150,7 @@ export default async function InicioEstudiante({
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
-      <CelebracionInsignia insignias={insignias ?? []} />
+      <CelebracionInsignia insignias={insignias ?? []} estudianteId={estudiante.id} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar nombre={estudiante.nombre} />
@@ -292,6 +305,13 @@ export default async function InicioEstudiante({
 
       <div className="flex flex-col gap-3">
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Tu ruta</p>
+        {unidadesConProgreso.length === 0 ? (
+          <EmptyState
+            icon={Map}
+            titulo="Todavía no hay unidades"
+            descripcion="Cuando tu profesora publique el curso, tu ruta va a aparecer aquí."
+          />
+        ) : (
         <div className="relative flex flex-col gap-6">
           <div
             className="absolute bottom-7 left-[27px] top-7 w-0.5 bg-gradient-to-b from-violet-300 via-teal-300 to-rose-300 dark:from-violet-800 dark:via-teal-800 dark:to-rose-800"
@@ -358,6 +378,7 @@ export default async function InicioEstudiante({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

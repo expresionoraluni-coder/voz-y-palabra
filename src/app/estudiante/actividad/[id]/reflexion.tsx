@@ -62,6 +62,15 @@ export default function Reflexion({
       return;
     }
 
+    // Las reflexiones de cierre cuentan para "Primera reflexión"/"Mente
+    // reflexiva"; sin esto solo se otorgaban si el estudiante visitaba
+    // "Mi inicio" después.
+    try {
+      await supabase.rpc("verificar_insignias");
+    } catch {
+      // silencioso a propósito
+    }
+
     setGuardado(true);
     setCargando(false);
   }

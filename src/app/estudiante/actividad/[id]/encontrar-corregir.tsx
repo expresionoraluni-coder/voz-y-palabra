@@ -1,20 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Lightbulb } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { ideasClaveMencionadas } from "@/lib/ideas-clave";
+import { contarPalabras } from "@/lib/contar-palabras";
 
 function normalizar(texto: string) {
   return texto.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function contarPalabras(texto: string) {
-  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
 }
 
 export default function EncontrarCorregir({
@@ -28,7 +23,7 @@ export default function EncontrarCorregir({
   contenido: { texto_original: string; pista: string | null; fragmento_erroneo?: string; ideas_clave?: string[] };
   respuestaPrevia?: { que_encontraste: string; version_corregida: string };
 }) {
-  const router = useRouter();
+  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
   const [queEncontraste, setQueEncontraste] = useState(
     respuestaPrevia?.que_encontraste ?? "",
   );
@@ -36,9 +31,6 @@ export default function EncontrarCorregir({
     respuestaPrevia?.version_corregida ?? "",
   );
   const [mostrarPista, setMostrarPista] = useState(false);
-  const [cargando, setCargando] = useState(false);
-  const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const mencionaFragmento = contenido.fragmento_erroneo
     ? normalizar(queEncontraste).includes(normalizar(contenido.fragmento_erroneo))
@@ -51,7 +43,6 @@ export default function EncontrarCorregir({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setGuardado(false);
 
     if (contarPalabras(queEncontraste) < 4) {
       setError("Cuéntanos con un poco más de detalle qué encontraste mal.");
@@ -62,31 +53,10 @@ export default function EncontrarCorregir({
       return;
     }
 
-    setCargando(true);
-
-    const supabase = createClient();
-    const { error: upsertError } = await supabase.from("entregas").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        respuesta: {
-          que_encontraste: queEncontraste,
-          version_corregida: versionCorregida,
-        },
-        estado: "pendiente_revision",
-      },
-      { onConflict: "estudiante_id,actividad_id" },
-    );
-
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
-
-    setGuardado(true);
-    setCargando(false);
-    router.refresh();
+    await guardar({
+      respuesta: { que_encontraste: queEncontraste, version_corregida: versionCorregida },
+      estado: "pendiente_revision",
+    });
   }
 
   return (

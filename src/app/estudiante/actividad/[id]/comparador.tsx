@@ -1,16 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { similitudTexto } from "@/lib/similitud-texto";
-
-function contarPalabras(texto: string) {
-  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
-}
+import { contarPalabras } from "@/lib/contar-palabras";
 
 export default function Comparador({
   actividadId,
@@ -23,15 +18,12 @@ export default function Comparador({
   contenido: { conceptos: string[]; criterios: string[] };
   respuestaPrevia?: { celdas: string[][] };
 }) {
-  const router = useRouter();
+  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
   const vacio = () =>
     contenido.criterios.map(() => contenido.conceptos.map(() => ""));
   const [celdas, setCeldas] = useState<string[][]>(
     respuestaPrevia?.celdas ?? vacio(),
   );
-  const [cargando, setCargando] = useState(false);
-  const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   function actualizar(fila: number, columna: number, valor: string) {
     setCeldas((prev) =>
@@ -44,7 +36,6 @@ export default function Comparador({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setGuardado(false);
 
     for (const fila of celdas) {
       for (const celda of fila) {
@@ -68,28 +59,7 @@ export default function Comparador({
       }
     }
 
-    setCargando(true);
-
-    const supabase = createClient();
-    const { error: upsertError } = await supabase.from("entregas").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        respuesta: { celdas },
-        estado: "completada",
-      },
-      { onConflict: "estudiante_id,actividad_id" },
-    );
-
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
-
-    setGuardado(true);
-    setCargando(false);
-    router.refresh();
+    await guardar({ respuesta: { celdas }, estado: "pendiente_revision" });
   }
 
   return (

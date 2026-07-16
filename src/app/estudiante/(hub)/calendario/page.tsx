@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
@@ -11,17 +11,10 @@ import { proximoRepaso } from "@/lib/calendario-repaso";
 
 export default async function CalendarioEstudiante() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/estudiante");
-
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id, grupo_id")
-    .eq("auth_user_id", user.id)
-    .single();
-  if (!estudiante) redirect("/ingreso/estudiante");
+  const estudiante = await requireEstudiante<{ id: string; grupo_id: string }>(
+    supabase,
+    "id, grupo_id",
+  );
 
   const [{ data: eventos }, { data: unidades }, { data: actividades }, { data: entregas }] = await Promise.all([
     supabase

@@ -1,7 +1,8 @@
-import { redirect } from "next/navigation";
 import { Award, Brain, Compass, Lightbulb, Lock, Mic, LucideIcon, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
+import EmptyState from "@/components/ui/empty-state";
 
 const ICONO_INSIGNIA: Record<string, LucideIcon> = {
   compass: Compass,
@@ -14,17 +15,7 @@ const ICONO_INSIGNIA: Record<string, LucideIcon> = {
 
 export default async function InsigniasEstudiante() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/estudiante");
-
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .single();
-  if (!estudiante) redirect("/ingreso/estudiante");
+  const estudiante = await requireEstudiante(supabase);
 
   const [{ data: catalogo }, { data: obtenidas }] = await Promise.all([
     supabase.from("insignias").select("id, nombre, descripcion, icono").order("nombre"),
@@ -43,6 +34,14 @@ export default async function InsigniasEstudiante() {
         titulo="Mis insignias"
         descripcion="Se desbloquean solas conforme avanzas: cada una marca un logro real, no solo actividad completada."
       />
+
+      {total === 0 && (
+        <EmptyState
+          icon={Award}
+          titulo="Todavía no hay insignias configuradas"
+          descripcion="Cuando tu profesora active el catálogo, van a aparecer aquí."
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {catalogo?.map((insignia) => {

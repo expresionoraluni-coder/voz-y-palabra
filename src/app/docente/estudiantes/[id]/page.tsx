@@ -41,6 +41,7 @@ export default async function FichaEstudiante({
     { data: reflexiones },
     { data: insignias },
     { data: predicciones },
+    { data: bitacoras },
   ] = await Promise.all([
     supabase
       .from("unidades")
@@ -74,12 +75,8 @@ export default async function FichaEstudiante({
       .eq("estudiante_id", id)
       .eq("momento", "prediccion")
       .not("confianza", "is", null),
+    supabase.from("bitacora").select("unidad_id, meta, cumplida").eq("estudiante_id", id),
   ]);
-
-  const { data: bitacoras } = await supabase
-    .from("bitacora")
-    .select("unidad_id, meta, cumplida")
-    .eq("estudiante_id", id);
 
   const idsEntregas = (entregas ?? []).map((en) => en.id);
   const { data: comentarios } = idsEntregas.length

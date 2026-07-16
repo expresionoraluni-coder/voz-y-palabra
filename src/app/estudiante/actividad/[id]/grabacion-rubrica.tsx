@@ -1,10 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Mic, Square, ShieldCheck, Timer, Waves, AudioLines } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { analizarAudio, AnalisisAudio } from "@/lib/analisis-audio";
@@ -29,7 +27,7 @@ export default function GrabacionRubrica({
     };
   };
 }) {
-  const router = useRouter();
+  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
   const [grabando, setGrabando] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [analizando, setAnalizando] = useState(false);
@@ -39,25 +37,50 @@ export default function GrabacionRubrica({
     respuestaPrevia?.autoevaluacion ?? Object.fromEntries(contenido.rubrica.map((r) => [r, false])),
   );
   const [reflexion, setReflexion] = useState(respuestaPrevia?.reflexion ?? "");
-  const [cargando, setCargando] = useState(false);
-  const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  const soportado =
+    typeof window !== "undefined" &&
+    !!navigator.mediaDevices?.getUserMedia &&
+    typeof MediaRecorder !== "undefined";
+
+  // Si el alumno sale de la pantalla a medio grabar, el micrófono se queda
+  // encendido indefinidamente sin esto — se detiene el stream real, no solo
+  // el estado de React.
+  useEffect(() => {
+    return () => {
+      mediaRecorderRef.current?.stop();
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   async function iniciarGrabacion() {
     setErrorMic(null);
     setAnalisis(null);
+    if (!soportado) {
+      setErrorMic("Tu navegador no soporta grabación de audio. Prueba con Chrome o Firefox actualizados.");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       chunksRef.current = [];
       const recorder = new MediaRecorder(stream);
       recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        setAudioUrl(URL.createObjectURL(blob));
+        // El contenedor real varía por navegador (webm en Chrome/Firefox,
+        // mp4/aac en Safari); forzar "audio/webm" siempre rompía la
+        // reproducción y el análisis en iOS.
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        setAudioUrl((previo) => {
+          if (previo) URL.revokeObjectURL(previo);
+          return URL.createObjectURL(blob);
+        });
         stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
 
         setAnalizando(true);
         analizarAudio(blob)
@@ -87,7 +110,6 @@ export default function GrabacionRubrica({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setGuardado(false);
 
     const duracionActual = analisis?.duracionSegundos ?? respuestaPrevia?.analisisAudio?.duracionSegundos ?? 0;
     if (duracionActual < DURACION_MINIMA_SEGUNDOS) {
@@ -97,39 +119,25 @@ export default function GrabacionRubrica({
       return;
     }
 
-    setCargando(true);
-
-    const supabase = createClient();
-    const { error: upsertError } = await supabase.from("entregas").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        respuesta: {
-          autoevaluacion,
-          reflexion,
-          analisisAudio: analisis
-            ? {
-                duracionSegundos: Math.round(analisis.duracionSegundos),
-                numPausas: analisis.pausas.length,
-                tiempoPausadoSegundos: Math.round(analisis.tiempoPausadoSegundos),
-                consistenciaVolumen: analisis.consistenciaVolumen,
-              }
-            : respuestaPrevia?.analisisAudio,
-        },
-        estado: "completada",
+    await guardar({
+      respuesta: {
+        autoevaluacion,
+        reflexion,
+        analisisAudio: analisis
+          ? {
+              duracionSegundos: Math.round(analisis.duracionSegundos),
+              numPausas: analisis.pausas.length,
+              tiempoPausadoSegundos: Math.round(analisis.tiempoPausadoSegundos),
+              consistenciaVolumen: analisis.consistenciaVolumen,
+            }
+          : respuestaPrevia?.analisisAudio,
       },
-      { onConflict: "estudiante_id,actividad_id" },
-    );
-
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
-
-    setGuardado(true);
-    setCargando(false);
-    router.refresh();
+      // Antes "completada": grabación-rúbrica es de los tipos que la
+      // docente evalúa (ver comentario-entrega.tsx), pero con "completada"
+      // nunca llegaba a su cola de revisión — mismo bug que comparador y
+      // opción-justificación.
+      estado: "pendiente_revision",
+    });
   }
 
   return (
@@ -152,7 +160,8 @@ export default function GrabacionRubrica({
         <button
           type="button"
           onClick={grabando ? detenerGrabacion : iniciarGrabacion}
-          className={`relative flex size-16 items-center justify-center rounded-full text-white shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+          disabled={!soportado}
+          className={`relative flex size-16 items-center justify-center rounded-full text-white shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900 ${
             grabando
               ? "bg-red-600 shadow-red-600/30 focus-visible:ring-red-500"
               : "bg-indigo-600 shadow-indigo-600/30 hover:bg-indigo-700 focus-visible:ring-indigo-500"
@@ -169,7 +178,13 @@ export default function GrabacionRubrica({
           )}
         </button>
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-          {grabando ? "Grabando..." : audioUrl ? "Toca para grabar de nuevo" : "Toca para grabar"}
+          {!soportado
+            ? "Grabación no disponible en este navegador"
+            : grabando
+              ? "Grabando..."
+              : audioUrl
+                ? "Toca para grabar de nuevo"
+                : "Toca para grabar"}
         </p>
 
         {errorMic && <ErrorText>{errorMic}</ErrorText>}

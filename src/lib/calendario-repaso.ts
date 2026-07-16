@@ -1,4 +1,7 @@
+import { aFechaMexico, hoyMexico } from "./fecha-mexico";
+
 const INTERVALOS_DIAS = [2, 5, 10, 21];
+const UN_DIA_MS = 1000 * 60 * 60 * 24;
 
 export type RepasoSugerido = {
   actividadId: string;
@@ -15,17 +18,17 @@ export type RepasoSugerido = {
  * se sugiere para hoy — no desaparece, para no perder la señal de repaso.
  */
 export function proximoRepaso(fechaIntento: string): { fecha: string; vencido: boolean } {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const base = new Date(fechaIntento);
-  base.setHours(0, 0, 0, 0);
+  // fechaIntento suele venir de created_at (timestamptz): se convierte a su
+  // día calendario en México antes de sumar días, si no la hora exacta del
+  // intento puede correrlo al día siguiente/anterior según le toque en UTC.
+  const hoy = new Date(hoyMexico() + "T00:00:00Z").getTime();
+  const base = new Date(aFechaMexico(fechaIntento) + "T00:00:00Z").getTime();
 
   for (const dias of INTERVALOS_DIAS) {
-    const candidata = new Date(base);
-    candidata.setDate(candidata.getDate() + dias);
-    if (candidata.getTime() >= hoy.getTime()) {
-      return { fecha: candidata.toISOString().slice(0, 10), vencido: false };
+    const candidataMs = base + dias * UN_DIA_MS;
+    if (candidataMs >= hoy) {
+      return { fecha: new Date(candidataMs).toISOString().slice(0, 10), vencido: false };
     }
   }
-  return { fecha: hoy.toISOString().slice(0, 10), vencido: true };
+  return { fecha: hoyMexico(), vencido: true };
 }

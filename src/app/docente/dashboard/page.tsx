@@ -18,30 +18,20 @@ export default async function DashboardDocente() {
 
   if (!user) redirect("/ingreso/profesora");
 
-  const { data: docente } = await supabase
-    .from("docentes")
-    .select("nombre")
-    .eq("id", user.id)
-    .single();
+  const [{ data: docente }, { data: grupos }, { data: unidades }, { data: entregasPorRevisar }] =
+    await Promise.all([
+      supabase.from("docentes").select("nombre").eq("id", user.id).single(),
+      supabase
+        .from("grupos")
+        .select("id, nombre, codigo_acceso, estudiantes(count)")
+        .eq("docente_id", user.id)
+        .eq("estudiantes.activo", true)
+        .order("created_at", { ascending: false }),
+      supabase.from("unidades").select("id, nombre, orden, reto_comunicativo").order("orden"),
+      supabase.from("entregas").select("estudiantes(grupo_id)").eq("estado", "pendiente_revision"),
+    ]);
 
   if (!docente) redirect("/ingreso/profesora/verificar");
-
-  const { data: grupos } = await supabase
-    .from("grupos")
-    .select("id, nombre, codigo_acceso, estudiantes(count)")
-    .eq("docente_id", user.id)
-    .eq("estudiantes.activo", true)
-    .order("created_at", { ascending: false });
-
-  const { data: unidades } = await supabase
-    .from("unidades")
-    .select("id, nombre, orden, reto_comunicativo")
-    .order("orden");
-
-  const { data: entregasPorRevisar } = await supabase
-    .from("entregas")
-    .select("estudiantes(grupo_id)")
-    .eq("estado", "pendiente_revision");
 
   const porRevisarPorGrupo = new Map<string, number>();
   for (const en of entregasPorRevisar ?? []) {

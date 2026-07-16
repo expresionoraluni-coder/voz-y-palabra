@@ -1,18 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Input, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { similitudTexto } from "@/lib/similitud-texto";
+import { contarPalabras } from "@/lib/contar-palabras";
 
 type Seccion = { nombre: string; guia: string };
-
-function contarPalabras(texto: string) {
-  return texto.trim().length === 0 ? 0 : texto.trim().split(/\s+/).length;
-}
 
 export default function ConstructorRamificado({
   actividadId,
@@ -25,14 +20,11 @@ export default function ConstructorRamificado({
   contenido: { tema_sugerido: string | null; secciones: Seccion[] };
   respuestaPrevia?: { tema: string; textos: string[] };
 }) {
-  const router = useRouter();
+  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
   const [tema, setTema] = useState(respuestaPrevia?.tema ?? "");
   const [textos, setTextos] = useState<string[]>(
     respuestaPrevia?.textos ?? contenido.secciones.map(() => ""),
   );
-  const [cargando, setCargando] = useState(false);
-  const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   function actualizar(i: number, valor: string) {
     setTextos((prev) => prev.map((v, idx) => (idx === i ? valor : v)));
@@ -41,7 +33,6 @@ export default function ConstructorRamificado({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setGuardado(false);
 
     for (let i = 0; i < textos.length; i++) {
       if (contarPalabras(textos[i]) < 8) {
@@ -59,28 +50,7 @@ export default function ConstructorRamificado({
       }
     }
 
-    setCargando(true);
-
-    const supabase = createClient();
-    const { error: upsertError } = await supabase.from("entregas").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        respuesta: { tema, textos },
-        estado: "pendiente_revision",
-      },
-      { onConflict: "estudiante_id,actividad_id" },
-    );
-
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
-
-    setGuardado(true);
-    setCargando(false);
-    router.refresh();
+    await guardar({ respuesta: { tema, textos }, estado: "pendiente_revision" });
   }
 
   return (
