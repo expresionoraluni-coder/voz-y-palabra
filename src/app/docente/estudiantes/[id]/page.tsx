@@ -233,7 +233,11 @@ export default async function FichaEstudiante({
                 if (Math.abs(confianzaPct - en.puntaje_auto) > 25) toneConfianza = "warning";
               }
               return (
-                <Card key={en.id} className="p-4">
+                <Card
+                  key={en.id}
+                  id={`entrega-${en.id}`}
+                  className="scroll-mt-20 p-4 target:ring-2 target:ring-indigo-500 target:ring-offset-2 dark:target:ring-offset-slate-950"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium text-slate-900 dark:text-slate-50">{act?.titulo}</p>
                     <div className="flex shrink-0 items-center gap-1.5">

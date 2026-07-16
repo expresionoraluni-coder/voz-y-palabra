@@ -98,7 +98,11 @@ export default async function DetalleGrupo({
       ? Math.round(porEstudiante.reduce((s, e) => s + e.avance, 0) / porEstudiante.length)
       : 0;
   const activosSemana = porEstudiante.filter((e) => e.diasInactivo !== null && e.diasInactivo <= 7).length;
-  const entregasPorRevisar = (entregas ?? []).filter((en) => en.estado === "pendiente_revision");
+  // Más antigua primero: sin esto salían en el orden arbitrario en que las
+  // devolvía Postgres, no en el orden en que conviene atenderlas.
+  const entregasPorRevisar = (entregas ?? [])
+    .filter((en) => en.estado === "pendiente_revision")
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
   const avancePorUnidad = (unidades ?? []).map((u) => {
     const actsUnidad = (actividades ?? []).filter((a) => a.unidad_id === u.id);
@@ -445,7 +449,7 @@ export default async function DetalleGrupo({
               const est = porEstudiante.find((e) => e.id === en.estudiante_id);
               const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
               return (
-                <Link key={en.id} href={`/docente/estudiantes/${en.estudiante_id}`}>
+                <Link key={en.id} href={`/docente/estudiantes/${en.estudiante_id}#entrega-${en.id}`}>
                   <CardLink className="flex items-center gap-3 px-4 py-3">
                     <span className="size-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
                     <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
