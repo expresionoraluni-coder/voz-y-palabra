@@ -614,3 +614,88 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       estudiante que ya tiene NIP no aparece y el login normal sigue
 --       funcionando; en el registro de docente, contraseñas distintas
 --       deshabilitan "Crear cuenta" con el mensaje de error visible.
+--
+-- 17. Auditoría de seguridad (hallazgos VP-A1/A2/B4/C1/C2, corregidos y con
+--     regresión pgTAP en supabase/tests/rls_seguridad.sql):
+--     - VP-C2: se eliminó la policy de UPDATE que traía "estudiantes" (un
+--       estudiante autenticado podía reescribir nombre/grupo_id/activo de
+--       su propia fila por API directa, sin pasar por ninguna función).
+--       Hoy "estudiantes" solo tiene SELECT propio + ALL para la docente
+--       dueña del grupo.
+--     - VP-C1: "entregas" sigue con su policy ALL de estudiante (RLS no
+--       puede restringir columnas), pero ahora un trigger BEFORE UPDATE
+--       (trg_proteger_entrega → proteger_columnas_entrega()) bloquea que el
+--       estudiante cambie evaluacion_docente, estudiante_id o actividad_id
+--       de su propia entrega; la docente dueña del grupo del estudiante
+--       queda exenta.
+--     - VP-B4: mismo patrón para docentes.correo (trg_proteger_correo_docente
+--       → proteger_correo_docente()) — el correo se sincroniza solo desde
+--       auth.users al crear el perfil, no se puede editar por API directa.
+--     - VP-A1/VP-A2: ingresar_estudiante() y crear_perfil_docente() ya no
+--       confiaban solo en un pg_sleep del lado del cliente contra fuerza
+--       bruta. Ahora:
+--       - estudiantes.intentos_fallidos (int, default 0) y
+--         estudiantes.bloqueado_hasta (timestamptz, nullable) — se
+--         incrementa/fija en ingresar_estudiante() tras un NIP incorrecto;
+--         5 intentos seguidos bloquean 15 minutos.
+--       - tabla intentos_codigo_invitacion (usuario_id uuid primary key,
+--         intentos int default 0, bloqueado_hasta timestamptz) — mismo
+--         mecanismo para crear_perfil_docente(), keyed por usuario_id
+--         porque ahí todavía no existe una fila en "docentes" al momento
+--         del intento.
+--       - Importante: "NIP incorrecto" y "ya bloqueado" ya NO se señalan
+--         con `raise exception` — un exception deshace TODO lo hecho antes
+--         en esa misma llamada (incluido el incremento del contador), así
+--         que el contador nunca se habría guardado. Ambas funciones ahora
+--         devuelven el error como un valor más en su resultado (columna
+--         `error` en ingresar_estudiante, texto de retorno en
+--         crear_perfil_docente); el frontend lee ese valor en vez de
+--         depender de un error de PostgREST.
+--     - NIP inicial sembrado desde la boleta: agregar_estudiantes_con_boleta
+--       (p_grupo_id, p_estudiantes jsonb) reemplaza el alta manual — valida
+--       que la boleta tenga ≥4 dígitos y guarda nip_hash desde ya (últimos 4
+--       dígitos), cerrando la ventana en la que cualquiera que supiera el
+--       nombre de un estudiante nuevo podía registrarle un NIP antes que él.
+--       Nueva columna estudiantes.boleta (text, nullable). Como estos
+--       estudiantes ya tienen nip_hash desde el alta, el flujo de "confirma
+--       tu NIP" del punto 16 no les aplica en su primer ingreso — solo a
+--       estudiantes dados de alta sin boleta.
+--     - PRNG criptográfico (crypto.getRandomValues) para el código de
+--       acceso de grupo en vez de Math.random.
+--     - Mensajes de error de Postgres/PostgREST ya no se muestran crudos en
+--       el frontend (src/lib/mensaje-error.ts) — mapea `.code` a mensajes
+--       en español o cae a uno genérico, para no filtrar nombres de
+--       tabla/columna/constraint.
+--     - Cabeceras de seguridad HTTP (CSP, X-Frame-Options, HSTS, etc.) en
+--       next.config.ts — no afecta a la base de datos, solo al frontend.
+--     - Verificado en vivo contra la base real (no solo por el mensaje del
+--       commit): ambos triggers existen y funcionan, el backfill de
+--       entregas con estado equivocado (ver punto 18) no dejó ninguna fila
+--       atascada, y la suite pgTAP corre en una transacción con rollback
+--       sin dejar datos de prueba.
+--
+-- 18. Revisión de calidad e integridad tras la auditoría de seguridad:
+--     - comparador, opcion_justificacion y grabacion_rubrica marcaban sus
+--       entregas 'completada' en vez de 'pendiente_revision' como los demás
+--       tipos abiertos, por lo que nunca llegaban a la cola de revisión de
+--       la docente. Corregido para entregas nuevas, con backfill de las ya
+--       afectadas (confirmado: cero filas de estos 3 tipos quedaron con
+--       estado='completada' y evaluacion_docente nulo).
+--     - clasificacion/etiquetado_texto: respuesta.itemsSnapshot guarda una
+--       copia de texto+respuesta correcta al momento de entregar, para que
+--       la matriz de confusión del dashboard de grupo no se desalinee si la
+--       docente edita la actividad después. Entregas anteriores sin
+--       snapshot usan el contenido actual como respaldo.
+--     - clasificacion/etiquetado_texto ya no se pueden reenviar corregidas
+--       tras ser revisadas (antes se podía ver la respuesta correcta y
+--       sacar 100% en un segundo intento).
+--     - Se reintentó loading.tsx (esqueleto de carga) en las rutas del hub
+--       y en actividad/[id] — el punto 13 de este changelog documentaba un
+--       intento anterior revertido por sospecha de colgar el redirect a
+--       /ingreso/estudiante. Esta vez, verificado en vivo por partida doble
+--       (por quien lo implementó y, por separado, releído y re-probado 3
+--       veces en un servidor de desarrollo limpio: dos rutas del hub y una
+--       de actividad, sin sesión, siempre redirigieron correctamente sin
+--       quedarse pegadas en el esqueleto) — se mantiene esta vez.
+--     - middleware.ts se renombró a proxy.ts (convención de Next.js 16);
+--       mismo comportamiento, sin cambios de base de datos.
