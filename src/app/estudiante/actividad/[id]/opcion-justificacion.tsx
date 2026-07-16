@@ -19,7 +19,7 @@ export default function OpcionJustificacion({
   contenido: { pregunta: string; opciones: string[]; ideas_clave?: string[] };
   respuestaPrevia?: { opcion: string; justificacion: string };
 }) {
-  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
   const [opcion, setOpcion] = useState(respuestaPrevia?.opcion ?? "");
   const [justificacion, setJustificacion] = useState(
     respuestaPrevia?.justificacion ?? "",
@@ -63,7 +63,10 @@ export default function OpcionJustificacion({
                 name="opcion"
                 value={op}
                 checked={seleccionada}
-                onChange={() => setOpcion(op)}
+                onChange={() => {
+                  setOpcion(op);
+                  marcarSinGuardar();
+                }}
                 required
                 className="sr-only"
               />
@@ -88,7 +91,10 @@ export default function OpcionJustificacion({
           id="justificacion"
           required
           value={justificacion}
-          onChange={(e) => setJustificacion(e.target.value)}
+          onChange={(e) => {
+            setJustificacion(e.target.value);
+            marcarSinGuardar();
+          }}
           rows={3}
         />
       </Field>

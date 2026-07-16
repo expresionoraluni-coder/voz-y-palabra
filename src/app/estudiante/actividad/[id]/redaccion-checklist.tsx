@@ -19,7 +19,7 @@ export default function RedaccionChecklist({
   contenido: { texto_fuente: string | null; limite_palabras: number; checklist: string[] };
   respuestaPrevia?: { texto: string; checklist_marcado: boolean[] };
 }) {
-  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
   const [texto, setTexto] = useState(respuestaPrevia?.texto ?? "");
   const [marcado, setMarcado] = useState<boolean[]>(
     respuestaPrevia?.checklist_marcado ?? contenido.checklist.map(() => false),
@@ -37,6 +37,7 @@ export default function RedaccionChecklist({
 
   function alternar(i: number) {
     setMarcado((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+    marcarSinGuardar();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,7 +80,10 @@ export default function RedaccionChecklist({
       <div className="flex flex-col gap-1.5">
         <Textarea
           value={texto}
-          onChange={(e) => setTexto(e.target.value)}
+          onChange={(e) => {
+            setTexto(e.target.value);
+            marcarSinGuardar();
+          }}
           rows={6}
           placeholder="Escribe aquí"
         />

@@ -58,5 +58,12 @@ export function useEntregaActividad(actividadId: string, estudianteId: string) {
     return true;
   }
 
-  return { cargando, guardado, error, setError, guardar };
+  // Si el estudiante sigue editando después de guardar, "Guardado" se queda
+  // pegado en pantalla mintiendo que el cambio nuevo ya se guardó — los
+  // componentes deben llamar esto en cada edición posterior al envío.
+  function marcarSinGuardar() {
+    setGuardado((g) => (g ? false : g));
+  }
+
+  return { cargando, guardado, error, setError, guardar, marcarSinGuardar };
 }

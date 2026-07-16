@@ -20,7 +20,7 @@ export default function ConstructorRamificado({
   contenido: { tema_sugerido: string | null; secciones: Seccion[] };
   respuestaPrevia?: { tema: string; textos: string[] };
 }) {
-  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
   const [tema, setTema] = useState(respuestaPrevia?.tema ?? "");
   const [textos, setTextos] = useState<string[]>(
     respuestaPrevia?.textos ?? contenido.secciones.map(() => ""),
@@ -28,6 +28,7 @@ export default function ConstructorRamificado({
 
   function actualizar(i: number, valor: string) {
     setTextos((prev) => prev.map((v, idx) => (idx === i ? valor : v)));
+    marcarSinGuardar();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -60,7 +61,15 @@ export default function ConstructorRamificado({
       )}
       <Field>
         <Label htmlFor="tema">Tu tema</Label>
-        <Input id="tema" required value={tema} onChange={(e) => setTema(e.target.value)} />
+        <Input
+          id="tema"
+          required
+          value={tema}
+          onChange={(e) => {
+            setTema(e.target.value);
+            marcarSinGuardar();
+          }}
+        />
       </Field>
 
       <div className="flex flex-col gap-4">

@@ -23,7 +23,7 @@ export default function EncontrarCorregir({
   contenido: { texto_original: string; pista: string | null; fragmento_erroneo?: string; ideas_clave?: string[] };
   respuestaPrevia?: { que_encontraste: string; version_corregida: string };
 }) {
-  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
   const [queEncontraste, setQueEncontraste] = useState(
     respuestaPrevia?.que_encontraste ?? "",
   );
@@ -88,7 +88,10 @@ export default function EncontrarCorregir({
           id="que-encontraste"
           required
           value={queEncontraste}
-          onChange={(e) => setQueEncontraste(e.target.value)}
+          onChange={(e) => {
+            setQueEncontraste(e.target.value);
+            marcarSinGuardar();
+          }}
           rows={2}
         />
       </Field>
@@ -124,7 +127,10 @@ export default function EncontrarCorregir({
           id="version-corregida"
           required
           value={versionCorregida}
-          onChange={(e) => setVersionCorregida(e.target.value)}
+          onChange={(e) => {
+            setVersionCorregida(e.target.value);
+            marcarSinGuardar();
+          }}
           rows={5}
         />
       </Field>

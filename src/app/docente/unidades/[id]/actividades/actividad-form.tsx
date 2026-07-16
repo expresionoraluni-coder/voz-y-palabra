@@ -359,7 +359,16 @@ export default function ActividadForm({
         fragmentos: listaFragmentos.map((f) => ({ texto: f.texto.trim(), etiqueta_correcta: f.categoria })),
       };
     } else if (nombreTipo === "constructor_ramificado") {
-      const listaSecciones = lineas(secciones).map((linea) => {
+      const listaLineasSecciones = lineas(secciones);
+      // Si falta el "||", antes se guardaba la sección con guia: "" en
+      // silencio y el estudiante recibía un paso sin instrucciones, sin que
+      // nadie se enterara — ahora se detecta antes de guardar.
+      const sinSeparador = listaLineasSecciones.find((linea) => !linea.includes("||"));
+      if (sinSeparador) {
+        setError(`Falta el separador "||" en "${sinSeparador}" — usa el formato: nombre || guía.`);
+        return;
+      }
+      const listaSecciones = listaLineasSecciones.map((linea) => {
         const [nombre, guia] = linea.split("||").map((p) => p.trim());
         return { nombre, guia: guia || "" };
       });

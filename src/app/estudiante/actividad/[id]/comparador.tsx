@@ -18,7 +18,7 @@ export default function Comparador({
   contenido: { conceptos: string[]; criterios: string[] };
   respuestaPrevia?: { celdas: string[][] };
 }) {
-  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
   const vacio = () =>
     contenido.criterios.map(() => contenido.conceptos.map(() => ""));
   const [celdas, setCeldas] = useState<string[][]>(
@@ -31,6 +31,7 @@ export default function Comparador({
         i === fila ? f.map((c, j) => (j === columna ? valor : c)) : f,
       ),
     );
+    marcarSinGuardar();
   }
 
   async function handleSubmit(e: React.FormEvent) {

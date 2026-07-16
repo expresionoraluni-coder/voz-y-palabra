@@ -27,7 +27,7 @@ export default function GrabacionRubrica({
     };
   };
 }) {
-  const { cargando, guardado, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
   const [grabando, setGrabando] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [analizando, setAnalizando] = useState(false);
@@ -99,10 +99,12 @@ export default function GrabacionRubrica({
   function detenerGrabacion() {
     mediaRecorderRef.current?.stop();
     setGrabando(false);
+    marcarSinGuardar();
   }
 
   function alternar(criterio: string) {
     setAutoevaluacion((prev) => ({ ...prev, [criterio]: !prev[criterio] }));
+    marcarSinGuardar();
   }
 
   const DURACION_MINIMA_SEGUNDOS = 8;
@@ -268,7 +270,14 @@ export default function GrabacionRubrica({
         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
           ¿Qué te gustaría mejorar la próxima vez?
         </label>
-        <Textarea value={reflexion} onChange={(e) => setReflexion(e.target.value)} rows={3} />
+        <Textarea
+          value={reflexion}
+          onChange={(e) => {
+            setReflexion(e.target.value);
+            marcarSinGuardar();
+          }}
+          rows={3}
+        />
       </div>
 
       {error && <ErrorText>{error}</ErrorText>}
