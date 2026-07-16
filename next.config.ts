@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 // VP-M5: cabeceras de seguridad HTTP — no había ninguna configurada.
 // microphone=(self) porque grabacion-rubrica.tsx graba audio en el navegador;
 // connect-src incluye Supabase porque toda la app habla con su API REST/Auth.
+//
+// script-src necesita 'unsafe-eval' SOLO en desarrollo: "next dev --webpack"
+// usa eval() para el source map de cada módulo (devtool eval-source-map) y
+// para React Refresh — sin esto, el navegador bloquea esa evaluación en
+// silencio (no aparece como error de React) y la hidratación nunca termina:
+// la página se ve normal pero ningún botón, formulario o link con JS
+// responde. En "next build" no se usa eval(), así que producción se queda
+// sin 'unsafe-eval'.
+const scriptSrc =
+  process.env.NODE_ENV === "production" ? "script-src 'self' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+
 const cabecerasSeguridad = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -13,7 +24,7 @@ const cabecerasSeguridad = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self' data:",
