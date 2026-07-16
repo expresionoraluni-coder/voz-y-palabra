@@ -726,3 +726,35 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       actual incorrecto, acepta y cambia con el NIP correcto, verifica el
 --       hash resultante) — corridas contra la base real antes de este
 --       commit, las 11 pruebas del archivo pasan.
+--
+-- 20. Cambio de NIP obligatorio en el primer ingreso sembrado desde boleta:
+--     - El punto 19 dejaba el cambio de NIP como algo opcional que el
+--       estudiante tenía que saber que existía. A pedido del usuario: si su
+--       NIP inicial es un dato conocible (la boleta), que se le obligue a
+--       cambiarlo antes de usar el resto de la plataforma, no que se le
+--       sugiera.
+--     - columna estudiantes.debe_cambiar_nip boolean not null default
+--       false. agregar_estudiantes_con_boleta() la pone en true al dar de
+--       alta (el NIP sembrado no lo eligió el estudiante); alta manual
+--       (sin boleta, el estudiante inventa su propio NIP) no la toca, se
+--       queda en false.
+--     - cambiar_nip_estudiante() la apaga al cambiar exitosamente.
+--       reiniciar_nip_estudiante() también la apaga: tras un reinicio, lo
+--       que sea que el estudiante capture en su siguiente ingreso lo elige
+--       él mismo (flujo de "primera vez" del punto 16), ya no es el valor
+--       sembrado desde la boleta.
+--     - src/app/estudiante/(hub)/layout.tsx ahora es async y consulta
+--       debe_cambiar_nip antes de renderizar cualquier página del hub
+--       (inicio, calendario, progreso, portafolio, insignias, unidad/[id]):
+--       si es true, renderiza CambiarNipObligatorio en vez de la página
+--       pedida — pantalla completa, sin botón de "cancelar" ni "más tarde".
+--       No cubre /estudiante/actividad/[id] (fuera del route group a
+--       propósito, pantalla completa sin distracciones) — un estudiante no
+--       puede llegar ahí sin pasar antes por /estudiante/inicio en su
+--       primer ingreso, que sí está cubierto.
+--     - src/components/ui/campo-nip.tsx: el input de NIP con mostrar/ocultar
+--       se extrajo de cambiar-nip.tsx (punto 19) para reusarlo aquí sin
+--       duplicar el componente completo.
+--     - 4 pruebas nuevas en rls_seguridad.sql (agregar_estudiantes_con_boleta
+--       marca la bandera, cambiar_nip la apaga, reiniciar_nip la apaga) —
+--       corridas contra la base real, las 15 pruebas del archivo pasan.

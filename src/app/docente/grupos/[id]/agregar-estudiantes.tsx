@@ -116,7 +116,8 @@ export default function AgregarEstudiantes({ grupoId }: { grupoId: string }) {
           <HelpText>
             Pega dos columnas completas desde Excel (o escribe una fila a mano) y revísalas en la tabla
             antes de guardar. El NIP inicial de cada estudiante serán los últimos 4 dígitos de su boleta —
-            se lo puedes decir así el primer día.
+            se lo puedes decir así el primer día. Al entrar por primera vez, la plataforma les va a pedir
+            que lo cambien por uno que solo ellos sepan.
           </HelpText>
           <Boton
             type="button"

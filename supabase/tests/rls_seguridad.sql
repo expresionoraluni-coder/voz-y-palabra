@@ -18,13 +18,14 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(11);
+select plan(15);
 
 -- ============================================================
 -- Fixtures
 -- ============================================================
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', '__test__docente@example.com'),
+  ('22222222-2222-2222-2222-222222222222', '__test__estudiante-boleta@example.com'),
   ('33333333-3333-3333-3333-333333333333', '__test__estudiante@example.com'),
   ('99999999-0000-0000-0000-000000000001', '__test__sesion-login@example.com'),
   ('99999999-0000-0000-0000-000000000002', '__test__sesion-invitacion@example.com');
@@ -101,6 +102,62 @@ select is_empty(
      where schemaname = 'public' and tablename = 'estudiantes' and cmd = 'UPDATE' $$,
   'VP-C2: no existe ninguna policy de UPDATE en estudiantes'
 );
+
+-- ============================================================
+-- agregar_estudiantes_con_boleta: siembra el NIP inicial desde la boleta
+-- y marca debe_cambiar_nip para forzar que lo cambie en su primer ingreso.
+-- ============================================================
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+
+select ok(
+  (select bool_and(debe_cambiar_nip) from agregar_estudiantes_con_boleta(
+    '44444444-4444-4444-4444-444444444444',
+    '[{"nombre":"__test__ Estudiante Boleta","boleta":"20260099"}]'::jsonb
+  )),
+  'agregar_estudiantes_con_boleta: marca debe_cambiar_nip = true'
+);
+
+reset role;
+
+-- Simula que ya inició sesión por primera vez (agregar_estudiantes_con_boleta
+-- no liga auth_user_id; eso solo pasa en el primer ingreso real).
+update estudiantes set auth_user_id = '22222222-2222-2222-2222-222222222222'
+  where nombre = '__test__ Estudiante Boleta';
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+
+select ok(
+  cambiar_nip_estudiante('0099', '4321') is null,
+  'cambiar_nip: acepta el NIP sembrado desde la boleta como NIP actual'
+);
+
+select ok(
+  not (select debe_cambiar_nip from estudiantes where nombre = '__test__ Estudiante Boleta'),
+  'cambiar_nip: apaga debe_cambiar_nip tras el cambio'
+);
+
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+
+do $$
+declare
+  v_id uuid;
+begin
+  select id into v_id from estudiantes where nombre = '__test__ Estudiante Boleta';
+  perform reiniciar_nip_estudiante(v_id);
+end $$;
+
+select ok(
+  (select nip_hash is null and auth_user_id is null and not debe_cambiar_nip
+   from estudiantes where nombre = '__test__ Estudiante Boleta'),
+  'reiniciar_nip_estudiante: limpia nip_hash, auth_user_id y debe_cambiar_nip'
+);
+
+reset role;
 
 -- ============================================================
 -- cambiar_nip_estudiante: el estudiante puede cambiar su propio NIP ya
