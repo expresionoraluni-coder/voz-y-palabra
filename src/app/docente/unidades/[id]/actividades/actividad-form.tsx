@@ -43,6 +43,15 @@ function lineas(texto: string): string[] {
     .filter((l) => l.length > 0);
 }
 
+type SeccionParseada = { linea: string; nombre: string; guia: string; valida: boolean };
+
+function parsearSecciones(texto: string): SeccionParseada[] {
+  return lineas(texto).map((linea) => {
+    const [nombre, guia] = linea.split("||").map((p) => p.trim());
+    return { linea, nombre: nombre ?? "", guia: guia ?? "", valida: linea.includes("||") };
+  });
+}
+
 function claveBorrador(unidadId: string) {
   return `voz-y-palabra:borrador-actividad:${unidadId}`;
 }
@@ -359,24 +368,24 @@ export default function ActividadForm({
         fragmentos: listaFragmentos.map((f) => ({ texto: f.texto.trim(), etiqueta_correcta: f.categoria })),
       };
     } else if (nombreTipo === "constructor_ramificado") {
-      const listaLineasSecciones = lineas(secciones);
+      const seccionesParseadas = parsearSecciones(secciones);
       // Si falta el "||", antes se guardaba la sección con guia: "" en
       // silencio y el estudiante recibía un paso sin instrucciones, sin que
-      // nadie se enterara — ahora se detecta antes de guardar.
-      const sinSeparador = listaLineasSecciones.find((linea) => !linea.includes("||"));
-      if (sinSeparador) {
-        setError(`Falta el separador "||" en "${sinSeparador}" — usa el formato: nombre || guía.`);
+      // nadie se enterara — ahora se detecta antes de guardar (y se ve en
+      // la vista previa de abajo mientras escribe).
+      const invalida = seccionesParseadas.find((s) => !s.valida);
+      if (invalida) {
+        setError(`Falta el separador "||" en "${invalida.linea}" — usa el formato: nombre || guía.`);
         return;
       }
-      const listaSecciones = listaLineasSecciones.map((linea) => {
-        const [nombre, guia] = linea.split("||").map((p) => p.trim());
-        return { nombre, guia: guia || "" };
-      });
-      if (listaSecciones.length < 2) {
+      if (seccionesParseadas.length < 2) {
         setError('Escribe al menos 2 secciones, formato: "nombre || guía", una por línea.');
         return;
       }
-      contenido = { tema_sugerido: temaSugerido || null, secciones: listaSecciones };
+      contenido = {
+        tema_sugerido: temaSugerido || null,
+        secciones: seccionesParseadas.map((s) => ({ nombre: s.nombre, guia: s.guia })),
+      };
     } else if (nombreTipo === "grabacion_rubrica") {
       const listaRubrica = lineas(rubrica);
       const duracion = parseInt(duracionSugerida, 10);
@@ -504,6 +513,32 @@ export default function ActividadForm({
             <div key={i} className="flex items-center justify-between gap-2 text-sm">
               <span className="text-slate-700 dark:text-slate-300">{f.texto}</span>
               <Badge tono="indigo">{f.categoria}</Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function vistaPreviaSecciones(texto: string) {
+    const parseadas = parsearSecciones(texto);
+    if (parseadas.length === 0) return null;
+    return (
+      <div className="flex flex-col gap-1.5 rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/60">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          {parseadas.length} sección(es) detectada(s)
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {parseadas.map((s, i) => (
+            <div key={i} className="flex items-start gap-2 text-sm">
+              {s.valida ? (
+                <Badge tono="indigo">{s.nombre || "(sin nombre)"}</Badge>
+              ) : (
+                <Badge tono="warning">falta &quot;||&quot;</Badge>
+              )}
+              <span className="flex-1 text-xs text-slate-500 dark:text-slate-400">
+                {s.valida ? s.guia || "(sin guía)" : s.linea}
+              </span>
             </div>
           ))}
         </div>
@@ -814,6 +849,7 @@ export default function ActividadForm({
                     className="font-mono text-sm"
                   />
                 </Field>
+                {vistaPreviaSecciones(secciones)}
               </>
             )}
 
