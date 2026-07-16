@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
+import { useEliminarFila } from "@/hooks/useEliminarFila";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -23,15 +24,7 @@ export default function Avisos({
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [borrando, setBorrando] = useState<string | null>(null);
-
-  async function eliminar(id: string) {
-    setBorrando(id);
-    const supabase = createClient();
-    await supabase.from("avisos").delete().eq("id", id);
-    setBorrando(null);
-    router.refresh();
-  }
+  const { borrando, eliminar } = useEliminarFila("avisos");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

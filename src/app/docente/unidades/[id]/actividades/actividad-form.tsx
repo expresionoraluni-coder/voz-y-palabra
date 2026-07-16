@@ -165,17 +165,25 @@ export default function ActividadForm({
       if (datos.instrucciones) setInstrucciones(datos.instrucciones);
       if (datos.pregunta) setPregunta(datos.pregunta);
       if (datos.opciones) setOpciones(datos.opciones);
+      if (datos.ideasClave) setIdeasClave(datos.ideasClave);
       if (datos.categorias) setCategorias(datos.categorias);
       if (datos.elementosFilas) setElementosFilas(datos.elementosFilas);
       if (datos.textoOriginal) setTextoOriginal(datos.textoOriginal);
+      if (datos.pista) setPista(datos.pista);
+      if (datos.fragmentoErroneo) setFragmentoErroneo(datos.fragmentoErroneo);
+      if (datos.ideasClaveError) setIdeasClaveError(datos.ideasClaveError);
       if (datos.conceptos) setConceptos(datos.conceptos);
       if (datos.criterios) setCriterios(datos.criterios);
       if (datos.textoFuente) setTextoFuente(datos.textoFuente);
+      if (datos.limitePalabras) setLimitePalabras(datos.limitePalabras);
       if (datos.checklist) setChecklist(datos.checklist);
+      if (datos.contexto) setContexto(datos.contexto);
       if (datos.etiquetas) setEtiquetas(datos.etiquetas);
       if (datos.fragmentosFilas) setFragmentosFilas(datos.fragmentosFilas);
+      if (datos.temaSugerido) setTemaSugerido(datos.temaSugerido);
       if (datos.secciones) setSecciones(datos.secciones);
       if (datos.temaGrabacion) setTemaGrabacion(datos.temaGrabacion);
+      if (datos.duracionSugerida) setDuracionSugerida(datos.duracionSugerida);
       if (datos.rubrica) setRubrica(datos.rubrica);
       setBorradorRestaurado(true);
       // eslint-disable-next-line no-empty
@@ -190,20 +198,32 @@ export default function ActividadForm({
       instrucciones,
       pregunta,
       opciones,
+      ideasClave,
       categorias,
       elementosFilas,
       textoOriginal,
+      pista,
+      fragmentoErroneo,
+      ideasClaveError,
       conceptos,
       criterios,
       textoFuente,
+      limitePalabras,
       checklist,
+      contexto,
       etiquetas,
       fragmentosFilas,
+      temaSugerido,
       secciones,
       temaGrabacion,
+      duracionSugerida,
       rubrica,
     };
-    localStorage.setItem(claveBorrador(unidadId), JSON.stringify(datos));
+    try {
+      localStorage.setItem(claveBorrador(unidadId), JSON.stringify(datos));
+    } catch {
+      // Safari privado o cuota llena: el borrador simplemente no se guarda.
+    }
   }, [
     modoEdicion,
     unidadId,
@@ -211,17 +231,25 @@ export default function ActividadForm({
     instrucciones,
     pregunta,
     opciones,
+    ideasClave,
     categorias,
     elementosFilas,
     textoOriginal,
+    pista,
+    fragmentoErroneo,
+    ideasClaveError,
     conceptos,
     criterios,
     textoFuente,
+    limitePalabras,
     checklist,
+    contexto,
     etiquetas,
     fragmentosFilas,
+    temaSugerido,
     secciones,
     temaGrabacion,
+    duracionSugerida,
     rubrica,
   ]);
 

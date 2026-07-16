@@ -153,7 +153,11 @@ export default async function FichaEstudiante({
                   </span>
                   <span className="font-medium text-slate-900 dark:text-slate-50">{pct}%</span>
                 </div>
-                <ProgressBar porcentaje={pct} gradiente={temaUnidad(u.orden).barra} />
+                <ProgressBar
+                  porcentaje={pct}
+                  gradiente={temaUnidad(u.orden).barra}
+                  etiqueta={`Avance en Unidad ${u.orden}. ${u.nombre}: ${pct}%`}
+                />
                 {inicio && (
                   <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-500">
                     Confianza: {inicio.valor}% al inicio{" "}

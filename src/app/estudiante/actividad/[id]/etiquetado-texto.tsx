@@ -53,7 +53,13 @@ export default function EtiquetadoTexto({
     );
 
     const ok = await guardar({
-      respuesta: { elegidas },
+      respuesta: {
+        elegidas,
+        // Copia de texto+etiqueta correcta al momento de entregar: si la
+        // docente edita la actividad después, la matriz de confusión del
+        // grupo no debe desalinearse.
+        itemsSnapshot: contenido.fragmentos.map((f) => ({ texto: f.texto, correcta: f.etiqueta_correcta })),
+      },
       estado: "completada",
       puntaje_auto: puntajeAuto,
     });

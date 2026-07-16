@@ -82,15 +82,19 @@ export default function Comparador({
           <tbody>
             {contenido.criterios.map((criterio, i) => (
               <tr key={criterio} className="border-t border-slate-200 dark:border-slate-800">
-                <td className="w-1/4 p-3 align-top text-xs font-medium text-slate-500 dark:text-slate-500">
+                <th
+                  scope="row"
+                  className="w-1/4 p-3 text-left align-top text-xs font-medium text-slate-500 dark:text-slate-500"
+                >
                   {criterio}
-                </td>
-                {contenido.conceptos.map((_, j) => (
+                </th>
+                {contenido.conceptos.map((concepto, j) => (
                   <td key={j} className="border-l border-slate-200 p-1 dark:border-slate-800">
                     <textarea
                       value={celdas[i]?.[j] ?? ""}
                       onChange={(e) => actualizar(i, j, e.target.value)}
                       rows={2}
+                      aria-label={`${criterio} — ${concepto}`}
                       className="w-full resize-none rounded-lg border-0 bg-transparent p-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:text-slate-50"
                     />
                   </td>

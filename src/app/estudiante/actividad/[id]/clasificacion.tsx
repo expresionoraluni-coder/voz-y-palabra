@@ -53,7 +53,13 @@ export default function Clasificacion({
     );
 
     const ok = await guardar({
-      respuesta: { elegidas },
+      respuesta: {
+        elegidas,
+        // Copia de texto+respuesta correcta al momento de entregar: si la
+        // docente edita la actividad después (reordena/agrega elementos),
+        // la matriz de confusión del grupo no debe desalinearse.
+        itemsSnapshot: contenido.elementos.map((el) => ({ texto: el.texto, correcta: el.categoria_correcta })),
+      },
       estado: "completada",
       puntaje_auto: puntajeAuto,
     });

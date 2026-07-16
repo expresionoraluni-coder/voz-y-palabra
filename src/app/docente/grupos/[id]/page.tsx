@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ChevronRight, ClipboardCheck, Minus, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { ChevronRight, ClipboardCheck, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
@@ -115,18 +115,19 @@ export default async function DetalleGrupo({
   // Precisión promedio por tipo de actividad: solo clasificación y etiquetado
   // de texto tienen respuesta objetivamente correcta y guardan puntaje_auto.
   // Ordenado de peor a mejor para que salte a la vista dónde intervenir.
-  const precisionPorTipo = Object.values(
+  function nombreTipoDe(en: { actividades: unknown }) {
+    const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
+    const tipo = (act as { tipos_actividad?: unknown } | undefined)?.tipos_actividad;
+    const t = Array.isArray(tipo) ? tipo[0] : tipo;
+    return (t as { nombre?: string } | undefined)?.nombre ?? "otro";
+  }
+
+  const precisionPorTipoBase = Object.values(
     (entregas ?? [])
       .filter((en) => en.puntaje_auto !== null)
       .reduce(
         (acc, en) => {
-          const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
-          const tipo = act
-            ? Array.isArray(act.tipos_actividad)
-              ? act.tipos_actividad[0]
-              : act.tipos_actividad
-            : undefined;
-          const nombre = tipo?.nombre ?? "otro";
+          const nombre = nombreTipoDe(en);
           acc[nombre] ??= { nombre, suma: 0, total: 0 };
           acc[nombre].suma += en.puntaje_auto ?? 0;
           acc[nombre].total += 1;
@@ -138,30 +139,36 @@ export default async function DetalleGrupo({
     .map((x) => ({ nombre: x.nombre, promedio: Math.round(x.suma / x.total), n: x.total }))
     .sort((a, b) => a.promedio - b.promedio);
 
-  // Tendencia de precisión: compara el promedio de puntaje_auto de los
-  // últimos 7 días contra los 7 anteriores — calculado en vivo a partir de
-  // las entregas ya cargadas, sin guardar snapshots ni tabla nueva.
+  // Tendencia de precisión por tipo: compara el promedio de puntaje_auto de
+  // los últimos 7 días contra los 7 anteriores, calculado en vivo a partir
+  // de las entregas ya cargadas. Va por tipo (no un solo número agregado)
+  // porque dos tipos moviéndose en direcciones opuestas se cancelaban entre
+  // sí y mostraban "igual que la semana pasada" sin serlo.
   const hace7dias = hoy - 7 * 24 * 60 * 60 * 1000;
   const hace14dias = hoy - 14 * 24 * 60 * 60 * 1000;
-  const promedioPuntaje = (arr: typeof entregas) => {
-    const conPuntaje = (arr ?? []).filter((en) => en.puntaje_auto !== null);
+  const entregasSemanaActual = (entregas ?? []).filter(
+    (en) => new Date(en.created_at).getTime() >= hace7dias,
+  );
+  const entregasSemanaAnterior = (entregas ?? []).filter((en) => {
+    const t = new Date(en.created_at).getTime();
+    return t >= hace14dias && t < hace7dias;
+  });
+  function promedioPuntajePorTipo(arr: typeof entregas, nombreTipo: string) {
+    const conPuntaje = (arr ?? []).filter(
+      (en) => en.puntaje_auto !== null && nombreTipoDe(en) === nombreTipo,
+    );
     return conPuntaje.length > 0
       ? Math.round(conPuntaje.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / conPuntaje.length)
       : null;
-  };
-  const precisionSemanaActual = promedioPuntaje(
-    (entregas ?? []).filter((en) => new Date(en.created_at).getTime() >= hace7dias),
-  );
-  const precisionSemanaAnterior = promedioPuntaje(
-    (entregas ?? []).filter((en) => {
-      const t = new Date(en.created_at).getTime();
-      return t >= hace14dias && t < hace7dias;
-    }),
-  );
-  const tendenciaPrecision =
-    precisionSemanaActual !== null && precisionSemanaAnterior !== null
-      ? precisionSemanaActual - precisionSemanaAnterior
-      : null;
+  }
+  const precisionPorTipo = precisionPorTipoBase.map((t) => {
+    const actual = promedioPuntajePorTipo(entregasSemanaActual, t.nombre);
+    const anterior = promedioPuntajePorTipo(entregasSemanaAnterior, t.nombre);
+    return {
+      ...t,
+      tendencia: actual !== null && anterior !== null ? actual - anterior : null,
+    };
+  });
 
   // Matriz de confusión por elemento: no solo "clasificación va al 69%",
   // sino "el grupo confunde 'Receptor' con 'Emisor' en 5 entregas" — mismo
@@ -176,15 +183,29 @@ export default async function DetalleGrupo({
       : undefined;
     if (!act || (tipo?.nombre !== "clasificacion" && tipo?.nombre !== "etiquetado_texto")) continue;
 
-    const contenido = act.contenido as {
-      elementos?: { texto: string; categoria_correcta: string }[];
-      fragmentos?: { texto: string; etiqueta_correcta: string }[];
-    };
-    const items = (contenido.elementos ?? contenido.fragmentos ?? []).map((it) => ({
-      texto: it.texto,
-      correcta: "categoria_correcta" in it ? it.categoria_correcta : it.etiqueta_correcta,
-    }));
-    const elegidas = (en.respuesta as { elegidas?: string[] } | null)?.elegidas ?? [];
+    const respuesta = en.respuesta as {
+      elegidas?: string[];
+      itemsSnapshot?: { texto: string; correcta: string }[];
+    } | null;
+    const elegidas = respuesta?.elegidas ?? [];
+
+    // itemsSnapshot se guarda desde la entrega al momento de entregar, así
+    // que no se desalinea si la docente edita la actividad después. Las
+    // entregas de antes de este cambio no lo tienen — para esas, mejor
+    // esfuerzo contra el contenido actual (puede desalinearse si cambió).
+    let items: { texto: string; correcta: string }[];
+    if (respuesta?.itemsSnapshot?.length) {
+      items = respuesta.itemsSnapshot;
+    } else {
+      const contenido = act.contenido as {
+        elementos?: { texto: string; categoria_correcta: string }[];
+        fragmentos?: { texto: string; etiqueta_correcta: string }[];
+      };
+      items = (contenido.elementos ?? contenido.fragmentos ?? []).map((it) => ({
+        texto: it.texto,
+        correcta: "categoria_correcta" in it ? it.categoria_correcta : it.etiqueta_correcta,
+      }));
+    }
 
     items.forEach((item, i) => {
       const elegida = elegidas[i];
@@ -321,29 +342,9 @@ export default async function DetalleGrupo({
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
               Precisión por tipo de actividad
             </h2>
-            {tendenciaPrecision !== null && tendenciaPrecision !== 0 && (
-              <span
-                className={`flex items-center gap-1 text-xs font-medium ${
-                  tendenciaPrecision > 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-600 dark:text-red-400"
-                }`}
-              >
-                {tendenciaPrecision > 0 ? (
-                  <TrendingUp className="size-3.5" aria-hidden="true" />
-                ) : (
-                  <TrendingDown className="size-3.5" aria-hidden="true" />
-                )}
-                {tendenciaPrecision > 0 ? "+" : ""}
-                {tendenciaPrecision} pts vs. semana pasada
-              </span>
-            )}
-            {tendenciaPrecision === 0 && (
-              <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <Minus className="size-3.5" aria-hidden="true" />
-                Igual que la semana pasada
-              </span>
-            )}
+            <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
+              vs. semana pasada, por tipo
+            </span>
           </div>
           <Card className="flex flex-col gap-4 p-5">
             {precisionPorTipo.map((t) => (
@@ -352,7 +353,24 @@ export default async function DetalleGrupo({
                   <span className="capitalize text-slate-700 dark:text-slate-300">
                     {t.nombre.replaceAll("_", " ")}
                   </span>
-                  <span className="font-medium text-slate-900 dark:text-slate-50">
+                  <span className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-50">
+                    {t.tendencia !== null && t.tendencia !== 0 && (
+                      <span
+                        className={`flex items-center text-xs font-medium ${
+                          t.tendencia > 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        {t.tendencia > 0 ? (
+                          <TrendingUp className="size-3" aria-hidden="true" />
+                        ) : (
+                          <TrendingDown className="size-3" aria-hidden="true" />
+                        )}
+                        {t.tendencia > 0 ? "+" : ""}
+                        {t.tendencia}
+                      </span>
+                    )}
                     {t.promedio}% · {t.n} {t.n === 1 ? "entrega" : "entregas"}
                   </span>
                 </div>
@@ -471,7 +489,7 @@ export default async function DetalleGrupo({
                     {e.nombre}
                   </span>
                   <div className="flex w-24 items-center gap-2">
-                    <ProgressBar porcentaje={e.avance} />
+                    <ProgressBar porcentaje={e.avance} etiqueta={`Avance de ${e.nombre}: ${e.avance}%`} />
                     <span className="w-8 shrink-0 text-right text-xs text-slate-500 dark:text-slate-500">
                       {e.avance}%
                     </span>

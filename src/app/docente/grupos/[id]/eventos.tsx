@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
+import { useEliminarFila } from "@/hooks/useEliminarFila";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -35,7 +36,7 @@ export default function Eventos({
   const [unidadId, setUnidadId] = useState(unidades[0]?.id ?? "");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [borrando, setBorrando] = useState<string | null>(null);
+  const { borrando, eliminar } = useEliminarFila("eventos");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,14 +65,6 @@ export default function Eventos({
     setTitulo("");
     setFecha("");
     setCargando(false);
-    router.refresh();
-  }
-
-  async function eliminar(id: string) {
-    setBorrando(id);
-    const supabase = createClient();
-    await supabase.from("eventos").delete().eq("id", id);
-    setBorrando(null);
     router.refresh();
   }
 

@@ -44,8 +44,9 @@ export default function OpcionJustificacion({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <p className="font-medium text-slate-900 dark:text-slate-50">{contenido.pregunta}</p>
-      <div className="flex flex-col gap-2">
+      <fieldset className="flex flex-col gap-3">
+        <legend className="font-medium text-slate-900 dark:text-slate-50">{contenido.pregunta}</legend>
+        <div className="flex flex-col gap-2">
         {contenido.opciones.map((op) => {
           const seleccionada = opcion === op;
           return (
@@ -79,7 +80,8 @@ export default function OpcionJustificacion({
             </label>
           );
         })}
-      </div>
+        </div>
+      </fieldset>
       <Field>
         <Label htmlFor="justificacion">¿Por qué elegiste esa opción?</Label>
         <Textarea
