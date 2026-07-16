@@ -1,5 +1,6 @@
 -- Pruebas de regresión para los hallazgos de la auditoría de seguridad
--- (VP-C1, VP-C2, VP-A1, VP-A2, VP-B4). Corre con `supabase test db`
+-- (VP-C1, VP-C2, VP-A1, VP-A2, VP-B4) y para cambiar_nip_estudiante. Corre
+-- con `supabase test db`
 -- (requiere `supabase init` + Docker) o pegando el contenido completo en
 -- el SQL Editor del dashboard de Supabase.
 --
@@ -17,7 +18,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(8);
+select plan(11);
 
 -- ============================================================
 -- Fixtures
@@ -100,6 +101,38 @@ select is_empty(
      where schemaname = 'public' and tablename = 'estudiantes' and cmd = 'UPDATE' $$,
   'VP-C2: no existe ninguna policy de UPDATE en estudiantes'
 );
+
+-- ============================================================
+-- cambiar_nip_estudiante: el estudiante puede cambiar su propio NIP ya
+-- logueado, pero solo si conoce el NIP actual (se ejecuta antes de VP-A1
+-- para usar el estudiante de prueba antes de que ese bloque lo bloquee).
+-- ============================================================
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+
+select ok(
+  cambiar_nip_estudiante('0000', '5678') = 'Tu NIP actual no es correcto.',
+  'cambiar_nip: rechaza si el NIP actual no coincide'
+);
+
+select ok(
+  cambiar_nip_estudiante('1234', '5678') is null,
+  'cambiar_nip: acepta y cambia el NIP cuando el actual es correcto'
+);
+
+select ok(
+  (select nip_hash from estudiantes where id = '55555555-5555-5555-5555-555555555555')
+    = extensions.crypt('5678', (select nip_hash from estudiantes where id = '55555555-5555-5555-5555-555555555555')),
+  'cambiar_nip: el hash guardado corresponde al NIP nuevo'
+);
+
+reset role;
+
+-- VP-A1 (abajo) espera que el NIP del estudiante de prueba siga siendo
+-- '1234' y que no arrastre intentos_fallidos de este bloque.
+update estudiantes
+  set nip_hash = extensions.crypt('1234', extensions.gen_salt('bf')), intentos_fallidos = 0, bloqueado_hasta = null
+  where id = '55555555-5555-5555-5555-555555555555';
 
 -- ============================================================
 -- VP-B4: docentes.correo no se puede cambiar por API directa.

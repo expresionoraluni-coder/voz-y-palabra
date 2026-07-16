@@ -699,3 +699,30 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       quedarse pegadas en el esqueleto) — se mantiene esta vez.
 --     - middleware.ts se renombró a proxy.ts (convención de Next.js 16);
 --       mismo comportamiento, sin cambios de base de datos.
+--
+-- 19. Cambiar mi NIP (estudiante, ya logueado):
+--     - El NIP inicial de un estudiante dado de alta con boleta (punto 17)
+--       ya no es un secreto inventado por él — son los últimos 4 dígitos de
+--       su boleta, un dato que un compañero de salón puede conocer. Antes
+--       no había forma de que el estudiante lo cambiara por su cuenta: solo
+--       existía reiniciar_nip_estudiante(), que dispara la docente.
+--     - función cambiar_nip_estudiante(p_nip_actual, p_nip_nuevo) —
+--       SECURITY DEFINER, ubica al estudiante por auth.uid() (no recibe su
+--       id, evita que alguien intente pasar el de otro). Exige el NIP
+--       actual aunque ya haya sesión abierta — si alguien deja el equipo
+--       sin cerrar sesión, un tercero no puede cambiar el NIP sin saberlo.
+--     - Reutiliza estudiantes.intentos_fallidos/bloqueado_hasta (mismas
+--       columnas y mismo umbral que ingresar_estudiante: 5 intentos, 15
+--       minutos) para que esta puerta no sirva de atajo para adivinar el
+--       NIP sin el bloqueo que ya protege el login. "NIP actual incorrecto"
+--       se devuelve como texto, no como excepción, por la misma razón que
+--       en ingresar_estudiante (una excepción deshace el incremento del
+--       contador hecho en la misma llamada).
+--     - src/components/cambiar-nip.tsx: enlace discreto en /estudiante/inicio
+--       junto a "Salir"; al expandirse pide NIP actual + NIP nuevo +
+--       confirmar NIP nuevo (mismo patrón de doble captura que crear un NIP
+--       por primera vez, punto 16).
+--     - Pruebas agregadas a supabase/tests/rls_seguridad.sql (rechaza NIP
+--       actual incorrecto, acepta y cambia con el NIP correcto, verifica el
+--       hash resultante) — corridas contra la base real antes de este
+--       commit, las 11 pruebas del archivo pasan.

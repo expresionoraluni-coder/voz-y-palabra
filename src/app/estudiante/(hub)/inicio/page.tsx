@@ -16,6 +16,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import CerrarSesion from "@/components/cerrar-sesion";
+import CambiarNip from "@/components/cambiar-nip";
 import Avatar from "@/components/ui/avatar";
 import { CardLink } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
@@ -165,6 +166,8 @@ export default async function InicioEstudiante({
         </div>
         <CerrarSesion />
       </div>
+
+      <CambiarNip />
 
       {nip === "nuevo" && (
         <Alert tono="success" titulo="Tu NIP quedó guardado">
