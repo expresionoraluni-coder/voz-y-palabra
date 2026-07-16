@@ -7,6 +7,7 @@ import { CardLink } from "@/components/ui/card";
 import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import { ICONO_TIPO } from "@/lib/tipo-actividad-icono";
+import DuplicarActividad from "./actividades/duplicar-actividad";
 
 export default async function DetalleUnidadDocente({
   params,
@@ -60,18 +61,21 @@ export default async function DetalleUnidadDocente({
             const tipo = Array.isArray(a.tipos_actividad) ? a.tipos_actividad[0] : a.tipos_actividad;
             const Icono = ICONO_TIPO[tipo?.nombre ?? ""] ?? ListChecks;
             return (
-              <Link key={a.id} href={`/docente/unidades/${id}/actividades/${a.id}/editar`}>
-                <CardLink className="flex items-center gap-3 px-4 py-3.5">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
-                    <Icono className="size-4" aria-hidden="true" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900 dark:text-slate-50">{a.titulo}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">{tipo?.nombre}</p>
-                  </div>
-                  <Pencil className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-                </CardLink>
-              </Link>
+              <div key={a.id} className="flex items-center gap-2">
+                <Link href={`/docente/unidades/${id}/actividades/${a.id}/editar`} className="min-w-0 flex-1">
+                  <CardLink className="flex items-center gap-3 px-4 py-3.5">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                      <Icono className="size-4" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-slate-900 dark:text-slate-50">{a.titulo}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">{tipo?.nombre}</p>
+                    </div>
+                    <Pencil className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                  </CardLink>
+                </Link>
+                <DuplicarActividad actividadId={a.id} unidadId={id} titulo={a.titulo} />
+              </div>
             );
           })}
         </div>
