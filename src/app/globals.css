@@ -2,11 +2,8 @@
 
 :root {
   --surface-page: var(--color-slate-50);
-  --surface-card: #ffffff;
   --border-default: var(--color-slate-200);
   --text-primary: var(--color-slate-900);
-  --text-secondary: var(--color-slate-500);
-  --text-muted: var(--color-slate-400);
 }
 
 @theme inline {
@@ -17,11 +14,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --surface-page: var(--color-slate-950);
-    --surface-card: var(--color-slate-900);
     --border-default: var(--color-slate-800);
     --text-primary: var(--color-slate-50);
-    --text-secondary: var(--color-slate-400);
-    --text-muted: var(--color-slate-500);
   }
 }
 
