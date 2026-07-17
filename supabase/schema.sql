@@ -800,3 +800,41 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       flujos de docente sin usar la cuenta real): duplicar actividad, el
 --       ancla+resaltado de "Revisar", y editar nombre de estudiante/grupo,
 --       los tres funcionando correctamente end-to-end.
+--
+-- 22. Dos bugs reales encontrados haciendo el mismo recorrido desde la
+--     vista del estudiante (con la cuenta de prueba), ninguno hipotético:
+--
+--     a) loading.tsx dejaba TODAS las páginas del hub del estudiante en
+--        blanco (solo la barra inferior visible) al llegar por navegación
+--        directa/recarga completa — no solo estando desconectado, que es
+--        lo único que se había probado antes (ver puntos 13 y 18: esa
+--        verificación cubría el caso de sesión inválida redirigiendo, no
+--        este). El servidor sí mandaba el HTML completo y correcto (se
+--        confirmó haciendo fetch() del HTML crudo), pero al hidratar en el
+--        cliente el contenido real del segmento se quedaba sin insertarse
+--        en el DOM visible — se reprodujo igual en producción real
+--        (next build && next start), no solo en next dev. Se eliminaron
+--        los 7 archivos loading.tsx del lado del estudiante (inicio,
+--        calendario, progreso, portafolio, insignias, unidad/[id],
+--        actividad/[id]) y el componente Skeleton que ya no se usa en
+--        ningún lado. Verificado en vivo, en next dev y en next start,
+--        navegando con recarga completa a las 7 rutas: las 7 renderizan
+--        su contenido real sin quedarse en blanco.
+--
+--     b) /ingreso/estudiante reusaba CUALQUIER sesión ya activa en el
+--        navegador con tal de que existiera, sin comprobar que fuera una
+--        sesión anónima de estudiante. Si en ese navegador quedaba abierta
+--        la sesión real de una docente (p. ej. una demo en un equipo
+--        compartido sin cerrar sesión), un estudiante que entrara ahí
+--        quedaba con estudiantes.auth_user_id apuntando a la cuenta de la
+--        docente en vez de una identidad propia — heredando en silencio
+--        sus permisos de RLS (se confirmó viendo entregas de otro
+--        estudiante del grupo en el portafolio, algo que nunca debería
+--        pasar). Ahora se comprueba auth.getUser().data.user.is_anonymous
+--        antes de reusar la sesión; si hay una sesión pero no es anónima,
+--        se cierra esa sesión primero y se crea una anónima nueva antes de
+--        llamar a ingresar_estudiante(). Verificado en vivo reproduciendo
+--        el escenario exacto (login como docente de prueba sin cerrar
+--        sesión, luego login como estudiante en el mismo navegador): la
+--        nueva sesión queda anónima y separada, y el portafolio ya no
+--        muestra entregas de otro estudiante.

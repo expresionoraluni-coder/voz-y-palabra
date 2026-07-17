@@ -60,9 +60,17 @@ export default function IngresoEstudiante() {
 
     // Se valida contra el servidor (no solo lo guardado localmente): si la
     // sesión ya no existe de verdad (por ejemplo, quedó "fantasma" en el
-    // navegador), esto lo detecta y crea una sesión nueva.
+    // navegador), esto lo detecta y crea una sesión nueva. También se exige
+    // que la sesión existente sea anónima: si en este navegador quedó
+    // abierta la sesión real de una docente (p. ej. una demo en un equipo
+    // compartido que no cerró sesión), reusarla ligaría al estudiante con
+    // la cuenta de la docente en vez de una identidad propia — heredando
+    // sin querer sus permisos.
     const { data: usuario, error: usuarioError } = await supabase.auth.getUser();
-    if (usuarioError || !usuario.user) {
+    if (usuarioError || !usuario.user || !usuario.user.is_anonymous) {
+      if (usuario?.user && !usuario.user.is_anonymous) {
+        await supabase.auth.signOut();
+      }
       const { error: authError } = await supabase.auth.signInAnonymously();
       if (authError) {
         setError("No pudimos iniciar tu sesión, intenta de nuevo.");
