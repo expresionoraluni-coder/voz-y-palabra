@@ -472,7 +472,10 @@ export default async function DetalleGrupo({
       </div>
 
       <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
-      <AgregarEstudiantes grupoId={grupo.id} />
+      <AgregarEstudiantes
+        grupoId={grupo.id}
+        nombresExistentes={[...(estudiantes ?? []), ...(estudiantesBaja ?? [])].map((e) => e.nombre)}
+      />
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">

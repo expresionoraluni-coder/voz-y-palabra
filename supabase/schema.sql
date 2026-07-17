@@ -838,3 +838,54 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --        sesión, luego login como estudiante en el mismo navegador): la
 --        nueva sesión queda anónima y separada, y el portafolio ya no
 --        muestra entregas de otro estudiante.
+--
+-- 23. Nombre de estudiante normalizado (mayúsculas, sin acentos) + rediseño
+--     de "Agregar estudiantes" como tabla tipo Excel (a pedido del usuario):
+--     - extensión unaccent habilitada. Nueva función
+--       normalizar_nombre(text) — upper(trim(unaccent(...))), colapsando
+--       espacios de más — es el criterio único de nombre de estudiante en
+--       toda la plataforma: cómo se guarda al darlo de alta y cómo se
+--       compara al entrar.
+--     - agregar_estudiantes_con_boleta() guarda el nombre ya normalizado
+--       (antes solo hacía trim). ingresar_estudiante() ahora compara
+--       normalizar_nombre(nombre guardado) = normalizar_nombre(nombre que
+--       escribe el estudiante) — antes solo ignoraba mayúsculas/minúsculas,
+--       no acentos, así que un estudiante que omitiera un acento al
+--       escribir su nombre (frecuente desde celular) no podía entrar
+--       aunque el nombre fuera correcto.
+--     - Se normalizaron con un UPDATE los nombres de estudiantes ya
+--       existentes, para que la docente vea el mismo criterio en toda su
+--       lista, no solo en las altas nuevas. Sin colisiones (se revisó
+--       antes que no hubiera dos estudiantes en el mismo grupo cuyo nombre
+--       normalizado coincidiera).
+--     - src/lib/normalizar-nombre.ts: misma normalización en el cliente
+--       (mismo truco NFD + rango de diacríticos que ya usaba
+--       codigo-acceso.ts), para que la docente vea en la tabla exactamente
+--       lo que se va a guardar antes de enviar — no solo al llegar al
+--       servidor. Se aplica también en editar-estudiante.tsx (punto 21) al
+--       corregir un nombre después del alta.
+--     - agregar-estudiantes.tsx: la lista de filas editables (antes
+--       tarjetas apiladas) se rediseñó como una tabla real con encabezados
+--       "NOMBRE" / "BOLETA", más parecida a pegar en Excel — a pedido
+--       explícito del usuario ("no me gusta [la lista por filas], que sea
+--       tal cual como un Excel").
+--     - Detección de "ya existe en el grupo": ahora compara cada fila
+--       pegada contra los estudiantes que ya tiene el grupo (activos e
+--       inactivos — el índice único no distingue por activo) y contra
+--       filas repetidas dentro del mismo pegado, marcándolas aparte y
+--       excluyéndolas del envío en vez de bloquear todo el lote. Antes,
+--       si la docente volvía a pegar el roster completo actualizado (en
+--       vez de aislar solo los nombres nuevos — el caso más natural),
+--       la inserción entera fallaba por los nombres que ya existían, sin
+--       decir cuáles. Ahora solo se envían las filas genuinamente nuevas.
+--     - 2 pruebas nuevas en rls_seguridad.sql (normalizar_nombre quita
+--       acentos y mayúsculas; ingresar_estudiante empareja un nombre
+--       guardado sin acento contra uno escrito con acento) — corridas
+--       contra la base real, las 17 pruebas del archivo pasan.
+--     - Verificado en vivo con la cuenta de prueba: pegar un roster con
+--       un nombre ya existente (distinto acento/mayúsculas) + un nombre
+--       repetido dos veces en el mismo pegado + un nombre nuevo mostró
+--       "2 ya existen (se omitirán) · 1 nueva" correctamente, y al enviar
+--       solo se agregó el nuevo. Un estudiante entrando con su nombre en
+--       minúsculas y con acento emparejó correctamente contra el nombre
+--       guardado en mayúsculas sin acento.

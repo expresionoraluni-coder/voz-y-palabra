@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
+import { normalizarNombre } from "@/lib/normalizar-nombre";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
@@ -44,7 +45,7 @@ export default function EditarEstudiante({
     const supabase = createClient();
     const { error: updError } = await supabase
       .from("estudiantes")
-      .update({ nombre: nombre.trim(), boleta: boleta.trim() || null })
+      .update({ nombre: normalizarNombre(nombre), boleta: boleta.trim() || null })
       .eq("id", estudianteId);
 
     if (updError) {
@@ -77,7 +78,13 @@ export default function EditarEstudiante({
     >
       <Field>
         <Label htmlFor="edit-nombre">Nombre</Label>
-        <Input id="edit-nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        <Input
+          id="edit-nombre"
+          required
+          value={nombre}
+          onChange={(e) => setNombre(normalizarNombre(e.target.value))}
+        />
+        <HelpText>Se guarda en mayúsculas y sin acentos — es el nombre con el que entra.</HelpText>
       </Field>
       <Field>
         <Label htmlFor="edit-boleta">Boleta</Label>
