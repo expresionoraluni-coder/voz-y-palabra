@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
 import Eventos from "./eventos";
+import EditarGrupo from "./editar-grupo";
 import EliminarGrupo from "./eliminar-grupo";
 import ExportarGrupo from "./exportar-grupo";
 import PageHeader from "@/components/ui/page-header";
@@ -278,6 +279,7 @@ export default async function DetalleGrupo({
             </span>
           </>
         }
+        accion={<EditarGrupo grupoId={grupo.id} nombreActual={grupo.nombre} codigoActual={grupo.codigo_acceso} />}
       />
 
       <nav className="sticky top-0 z-10 -mx-6 flex gap-1 border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
