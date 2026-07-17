@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import ComentarioEntrega from "./comentario-entrega";
 import ReiniciarNip from "./reiniciar-nip";
+import EditarEstudiante from "./editar-estudiante";
 import GestionEstudiante from "./gestion-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -27,7 +28,7 @@ export default async function FichaEstudiante({
 
   const { data: estudiante } = await supabase
     .from("estudiantes")
-    .select("id, nombre, grupo_id, activo, grupos(nombre)")
+    .select("id, nombre, grupo_id, activo, boleta, grupos(nombre)")
     .eq("id", id)
     .single();
   if (!estudiante) notFound();
@@ -100,7 +101,16 @@ export default async function FichaEstudiante({
             volverTexto={grupo?.nombre ?? "Grupo"}
             titulo={estudiante.nombre}
             descripcion={`Avance general: ${avanceGeneral}% · ${entregas?.length ?? 0}/${totalActividades} actividades`}
-            accion={<ReiniciarNip estudianteId={estudiante.id} nombre={estudiante.nombre} />}
+            accion={
+              <div className="flex flex-wrap items-start justify-end gap-3">
+                <EditarEstudiante
+                  estudianteId={estudiante.id}
+                  nombreActual={estudiante.nombre}
+                  boletaActual={estudiante.boleta}
+                />
+                <ReiniciarNip estudianteId={estudiante.id} nombre={estudiante.nombre} />
+              </div>
+            }
           />
         </div>
       </div>
