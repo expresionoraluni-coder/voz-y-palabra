@@ -794,8 +794,9 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       Verificado en vivo insertando un nombre repetido con mayúsculas
 --       distintas ("estudiante prueba uno" vs "Estudiante Prueba Uno"):
 --       la restricción de nombre lo bloqueó correctamente.
---     - Verificado en vivo con la cuenta de prueba (ver
---       [[project_voz_y_palabra_credenciales_prueba]] en la memoria del
---       asistente): duplicar actividad, el ancla+resaltado de "Revisar", y
---       editar nombre de estudiante/grupo, los tres funcionando
---       correctamente end-to-end.
+--     - Verificado en vivo con una cuenta de docente de prueba (correo
+--       digp.esc+docente-prueba@gmail.com, "Grupo de Prueba" con 2
+--       estudiantes — no es una cuenta real, existe solo para probar
+--       flujos de docente sin usar la cuenta real): duplicar actividad, el
+--       ancla+resaltado de "Revisar", y editar nombre de estudiante/grupo,
+--       los tres funcionando correctamente end-to-end.
