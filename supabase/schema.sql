@@ -758,3 +758,44 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     - 4 pruebas nuevas en rls_seguridad.sql (agregar_estudiantes_con_boleta
 --       marca la bandera, cambiar_nip la apaga, reiniciar_nip la apaga) —
 --       corridas contra la base real, las 15 pruebas del archivo pasan.
+--
+-- 21. Ronda de facilidad para la docente (análisis "qué le falta a la
+--     maestra para subir datos" compartido con el usuario):
+--     - duplicar-actividad.tsx: botón de copiar en cada tarjeta de
+--       actividad de docente/unidades/[id] — clona tipo/título/
+--       instrucciones/contenido con "(copia)" en el título y abre directo
+--       en modo edición. Evita reescribir una actividad casi idéntica
+--       desde cero.
+--     - "Revisar" en "Entregas por revisar" (docente/grupos/[id]) ahora
+--       enlaza con ancla (#entrega-<id>) directo a la tarjeta de esa
+--       entrega en la ficha del estudiante, en vez de al tope de la ficha
+--       — la tarjeta se resalta con :target (ver Card en
+--       docente/estudiantes/[id]/page.tsx). La lista también se ordena
+--       por más antigua primero (antes salía en el orden arbitrario de
+--       Postgres).
+--     - editar-estudiante.tsx: permite corregir nombre/boleta de un
+--       estudiante ya dado de alta. Antes, un error de dedo (o un cambio
+--       real de boleta) no tenía arreglo salvo eliminar al estudiante
+--       completo, perdiendo su historial. Corregir la boleta no toca el
+--       nip_hash ya guardado.
+--     - editar-grupo.tsx: permite corregir el nombre y el código de
+--       acceso de un grupo después de creado (antes el código se generaba
+--       una sola vez a partir del nombre, sin forma de editarlo). Avisa
+--       que cambiar el código solo afecta a quien todavía no haya entrado
+--       por primera vez.
+--     - Se descubrió (no se creó — ya existía sin documentar) que
+--       estudiantes tiene protección real contra duplicados:
+--       estudiantes_nombre_unico_por_grupo (grupo_id, lower(trim(nombre)))
+--       y estudiantes_boleta_unica_por_grupo (grupo_id, boleta) where
+--       boleta is not null. Esto es lo que hace real el manejo de
+--       "duplicate key" que ya tenía agregar-estudiantes.tsx — si la
+--       docente pega el mismo roster dos veces, la segunda inserción falla
+--       con un mensaje amigable en vez de crear estudiantes repetidos.
+--       Verificado en vivo insertando un nombre repetido con mayúsculas
+--       distintas ("estudiante prueba uno" vs "Estudiante Prueba Uno"):
+--       la restricción de nombre lo bloqueó correctamente.
+--     - Verificado en vivo con la cuenta de prueba (ver
+--       [[project_voz_y_palabra_credenciales_prueba]] en la memoria del
+--       asistente): duplicar actividad, el ancla+resaltado de "Revisar", y
+--       editar nombre de estudiante/grupo, los tres funcionando
+--       correctamente end-to-end.
