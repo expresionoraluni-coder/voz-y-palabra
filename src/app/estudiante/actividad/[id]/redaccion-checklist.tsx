@@ -7,6 +7,7 @@ import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { analizarTexto, overlapConFuente } from "@/lib/analisis-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
+import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
 
 export default function RedaccionChecklist({
   actividadId,
@@ -72,7 +73,11 @@ export default function RedaccionChecklist({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {contenido.texto_fuente && (
-        <div className="max-h-40 overflow-auto rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+        <div
+          onCopy={bloquearCopiar}
+          onContextMenu={(e) => e.preventDefault()}
+          className="max-h-40 select-none overflow-auto rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
+        >
           {contenido.texto_fuente}
         </div>
       )}
@@ -84,6 +89,7 @@ export default function RedaccionChecklist({
             setTexto(e.target.value);
             marcarSinGuardar();
           }}
+          onPaste={bloquearPegado}
           rows={6}
           placeholder="Escribe aquí"
         />

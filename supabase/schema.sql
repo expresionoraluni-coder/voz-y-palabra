@@ -1076,3 +1076,30 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       sin texto → actividad → cierre) muestra la calibración de
 --       confianza correctamente ("Te sentías poco seguro... y acertaste
 --       100%...") sin el callback de predicción. Datos de prueba limpiados.
+--
+-- 29. Video por actividad y freno anti copy-paste (puntos 3 y 7):
+--     - actividades.video_url (text, nullable). src/lib/video-embed.ts
+--       detecta youtube.com/watch, youtu.be y youtube.com/embed y arma la
+--       URL de embed; cualquier otro dominio se muestra como link "Ver
+--       video" en vez de intentar embeberlo a ciegas. Sin video_url no se
+--       muestra nada (nada de placeholder "próximamente"). Campo nuevo en
+--       actividad-form.tsx. Sin contenido todavía — la maestra no tiene
+--       los videos aún; la infraestructura queda lista para cuando los
+--       tenga.
+--     - src/lib/anti-copiar.ts: dos handlers mínimos, bloquearPegado (para
+--       los inputs de respuesta libre) y bloquearCopiar (para los bloques
+--       de texto fuente que la actividad le da al estudiante). Aplicado en
+--       las 6 actividades de respuesta abierta (opcion_justificacion,
+--       encontrar_corregir, comparador, redaccion_checklist,
+--       constructor_ramificado, grabacion_rubrica) — bloquea pegar
+--       contenido externo/de un chatbot en la respuesta propia, y bloquea
+--       copiar + user-select + clic derecho en los bloques de texto fuente
+--       de encontrar_corregir y redaccion_checklist. Es un freno, no una
+--       barrera real — no detiene devtools ni una captura de pantalla; no
+--       toca la tabla de pegado de Excel de la maestra en
+--       agregar-estudiantes.tsx, que es una parte completamente distinta
+--       de la app.
+--     - Verificado en vivo: iframe de YouTube embebido correctamente para
+--       un link real (uno de los videos del programa oficial), pegar en la
+--       respuesta bloqueado (el textarea queda vacío), copiar+user-select
+--       bloqueado en el texto fuente. Datos de prueba limpiados.

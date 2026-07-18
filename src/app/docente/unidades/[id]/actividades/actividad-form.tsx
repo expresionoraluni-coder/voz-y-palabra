@@ -23,6 +23,7 @@ type ActividadInicial = {
   titulo: string;
   instrucciones: string;
   aprendizajeEsperado?: string;
+  videoUrl?: string;
   contenido: Record<string, unknown>;
 };
 
@@ -95,6 +96,7 @@ export default function ActividadForm({
   const [titulo, setTitulo] = useState(actividadInicial?.titulo ?? "");
   const [instrucciones, setInstrucciones] = useState(actividadInicial?.instrucciones ?? "");
   const [aprendizajeEsperado, setAprendizajeEsperado] = useState(actividadInicial?.aprendizajeEsperado ?? "");
+  const [videoUrl, setVideoUrl] = useState(actividadInicial?.videoUrl ?? "");
 
   type RondaEditor = { contexto: string; pregunta: string; opciones: string; ideasClave: string };
   const [introOJ, setIntroOJ] = useState(c.intro ?? "");
@@ -184,6 +186,7 @@ export default function ActividadForm({
       if (datos.titulo) setTitulo(datos.titulo);
       if (datos.instrucciones) setInstrucciones(datos.instrucciones);
       if (datos.aprendizajeEsperado) setAprendizajeEsperado(datos.aprendizajeEsperado);
+      if (datos.videoUrl) setVideoUrl(datos.videoUrl);
       if (datos.introOJ) setIntroOJ(datos.introOJ);
       if (datos.rondasOJ) setRondasOJ(datos.rondasOJ);
       if (datos.categorias) setCategorias(datos.categorias);
@@ -217,6 +220,7 @@ export default function ActividadForm({
       titulo,
       instrucciones,
       aprendizajeEsperado,
+      videoUrl,
       introOJ,
       rondasOJ,
       categorias,
@@ -250,6 +254,7 @@ export default function ActividadForm({
     titulo,
     instrucciones,
     aprendizajeEsperado,
+    videoUrl,
     introOJ,
     rondasOJ,
     categorias,
@@ -451,7 +456,13 @@ export default function ActividadForm({
     if (modoEdicion) {
       const { error: updateError } = await supabase
         .from("actividades")
-        .update({ titulo, instrucciones, aprendizaje_esperado: aprendizajeEsperado.trim() || null, contenido })
+        .update({
+          titulo,
+          instrucciones,
+          aprendizaje_esperado: aprendizajeEsperado.trim() || null,
+          video_url: videoUrl.trim() || null,
+          contenido,
+        })
         .eq("id", actividadInicial!.id);
       if (updateError) {
         setError(mensajeError(updateError));
@@ -470,6 +481,7 @@ export default function ActividadForm({
         titulo,
         instrucciones,
         aprendizaje_esperado: aprendizajeEsperado.trim() || null,
+        video_url: videoUrl.trim() || null,
         contenido,
         orden: (count ?? 0) + 1,
       });
@@ -648,6 +660,21 @@ export default function ActividadForm({
             <HelpText>
               El estudiante lo ve en esta actividad, junto con la unidad de competencia de la unidad
               completa.
+            </HelpText>
+          </Field>
+
+          <Field>
+            <Label htmlFor="videoUrl">Video (opcional)</Label>
+            <Input
+              id="videoUrl"
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+            <HelpText>
+              Un link de YouTube se muestra embebido arriba de las instrucciones; cualquier otro link se
+              muestra como "Ver video".
             </HelpText>
           </Field>
         </Card>

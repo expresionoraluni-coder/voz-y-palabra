@@ -8,6 +8,7 @@ import Boton from "@/components/ui/button";
 import ProgressBar from "@/components/ui/progress-bar";
 import { ideasClaveMencionadas } from "@/lib/ideas-clave";
 import { contarPalabras } from "@/lib/contar-palabras";
+import { bloquearPegado } from "@/lib/anti-copiar";
 import {
   type ContenidoOpcionJustificacion,
   type RondaRespuesta,
@@ -150,6 +151,7 @@ export default function OpcionJustificacion({
           required
           value={respuesta.justificacion}
           onChange={(e) => actualizarRespuesta({ justificacion: e.target.value })}
+          onPaste={bloquearPegado}
           rows={3}
         />
       </Field>

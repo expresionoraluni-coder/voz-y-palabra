@@ -6,6 +6,7 @@ import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { similitudTexto } from "@/lib/similitud-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
+import { bloquearPegado } from "@/lib/anti-copiar";
 
 export default function Comparador({
   actividadId,
@@ -94,6 +95,7 @@ export default function Comparador({
                     <textarea
                       value={celdas[i]?.[j] ?? ""}
                       onChange={(e) => actualizar(i, j, e.target.value)}
+                      onPaste={bloquearPegado}
                       rows={2}
                       aria-label={`${criterio} — ${concepto}`}
                       className="w-full resize-none rounded-lg border-0 bg-transparent p-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:text-slate-50"

@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
-import { Target } from "lucide-react";
+import { Target, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import { urlEmbedYoutube } from "@/lib/video-embed";
 import type { ContenidoOpcionJustificacion } from "@/lib/opcion-justificacion";
 import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
@@ -43,7 +44,7 @@ export default async function ActividadEstudiante({
     supabase
       .from("actividades")
       .select(
-        "id, unidad_id, titulo, instrucciones, contenido, aprendizaje_esperado, tipos_actividad(nombre), unidades(unidad_competencia)",
+        "id, unidad_id, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, tipos_actividad(nombre), unidades(unidad_competencia)",
       )
       .eq("id", id)
       .single(),
@@ -90,6 +91,31 @@ export default async function ActividadEstudiante({
         titulo={actividad.titulo}
         descripcion={actividad.instrucciones}
       />
+
+      {actividad.video_url && (() => {
+        const embed = urlEmbedYoutube(actividad.video_url!);
+        return embed ? (
+          <div className="aspect-video w-full overflow-hidden rounded-xl bg-slate-900">
+            <iframe
+              src={embed}
+              title={actividad.titulo}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="size-full"
+            />
+          </div>
+        ) : (
+          <a
+            href={actividad.video_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-slate-50 dark:border-slate-800 dark:text-indigo-400 dark:hover:bg-slate-800/50"
+          >
+            <Video className="size-4 shrink-0" aria-hidden="true" />
+            Ver video
+          </a>
+        );
+      })()}
 
       {(actividad.aprendizaje_esperado || unidadDeActividad?.unidad_competencia) && (
         <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">

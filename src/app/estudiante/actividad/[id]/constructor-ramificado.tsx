@@ -6,6 +6,7 @@ import { Field, Label, Input, Textarea, ErrorText } from "@/components/ui/field"
 import Boton from "@/components/ui/button";
 import { similitudTexto } from "@/lib/similitud-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
+import { bloquearPegado } from "@/lib/anti-copiar";
 
 type Seccion = { nombre: string; guia: string };
 
@@ -90,6 +91,7 @@ export default function ConstructorRamificado({
                 required
                 value={textos[i] ?? ""}
                 onChange={(e) => actualizar(i, e.target.value)}
+                onPaste={bloquearPegado}
                 rows={4}
               />
             </div>

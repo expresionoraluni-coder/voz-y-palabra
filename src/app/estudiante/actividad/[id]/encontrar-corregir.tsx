@@ -7,6 +7,7 @@ import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { ideasClaveMencionadas } from "@/lib/ideas-clave";
 import { contarPalabras } from "@/lib/contar-palabras";
+import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
 
 function normalizar(texto: string) {
   return texto.trim().toLowerCase().replace(/\s+/g, " ");
@@ -61,7 +62,11 @@ export default function EncontrarCorregir({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <div className="rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+      <div
+        onCopy={bloquearCopiar}
+        onContextMenu={(e) => e.preventDefault()}
+        className="select-none rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
+      >
         {contenido.texto_original}
       </div>
 
@@ -92,6 +97,7 @@ export default function EncontrarCorregir({
             setQueEncontraste(e.target.value);
             marcarSinGuardar();
           }}
+          onPaste={bloquearPegado}
           rows={2}
         />
       </Field>
@@ -131,6 +137,7 @@ export default function EncontrarCorregir({
             setVersionCorregida(e.target.value);
             marcarSinGuardar();
           }}
+          onPaste={bloquearPegado}
           rows={5}
         />
       </Field>
