@@ -1050,3 +1050,29 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       AE visible en la actividad correspondiente, formulario de meta
 --       guarda y compone la oración correctamente, campo de AE en el
 --       editor de la docente carga y persiste. Datos de prueba limpiados.
+--
+-- 28. Reflexión y confianza por actividad, punto 2 de las observaciones de
+--     la maestra:
+--     - reflexiones.texto pasó a nullable (antes not null) — prediccion.tsx
+--       ya no pregunta "¿qué crees que se te va a dificultar más de esta
+--       actividad?" (invitaba a sugestionarse con algo difícil antes de
+--       empezar); ahora guarda texto = null y solo la escala de confianza,
+--       reformulada en positivo ("¿Qué tan seguro te sientes de que esta
+--       actividad te va a salir bien?", etiquetas "Poco seguro"/"Muy
+--       seguro"). reflexion.tsx no necesitó ningún cambio: su callback
+--       "Dijiste que te costaría..." y el encabezado "¿qué tan cierta fue
+--       tu predicción?" ya estaban condicionados a que prediccionTexto
+--       exista — con las prediciones nuevas guardando null, cae solo en el
+--       encabezado genérico ("¿qué fue lo más difícil de este ejercicio?")
+--       sin mostrar el callback, y las predicciones viejas que ya tenían
+--       texto lo siguen mostrando igual que antes.
+--     - confianza.tsx (nivel unidad) — el gate por 100% de avance para la
+--       versión "cierre" ya existía tal cual lo pedía la maestra; se
+--       cambió el texto para referenciar la unidad de competencia
+--       ("¿qué tan seguro te sientes de alcanzar la unidad de
+--       competencia?") y se le pasa unidad_competencia como contexto
+--       visible, igual que en bitacora.tsx.
+--     - Verificado en vivo: actividad completa de punta a punta (predicción
+--       sin texto → actividad → cierre) muestra la calibración de
+--       confianza correctamente ("Te sentías poco seguro... y acertaste
+--       100%...") sin el callback de predicción. Datos de prueba limpiados.

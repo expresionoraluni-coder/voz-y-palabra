@@ -13,10 +13,12 @@ export default function Confianza({
   estudianteId,
   unidadId,
   momento,
+  unidadCompetencia,
 }: {
   estudianteId: string;
   unidadId: string;
   momento: "inicio" | "cierre";
+  unidadCompetencia?: string | null;
 }) {
   const router = useRouter();
   const [valor, setValor] = useState(50);
@@ -46,10 +48,13 @@ export default function Confianza({
         <Gauge className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
           {momento === "inicio"
-            ? "¿Qué tan seguro te sientes con este tema, antes de empezar?"
-            : "Terminaste la unidad. ¿Qué tan seguro te sientes ahora?"}
+            ? "Antes de empezar: ¿qué tan seguro te sientes de poder alcanzar la unidad de competencia?"
+            : "Terminaste la unidad: ¿qué tan seguro te sientes de haber alcanzado la unidad de competencia?"}
         </p>
       </div>
+      {unidadCompetencia && (
+        <p className="text-xs text-slate-500 dark:text-slate-500">{unidadCompetencia}</p>
+      )}
       <div className="flex items-center gap-3">
         <button
           type="button"

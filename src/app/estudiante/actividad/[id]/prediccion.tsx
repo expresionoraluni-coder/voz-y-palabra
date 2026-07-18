@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
-import { Textarea, ErrorText } from "@/components/ui/field";
+import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
 export default function Prediccion({
@@ -16,7 +16,6 @@ export default function Prediccion({
   estudianteId: string;
 }) {
   const router = useRouter();
-  const [texto, setTexto] = useState("");
   const [confianza, setConfianza] = useState<number | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +31,7 @@ export default function Prediccion({
         estudiante_id: estudianteId,
         actividad_id: actividadId,
         momento: "prediccion",
-        texto,
+        texto: null,
         confianza,
       },
       { onConflict: "estudiante_id,actividad_id,momento" },
@@ -55,21 +54,10 @@ export default function Prediccion({
       <div className="flex items-center gap-2">
         <Target className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-          Antes de empezar: ¿qué crees que se te va a dificultar más de esta actividad?
+          ¿Qué tan seguro te sientes de que esta actividad te va a salir bien?
         </p>
       </div>
-      <Textarea
-        required
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        rows={2}
-        placeholder="Una idea breve — al final vamos a ver si acertaste"
-        className="bg-white dark:bg-slate-950"
-      />
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-          ¿Qué tan seguro te sientes de que te va a ir bien?
-        </p>
         <div className="flex gap-1.5">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
@@ -89,12 +77,12 @@ export default function Prediccion({
           ))}
         </div>
         <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span>Nada seguro</span>
+          <span>Poco seguro</span>
           <span>Muy seguro</span>
         </div>
       </div>
       {error && <ErrorText>{error}</ErrorText>}
-      <Boton type="submit" size="sm" disabled={!texto.trim()} cargando={cargando} className="self-start">
+      <Boton type="submit" size="sm" disabled={confianza === null} cargando={cargando} className="self-start">
         {cargando ? "Guardando..." : "Empezar la actividad"}
       </Boton>
     </form>
