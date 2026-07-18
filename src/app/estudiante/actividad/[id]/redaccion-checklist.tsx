@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ListChecks, Sparkles } from "lucide-react";
+import { ListChecks, Lightbulb, Sparkles } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -17,7 +17,13 @@ export default function RedaccionChecklist({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { texto_fuente: string | null; limite_palabras: number; checklist: string[] };
+  contenido: {
+    texto_fuente: string | null;
+    titulo_fuente?: string | null;
+    ejemplos_resueltos?: string | null;
+    limite_palabras: number;
+    checklist: string[];
+  };
   respuestaPrevia?: { texto: string; checklist_marcado: boolean[] };
 }) {
   const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
@@ -25,6 +31,7 @@ export default function RedaccionChecklist({
   const [marcado, setMarcado] = useState<boolean[]>(
     respuestaPrevia?.checklist_marcado ?? contenido.checklist.map(() => false),
   );
+  const [mostrarEjemplos, setMostrarEjemplos] = useState(false);
 
   const palabras = contarPalabras(texto);
   const excedido = palabras > contenido.limite_palabras;
@@ -76,9 +83,37 @@ export default function RedaccionChecklist({
         <div
           onCopy={bloquearCopiar}
           onContextMenu={(e) => e.preventDefault()}
-          className="max-h-40 select-none overflow-auto rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
+          className="flex max-h-52 select-none flex-col gap-1.5 overflow-auto rounded-xl bg-slate-50 px-4 py-3.5 dark:bg-slate-800/60"
         >
-          {contenido.texto_fuente}
+          {contenido.titulo_fuente && (
+            <p className="font-semibold text-slate-900 dark:text-slate-50">{contenido.titulo_fuente}</p>
+          )}
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+            {contenido.texto_fuente}
+          </p>
+        </div>
+      )}
+
+      {contenido.ejemplos_resueltos && (
+        <div className="flex flex-col gap-2">
+          {!mostrarEjemplos ? (
+            <button
+              type="button"
+              onClick={() => setMostrarEjemplos(true)}
+              className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              <Lightbulb className="size-4" aria-hidden="true" />
+              Ver ejemplos ya resueltos (resumen, síntesis y paráfrasis)
+            </button>
+          ) : (
+            <div
+              onCopy={bloquearCopiar}
+              onContextMenu={(e) => e.preventDefault()}
+              className="select-none whitespace-pre-line rounded-xl bg-indigo-50/60 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-indigo-950/30 dark:text-slate-300"
+            >
+              {contenido.ejemplos_resueltos}
+            </div>
+          )}
         </div>
       )}
 

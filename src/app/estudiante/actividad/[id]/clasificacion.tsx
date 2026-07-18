@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { bloquearCopiar } from "@/lib/anti-copiar";
 
 type Elemento = { texto: string; categoria_correcta: string };
 
@@ -16,7 +17,7 @@ export default function Clasificacion({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { categorias: string[]; elementos: Elemento[] };
+  contenido: { categorias: string[]; elementos: Elemento[]; contexto?: string | null };
   respuestaPrevia?: { elegidas: string[] };
 }) {
   const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
@@ -68,6 +69,15 @@ export default function Clasificacion({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      {contenido.contexto && (
+        <div
+          onCopy={bloquearCopiar}
+          onContextMenu={(e) => e.preventDefault()}
+          className="select-none rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
+        >
+          {contenido.contexto}
+        </div>
+      )}
       {contenido.elementos.map((el, i) => (
         <div
           key={i}

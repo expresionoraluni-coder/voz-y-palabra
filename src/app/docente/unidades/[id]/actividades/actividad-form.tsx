@@ -112,6 +112,7 @@ export default function ActividadForm({
   });
 
   const [categorias, setCategorias] = useState((c.categorias ?? []).join("\n"));
+  const [contextoClasificacion, setContextoClasificacion] = useState(c.contexto ?? "");
   const [elementosFilas, setElementosFilas] = useState<FilaAsignacion[]>(
     c.elementos?.length
       ? c.elementos.map((el: { texto: string; categoria_correcta: string }) => ({
@@ -129,7 +130,9 @@ export default function ActividadForm({
   const [conceptos, setConceptos] = useState((c.conceptos ?? []).join("\n"));
   const [criterios, setCriterios] = useState((c.criterios ?? []).join("\n"));
 
+  const [tituloFuente, setTituloFuente] = useState(c.titulo_fuente ?? "");
   const [textoFuente, setTextoFuente] = useState(c.texto_fuente ?? "");
+  const [ejemplosResueltos, setEjemplosResueltos] = useState(c.ejemplos_resueltos ?? "");
   const [limitePalabras, setLimitePalabras] = useState(String(c.limite_palabras ?? "80"));
   const [checklist, setChecklist] = useState((c.checklist ?? []).join("\n"));
 
@@ -190,6 +193,7 @@ export default function ActividadForm({
       if (datos.introOJ) setIntroOJ(datos.introOJ);
       if (datos.rondasOJ) setRondasOJ(datos.rondasOJ);
       if (datos.categorias) setCategorias(datos.categorias);
+      if (datos.contextoClasificacion) setContextoClasificacion(datos.contextoClasificacion);
       if (datos.elementosFilas) setElementosFilas(datos.elementosFilas);
       if (datos.textoOriginal) setTextoOriginal(datos.textoOriginal);
       if (datos.pista) setPista(datos.pista);
@@ -197,7 +201,9 @@ export default function ActividadForm({
       if (datos.ideasClaveError) setIdeasClaveError(datos.ideasClaveError);
       if (datos.conceptos) setConceptos(datos.conceptos);
       if (datos.criterios) setCriterios(datos.criterios);
+      if (datos.tituloFuente) setTituloFuente(datos.tituloFuente);
       if (datos.textoFuente) setTextoFuente(datos.textoFuente);
+      if (datos.ejemplosResueltos) setEjemplosResueltos(datos.ejemplosResueltos);
       if (datos.limitePalabras) setLimitePalabras(datos.limitePalabras);
       if (datos.checklist) setChecklist(datos.checklist);
       if (datos.contexto) setContexto(datos.contexto);
@@ -224,6 +230,7 @@ export default function ActividadForm({
       introOJ,
       rondasOJ,
       categorias,
+      contextoClasificacion,
       elementosFilas,
       textoOriginal,
       pista,
@@ -231,7 +238,9 @@ export default function ActividadForm({
       ideasClaveError,
       conceptos,
       criterios,
+      tituloFuente,
       textoFuente,
+      ejemplosResueltos,
       limitePalabras,
       checklist,
       contexto,
@@ -258,6 +267,7 @@ export default function ActividadForm({
     introOJ,
     rondasOJ,
     categorias,
+    contextoClasificacion,
     elementosFilas,
     textoOriginal,
     pista,
@@ -265,7 +275,9 @@ export default function ActividadForm({
     ideasClaveError,
     conceptos,
     criterios,
+    tituloFuente,
     textoFuente,
+    ejemplosResueltos,
     limitePalabras,
     checklist,
     contexto,
@@ -353,6 +365,7 @@ export default function ActividadForm({
       contenido = {
         categorias: listaCategorias,
         elementos: listaElementos.map((f) => ({ texto: f.texto.trim(), categoria_correcta: f.categoria })),
+        contexto: contextoClasificacion.trim() || null,
       };
     } else if (nombreTipo === "encontrar_corregir") {
       if (!textoOriginal.trim()) {
@@ -391,6 +404,8 @@ export default function ActividadForm({
       }
       contenido = {
         texto_fuente: textoFuente || null,
+        titulo_fuente: tituloFuente.trim() || null,
+        ejemplos_resueltos: ejemplosResueltos.trim() || null,
         limite_palabras: limite,
         checklist: listaChecklist,
       };
@@ -802,6 +817,17 @@ export default function ActividadForm({
             {nombreTipo === "clasificacion" && (
               <>
                 <Field>
+                  <Label htmlFor="contextoClasificacion">
+                    Párrafo o contexto (opcional — el estudiante lo ve arriba de la lista)
+                  </Label>
+                  <Textarea
+                    id="contextoClasificacion"
+                    value={contextoClasificacion}
+                    onChange={(e) => setContextoClasificacion(e.target.value)}
+                    rows={5}
+                  />
+                </Field>
+                <Field>
                   <Label htmlFor="categorias">Categorías (una por línea)</Label>
                   <Textarea
                     id="categorias"
@@ -909,6 +935,10 @@ export default function ActividadForm({
             {nombreTipo === "redaccion_checklist" && (
               <>
                 <Field>
+                  <Label htmlFor="tituloFuente">Título del texto fuente (opcional)</Label>
+                  <Input id="tituloFuente" value={tituloFuente} onChange={(e) => setTituloFuente(e.target.value)} />
+                </Field>
+                <Field>
                   <Label htmlFor="textoFuente">Texto fuente (opcional — el estudiante lo leerá antes de escribir)</Label>
                   <Textarea
                     id="textoFuente"
@@ -916,6 +946,21 @@ export default function ActividadForm({
                     onChange={(e) => setTextoFuente(e.target.value)}
                     rows={5}
                   />
+                </Field>
+                <Field>
+                  <Label htmlFor="ejemplosResueltos">
+                    Ejemplos ya resueltos (opcional — resumen, síntesis y paráfrasis del mismo texto, como
+                    referencia antes de escribir)
+                  </Label>
+                  <Textarea
+                    id="ejemplosResueltos"
+                    value={ejemplosResueltos}
+                    onChange={(e) => setEjemplosResueltos(e.target.value)}
+                    rows={8}
+                  />
+                  <HelpText>
+                    El estudiante lo ve detrás de un botón "Ver ejemplos ya resueltos", no de entrada.
+                  </HelpText>
                 </Field>
                 <Field>
                   <Label htmlFor="limitePalabras">Límite de palabras</Label>

@@ -1103,3 +1103,79 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       un link real (uno de los videos del programa oficial), pegar en la
 --       respuesta bloqueado (el textarea queda vacío), copiar+user-select
 --       bloqueado en el texto fuente. Datos de prueba limpiados.
+--
+-- 30. Fase E — Unidad 1 completa (puntos 1, 5, 6, 8, 9, 10, 11, 12, 13, 14,
+--     15 de las observaciones de la maestra). Cambios de código primero,
+--     contenido (directo en la base real vía SQL) después:
+--     - clasificacion.tsx ganó un campo contexto opcional (mismo patrón que
+--       ya tenía etiquetado_texto) — antes no había forma de mostrarle al
+--       estudiante el párrafo del que salen los elementos a clasificar, que
+--       es justo lo que la maestra señaló que faltaba en "Ideas principal,
+--       secundaria y terciaria". Con protección anti-copiar igual que el
+--       resto. Campo nuevo correspondiente en actividad-form.tsx.
+--     - redaccion_checklist ganó titulo_fuente (separa el título del
+--       cuerpo del texto fuente) y ejemplos_resueltos (bloque opcional,
+--       detrás de un botón "Ver ejemplos ya resueltos", pensado para
+--       mostrar resumen/síntesis/paráfrasis del mismo texto como
+--       referencia antes de escribir).
+--     - Contenido, actividad por actividad:
+--       - "El circuito de la comunicación": la maestra pidió reemplazarla
+--         por un simulador — la actividad clasificacion original ya tenía
+--         5 entregas reales de estudiantes; se le preguntó explícitamente
+--         al usuario si reemplazar de verdad (perdiendo esas 5 entregas) o
+--         agregar el simulador aparte, y se confirmó reemplazar. Ahora es
+--         opcion_justificacion con 7 rondas narrando una conversación real
+--         por WhatsApp entre dos estudiantes (Ana y Luis) donde cada paso
+--         identifica un elemento del circuito.
+--       - Contextos normativos de la lengua: nota agregada aclarando que
+--         "normal" = pertinente al contexto comunicativo.
+--       - Registros lingüísticos: categorías rehechas de la rejilla
+--         culto/inculto × formal/informal a un solo eje de 3: Culto /
+--         Inculto / Vulgar (el vulgar usa "haiga", vulgarismo gramatical
+--         clásico, en vez de groserías explícitas).
+--       - Niveles de la lengua: de 1 pregunta a 3 rondas (coloquial,
+--         técnico-científico, literario).
+--       - Tipologías textuales: se quitó la pregunta redundante al final
+--         del fragmento, "predomina"→"caracteriza", de 1 pregunta a 4
+--         rondas (narración, exposición, argumentación, descripción,
+--         mezcladas fuera de ese orden) con textos sobre aprendizaje
+--         autónomo/autorregulación.
+--       - Variaciones y deformaciones de la lengua: renombrada (antes
+--         "Deformaciones y variaciones..."), instrucción reescrita.
+--       - Las 6 funciones de la lengua: "predomina"→"caracteriza", de 6 a
+--         12 elementos (el doble de práctica al mismo nivel). Actividad
+--         hermana nueva "— nivel 2" con 6 mensajes más largos y ambiguos.
+--       - Ideas principal, secundaria y terciaria: reconstruida con un
+--         párrafo nuevo (contexto visible) — idea principal al final, 2
+--         secundarias, una con 2 terciarias y otra con 1 terciaria — 6
+--         oraciones a clasificar con extractos literales como opciones.
+--         Hermana nueva "— nivel 2": otro párrafo, mismas 3 categorías,
+--         pero las opciones son interpretaciones, no extractos literales.
+--       - Coherencia global del texto: cambió de tipo (encontrar_corregir
+--         → clasificacion) — ahora son 6 fragmentos sobre interculturalidad,
+--         3 que juntos arman un mensaje coherente/cohesionado/adecuado a
+--         contexto académico y 3 distractores no obvios (relacionados con
+--         "cultura" pero que no encajan en el mismo argumento). Cubre
+--         adecuación + coherencia + cohesión en un solo ejercicio.
+--       - El resumen imposible: ya no menciona síntesis como alternativa
+--         (solo resumen); título y cuerpo del texto fuente separados;
+--         ejemplos ya resueltos de resumen/síntesis/paráfrasis del mismo
+--         texto agregados como referencia. Actividad hermana nueva
+--         "Practica tu resumen": texto breve distinto (sobre emojis),
+--         clasificacion con categorías "Va en el resumen"/"No va en el
+--         resumen" sobre sus 7 oraciones — auto-calificable a diferencia
+--         del ejercicio de redacción libre.
+--     - Orden final de Unidad 1 (13 actividades, antes 11): circuito
+--       (simulador) → contextos normativos → registros → niveles →
+--       tipologías → variaciones y deformaciones → funciones → funciones
+--       nivel 2 → ideas ppal/sec/terc → ideas nivel 2 → coherencia global →
+--       resumen → practica tu resumen.
+--     - aprendizaje_esperado backfillado en las 3 actividades nuevas,
+--       heredado de su actividad base (mismo AE, misma unidad de
+--       competencia).
+--     - Verificado en vivo de punta a punta: el simulador del circuito
+--       (7 rondas, revisado también desde la ficha de la docente con el
+--       desglose completo), y "Practica tu resumen" (contexto visible,
+--       auto-calificación 100% correcta). Build y typecheck limpios.
+--       Datos de prueba limpiados en cada caso, incluida la restauración
+--       del NIP de las cuentas de prueba tras cada verificación.

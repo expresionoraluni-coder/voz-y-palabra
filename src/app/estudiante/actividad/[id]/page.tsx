@@ -154,6 +154,7 @@ export default async function ActividadEstudiante({
             actividad.contenido as {
               categorias: string[];
               elementos: { texto: string; categoria_correcta: string }[];
+              contexto?: string | null;
             }
           }
           respuestaPrevia={respuesta as { elegidas: string[] } | undefined}
@@ -191,6 +192,8 @@ export default async function ActividadEstudiante({
           contenido={
             actividad.contenido as {
               texto_fuente: string | null;
+              titulo_fuente?: string | null;
+              ejemplos_resueltos?: string | null;
               limite_palabras: number;
               checklist: string[];
             }
