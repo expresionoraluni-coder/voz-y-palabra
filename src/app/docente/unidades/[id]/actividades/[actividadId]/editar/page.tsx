@@ -9,16 +9,22 @@ export default async function EditarActividad({
 }) {
   const { id: unidadId, actividadId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/profesora");
 
-  const { data: actividad } = await supabase
-    .from("actividades")
-    .select("id, titulo, instrucciones, contenido, tipos_actividad(nombre)")
-    .eq("id", actividadId)
-    .single();
+  const [
+    {
+      data: { user },
+    },
+    { data: actividad },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("actividades")
+      .select("id, titulo, instrucciones, contenido, tipos_actividad(nombre)")
+      .eq("id", actividadId)
+      .single(),
+  ]);
+
+  if (!user) redirect("/ingreso/profesora");
   if (!actividad) notFound();
 
   const tipo = Array.isArray(actividad.tipos_actividad) ? actividad.tipos_actividad[0] : actividad.tipos_actividad;

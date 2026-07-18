@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import type { ContenidoOpcionJustificacion } from "@/lib/opcion-justificacion";
 import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
 import EncontrarCorregir from "./encontrar-corregir";
@@ -94,10 +95,8 @@ export default async function ActividadEstudiante({
         <OpcionJustificacion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as { pregunta: string; opciones: string[]; ideas_clave?: string[] }
-          }
-          respuestaPrevia={respuesta as { opcion: string; justificacion: string } | undefined}
+          contenido={actividad.contenido as ContenidoOpcionJustificacion}
+          respuestaPrevia={respuesta as Record<string, unknown> | undefined}
         />
       )}
       {nombreTipo === "clasificacion" && (

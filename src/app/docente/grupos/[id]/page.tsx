@@ -26,21 +26,21 @@ export default async function DetalleGrupo({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) redirect("/ingreso/profesora");
-
-  const { data: grupo } = await supabase
-    .from("grupos")
-    .select("id, nombre, codigo_acceso, ciclo_escolar")
-    .eq("id", id)
-    .single();
-
-  if (!grupo) notFound();
-
+  // Ninguna de estas consultas depende de otra — todas filtran por el id de
+  // la URL directamente, incluida entregas (antes esperaba a conocer los
+  // ids de estudiantes de una consulta previa; ahora filtra con el mismo
+  // join que ya usa su política RLS: estudiantes!inner(grupo_id)). RLS ya
+  // protege cada tabla por docente_id, así que tampoco hace falta esperar
+  // la confirmación de sesión antes de lanzar el resto. Antes eran hasta 4
+  // viajes de ida y vuelta seguidos a Supabase; ahora es 1 solo — y cada
+  // viaje le cuesta a esta base ~500ms de latencia de red, así que esto es
+  // la diferencia entre sentir la página "trabada" o instantánea.
   const [
+    {
+      data: { user },
+    },
+    { data: grupo },
     { data: estudiantes },
     { data: estudiantesBaja },
     { data: unidades },
@@ -48,7 +48,14 @@ export default async function DetalleGrupo({
     { data: confianzas },
     { data: avisos },
     { data: eventos },
+    { data: entregas },
   ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("grupos")
+      .select("id, nombre, codigo_acceso, ciclo_escolar")
+      .eq("id", id)
+      .single(),
     supabase
       .from("estudiantes")
       .select("id, nombre, created_at")
@@ -70,17 +77,16 @@ export default async function DetalleGrupo({
       .eq("grupo_id", id)
       .order("created_at", { ascending: false }),
     supabase.from("eventos").select("id, titulo, tipo, fecha, unidad_id").eq("grupo_id", id),
+    supabase
+      .from("entregas")
+      .select(
+        "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta, actividades(titulo, unidad_id, contenido, tipos_actividad(nombre)), estudiantes!inner(grupo_id)",
+      )
+      .eq("estudiantes.grupo_id", id),
   ]);
 
-  const idsEstudiantes = estudiantes?.map((e) => e.id) ?? [];
-  const { data: entregas } = idsEstudiantes.length
-    ? await supabase
-        .from("entregas")
-        .select(
-          "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta, actividades(titulo, unidad_id, contenido, tipos_actividad(nombre))",
-        )
-        .in("estudiante_id", idsEstudiantes)
-    : { data: [] };
+  if (!user) redirect("/ingreso/profesora");
+  if (!grupo) notFound();
 
   const totalActividades = actividades?.length ?? 0;
   const hoy = Date.now();

@@ -59,13 +59,18 @@ export default async function InicioEstudiante({
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
-  // Ninguna de las 4 depende de las demás — antes unidades e insignias se
-  // esperaban una tras otra antes de siquiera llegar a este grupo.
+  // avisos y eventosProximos solo dependen de estudiante.grupo_id, ya
+  // conocido en cuanto resuelve requireEstudiante, así que van en este
+  // mismo Promise.all en vez de esperar a un segundo lote — el único que
+  // sigue aparte es bitacoraActiva, porque necesita unidadActiva, que se
+  // calcula a partir de unidades y entregas de aquí abajo.
   const [
     { data: unidades },
     { data: insignias },
     { data: entregas },
     { count: totalReflexiones },
+    { data: avisos },
+    { data: eventosProximos },
   ] = await Promise.all([
     supabase
       .from("unidades")
@@ -82,6 +87,19 @@ export default async function InicioEstudiante({
       .select("id", { count: "exact", head: true })
       .eq("estudiante_id", estudiante.id)
       .eq("momento", "cierre"),
+    supabase
+      .from("avisos")
+      .select("id, titulo, mensaje, created_at")
+      .or(`grupo_id.is.null,grupo_id.eq.${estudiante.grupo_id}`)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("eventos")
+      .select("id, titulo, fecha")
+      .eq("grupo_id", estudiante.grupo_id)
+      .gte("fecha", new Date().toISOString().slice(0, 10))
+      .order("fecha")
+      .limit(3),
   ]);
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
@@ -113,29 +131,14 @@ export default async function InicioEstudiante({
   const indiceActiva = unidadesConProgreso.findIndex((u) => u.pct < 100);
   const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
-  const [{ data: avisos }, { data: eventosProximos }, { data: bitacoraActiva }] = await Promise.all([
-    supabase
-      .from("avisos")
-      .select("id, titulo, mensaje, created_at")
-      .or(`grupo_id.is.null,grupo_id.eq.${estudiante.grupo_id}`)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase
-      .from("eventos")
-      .select("id, titulo, fecha")
-      .eq("grupo_id", estudiante.grupo_id)
-      .gte("fecha", new Date().toISOString().slice(0, 10))
-      .order("fecha")
-      .limit(3),
-    unidadActiva
-      ? supabase
-          .from("bitacora")
-          .select("id")
-          .eq("estudiante_id", estudiante.id)
-          .eq("unidad_id", unidadActiva.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const { data: bitacoraActiva } = unidadActiva
+    ? await supabase
+        .from("bitacora")
+        .select("id")
+        .eq("estudiante_id", estudiante.id)
+        .eq("unidad_id", unidadActiva.id)
+        .maybeSingle()
+    : { data: null };
 
   const recordatorios: { texto: string; href: string }[] = [];
   for (const ev of eventosProximos ?? []) {

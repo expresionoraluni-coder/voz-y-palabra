@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { Award, FileText, MessageSquareText, NotebookPen, Quote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
+import { rondasDeRespuesta } from "@/lib/opcion-justificacion";
 import ComentarioEntrega from "./comentario-entrega";
 import ReiniciarNip from "./reiniciar-nip";
 import EditarEstudiante from "./editar-estudiante";
@@ -21,21 +22,19 @@ export default async function FichaEstudiante({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/profesora");
 
-  const { data: estudiante } = await supabase
-    .from("estudiantes")
-    .select("id, nombre, grupo_id, activo, boleta, grupos(nombre)")
-    .eq("id", id)
-    .single();
-  if (!estudiante) notFound();
-
-  const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
-
+  // Ninguna de estas consultas depende de otra — todas filtran por el id de
+  // la URL directamente, incluidos comentarios (antes esperaba a conocer
+  // los ids de entregas de una consulta previa; ahora filtra con un join
+  // embebido: entregas!inner(estudiante_id)). RLS ya protege cada tabla por
+  // docente_id, así que tampoco hace falta esperar la confirmación de
+  // sesión antes de lanzar el resto. Antes eran hasta 3 viajes seguidos a
+  // Supabase; ahora es 1 solo.
   const [
+    {
+      data: { user },
+    },
+    { data: estudiante },
     { data: unidades },
     { data: entregas },
     { data: confianzas },
@@ -43,7 +42,14 @@ export default async function FichaEstudiante({
     { data: insignias },
     { data: predicciones },
     { data: bitacoras },
+    { data: comentarios },
   ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("estudiantes")
+      .select("id, nombre, grupo_id, activo, boleta, grupos(nombre)")
+      .eq("id", id)
+      .single(),
     supabase
       .from("unidades")
       .select("id, nombre, orden, actividades(id)")
@@ -77,16 +83,17 @@ export default async function FichaEstudiante({
       .eq("momento", "prediccion")
       .not("confianza", "is", null),
     supabase.from("bitacora").select("unidad_id, meta, cumplida").eq("estudiante_id", id),
+    supabase
+      .from("retroalimentacion_docente")
+      .select("entrega_id, comentario, created_at, entregas!inner(estudiante_id)")
+      .eq("entregas.estudiante_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
-  const idsEntregas = (entregas ?? []).map((en) => en.id);
-  const { data: comentarios } = idsEntregas.length
-    ? await supabase
-        .from("retroalimentacion_docente")
-        .select("entrega_id, comentario, created_at")
-        .in("entrega_id", idsEntregas)
-        .order("created_at", { ascending: false })
-    : { data: [] };
+  if (!user) redirect("/ingreso/profesora");
+  if (!estudiante) notFound();
+
+  const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
   const totalActividades = unidades?.reduce((s, u) => s + u.actividades.length, 0) ?? 0;
   const avanceGeneral = totalActividades > 0 ? Math.round(((entregas?.length ?? 0) / totalActividades) * 100) : 0;
@@ -292,6 +299,20 @@ export default async function FichaEstudiante({
                           {r.analisisTexto.conectores > 0 && ` · ${r.analisisTexto.conectores} conector(es)`}
                         </p>
                       );
+                    }
+                    if (tipo?.nombre === "opcion_justificacion") {
+                      const rondas = rondasDeRespuesta(r);
+                      if (rondas.length > 1) {
+                        return (
+                          <ol className="mt-1 flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-400">
+                            {rondas.map((rd, i) => (
+                              <li key={i}>
+                                Ronda {i + 1}: eligió "{rd.opcion}" — {rd.justificacion}
+                              </li>
+                            ))}
+                          </ol>
+                        );
+                      }
                     }
                     return null;
                   })()}

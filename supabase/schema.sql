@@ -889,3 +889,137 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       solo se agregó el nuevo. Un estudiante entrando con su nombre en
 --       minúsculas y con acento emparejó correctamente contra el nombre
 --       guardado en mayúsculas sin acento.
+--
+-- 24. "Agregar estudiantes" como tabla directa (sin cuadro de texto
+--     intermedio) + ronda de rendimiento tras reportar el usuario que
+--     sentía tardanza al cargar y cambiar de pantalla:
+--     - agregar-estudiantes.tsx: se quitó el textarea + botón "Pasar a la
+--       tabla" (aclaración del usuario: el rechazo era al botón "Agregar
+--       fila" que metía una fila en blanco directo en la tabla, no a poder
+--       escribir a mano — pero el resultado pedido es una tabla tipo Excel
+--       de entrada, no un paso intermedio). Ahora la tabla siempre tiene
+--       una fila vacía al final (se agrega sola en cuanto la última deja
+--       de estar vacía) y cada celda tiene onPaste propio: pegar un bloque
+--       de Excel (o solo una columna) en cualquier celda reparte filas y
+--       columnas a partir de ahí, extendiendo la tabla si hace falta.
+--       Verificado en vivo pegando 3 filas de un jalón y escribiendo a
+--       mano una cuarta.
+--     - Páginas del docente reestructuradas para que ninguna consulta
+--       espere a otra sin necesidad — RLS ya protege cada tabla por
+--       docente_id, así que auth.getUser() no necesita resolver antes de
+--       lanzar el resto: grupos/[id]/page.tsx pasó de hasta 4 viajes de
+--       ida y vuelta seguidos a Supabase a 1 solo (incluida "entregas",
+--       que antes esperaba conocer los ids de estudiantes de una consulta
+--       previa — ahora filtra con un join embebido,
+--       estudiantes!inner(grupo_id)); estudiantes/[id]/page.tsx de 3 a 1
+--       (mismo truco para "comentarios" vía entregas!inner(estudiante_id));
+--       unidades/[id]/page.tsx y la de editar actividad, de 3 y 2 a 1.
+--     - src/lib/requerir-estudiante.ts (usado por las 5 páginas del hub
+--       del estudiante): se quitó la llamada a auth.getUser() — la
+--       política RLS de estudiantes ya solo deja ver la fila cuyo
+--       auth_user_id = auth.uid() (columna unique), así que sin sesión (o
+--       con sesión de otro tipo) la consulta ya vuelve vacía sola. De 2
+--       viajes a 1 en cada una de las 5 páginas.
+--     - inicio/page.tsx (estudiante): avisos y eventosProximos, que solo
+--       dependen de estudiante.grupo_id (ya conocido), se movieron al
+--       primer Promise.all — solo bitacoraActiva sigue aparte porque
+--       depende de unidadActiva, calculada de unidades+entregas. De 4
+--       viajes seguidos (auth + estudiante + lote1 + lote2) a 3.
+--     - Verificado en vivo cada página tocada con datos reales (se
+--       insertó y luego se retiró una entrega y un comentario de prueba
+--       para probar los joins embebidos, que eran un patrón nuevo en este
+--       proyecto) — sin regresiones. Medido con Resource Timing en este
+--       entorno: grupos/[id] bajó de ~1.65s a ~0.9-1.1s en navegación ya
+--       compilada; el resto del tiempo es overhead propio de `next dev` +
+--       latencia de red hacia Supabase desde este entorno, no
+--       necesariamente lo que sienta un usuario real en producción.
+--     - Índices nuevos: avisos(grupo_id), eventos(grupo_id),
+--       retroalimentacion_docente(entrega_id),
+--       retroalimentacion_docente(docente_id) — las dos primeras se
+--       consultan por grupo_id en varias pantallas (grupo del docente,
+--       inicio y calendario del estudiante) sin índice; las de
+--       retroalimentacion_docente respaldan el nuevo join embebido y su
+--       propia política RLS (docente_id = auth.uid()).
+--     - get_advisors (performance) del proyecto real señaló además 13
+--       llaves foráneas sin índice de cobertura (actividades.tipo_id,
+--       actividades.unidad_id, autoevaluaciones_confianza.unidad_id,
+--       avisos.docente_id, avisos.unidad_id, bitacora.unidad_id,
+--       entregas.actividad_id, eventos.docente_id, eventos.unidad_id,
+--       grupos.docente_id, insignias_otorgadas.insignia_id,
+--       reflexiones.actividad_id, reflexiones.unidad_id) — se agregaron
+--       los 13 índices, mismo tipo de cambio puramente aditivo que los de
+--       arriba.
+--     - PENDIENTE, sin tocar todavía: el mismo advisor marca ~19
+--       políticas RLS que llaman auth.uid() sin envolver en
+--       (select auth.uid()) — Postgres las reevalúa por cada fila en vez
+--       de una sola vez por consulta (patrón documentado por Supabase).
+--       Es mecánico y no cambia qué filas ve cada quien, pero toca todas
+--       las políticas de seguridad de una base con datos reales de
+--       estudiantes, así que se dejó pendiente de decisión explícita del
+--       usuario en vez de aplicarse solo. También señaló "Multiple
+--       Permissive Policies" en casi todas las tablas (una política para
+--       docente y otra para estudiante evaluándose ambas por fila) — es
+--       el diseño intencional de tener narrativas de acceso separadas por
+--       tipo de usuario, y fusionarlas complicaría leer la política a
+--       cambio de una ganancia que solo importa a mucha mayor escala; no
+--       se recomienda tocarlo.
+--
+-- 25. El pendiente del punto 24 (auth.uid() sin envolver en las políticas
+--     RLS) se resolvió: el usuario autorizó explícitamente aplicarlo. Las
+--     20 políticas que el advisor señaló se reescribieron con
+--     ALTER POLICY ... USING (...), envolviendo cada auth.uid()/auth.role()/
+--     auth.jwt() en (select ...) — mismo resultado, evaluado una vez por
+--     consulta en vez de una vez por fila. Incluyó una política que existía
+--     en la base real pero nunca se documentó aquí ("docente actualiza
+--     estado de entregas de sus grupos", en entregas) — se aprovechó para
+--     cerrar ese gap también. Verificado con una consulta a pg_policies
+--     que las 20 quedaron envueltas (0 sin envolver) y, en vivo, que el
+--     dashboard/grupo/ficha de estudiante de la docente siguen mostrando
+--     exactamente los mismos datos que antes de tocar las políticas.
+--
+-- 26. Motor de rondas para opcion_justificacion (a pedido de la maestra:
+--     "más ejercicios"/"segundo nivel de dificultad" en varias actividades,
+--     y un simulador narrado para "el circuito de la comunicación"):
+--     - contenido pasa de {pregunta, opciones, ideas_clave} a
+--       {intro?, rondas: [{contexto?, pregunta, opciones, ideas_clave?}]}.
+--       Las actividades ya existentes con la forma plana se siguen leyendo
+--       sin migración — src/lib/opcion-justificacion.ts detecta ambas
+--       formas (rondasDeContenido/introDeContenido/rondasDeRespuesta). Todo
+--       lo nuevo se guarda siempre como {rondas:[...]}, incluso con una
+--       sola pregunta — una actividad vieja se "normaliza sola" la próxima
+--       vez que se edite y guarde en actividad-form.tsx.
+--     - opcion-justificacion.tsx (estudiante) ahora es un wizard: barra de
+--       progreso + "Pregunta N de M" cuando hay más de una ronda (nada si
+--       hay una sola, para no cambiar la experiencia de las actividades
+--       existentes), "Siguiente" valida antes de avanzar, la última ronda
+--       guarda todo el arreglo en una sola entrega (entregas ya tiene
+--       unique(estudiante_id, actividad_id), así que no se puede partir en
+--       varias filas). Sigue sin bloquear tras guardar. puntaje_auto sigue
+--       en null — no hay calificación automática de este tipo, esto es
+--       organización, no un mecanismo de calificación nuevo.
+--     - Nuevo: tras guardar, se revela cuáles de las ideas_clave mencionó
+--       en su justificación (antes solo se veía el conteo mientras
+--       escribía, nunca cuáles eran).
+--     - actividad-form.tsx: el editor de opcion_justificacion pasa de 3
+--       campos a una lista de "preguntas" repetibles (agregar/quitar/
+--       reordenar con flechas, no arrastrar — mismo criterio de
+--       accesibilidad del punto 45 del changelog visual) más un campo de
+--       introducción general opcional.
+--     - resumen-respuesta.ts y la ficha de estudiante de la docente
+--       muestran el desglose por ronda cuando hay más de una, sin romper
+--       las entregas viejas ya calificadas/comentadas (mismo helper
+--       rondasDeRespuesta detecta la forma).
+--     - clasificacion/etiquetado_texto NO reciben este concepto de rondas:
+--       ya soportan N elementos por ronda (agregar filas alcanza para "más
+--       ejercicios del mismo párrafo") y tienen un modelo de confianza
+--       distinto (auto-calificadas y bloqueadas tras el primer envío) —
+--       "segundo nivel con otro párrafo" ahí sigue siendo actividad
+--       hermana nueva.
+--     - Verificado en vivo: actividad nueva de 2 rondas (con contexto
+--       narrativo e ideas_clave) creada, completada como estudiante
+--       (incluida navegación Atrás/Siguiente y el revelado post-envío),
+--       revisada en la ficha del docente con el desglose por ronda
+--       correcto — y una actividad vieja de forma plana ("Niveles de la
+--       lengua") verificada sin cambios visibles ni de comportamiento
+--       tanto en el editor como del lado del estudiante. Datos de prueba
+--       limpiados después.

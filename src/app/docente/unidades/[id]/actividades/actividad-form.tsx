@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquareText, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageSquareText, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
 import { ICONO_TIPO } from "@/lib/tipo-actividad-icono";
@@ -94,9 +94,18 @@ export default function ActividadForm({
   const [titulo, setTitulo] = useState(actividadInicial?.titulo ?? "");
   const [instrucciones, setInstrucciones] = useState(actividadInicial?.instrucciones ?? "");
 
-  const [pregunta, setPregunta] = useState(c.pregunta ?? "");
-  const [opciones, setOpciones] = useState((c.opciones ?? []).join("\n"));
-  const [ideasClave, setIdeasClave] = useState((c.ideas_clave ?? []).join("\n"));
+  type RondaEditor = { contexto: string; pregunta: string; opciones: string; ideasClave: string };
+  const [introOJ, setIntroOJ] = useState(c.intro ?? "");
+  const [rondasOJ, setRondasOJ] = useState<RondaEditor[]>(() => {
+    const rondasCrudas = Array.isArray(c.rondas) && c.rondas.length > 0 ? c.rondas : c.pregunta ? [c] : [];
+    if (rondasCrudas.length === 0) return [{ contexto: "", pregunta: "", opciones: "", ideasClave: "" }];
+    return rondasCrudas.map((r: Record<string, unknown>) => ({
+      contexto: (r.contexto as string) ?? "",
+      pregunta: (r.pregunta as string) ?? "",
+      opciones: ((r.opciones as string[]) ?? []).join("\n"),
+      ideasClave: ((r.ideas_clave as string[]) ?? []).join("\n"),
+    }));
+  });
 
   const [categorias, setCategorias] = useState((c.categorias ?? []).join("\n"));
   const [elementosFilas, setElementosFilas] = useState<FilaAsignacion[]>(
@@ -172,9 +181,8 @@ export default function ActividadForm({
       const datos = JSON.parse(guardado);
       if (datos.titulo) setTitulo(datos.titulo);
       if (datos.instrucciones) setInstrucciones(datos.instrucciones);
-      if (datos.pregunta) setPregunta(datos.pregunta);
-      if (datos.opciones) setOpciones(datos.opciones);
-      if (datos.ideasClave) setIdeasClave(datos.ideasClave);
+      if (datos.introOJ) setIntroOJ(datos.introOJ);
+      if (datos.rondasOJ) setRondasOJ(datos.rondasOJ);
       if (datos.categorias) setCategorias(datos.categorias);
       if (datos.elementosFilas) setElementosFilas(datos.elementosFilas);
       if (datos.textoOriginal) setTextoOriginal(datos.textoOriginal);
@@ -205,9 +213,8 @@ export default function ActividadForm({
     const datos = {
       titulo,
       instrucciones,
-      pregunta,
-      opciones,
-      ideasClave,
+      introOJ,
+      rondasOJ,
       categorias,
       elementosFilas,
       textoOriginal,
@@ -238,9 +245,8 @@ export default function ActividadForm({
     unidadId,
     titulo,
     instrucciones,
-    pregunta,
-    opciones,
-    ideasClave,
+    introOJ,
+    rondasOJ,
     categorias,
     elementosFilas,
     textoOriginal,
@@ -278,6 +284,28 @@ export default function ActividadForm({
     set(filas.map((f, idx) => (idx === i ? { ...f, ...cambios } : f)));
   }
 
+  function actualizarRonda(i: number, cambios: Partial<RondaEditor>) {
+    setRondasOJ((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...cambios } : r)));
+  }
+
+  function agregarRonda() {
+    setRondasOJ((prev) => [...prev, { contexto: "", pregunta: "", opciones: "", ideasClave: "" }]);
+  }
+
+  function quitarRonda(i: number) {
+    setRondasOJ((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function moverRonda(i: number, direccion: -1 | 1) {
+    setRondasOJ((prev) => {
+      const j = i + direccion;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -285,17 +313,22 @@ export default function ActividadForm({
     let contenido: Record<string, unknown> | null = null;
 
     if (nombreTipo === "opcion_justificacion") {
-      const listaOpciones = lineas(opciones);
-      if (listaOpciones.length < 2) {
-        setError("Escribe al menos 2 opciones, una por línea.");
-        return;
+      const rondasValidas: { contexto?: string; pregunta: string; opciones: string[]; ideas_clave?: string[] }[] = [];
+      for (let i = 0; i < rondasOJ.length; i++) {
+        const listaOpciones = lineas(rondasOJ[i].opciones);
+        if (!rondasOJ[i].pregunta.trim() || listaOpciones.length < 2) {
+          setError(`La pregunta ${i + 1} necesita texto y al menos 2 opciones.`);
+          return;
+        }
+        const listaIdeasClave = lineas(rondasOJ[i].ideasClave);
+        rondasValidas.push({
+          contexto: rondasOJ[i].contexto.trim() || undefined,
+          pregunta: rondasOJ[i].pregunta,
+          opciones: listaOpciones,
+          ideas_clave: listaIdeasClave.length > 0 ? listaIdeasClave : undefined,
+        });
       }
-      const listaIdeasClave = lineas(ideasClave);
-      contenido = {
-        pregunta,
-        opciones: listaOpciones,
-        ideas_clave: listaIdeasClave.length > 0 ? listaIdeasClave : undefined,
-      };
+      contenido = { intro: introOJ.trim() || undefined, rondas: rondasValidas };
     } else if (nombreTipo === "clasificacion") {
       if (listaCategorias.length < 2) {
         setError("Escribe al menos 2 categorías, una por línea.");
@@ -612,39 +645,109 @@ export default function ActividadForm({
             {nombreTipo === "opcion_justificacion" && (
               <>
                 <Field>
-                  <Label htmlFor="pregunta">Pregunta</Label>
-                  <Input id="pregunta" required value={pregunta} onChange={(e) => setPregunta(e.target.value)} />
-                </Field>
-                <Field>
-                  <Label htmlFor="opciones">Opciones (una por línea)</Label>
+                  <Label htmlFor="introOJ">Introducción o escenario general (opcional)</Label>
                   <Textarea
-                    id="opciones"
-                    required
-                    value={opciones}
-                    onChange={(e) => setOpciones(e.target.value)}
-                    rows={4}
-                    placeholder={"Nivel coloquial\nNivel técnico-científico\nNivel literario"}
-                    className="font-mono text-sm"
-                  />
-                  <ContadorLineas texto={opciones} singular="opción" plural="opciones" />
-                </Field>
-                <Field>
-                  <Label htmlFor="ideasClave">
-                    Ideas clave esperadas en la justificación (opcional, una por línea)
-                  </Label>
-                  <Textarea
-                    id="ideasClave"
-                    value={ideasClave}
-                    onChange={(e) => setIdeasClave(e.target.value)}
-                    rows={3}
-                    placeholder={"terminología\nespecializado\nformal"}
-                    className="font-mono text-sm"
+                    id="introOJ"
+                    value={introOJ}
+                    onChange={(e) => setIntroOJ(e.target.value)}
+                    rows={2}
+                    placeholder="Ej. Es viernes por la tarde. Ana le escribe a Luis..."
                   />
                   <HelpText>
-                    Mientras el estudiante escribe, le avisamos si su justificación menciona estas ideas —
-                    no bloquea el envío, solo lo invita a ampliar.
+                    Se muestra una sola vez, antes de la primera pregunta — útil para un simulador o
+                    escenario narrado en varios pasos.
                   </HelpText>
                 </Field>
+
+                <div className="flex flex-col gap-4">
+                  {rondasOJ.map((ronda, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Pregunta {i + 1}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moverRonda(i, -1)}
+                            disabled={i === 0}
+                            aria-label="Subir pregunta"
+                            className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:text-slate-500 dark:hover:text-slate-300"
+                          >
+                            <ChevronUp className="size-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moverRonda(i, 1)}
+                            disabled={i === rondasOJ.length - 1}
+                            aria-label="Bajar pregunta"
+                            className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:text-slate-500 dark:hover:text-slate-300"
+                          >
+                            <ChevronDown className="size-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => quitarRonda(i)}
+                            disabled={rondasOJ.length <= 1}
+                            aria-label="Quitar pregunta"
+                            className="text-slate-400 hover:text-red-500 disabled:opacity-30 dark:text-slate-500 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+                      <Field>
+                        <Label htmlFor={`contexto-oj-${i}`}>Contexto o narrativa antes de esta pregunta (opcional)</Label>
+                        <Textarea
+                          id={`contexto-oj-${i}`}
+                          value={ronda.contexto}
+                          onChange={(e) => actualizarRonda(i, { contexto: e.target.value })}
+                          rows={2}
+                        />
+                      </Field>
+                      <Field>
+                        <Label htmlFor={`pregunta-oj-${i}`}>Pregunta</Label>
+                        <Input
+                          id={`pregunta-oj-${i}`}
+                          value={ronda.pregunta}
+                          onChange={(e) => actualizarRonda(i, { pregunta: e.target.value })}
+                        />
+                      </Field>
+                      <Field>
+                        <Label htmlFor={`opciones-oj-${i}`}>Opciones (una por línea)</Label>
+                        <Textarea
+                          id={`opciones-oj-${i}`}
+                          value={ronda.opciones}
+                          onChange={(e) => actualizarRonda(i, { opciones: e.target.value })}
+                          rows={4}
+                          placeholder={"Nivel coloquial\nNivel técnico-científico\nNivel literario"}
+                          className="font-mono text-sm"
+                        />
+                        <ContadorLineas texto={ronda.opciones} singular="opción" plural="opciones" />
+                      </Field>
+                      <Field>
+                        <Label htmlFor={`ideasClave-oj-${i}`}>
+                          Ideas clave esperadas en la justificación (opcional, una por línea)
+                        </Label>
+                        <Textarea
+                          id={`ideasClave-oj-${i}`}
+                          value={ronda.ideasClave}
+                          onChange={(e) => actualizarRonda(i, { ideasClave: e.target.value })}
+                          rows={2}
+                          placeholder={"terminología\nespecializado\nformal"}
+                          className="font-mono text-sm"
+                        />
+                      </Field>
+                    </div>
+                  ))}
+                </div>
+                <Boton type="button" variant="secondary" size="sm" onClick={agregarRonda} className="self-start">
+                  <Plus className="size-3.5" aria-hidden="true" />
+                  Agregar pregunta
+                </Boton>
               </>
             )}
 

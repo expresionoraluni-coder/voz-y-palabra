@@ -2,36 +2,32 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, CheckCircle2, AlertCircle, MinusCircle, Trash2, TableProperties } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertCircle, MinusCircle, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { normalizarNombre } from "@/lib/normalizar-nombre";
 import { Card } from "@/components/ui/card";
-import { Field, Label, Textarea, HelpText, ErrorText, Input } from "@/components/ui/field";
+import { Label, HelpText, ErrorText, Input } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
 type Fila = { nombre: string; boleta: string };
 
-function parsearPegado(texto: string): Fila[] {
-  // Excel pega columnas separadas por tabulador; un CSV exportado trae
-  // coma en vez de tabulador, así que se acepta como alternativa. El
-  // nombre se normaliza aquí mismo (mayúsculas, sin acentos) para que la
-  // tabla muestre exactamente lo que se va a guardar — es también el
-  // nombre con el que el estudiante entra.
-  return texto
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0)
-    .map((linea) => {
-      const partes = linea.includes("\t") ? linea.split("\t") : linea.split(",");
-      return {
-        nombre: normalizarNombre(partes[0] ?? ""),
-        boleta: (partes[1] ?? "").trim(),
-      };
-    });
+function filaVacia(): Fila {
+  return { nombre: "", boleta: "" };
+}
+
+function conContenido(fila: Fila) {
+  return fila.nombre.trim().length > 0 || fila.boleta.trim().length > 0;
 }
 
 function filaValida(fila: Fila) {
   return fila.nombre.trim().length > 0 && fila.boleta.replace(/\D/g, "").length >= 4;
+}
+
+// Garantiza que siempre quede exactamente una fila vacía al final, para que
+// la tabla se sienta como Excel: siempre hay dónde seguir escribiendo.
+function conFilaVaciaAlFinal(filas: Fila[]): Fila[] {
+  const ultima = filas[filas.length - 1];
+  return ultima && conContenido(ultima) ? [...filas, filaVacia()] : filas;
 }
 
 export default function AgregarEstudiantes({
@@ -42,57 +38,88 @@ export default function AgregarEstudiantes({
   nombresExistentes: string[];
 }) {
   const router = useRouter();
-  const [pegado, setPegado] = useState("");
-  const [filas, setFilas] = useState<Fila[]>([]);
+  const [filas, setFilas] = useState<Fila[]>([filaVacia()]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agregados, setAgregados] = useState<number | null>(null);
 
   const yaEnGrupo = new Set(nombresExistentes.map(normalizarNombre));
 
-  // Antes se enviaba el texto pegado directo, a ciegas: si Excel traía las
-  // columnas invertidas o una fila sin boleta, no había forma de darse
-  // cuenta antes de guardar. Ahora primero se convierte a una tabla
-  // revisable y editable, y solo se puede enviar cuando todas las filas
-  // están completas.
-  function agregarATabla() {
-    const nuevas = parsearPegado(pegado);
-    if (nuevas.length === 0) return;
-    setFilas((prev) => [...prev, ...nuevas]);
-    setPegado("");
-    setAgregados(null);
-    setError(null);
-  }
-
   function actualizarFila(i: number, cambios: Partial<Fila>) {
     setFilas((prev) =>
-      prev.map((f, idx) =>
-        idx === i
-          ? { ...f, ...cambios, ...(cambios.nombre !== undefined ? { nombre: normalizarNombre(cambios.nombre) } : {}) }
-          : f,
+      conFilaVaciaAlFinal(
+        prev.map((f, idx) =>
+          idx === i
+            ? {
+                ...f,
+                ...cambios,
+                ...(cambios.nombre !== undefined ? { nombre: normalizarNombre(cambios.nombre) } : {}),
+              }
+            : f,
+        ),
       ),
     );
     setAgregados(null);
   }
 
   function quitarFila(i: number) {
-    setFilas((prev) => prev.filter((_, idx) => idx !== i));
+    setFilas((prev) => {
+      const next = prev.filter((_, idx) => idx !== i);
+      return next.length === 0 ? [filaVacia()] : conFilaVaciaAlFinal(next);
+    });
   }
 
-  // Repetida dentro del mismo pegado (p. ej. copió un rango con renglones
+  // Pegar en cualquier celda reparte el bloque (como Excel): columnas por
+  // tabulador —o coma, si viene de un CSV exportado— y renglones hacia
+  // abajo desde la celda donde se pegó, creando filas nuevas si hacen
+  // falta. Un valor suelto sin separadores se deja pasar como pegado normal
+  // del navegador.
+  function manejarPegado(e: React.ClipboardEvent<HTMLInputElement>, filaInicio: number, columna: "nombre" | "boleta") {
+    const texto = e.clipboardData.getData("text");
+    if (!/[\t\n,]/.test(texto)) return;
+    e.preventDefault();
+
+    const lineas = texto
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    setFilas((prev) => {
+      const next = [...prev];
+      lineas.forEach((linea, offset) => {
+        const partes = linea.includes("\t") ? linea.split("\t") : linea.split(",");
+        const i = filaInicio + offset;
+        while (next.length <= i) next.push(filaVacia());
+        const fila = { ...next[i] };
+        if (columna === "nombre") {
+          fila.nombre = normalizarNombre(partes[0] ?? "");
+          if (partes[1] !== undefined) fila.boleta = partes[1].trim();
+        } else {
+          fila.boleta = (partes[0] ?? "").trim();
+        }
+        next[i] = fila;
+      });
+      return conFilaVaciaAlFinal(next);
+    });
+    setAgregados(null);
+    setError(null);
+  }
+
+  // Repetida dentro de la misma tabla (p. ej. pegó un rango con renglones
   // de más) — solo la primera aparición cuenta como nueva.
   function esRepetidaEnLote(fila: Fila, i: number) {
     if (!fila.nombre.trim()) return false;
     return filas.findIndex((f) => f.nombre.trim() === fila.nombre.trim()) < i;
   }
 
-  const invalidas = filas.filter((f) => !filaValida(f)).length;
+  const invalidas = filas.filter((f) => conContenido(f) && !filaValida(f)).length;
   const excluidas = filas.filter(
     (f, i) => filaValida(f) && (yaEnGrupo.has(f.nombre) || esRepetidaEnLote(f, i)),
   ).length;
   const nuevas = filas.filter(
     (f, i) => filaValida(f) && !yaEnGrupo.has(f.nombre) && !esRepetidaEnLote(f, i),
   );
+  const conAlgunContenido = filas.some(conContenido);
   const listoParaEnviar = invalidas === 0 && nuevas.length > 0;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -110,7 +137,7 @@ export default function AgregarEstudiantes({
     const supabase = createClient();
 
     // Solo se envían las filas nuevas: las que ya están en el grupo o se
-    // repiten en el mismo pegado se omiten en silencio — así la docente
+    // repiten en la misma tabla se omiten en silencio — así la docente
     // puede volver a pegar el roster completo actualizado de Excel sin que
     // todo el lote falle por los nombres que ya existían.
     const { data, error: rpcError } = await supabase.rpc("agregar_estudiantes_con_boleta", {
@@ -129,7 +156,7 @@ export default function AgregarEstudiantes({
     }
 
     setAgregados(data?.length ?? 0);
-    setFilas([]);
+    setFilas([filaVacia()]);
     setCargando(false);
     router.refresh();
   }
@@ -140,38 +167,19 @@ export default function AgregarEstudiantes({
         <UserPlus className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Agregar estudiantes</p>
       </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Field>
-          <Label htmlFor="pegado">Pega nombre y boleta desde Excel</Label>
-          <Textarea
-            id="pegado"
-            value={pegado}
-            onChange={(e) => setPegado(e.target.value)}
-            rows={4}
-            placeholder={"Ana Torres, 20260001\nLuis Martínez, 20260002\nSofía Ramírez, 20260003"}
-            className="font-mono"
-          />
-          <HelpText>
-            El NIP inicial de cada quien son los últimos 4 dígitos de su boleta — se les va a pedir
-            cambiarlo la primera vez que entren.
-          </HelpText>
-          <Boton
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={agregarATabla}
-            disabled={!pegado.trim()}
-            className="self-start"
-          >
-            <TableProperties className="size-3.5" aria-hidden="true" />
-            Pasar a la tabla
-          </Boton>
-        </Field>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <Label>Nombre y boleta</Label>
+        <HelpText>
+          Escribe directamente en la tabla, o pega ahí una columna (o toda la tabla) copiada de
+          Excel — se reparte solo en las filas y se normaliza a mayúsculas sin acentos. El NIP
+          inicial de cada quien son los últimos 4 dígitos de su boleta.
+        </HelpText>
 
-        {filas.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              {filas.length} {filas.length === 1 ? "fila" : "filas"}
+        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {conAlgunContenido ? (
+            <>
+              {filas.filter(conContenido).length}{" "}
+              {filas.filter(conContenido).length === 1 ? "fila" : "filas"}
               {invalidas > 0 && (
                 <span className="ml-1.5 text-amber-600 dark:text-amber-400">
                   · {invalidas} incompleta{invalidas === 1 ? "" : "s"}
@@ -187,84 +195,92 @@ export default function AgregarEstudiantes({
                   · {nuevas.length} nueva{nuevas.length === 1 ? "" : "s"}
                 </span>
               )}
-            </p>
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="w-full min-w-[420px] border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60">
-                    <th className="w-8 px-2 py-2"></th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Nombre
-                    </th>
-                    <th className="w-36 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Boleta
-                    </th>
-                    <th className="w-8 px-2 py-2"></th>
+            </>
+          ) : (
+            "Sin filas todavía"
+          )}
+        </p>
+
+        <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table className="w-full min-w-[420px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60">
+                <th className="sticky top-0 w-8 border-b border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-800 dark:bg-slate-800/60"></th>
+                <th className="sticky top-0 border-b border-slate-200 bg-slate-50 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
+                  Nombre
+                </th>
+                <th className="sticky top-0 w-36 border-b border-slate-200 bg-slate-50 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
+                  Boleta
+                </th>
+                <th className="sticky top-0 w-8 border-b border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-800 dark:bg-slate-800/60"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila, i) => {
+                const llena = conContenido(fila);
+                const valida = filaValida(fila);
+                const excluida = valida && (yaEnGrupo.has(fila.nombre) || esRepetidaEnLote(fila, i));
+                return (
+                  <tr key={i} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800">
+                    <td className="px-2 py-1.5 text-center">
+                      {!llena ? null : !valida ? (
+                        <AlertCircle
+                          className="mx-auto size-4 shrink-0 text-amber-500"
+                          role="img"
+                          aria-label="Falta nombre o boleta"
+                        />
+                      ) : excluida ? (
+                        <MinusCircle
+                          className="mx-auto size-4 shrink-0 text-slate-300 dark:text-slate-600"
+                          role="img"
+                          aria-label="Ya existe en el grupo, no se guardará"
+                        />
+                      ) : (
+                        <CheckCircle2
+                          className="mx-auto size-4 shrink-0 text-emerald-500"
+                          role="img"
+                          aria-label="Fila nueva y completa"
+                        />
+                      )}
+                    </td>
+                    <td className="px-1 py-1">
+                      <Input
+                        value={fila.nombre}
+                        onChange={(e) => actualizarFila(i, { nombre: e.target.value })}
+                        onPaste={(e) => manejarPegado(e, i, "nombre")}
+                        placeholder={i === 0 ? "Escribe o pega aquí desde Excel" : "Nombre"}
+                        aria-label={`Nombre, fila ${i + 1}`}
+                        className={excluida ? "text-slate-400 dark:text-slate-500" : undefined}
+                      />
+                    </td>
+                    <td className="px-1 py-1">
+                      <Input
+                        value={fila.boleta}
+                        onChange={(e) => actualizarFila(i, { boleta: e.target.value })}
+                        onPaste={(e) => manejarPegado(e, i, "boleta")}
+                        placeholder="Boleta"
+                        inputMode="numeric"
+                        aria-label={`Boleta, fila ${i + 1}`}
+                      />
+                    </td>
+                    <td className="px-1 py-1 text-center">
+                      {llena && (
+                        <button
+                          type="button"
+                          onClick={() => quitarFila(i)}
+                          aria-label={`Quitar fila ${i + 1}`}
+                          className="text-slate-400 transition-colors hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </button>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filas.map((fila, i) => {
-                    const valida = filaValida(fila);
-                    const excluida = valida && (yaEnGrupo.has(fila.nombre) || esRepetidaEnLote(fila, i));
-                    return (
-                      <tr key={i} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800">
-                        <td className="px-2 py-1.5 text-center">
-                          {!valida ? (
-                            <AlertCircle
-                              className="mx-auto size-4 shrink-0 text-amber-500"
-                              role="img"
-                              aria-label="Falta nombre o boleta"
-                            />
-                          ) : excluida ? (
-                            <MinusCircle
-                              className="mx-auto size-4 shrink-0 text-slate-300 dark:text-slate-600"
-                              role="img"
-                              aria-label="Ya existe en el grupo, no se guardará"
-                            />
-                          ) : (
-                            <CheckCircle2
-                              className="mx-auto size-4 shrink-0 text-emerald-500"
-                              role="img"
-                              aria-label="Fila nueva y completa"
-                            />
-                          )}
-                        </td>
-                        <td className="px-1 py-1">
-                          <Input
-                            value={fila.nombre}
-                            onChange={(e) => actualizarFila(i, { nombre: e.target.value })}
-                            placeholder="NOMBRE"
-                            aria-label={`Nombre, fila ${i + 1}`}
-                            className={excluida ? "text-slate-400 dark:text-slate-500" : undefined}
-                          />
-                        </td>
-                        <td className="px-1 py-1">
-                          <Input
-                            value={fila.boleta}
-                            onChange={(e) => actualizarFila(i, { boleta: e.target.value })}
-                            placeholder="Boleta"
-                            inputMode="numeric"
-                            aria-label={`Boleta, fila ${i + 1}`}
-                          />
-                        </td>
-                        <td className="px-1 py-1 text-center">
-                          <button
-                            type="button"
-                            onClick={() => quitarFila(i)}
-                            aria-label={`Quitar fila ${i + 1}`}
-                            className="text-slate-400 transition-colors hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
-                          >
-                            <Trash2 className="size-4" aria-hidden="true" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
         {error && <ErrorText>{error}</ErrorText>}
         {agregados !== null && (
@@ -279,7 +295,7 @@ export default function AgregarEstudiantes({
           size="sm"
           cargando={cargando}
           disabled={!listoParaEnviar}
-          className="self-start"
+          className="mt-2 self-start"
         >
           {cargando
             ? "Agregando..."

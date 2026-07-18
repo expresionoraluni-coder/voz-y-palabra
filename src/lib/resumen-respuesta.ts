@@ -1,9 +1,17 @@
+import { rondasDeRespuesta } from "./opcion-justificacion";
+
 type Respuesta = Record<string, unknown>;
 
 export function resumenRespuesta(tipo: string | undefined, respuesta: Respuesta): string {
   switch (tipo) {
-    case "opcion_justificacion":
-      return `Eligió "${respuesta.opcion}". ${respuesta.justificacion ?? ""}`;
+    case "opcion_justificacion": {
+      const rondas = rondasDeRespuesta(respuesta);
+      if (rondas.length <= 1) {
+        const r = rondas[0];
+        return r ? `Eligió "${r.opcion}". ${r.justificacion}` : "";
+      }
+      return rondas.map((r, i) => `Ronda ${i + 1}: eligió "${r.opcion}"`).join(" · ").slice(0, 300);
+    }
     case "clasificacion":
     case "etiquetado_texto": {
       const elegidas = (respuesta.elegidas as string[]) ?? [];

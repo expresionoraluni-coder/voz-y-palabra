@@ -16,23 +16,27 @@ export default async function DetalleUnidadDocente({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  // Las tres consultas solo dependen del id de la URL, no entre sí — van
+  // en paralelo en vez de tres viajes seguidos a Supabase.
+  const [
+    {
+      data: { user },
+    },
+    { data: unidad },
+    { data: actividades },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("unidades").select("id, nombre, orden, reto_comunicativo").eq("id", id).single(),
+    supabase
+      .from("actividades")
+      .select("id, titulo, orden, tipos_actividad(nombre)")
+      .eq("unidad_id", id)
+      .order("orden"),
+  ]);
+
   if (!user) redirect("/ingreso/profesora");
-
-  const { data: unidad } = await supabase
-    .from("unidades")
-    .select("id, nombre, orden, reto_comunicativo")
-    .eq("id", id)
-    .single();
   if (!unidad) notFound();
-
-  const { data: actividades } = await supabase
-    .from("actividades")
-    .select("id, titulo, orden, tipos_actividad(nombre)")
-    .eq("unidad_id", id)
-    .order("orden");
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
