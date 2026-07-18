@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, CheckCircle2, AlertCircle, MinusCircle, Plus, Trash2, TableProperties } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertCircle, MinusCircle, Trash2, TableProperties } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { normalizarNombre } from "@/lib/normalizar-nombre";
 import { Card } from "@/components/ui/card";
@@ -12,10 +12,11 @@ import Boton from "@/components/ui/button";
 type Fila = { nombre: string; boleta: string };
 
 function parsearPegado(texto: string): Fila[] {
-  // Excel pega columnas separadas por tabulador; si alguien escribe a mano,
-  // aceptamos coma como alternativa. El nombre se normaliza aquí mismo
-  // (mayúsculas, sin acentos) para que la tabla muestre exactamente lo que
-  // se va a guardar — es también el nombre con el que el estudiante entra.
+  // Excel pega columnas separadas por tabulador; un CSV exportado trae
+  // coma en vez de tabulador, así que se acepta como alternativa. El
+  // nombre se normaliza aquí mismo (mayúsculas, sin acentos) para que la
+  // tabla muestre exactamente lo que se va a guardar — es también el
+  // nombre con el que el estudiante entra.
   return texto
     .split("\n")
     .map((l) => l.trim())
@@ -151,13 +152,8 @@ export default function AgregarEstudiantes({
             className="font-mono"
           />
           <HelpText>
-            Pega dos columnas completas desde Excel (o escribe una fila a mano) y revísalas en la tabla
-            antes de guardar. El nombre se ajusta solo a MAYÚSCULAS Y SIN ACENTOS — es el nombre exacto
-            con el que el estudiante va a entrar, así no le afecta si escribe su nombre distinto a como
-            tú lo capturaste. El NIP inicial de cada estudiante serán los últimos 4 dígitos de su
-            boleta — se lo puedes decir así el primer día. Al entrar por primera vez, la plataforma les
-            va a pedir que lo cambien por uno que solo ellos sepan. Puedes volver a pegar el roster
-            completo más adelante: los nombres que ya estén en el grupo se omiten solos.
+            El NIP inicial de cada quien son los últimos 4 dígitos de su boleta — se les va a pedir
+            cambiarlo la primera vez que entren.
           </HelpText>
           <Boton
             type="button"
@@ -267,16 +263,6 @@ export default function AgregarEstudiantes({
                 </tbody>
               </table>
             </div>
-            <Boton
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setFilas((prev) => [...prev, { nombre: "", boleta: "" }])}
-              className="self-start"
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              Agregar fila
-            </Boton>
           </div>
         )}
 
