@@ -1023,3 +1023,30 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       lengua") verificada sin cambios visibles ni de comportamiento
 --       tanto en el editor como del lado del estudiante. Datos de prueba
 --       limpiados después.
+--
+-- 27. Unidad de Competencia (UC) y Aprendizaje Esperado (AE), a pedido de
+--     la maestra (punto 1 de sus observaciones, texto exacto tomado del
+--     Programa Sintético del programa de estudios oficial):
+--     - unidades.unidad_competencia (text) — una por unidad, se muestra
+--       una sola vez por unidad (banner en unidad/[id]/page.tsx) y también
+--       como contexto en cada página de actividad de esa unidad. Backfill
+--       de las 3 unidades ya hecho.
+--     - actividades.aprendizaje_esperado (text, nullable) — específico por
+--       actividad, se muestra solo en esa actividad. Editable desde
+--       actividad-form.tsx (campo nuevo, junto a instrucciones). Backfill
+--       hecho para las 10 actividades de Unidad 1 que van a seguir
+--       existiendo tras la Fase E (mapeado 1:1 con los 3 AE de la unidad
+--       según los "saberes" que describe cada uno en el programa) — U2 y
+--       U3 quedan pendientes hasta que se termine de definir su contenido
+--       final (Fases F y G).
+--     - bitacora.tsx (estudiante, "mi meta de la unidad"): se retiró la
+--       pregunta abierta "¿Cuál es tu meta para esta unidad?" — una meta
+--       libre invitaba a respuestas vagas tipo "esforzarme más". Se
+--       reemplazó por 3 campos guiados, Verbo / Qué / Cómo, que se
+--       concatenan en una sola oración al guardar (sigue siendo la misma
+--       columna bitacora.meta text, sin cambio de esquema ahí) — mismo
+--       texto guardado se sigue mostrando igual que antes al reabrir.
+--     - Verificado en vivo: banner de UC visible en unidad y actividad,
+--       AE visible en la actividad correspondiente, formulario de meta
+--       guarda y compone la oración correctamente, campo de AE en el
+--       editor de la docente carga y persiste. Datos de prueba limpiados.

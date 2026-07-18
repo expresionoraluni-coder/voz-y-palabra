@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import { Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -41,7 +42,9 @@ export default async function ActividadEstudiante({
     supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
     supabase
       .from("actividades")
-      .select("id, unidad_id, titulo, instrucciones, contenido, tipos_actividad(nombre)")
+      .select(
+        "id, unidad_id, titulo, instrucciones, contenido, aprendizaje_esperado, tipos_actividad(nombre), unidades(unidad_competencia)",
+      )
       .eq("id", id)
       .single(),
   ]);
@@ -52,6 +55,7 @@ export default async function ActividadEstudiante({
     ? actividad.tipos_actividad[0]
     : actividad.tipos_actividad;
   const nombreTipo = tipo?.nombre;
+  const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
 
   const [{ data: entregaExistente }, { data: prediccionExistente }, { data: reflexionExistente }] =
     await Promise.all([
@@ -86,6 +90,23 @@ export default async function ActividadEstudiante({
         titulo={actividad.titulo}
         descripcion={actividad.instrucciones}
       />
+
+      {(actividad.aprendizaje_esperado || unidadDeActividad?.unidad_competencia) && (
+        <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
+          {unidadDeActividad?.unidad_competencia && (
+            <p className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-500">
+              <Target className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              {unidadDeActividad.unidad_competencia}
+            </p>
+          )}
+          {actividad.aprendizaje_esperado && (
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              <span className="font-medium text-slate-900 dark:text-slate-50">Aprendizaje esperado: </span>
+              {actividad.aprendizaje_esperado}
+            </p>
+          )}
+        </div>
+      )}
 
       {!prediccionExistente && !entregaExistente ? (
         <Prediccion actividadId={actividad.id} estudianteId={estudiante.id} />

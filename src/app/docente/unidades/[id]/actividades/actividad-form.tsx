@@ -22,6 +22,7 @@ type ActividadInicial = {
   tipoNombre: string;
   titulo: string;
   instrucciones: string;
+  aprendizajeEsperado?: string;
   contenido: Record<string, unknown>;
 };
 
@@ -93,6 +94,7 @@ export default function ActividadForm({
   const [tipoId, setTipoId] = useState("");
   const [titulo, setTitulo] = useState(actividadInicial?.titulo ?? "");
   const [instrucciones, setInstrucciones] = useState(actividadInicial?.instrucciones ?? "");
+  const [aprendizajeEsperado, setAprendizajeEsperado] = useState(actividadInicial?.aprendizajeEsperado ?? "");
 
   type RondaEditor = { contexto: string; pregunta: string; opciones: string; ideasClave: string };
   const [introOJ, setIntroOJ] = useState(c.intro ?? "");
@@ -181,6 +183,7 @@ export default function ActividadForm({
       const datos = JSON.parse(guardado);
       if (datos.titulo) setTitulo(datos.titulo);
       if (datos.instrucciones) setInstrucciones(datos.instrucciones);
+      if (datos.aprendizajeEsperado) setAprendizajeEsperado(datos.aprendizajeEsperado);
       if (datos.introOJ) setIntroOJ(datos.introOJ);
       if (datos.rondasOJ) setRondasOJ(datos.rondasOJ);
       if (datos.categorias) setCategorias(datos.categorias);
@@ -213,6 +216,7 @@ export default function ActividadForm({
     const datos = {
       titulo,
       instrucciones,
+      aprendizajeEsperado,
       introOJ,
       rondasOJ,
       categorias,
@@ -245,6 +249,7 @@ export default function ActividadForm({
     unidadId,
     titulo,
     instrucciones,
+    aprendizajeEsperado,
     introOJ,
     rondasOJ,
     categorias,
@@ -446,7 +451,7 @@ export default function ActividadForm({
     if (modoEdicion) {
       const { error: updateError } = await supabase
         .from("actividades")
-        .update({ titulo, instrucciones, contenido })
+        .update({ titulo, instrucciones, aprendizaje_esperado: aprendizajeEsperado.trim() || null, contenido })
         .eq("id", actividadInicial!.id);
       if (updateError) {
         setError(mensajeError(updateError));
@@ -464,6 +469,7 @@ export default function ActividadForm({
         tipo_id: tipoId,
         titulo,
         instrucciones,
+        aprendizaje_esperado: aprendizajeEsperado.trim() || null,
         contenido,
         orden: (count ?? 0) + 1,
       });
@@ -628,6 +634,21 @@ export default function ActividadForm({
               onChange={(e) => setInstrucciones(e.target.value)}
               rows={2}
             />
+          </Field>
+
+          <Field>
+            <Label htmlFor="aprendizajeEsperado">Aprendizaje esperado (opcional)</Label>
+            <Textarea
+              id="aprendizajeEsperado"
+              value={aprendizajeEsperado}
+              onChange={(e) => setAprendizajeEsperado(e.target.value)}
+              rows={2}
+              placeholder="Ej. Identifica los elementos del proceso comunicativo..."
+            />
+            <HelpText>
+              El estudiante lo ve en esta actividad, junto con la unidad de competencia de la unidad
+              completa.
+            </HelpText>
           </Field>
         </Card>
 

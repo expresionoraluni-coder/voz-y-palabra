@@ -6,7 +6,7 @@ import { CheckCircle2, NotebookPen } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
-import { Textarea, ErrorText } from "@/components/ui/field";
+import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
 export default function Bitacora({
@@ -15,23 +15,30 @@ export default function Bitacora({
   metaPrevia,
   cumplidaPrevia,
   avancePct,
+  unidadCompetencia,
 }: {
   estudianteId: string;
   unidadId: string;
   metaPrevia: string | null;
   cumplidaPrevia: boolean;
   avancePct: number;
+  unidadCompetencia?: string | null;
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(!metaPrevia);
-  const [meta, setMeta] = useState(metaPrevia ?? "");
+  const [verbo, setVerbo] = useState("");
+  const [que, setQue] = useState("");
+  const [como, setComo] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const listoParaGuardar = verbo.trim() && que.trim() && como.trim();
 
   async function guardarMeta(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setCargando(true);
+    const meta = `${verbo.trim()} ${que.trim()}, ${como.trim()}.`;
     const supabase = createClient();
     const { error: upsertError } = await supabase.from("bitacora").upsert(
       { estudiante_id: estudianteId, unidad_id: unidadId, meta, cumplida: false },
@@ -65,24 +72,48 @@ export default function Bitacora({
         <div className="flex items-center gap-2">
           <NotebookPen className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
           <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-            ¿Cuál es tu meta para esta unidad?
+            ¿Qué aprendizaje esperas alcanzar en esta unidad?
           </p>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-500">
-          Algo concreto y medible — no "esforzarme más", sino algo que puedas revisar al final.
-        </p>
+        {unidadCompetencia && (
+          <p className="text-xs text-slate-500 dark:text-slate-500">{unidadCompetencia}</p>
+        )}
         <form onSubmit={guardarMeta} className="flex flex-col gap-3">
-          <Textarea
-            required
-            value={meta}
-            onChange={(e) => setMeta(e.target.value)}
-            rows={2}
-            placeholder='Ej. "Terminar la unidad y bajar mis muletillas a menos de 3 por texto"'
-          />
+          <Field>
+            <Label htmlFor="verbo">Verbo</Label>
+            <Input
+              id="verbo"
+              required
+              value={verbo}
+              onChange={(e) => setVerbo(e.target.value)}
+              placeholder='Ej. "Identifico"'
+            />
+          </Field>
+          <Field>
+            <Label htmlFor="que">Qué</Label>
+            <Input
+              id="que"
+              required
+              value={que}
+              onChange={(e) => setQue(e.target.value)}
+              placeholder='Ej. "los elementos del circuito de la comunicación"'
+            />
+          </Field>
+          <Field>
+            <Label htmlFor="como">Cómo</Label>
+            <Input
+              id="como"
+              required
+              value={como}
+              onChange={(e) => setComo(e.target.value)}
+              placeholder='Ej. "analizando conversaciones reales"'
+            />
+            <HelpText>Verbo + qué + cómo — algo concreto, no "esforzarme más".</HelpText>
+          </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <div className="flex gap-2">
-            <Boton type="submit" size="sm" cargando={cargando} disabled={!meta.trim()} className="self-start">
-              {cargando ? "Guardando..." : "Guardar meta"}
+            <Boton type="submit" size="sm" cargando={cargando} disabled={!listoParaGuardar} className="self-start">
+              {cargando ? "Guardando..." : "Guardar"}
             </Boton>
             {metaPrevia && (
               <Boton
@@ -105,7 +136,7 @@ export default function Bitacora({
     <Card className="flex flex-col gap-3 p-5">
       <div className="flex items-center gap-2">
         <NotebookPen className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Tu meta para esta unidad</p>
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Lo que esperas aprender</p>
       </div>
       <p className="text-sm italic text-slate-700 dark:text-slate-300">"{metaPrevia}"</p>
       <p className="text-xs text-slate-500 dark:text-slate-500">Progreso de la unidad: {avancePct}%</p>
@@ -122,7 +153,7 @@ export default function Bitacora({
           {cumplidaPrevia ? "Cumplida" : "Marcar como cumplida"}
         </Boton>
         <Boton type="button" variant="secondary" size="sm" onClick={() => setEditando(true)} className="self-start">
-          Cambiar meta
+          Cambiar
         </Boton>
       </div>
     </Card>

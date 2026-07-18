@@ -19,7 +19,7 @@ export default async function EditarActividad({
     supabase.auth.getUser(),
     supabase
       .from("actividades")
-      .select("id, titulo, instrucciones, contenido, tipos_actividad(nombre)")
+      .select("id, titulo, instrucciones, contenido, aprendizaje_esperado, tipos_actividad(nombre)")
       .eq("id", actividadId)
       .single(),
   ]);
@@ -37,6 +37,7 @@ export default async function EditarActividad({
         tipoNombre: tipo?.nombre ?? "",
         titulo: actividad.titulo,
         instrucciones: actividad.instrucciones ?? "",
+        aprendizajeEsperado: actividad.aprendizaje_esperado ?? "",
         contenido: (actividad.contenido as Record<string, unknown>) ?? {},
       }}
     />

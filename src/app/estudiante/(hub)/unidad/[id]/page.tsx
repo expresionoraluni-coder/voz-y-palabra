@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
+import { CheckCircle2, Circle, Target, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import Confianza from "./confianza";
 import Bitacora from "./bitacora";
@@ -24,7 +24,11 @@ export default async function UnidadEstudiante({
 
   const [{ data: estudiante }, { data: unidad }, { data: actividades }] = await Promise.all([
     supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
-    supabase.from("unidades").select("id, nombre, orden, reto_comunicativo").eq("id", id).single(),
+    supabase
+      .from("unidades")
+      .select("id, nombre, orden, reto_comunicativo, unidad_competencia")
+      .eq("id", id)
+      .single(),
     supabase
       .from("actividades")
       .select("id, titulo, instrucciones, entregas(id)")
@@ -68,6 +72,13 @@ export default async function UnidadEstudiante({
         descripcion={unidad.reto_comunicativo}
       />
 
+      {unidad.unidad_competencia && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
+          <Target className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+          <p className="text-sm text-slate-700 dark:text-slate-300">{unidad.unidad_competencia}</p>
+        </div>
+      )}
+
       {totalActividades > 0 && (
         <div className="flex items-center gap-3">
           <ProgressBar porcentaje={pct} gradiente={tema.barra} />
@@ -83,6 +94,7 @@ export default async function UnidadEstudiante({
         metaPrevia={bitacora?.meta ?? null}
         cumplidaPrevia={bitacora?.cumplida ?? false}
         avancePct={pct}
+        unidadCompetencia={unidad.unidad_competencia}
       />
 
       {!confianzaInicio && (
