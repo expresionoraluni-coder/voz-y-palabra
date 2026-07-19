@@ -1701,3 +1701,26 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       correctamente. Datos de prueba limpiados.
 --
 -- === Fin de las Fases H-Q (segunda ronda de observaciones) ===
+--
+-- 44. Fase R — ancho de página + video como paso separado (tercera ronda):
+--     - actividad/[id]/page.tsx, progreso/page.tsx y calendario/page.tsx
+--       pasan de max-w-lg (32rem) a max-w-2xl (42rem), igualando al resto
+--       del hub del estudiante (inicio, unidad/[id], portafolio,
+--       insignias, bottom-nav) — antes se veían más angostas, con espacio
+--       lateral desperdiciado en pantallas anchas.
+--     - Nuevo componente estudiante/actividad/[id]/video-intro.tsx: si la
+--       actividad tiene video_url y el estudiante todavía no tiene
+--       entrega, se muestra SOLO el video + botón "Continuar a la
+--       actividad" — el resto del contenido (UC/AE, predicción, la
+--       actividad en sí) queda oculto hasta que el estudiante confirma.
+--       Si no hay video, o ya hay entrega (quien vuelve a revisar sus
+--       respuestas no debe tener que "pasar" el video de nuevo), se
+--       salta directo al contenido. Se quita el placeholder "Video
+--       próximamente" de la Fase H6 — ya no aplica, el video ahora es un
+--       paso que aparece solo cuando existe.
+--     - Verificado en vivo con estudiante QA temporal: con un video_url
+--       de prueba, la actividad muestra solo el video y el botón de
+--       continuar; al hacer clic aparece el resto (UC/AE + predicción);
+--       el contenedor mide 672px (max-w-2xl) en vez de los 512px
+--       anteriores. Typecheck y build limpios. Datos de prueba limpiados
+--       (incluyendo el video_url de prueba, revertido a null).

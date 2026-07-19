@@ -69,7 +69,7 @@ export default async function CalendarioEstudiante() {
   const timeline = [...itemsEventos, ...itemsRepaso].sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/estudiante/inicio"
         titulo="Calendario"

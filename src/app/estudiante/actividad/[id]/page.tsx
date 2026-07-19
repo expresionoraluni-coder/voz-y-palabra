@@ -1,12 +1,11 @@
 import { redirect, notFound } from "next/navigation";
-import { Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
-import { urlEmbedYoutube } from "@/lib/video-embed";
 import type { ContenidoOpcionJustificacion } from "@/lib/opcion-justificacion";
 import { EntregaRecienteProvider } from "@/lib/entrega-reciente-context";
+import VideoIntro from "./video-intro";
 import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
 import EncontrarCorregir from "./encontrar-corregir";
@@ -108,47 +107,8 @@ export default async function ActividadEstudiante({
   const respuesta = entregaExistente?.respuesta;
   const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
 
-  return (
-    <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col gap-6 px-6 py-10">
-      <PageHeader
-        volverHref={`/estudiante/unidad/${actividad.unidad_id}`}
-        titulo={actividad.titulo}
-        descripcion={actividad.instrucciones}
-      />
-
-      {(() => {
-        if (!actividad.video_url) {
-          return (
-            <div className="flex aspect-video w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800/60 dark:text-slate-600">
-              <Video className="size-6" aria-hidden="true" />
-              <p className="text-xs font-medium">Video próximamente</p>
-            </div>
-          );
-        }
-        const embed = urlEmbedYoutube(actividad.video_url);
-        return embed ? (
-          <div className="aspect-video w-full overflow-hidden rounded-xl bg-slate-900">
-            <iframe
-              src={embed}
-              title={actividad.titulo}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="size-full"
-            />
-          </div>
-        ) : (
-          <a
-            href={actividad.video_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-slate-50 dark:border-slate-800 dark:text-indigo-400 dark:hover:bg-slate-800/50"
-          >
-            <Video className="size-4 shrink-0" aria-hidden="true" />
-            Ver video
-          </a>
-        );
-      })()}
-
+  const contenidoActividad = (
+    <>
       {(actividad.aprendizaje_esperado || unidadDeActividad?.unidad_competencia) && (
         <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
           {unidadDeActividad?.unidad_competencia && (
@@ -346,6 +306,24 @@ export default async function ActividadEstudiante({
         }
       />
       </EntregaRecienteProvider>
+    </>
+  );
+
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+      <PageHeader
+        volverHref={`/estudiante/unidad/${actividad.unidad_id}`}
+        titulo={actividad.titulo}
+        descripcion={actividad.instrucciones}
+      />
+
+      {actividad.video_url && !entregaExistente ? (
+        <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
+          {contenidoActividad}
+        </VideoIntro>
+      ) : (
+        contenidoActividad
+      )}
     </div>
   );
 }
