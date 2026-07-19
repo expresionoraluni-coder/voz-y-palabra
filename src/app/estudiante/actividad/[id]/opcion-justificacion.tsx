@@ -11,94 +11,32 @@ import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
 import {
   type ContenidoOpcionJustificacion,
+  type RondaContenido,
   type RondaRespuesta,
   rondasDeContenido,
   introDeContenido,
+  presentacionDeContenido,
   rondasDeRespuesta,
 } from "@/lib/opcion-justificacion";
 
-export default function OpcionJustificacion({
-  actividadId,
-  estudianteId,
-  contenido,
-  respuestaPrevia,
+function PreguntaRonda({
+  ronda,
+  respuesta,
+  indice,
+  onCambiar,
 }: {
-  actividadId: string;
-  estudianteId: string;
-  contenido: ContenidoOpcionJustificacion;
-  respuestaPrevia?: Record<string, unknown>;
+  ronda: RondaContenido;
+  respuesta: RondaRespuesta;
+  indice: number;
+  onCambiar: (cambios: Partial<RondaRespuesta>) => void;
 }) {
-  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
-
-  const rondas = useMemo(() => rondasDeContenido(contenido), [contenido]);
-  const intro = introDeContenido(contenido);
-  const rondasPrevias = useMemo(() => rondasDeRespuesta(respuestaPrevia), [respuestaPrevia]);
-
-  const [indiceActual, setIndiceActual] = useState(0);
-  const [respuestas, setRespuestas] = useState<RondaRespuesta[]>(() =>
-    rondas.map((_, i) => rondasPrevias[i] ?? { opcion: "", justificacion: "" }),
-  );
-
-  const yaEnviado = guardado || rondasPrevias.length > 0;
-  const ronda = rondas[indiceActual];
-  const respuesta = respuestas[indiceActual];
-  const esUltima = indiceActual === rondas.length - 1;
-
   const ideasMencionadas = useMemo(
     () => ideasClaveMencionadas(respuesta.justificacion, ronda.ideas_clave ?? []),
     [respuesta.justificacion, ronda.ideas_clave],
   );
 
-  function actualizarRespuesta(cambios: Partial<RondaRespuesta>) {
-    setRespuestas((prev) => prev.map((r, i) => (i === indiceActual ? { ...r, ...cambios } : r)));
-    marcarSinGuardar();
-  }
-
-  function validarActual(): boolean {
-    if (contarPalabras(respuesta.justificacion) < 6) {
-      setError("Explica un poco más tu razonamiento antes de continuar.");
-      return false;
-    }
-    setError(null);
-    return true;
-  }
-
-  function irASiguiente() {
-    if (!validarActual()) return;
-    setIndiceActual((i) => i + 1);
-  }
-
-  function irAAnterior() {
-    setError(null);
-    setIndiceActual((i) => i - 1);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validarActual()) return;
-    await guardar({ respuesta: { rondas: respuestas }, estado: "pendiente_revision" });
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {intro && indiceActual === 0 && (
-        <p className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
-          {intro}
-        </p>
-      )}
-
-      {rondas.length > 1 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Pregunta {indiceActual + 1} de {rondas.length}
-          </p>
-          <ProgressBar
-            porcentaje={((indiceActual + 1) / rondas.length) * 100}
-            etiqueta="Progreso de la actividad"
-          />
-        </div>
-      )}
-
+    <div className="flex flex-col gap-4">
       {ronda.contexto && (
         <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
           {ronda.contexto}
@@ -121,10 +59,10 @@ export default function OpcionJustificacion({
               >
                 <input
                   type="radio"
-                  name={`opcion-${indiceActual}`}
+                  name={`opcion-${indice}`}
                   value={op}
                   checked={seleccionada}
-                  onChange={() => actualizarRespuesta({ opcion: op })}
+                  onChange={() => onCambiar({ opcion: op })}
                   required
                   className="sr-only"
                 />
@@ -145,35 +83,26 @@ export default function OpcionJustificacion({
       </fieldset>
 
       <Field>
-        <Label htmlFor="justificacion">¿Por qué elegiste esa opción?</Label>
+        <Label htmlFor={`justificacion-${indice}`}>¿Por qué elegiste esa opción?</Label>
         <Textarea
-          id="justificacion"
+          id={`justificacion-${indice}`}
           required
           value={respuesta.justificacion}
-          onChange={(e) => actualizarRespuesta({ justificacion: e.target.value })}
+          onChange={(e) => onCambiar({ justificacion: e.target.value })}
           onPaste={bloquearPegado}
           rows={3}
         />
       </Field>
 
-      {ronda.ideas_clave && ronda.ideas_clave.length > 0 && !yaEnviado && contarPalabras(respuesta.justificacion) >= 4 && (
-        <p className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
-          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
-          {ideasMencionadas.length === 0
-            ? "Aún no mencionas ninguna de las ideas que esperábamos en tu justificación (¿qué más notaste?)."
-            : `Mencionas ${ideasMencionadas.length} de ${ronda.ideas_clave.length} ideas que esperábamos.`}
-        </p>
-      )}
-
-      {ronda.ideas_clave && ronda.ideas_clave.length > 0 && yaEnviado && (
+      {ronda.ideas_clave && ronda.ideas_clave.length > 0 && (
         <div className="flex flex-col gap-1 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
           <p className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
             <Lightbulb className="size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
-            Ideas que esperábamos en tu justificación:
+            Ideas que esperamos en tu justificación:
           </p>
           <ul className="flex flex-col gap-0.5">
             {ronda.ideas_clave.map((idea) => {
-              const mencionada = ideasClaveMencionadas(respuesta.justificacion, [idea]).length > 0;
+              const mencionada = ideasMencionadas.includes(idea);
               return (
                 <li
                   key={idea}
@@ -191,31 +120,161 @@ export default function OpcionJustificacion({
           </ul>
         </div>
       )}
+    </div>
+  );
+}
 
-      {error && <ErrorText>{error}</ErrorText>}
-      {guardado && (
-        <p className="text-sm text-emerald-600 dark:text-emerald-400">
-          Guardado. Puedes cambiar tus respuestas cuando quieras.
+export default function OpcionJustificacion({
+  actividadId,
+  estudianteId,
+  contenido,
+  respuestaPrevia,
+}: {
+  actividadId: string;
+  estudianteId: string;
+  contenido: ContenidoOpcionJustificacion;
+  respuestaPrevia?: Record<string, unknown>;
+}) {
+  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
+
+  const rondas = useMemo(() => rondasDeContenido(contenido), [contenido]);
+  const intro = introDeContenido(contenido);
+  const presentacion = useMemo(() => presentacionDeContenido(contenido), [contenido]);
+  const rondasPrevias = useMemo(() => rondasDeRespuesta(respuestaPrevia), [respuestaPrevia]);
+
+  const [indiceActual, setIndiceActual] = useState(0);
+  const [respuestas, setRespuestas] = useState<RondaRespuesta[]>(() =>
+    rondas.map((_, i) => rondasPrevias[i] ?? { opcion: "", justificacion: "" }),
+  );
+
+  const ronda = rondas[indiceActual];
+  const respuesta = respuestas[indiceActual];
+  const esUltima = indiceActual === rondas.length - 1;
+
+  function actualizarRespuestaEn(indice: number, cambios: Partial<RondaRespuesta>) {
+    setRespuestas((prev) => prev.map((r, i) => (i === indice ? { ...r, ...cambios } : r)));
+    marcarSinGuardar();
+  }
+
+  function validarActual(): boolean {
+    if (contarPalabras(respuesta.justificacion) < 6) {
+      setError("Explica un poco más tu razonamiento antes de continuar.");
+      return false;
+    }
+    setError(null);
+    return true;
+  }
+
+  function validarTodas(): boolean {
+    const faltante = respuestas.findIndex((r) => contarPalabras(r.justificacion) < 6);
+    if (faltante !== -1) {
+      setError(`Explica un poco más tu razonamiento en la pregunta ${faltante + 1} antes de guardar.`);
+      return false;
+    }
+    setError(null);
+    return true;
+  }
+
+  function irASiguiente() {
+    if (!validarActual()) return;
+    setIndiceActual((i) => i + 1);
+  }
+
+  function irAAnterior() {
+    setError(null);
+    setIndiceActual((i) => i - 1);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (presentacion === "todas_juntas" ? !validarTodas() : !validarActual()) return;
+    await guardar({ respuesta: { rondas: respuestas }, estado: "pendiente_revision" });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {intro && (presentacion === "todas_juntas" || indiceActual === 0) && (
+        <p className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+          {intro}
         </p>
       )}
 
-      <div className="flex items-center gap-2">
-        {indiceActual > 0 && (
-          <Boton type="button" variant="secondary" onClick={irAAnterior}>
-            <ChevronLeft className="size-4" aria-hidden="true" />
-            Atrás
-          </Boton>
-        )}
-        {esUltima ? (
+      {presentacion === "todas_juntas" ? (
+        <>
+          {rondas.map((r, i) => (
+            <div key={i} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+              {rondas.length > 1 && (
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Pregunta {i + 1} de {rondas.length}
+                </p>
+              )}
+              <PreguntaRonda
+                ronda={r}
+                respuesta={respuestas[i]}
+                indice={i}
+                onCambiar={(cambios) => actualizarRespuestaEn(i, cambios)}
+              />
+            </div>
+          ))}
+
+          {error && <ErrorText>{error}</ErrorText>}
+          {guardado && (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">
+              Guardado. Puedes cambiar tus respuestas cuando quieras.
+            </p>
+          )}
+
           <Boton type="submit" cargando={cargando}>
             {cargando ? "Guardando..." : "Guardar mis respuestas"}
           </Boton>
-        ) : (
-          <Boton type="button" onClick={irASiguiente}>
-            Siguiente
-          </Boton>
-        )}
-      </div>
+        </>
+      ) : (
+        <>
+          {rondas.length > 1 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Pregunta {indiceActual + 1} de {rondas.length}
+              </p>
+              <ProgressBar
+                porcentaje={((indiceActual + 1) / rondas.length) * 100}
+                etiqueta="Progreso de la actividad"
+              />
+            </div>
+          )}
+
+          <PreguntaRonda
+            ronda={ronda}
+            respuesta={respuesta}
+            indice={indiceActual}
+            onCambiar={(cambios) => actualizarRespuestaEn(indiceActual, cambios)}
+          />
+
+          {error && <ErrorText>{error}</ErrorText>}
+          {guardado && (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">
+              Guardado. Puedes cambiar tus respuestas cuando quieras.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
+            {indiceActual > 0 && (
+              <Boton type="button" variant="secondary" onClick={irAAnterior}>
+                <ChevronLeft className="size-4" aria-hidden="true" />
+                Atrás
+              </Boton>
+            )}
+            {esUltima ? (
+              <Boton type="submit" cargando={cargando}>
+                {cargando ? "Guardando..." : "Guardar mis respuestas"}
+              </Boton>
+            ) : (
+              <Boton type="button" onClick={irASiguiente}>
+                Siguiente
+              </Boton>
+            )}
+          </div>
+        </>
+      )}
     </form>
   );
 }

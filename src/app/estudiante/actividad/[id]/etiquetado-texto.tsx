@@ -16,7 +16,7 @@ export default function EtiquetadoTexto({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { contexto: string | null; etiquetas: string[]; fragmentos: Fragmento[] };
+  contenido: { contexto: string | null; etiquetas: string[]; fragmentos: Fragmento[]; en_linea?: boolean };
   respuestaPrevia?: { elegidas: string[] };
 }) {
   const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
@@ -71,38 +71,73 @@ export default function EtiquetadoTexto({
       {contenido.contexto && (
         <p className="text-sm text-slate-500 dark:text-slate-500">{contenido.contexto}</p>
       )}
-      {contenido.fragmentos.map((f, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800"
-        >
-          <p className="text-sm italic text-slate-900 dark:text-slate-50">&ldquo;{f.texto}&rdquo;</p>
-          <Select value={elegidas[i]} disabled={bloqueado} onChange={(e) => actualizar(i, e.target.value)}>
-            <option value="">Elige una etiqueta</option>
-            {contenido.etiquetas.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </Select>
-          {resultado && (
-            <p
-              className={`flex items-center gap-1.5 text-sm ${
-                resultado[i]
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-red-600 dark:text-red-400"
-              }`}
-            >
-              {resultado[i] ? (
-                <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
-              ) : (
-                <XCircle className="size-4 shrink-0" aria-hidden="true" />
-              )}
-              {resultado[i] ? "Correcto" : `Era: ${f.etiqueta_correcta}`}
-            </p>
-          )}
+      {contenido.en_linea ? (
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-3 rounded-xl border border-slate-200 px-4 py-3.5 text-sm leading-loose text-slate-900 dark:border-slate-800 dark:text-slate-50">
+          {contenido.fragmentos.map((f, i) => (
+            <span key={i} className="inline-flex items-center gap-1">
+              <span>{f.texto}</span>
+              <Select
+                value={elegidas[i]}
+                disabled={bloqueado}
+                onChange={(e) => actualizar(i, e.target.value)}
+                className="!w-auto !px-2 !py-1 !text-sm"
+              >
+                <option value="">elige</option>
+                {contenido.etiquetas.map((e) => (
+                  <option key={e} value={e}>
+                    {e}
+                  </option>
+                ))}
+              </Select>
+              {resultado &&
+                (resultado[i] ? (
+                  <CheckCircle2
+                    className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                    <XCircle className="size-4 shrink-0" aria-hidden="true" />
+                    (era: {f.etiqueta_correcta})
+                  </span>
+                ))}
+            </span>
+          ))}
         </div>
-      ))}
+      ) : (
+        contenido.fragmentos.map((f, i) => (
+          <div
+            key={i}
+            className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800"
+          >
+            <p className="text-sm italic text-slate-900 dark:text-slate-50">&ldquo;{f.texto}&rdquo;</p>
+            <Select value={elegidas[i]} disabled={bloqueado} onChange={(e) => actualizar(i, e.target.value)}>
+              <option value="">Elige una etiqueta</option>
+              {contenido.etiquetas.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </Select>
+            {resultado && (
+              <p
+                className={`flex items-center gap-1.5 text-sm ${
+                  resultado[i]
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {resultado[i] ? (
+                  <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+                ) : (
+                  <XCircle className="size-4 shrink-0" aria-hidden="true" />
+                )}
+                {resultado[i] ? "Correcto" : `Era: ${f.etiqueta_correcta}`}
+              </p>
+            )}
+          </div>
+        ))
+      )}
       {error && <ErrorText>{error}</ErrorText>}
       {!bloqueado && (
         <Boton type="submit" cargando={cargando}>

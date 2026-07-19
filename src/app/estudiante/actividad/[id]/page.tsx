@@ -248,6 +248,7 @@ export default async function ActividadEstudiante({
               contexto: string | null;
               etiquetas: string[];
               fragmentos: { texto: string; etiqueta_correcta: string }[];
+              en_linea?: boolean;
             }
           }
           respuestaPrevia={respuesta as { elegidas: string[] } | undefined}

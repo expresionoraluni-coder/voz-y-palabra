@@ -16,7 +16,7 @@ export type RondaContenido = {
 
 export type ContenidoOpcionJustificacion =
   | RondaContenido
-  | { intro?: string; rondas: RondaContenido[] };
+  | { intro?: string; rondas: RondaContenido[]; presentacion?: "asistente" | "todas_juntas" };
 
 export type RondaRespuesta = { opcion: string; justificacion: string };
 
@@ -28,6 +28,10 @@ export function rondasDeContenido(c: ContenidoOpcionJustificacion): RondaConteni
 
 export function introDeContenido(c: ContenidoOpcionJustificacion): string | undefined {
   return "rondas" in c ? c.intro : undefined;
+}
+
+export function presentacionDeContenido(c: ContenidoOpcionJustificacion): "asistente" | "todas_juntas" {
+  return "rondas" in c && c.presentacion === "todas_juntas" ? "todas_juntas" : "asistente";
 }
 
 export function rondasDeRespuesta(r?: Record<string, unknown> | null): RondaRespuesta[] {

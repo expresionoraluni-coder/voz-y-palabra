@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Lightbulb } from "lucide-react";
+import { Check, Lightbulb } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -115,17 +115,32 @@ export default function EncontrarCorregir({
             : "No vemos que menciones el fragmento específico con el error (revisa de nuevo)."}
         </p>
       )}
-      {contarPalabras(queEncontraste) >= 4 &&
-        mencionaFragmento === null &&
-        contenido.ideas_clave &&
-        contenido.ideas_clave.length > 0 && (
-          <p className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
-            <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
-            {ideasMencionadas.length === 0
-              ? "Aún no mencionas ninguna de las ideas que esperábamos (¿qué más notaste?)."
-              : `Mencionas ${ideasMencionadas.length} de ${contenido.ideas_clave.length} ideas que esperábamos.`}
+      {contenido.ideas_clave && contenido.ideas_clave.length > 0 && (
+        <div className="flex flex-col gap-1 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+            <Lightbulb className="size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
+            Ideas que esperamos que menciones:
           </p>
-        )}
+          <ul className="flex flex-col gap-0.5">
+            {contenido.ideas_clave.map((idea) => {
+              const mencionada = ideasMencionadas.includes(idea);
+              return (
+                <li
+                  key={idea}
+                  className={`flex items-center gap-1.5 text-xs ${
+                    mencionada
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-slate-500 dark:text-slate-500"
+                  }`}
+                >
+                  {mencionada && <Check className="size-3 shrink-0" aria-hidden="true" />}
+                  {idea}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       <Field>
         <Label htmlFor="version-corregida">Tu versión corregida</Label>

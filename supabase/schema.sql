@@ -1503,3 +1503,37 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       de actividad juntas, sin ningún resumen de entrega; progreso
 --       muestra las 5 secciones nuevas con datos reales. Typecheck y
 --       build limpios. Datos de prueba limpiados.
+--
+-- 38. Fase L — mejoras de presentación (sin mecánicas nuevas):
+--     - opcion-justificacion.tsx / encontrar-corregir.tsx: el checklist de
+--       ideas_clave dejó de estar gated por "ya enviado" o por un mínimo de
+--       palabras — ahora se muestra completo desde que carga la actividad,
+--       marcando cada idea en vivo conforme el estudiante escribe (no hay
+--       riesgo de "hacer trampa": son pistas de calidad de la
+--       justificación, no la respuesta de opción múltiple).
+--     - src/lib/opcion-justificacion.ts: nuevo campo opcional
+--       presentacion?: "asistente" | "todas_juntas" en la forma con rondas
+--       (default "asistente" = wizard actual, retrocompatible).
+--       opcion-justificacion.tsx se refactorizó extrayendo el bloque de una
+--       pregunta a un subcomponente (PreguntaRonda) reusado en ambos modos;
+--       "todas_juntas" apila todas las rondas en una sola pantalla con un
+--       solo botón de envío al final.
+--     - etiquetado-texto.tsx: nuevo campo opcional contenido.en_linea?:
+--       boolean — cuando es true, los fragmentos se concatenan en un
+--       bloque de texto corrido con un <select> incrustado justo después
+--       de cada fragmento, en vez de tarjetas separadas; el indicador de
+--       correcto/incorrecto pasa a ser un ícono o badge en línea junto al
+--       select.
+--     - Contenido (solo datos, sin cambio de tipo_id): presentacion =
+--       "todas_juntas" en "Niveles de la lengua", "Tipologías textuales" e
+--       "Identifica el modelo expositivo" (para que no se resuelvan por
+--       descarte). en_linea = true solo en "Uso del punto: seguido, aparte
+--       y final" (única actividad de etiquetado_texto cuyos fragmentos
+--       arman un párrafo corrido; "Variaciones y deformaciones de la
+--       lengua" tiene fragmentos independientes y se queda en tarjetas).
+--     - Verificado en vivo con estudiante QA temporal: "Uso del punto" en
+--       línea muestra el texto corrido con selects incrustados y el badge
+--       "(era: ...)" solo en el fragmento incorrecto; "Niveles de la
+--       lengua" en modo todas_juntas muestra las 3 preguntas juntas, cada
+--       ideas_clave marcándose en vivo, y guarda con un solo envío.
+--       Typecheck y build limpios. Datos de prueba limpiados.
