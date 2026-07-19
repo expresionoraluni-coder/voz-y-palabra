@@ -1811,3 +1811,33 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     - Verificado en vivo con estudiante QA temporal: los 6 fragmentos
 --       de "Coherencia" se ven todos sobre el mismo tema (interculturalidad/
 --       lenguas/globalización), sin distractor obviamente ajeno.
+--
+-- 48. Fase V — reset y reseed de la cuenta de revisión (solo datos, sobre
+--     la cuenta real de revisión, no una cuenta QA desechable):
+--     - Se borraron todas las entregas, reflexiones y bitácora de
+--       ESTUDIANTE DE REVISIÓN (id 1b0c4522-cb9f-4250-9e5f-bfb6a5d553fa).
+--     - Se completaron las 23 actividades que NO son de nivel 2 (de las
+--       25 totales) con la respuesta objetivamente correcta de cada una
+--       (100% en las 22 auto-calificables; "El resumen imposible" queda
+--       como entrega mínima sin puntaje, como se diseñó en la Fase P) y
+--       su predicción de confianza (4/5). Se agregó también la reflexión
+--       de cierre de cada una de las 3 unidades.
+--     - Las 2 actividades de nivel 2 ("Las 6 funciones de la lengua
+--       (nivel 2)" e "Ideas principal, secundaria y terciaria (nivel 2)")
+--       se dejaron sin ninguna fila a propósito — desbloqueadas (su nivel
+--       1 ya tiene 100%) pero sin intentar, listas para probar el flujo
+--       de la Fase T (orden revuelto, sin revelar respuesta, reiniciar).
+--     - Verificado por consulta: 23 entregas, 23 predicciones, 3 cierres
+--       de unidad, y exactamente 0 filas (entregas y reflexiones) para
+--       las 2 actividades de nivel 2.
+--     - Aviso importante para la usuaria: la Unidad 1 tiene 13
+--       actividades en total (cuenta las 2 de nivel 2), así que con 11/13
+--       hechas NO se marca "completa" bajo la lógica actual de
+--       unidadEstaCompleta() (Fase I2) — esto bloquea la navegación
+--       normal hacia la Unidad 2 y, en cascada, hacia la Unidad 3, aunque
+--       sus 12 actividades ya tienen entrega al 100% en la base. Es un
+--       efecto secundario de dejar nivel 2 pendiente a propósito, no un
+--       bug nuevo introducido aquí — se le explicó a la usuaria en el
+--       resumen de esta fase, ofreciendo excluir nivel 2 del conteo de
+--       "unidad completa" si prefiere poder navegar directo a las
+--       Unidades 2 y 3 sin antes resolver las de nivel 2.
