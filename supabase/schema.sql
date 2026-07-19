@@ -1607,3 +1607,31 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       y al completar las 10 celdas correctamente se calificó 100% y la
 --       actividad quedó bloqueada. Typecheck y build limpios. Datos de
 --       prueba limpiados.
+--
+-- 41. Fase O — "El circuito de la comunicación" como hilo de chat:
+--     - src/lib/opcion-justificacion.ts: nuevo tipo MensajeChat = {de,
+--       texto, nota?} y campo opcional mensajes?: MensajeChat[] a nivel
+--       superior de la forma con rondas (hermano de intro/rondas/
+--       presentacion) — el hilo canónico de mensajes de la actividad.
+--       RondaContenido gana mensajesVisibles?: number (cuántos mensajes
+--       del hilo mostrar como burbujas en esa ronda; por defecto todos).
+--     - opcion-justificacion.tsx: nuevo subcomponente HiloChat — cuando
+--       contenido.mensajes existe, se muestra un hilo estilo chat (dos
+--       remitentes, burbujas alternadas izquierda/derecha según quién
+--       envía, divisor opcional con el texto de "nota" entre mensajes)
+--       en vez del párrafo plano de intro. En modo asistente se revela
+--       progresivamente según mensajesVisibles de la ronda actual; en
+--       modo todas_juntas se muestra el hilo completo una sola vez arriba.
+--       Sin contenido.mensajes, el comportamiento no cambia (intro plano
+--       como siempre).
+--     - Contenido (SQL): "El circuito de la comunicación" reescrita con
+--       mensajes = [Ana pregunta, Luis responde 3 horas después con
+--       nota="3 horas después"]; mensajesVisibles=1 en las rondas 1-6
+--       (todas sobre el primer mensaje de Ana) y 2 en la ronda 7 (sobre
+--       la retroalimentación de Luis); se quitó el campo intro plano. Se
+--       mantiene en modo asistente (wizard), como pedía el plan.
+--     - Verificado en vivo con estudiante QA temporal recorriendo las 7
+--       preguntas: solo el mensaje de Ana se ve en las rondas 1-6, y al
+--       llegar a la ronda 7 aparece el mensaje de Luis con el divisor "3
+--       horas después" y burbuja alineada al lado contrario. Typecheck y
+--       build limpios. Datos de prueba limpiados.

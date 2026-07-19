@@ -11,13 +11,53 @@ import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
 import {
   type ContenidoOpcionJustificacion,
+  type MensajeChat,
   type RondaContenido,
   type RondaRespuesta,
   rondasDeContenido,
   introDeContenido,
   presentacionDeContenido,
+  mensajesDeContenido,
   rondasDeRespuesta,
 } from "@/lib/opcion-justificacion";
+
+function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
+  if (mensajes.length === 0) return null;
+
+  const remitentes: string[] = [];
+  mensajes.forEach((m) => {
+    if (!remitentes.includes(m.de)) remitentes.push(m.de);
+  });
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-xl bg-slate-100 p-3.5 dark:bg-slate-800/60">
+      {mensajes.map((m, i) => {
+        const derecha = remitentes.indexOf(m.de) === 1;
+        return (
+          <div key={i} className="flex flex-col gap-1.5">
+            {m.nota && (
+              <p className="self-center rounded-full bg-slate-200 px-2.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                {m.nota}
+              </p>
+            )}
+            <div className={`flex ${derecha ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`flex max-w-[80%] flex-col gap-0.5 rounded-2xl px-3.5 py-2 text-sm ${
+                  derecha
+                    ? "bg-emerald-500 text-white dark:bg-emerald-600"
+                    : "bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-50"
+                }`}
+              >
+                <span className="text-[11px] font-semibold opacity-70">{m.de}</span>
+                <span>{m.texto}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function PreguntaRonda({
   ronda,
@@ -140,6 +180,7 @@ export default function OpcionJustificacion({
   const rondas = useMemo(() => rondasDeContenido(contenido), [contenido]);
   const intro = introDeContenido(contenido);
   const presentacion = useMemo(() => presentacionDeContenido(contenido), [contenido]);
+  const mensajes = useMemo(() => mensajesDeContenido(contenido), [contenido]);
   const rondasPrevias = useMemo(() => rondasDeRespuesta(respuestaPrevia), [respuestaPrevia]);
 
   const [indiceActual, setIndiceActual] = useState(0);
@@ -193,10 +234,19 @@ export default function OpcionJustificacion({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {intro && (presentacion === "todas_juntas" || indiceActual === 0) && (
-        <p className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
-          {intro}
-        </p>
+      {mensajes.length > 0 ? (
+        presentacion === "todas_juntas" ? (
+          <HiloChat mensajes={mensajes} />
+        ) : (
+          <HiloChat mensajes={mensajes.slice(0, ronda.mensajesVisibles ?? mensajes.length)} />
+        )
+      ) : (
+        intro &&
+        (presentacion === "todas_juntas" || indiceActual === 0) && (
+          <p className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+            {intro}
+          </p>
+        )
       )}
 
       {presentacion === "todas_juntas" ? (

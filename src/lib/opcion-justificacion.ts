@@ -12,11 +12,22 @@ export type RondaContenido = {
   pregunta: string;
   opciones: string[];
   ideas_clave?: string[];
+  mensajesVisibles?: number;
 };
+
+// Hilo de mensajes (ej. una conversación de WhatsApp) que enmarca las rondas
+// de una actividad narrada. "nota" es un texto corto opcional que se muestra
+// como divisor arriba de ese mensaje (ej. "3 horas después").
+export type MensajeChat = { de: string; texto: string; nota?: string };
 
 export type ContenidoOpcionJustificacion =
   | RondaContenido
-  | { intro?: string; rondas: RondaContenido[]; presentacion?: "asistente" | "todas_juntas" };
+  | {
+      intro?: string;
+      rondas: RondaContenido[];
+      presentacion?: "asistente" | "todas_juntas";
+      mensajes?: MensajeChat[];
+    };
 
 export type RondaRespuesta = { opcion: string; justificacion: string };
 
@@ -32,6 +43,10 @@ export function introDeContenido(c: ContenidoOpcionJustificacion): string | unde
 
 export function presentacionDeContenido(c: ContenidoOpcionJustificacion): "asistente" | "todas_juntas" {
   return "rondas" in c && c.presentacion === "todas_juntas" ? "todas_juntas" : "asistente";
+}
+
+export function mensajesDeContenido(c: ContenidoOpcionJustificacion): MensajeChat[] {
+  return "rondas" in c && Array.isArray(c.mensajes) ? c.mensajes : [];
 }
 
 export function rondasDeRespuesta(r?: Record<string, unknown> | null): RondaRespuesta[] {
