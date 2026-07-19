@@ -11,6 +11,7 @@ export type RondaContenido = {
   contexto?: string;
   pregunta: string;
   opciones: string[];
+  respuesta_correcta: string;
   ideas_clave?: string[];
   mensajesVisibles?: number;
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, ChevronLeft, Lightbulb } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, Lightbulb, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -33,6 +33,7 @@ function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
     <div className="flex flex-col gap-1.5 rounded-xl bg-slate-100 p-3.5 dark:bg-slate-800/60">
       {mensajes.map((m, i) => {
         const derecha = remitentes.indexOf(m.de) === 1;
+        const inicial = m.de.trim().charAt(0).toUpperCase();
         return (
           <div key={i} className="flex flex-col gap-1.5">
             {m.nota && (
@@ -40,9 +41,19 @@ function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
                 {m.nota}
               </p>
             )}
-            <div className={`flex ${derecha ? "justify-end" : "justify-start"}`}>
+            <div className={`flex items-end gap-2 ${derecha ? "flex-row-reverse" : ""}`}>
+              <span
+                className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                  derecha
+                    ? "bg-emerald-600 text-white dark:bg-emerald-500"
+                    : "bg-slate-400 text-white dark:bg-slate-600"
+                }`}
+                aria-hidden="true"
+              >
+                {inicial}
+              </span>
               <div
-                className={`flex max-w-[80%] flex-col gap-0.5 rounded-2xl px-3.5 py-2 text-sm ${
+                className={`flex max-w-[75%] flex-col gap-0.5 rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
                   derecha
                     ? "bg-emerald-500 text-white dark:bg-emerald-600"
                     : "bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-50"
@@ -64,11 +75,13 @@ function PreguntaRonda({
   respuesta,
   indice,
   onCambiar,
+  bloqueado,
 }: {
   ronda: RondaContenido;
   respuesta: RondaRespuesta;
   indice: number;
   onCambiar: (cambios: Partial<RondaRespuesta>) => void;
+  bloqueado: boolean;
 }) {
   const ideasMencionadas = useMemo(
     () => ideasClaveMencionadas(respuesta.justificacion, ronda.ideas_clave ?? []),
@@ -88,13 +101,21 @@ function PreguntaRonda({
         <div className="flex flex-col gap-2">
           {ronda.opciones.map((op) => {
             const seleccionada = respuesta.opcion === op;
+            const esCorrecta = op === ronda.respuesta_correcta;
+            let estilo =
+              "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50";
+            if (bloqueado && esCorrecta) {
+              estilo = "border-emerald-500 bg-emerald-50 dark:border-emerald-400 dark:bg-emerald-950/40";
+            } else if (bloqueado && seleccionada) {
+              estilo = "border-red-400 bg-red-50 dark:border-red-500 dark:bg-red-950/30";
+            } else if (!bloqueado && seleccionada) {
+              estilo = "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/50";
+            }
             return (
               <label
                 key={op}
-                className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
-                  seleccionada
-                    ? "border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-950/50"
-                    : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${estilo} ${
+                  bloqueado ? "cursor-default" : "cursor-pointer"
                 }`}
               >
                 <input
@@ -103,6 +124,7 @@ function PreguntaRonda({
                   value={op}
                   checked={seleccionada}
                   onChange={() => onCambiar({ opcion: op })}
+                  disabled={bloqueado}
                   required
                   className="sr-only"
                 />
@@ -115,7 +137,16 @@ function PreguntaRonda({
                 >
                   {seleccionada && <Check className="size-2.5 text-white" strokeWidth={3} aria-hidden="true" />}
                 </span>
-                <span className="text-sm text-slate-900 dark:text-slate-50">{op}</span>
+                <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">{op}</span>
+                {bloqueado && esCorrecta && (
+                  <CheckCircle2
+                    className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden="true"
+                  />
+                )}
+                {bloqueado && seleccionada && !esCorrecta && (
+                  <XCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+                )}
               </label>
             );
           })}
@@ -127,6 +158,7 @@ function PreguntaRonda({
         <Textarea
           id={`justificacion-${indice}`}
           required
+          disabled={bloqueado}
           value={respuesta.justificacion}
           onChange={(e) => onCambiar({ justificacion: e.target.value })}
           onPaste={bloquearPegado}
@@ -175,7 +207,7 @@ export default function OpcionJustificacion({
   contenido: ContenidoOpcionJustificacion;
   respuestaPrevia?: Record<string, unknown>;
 }) {
-  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
 
   const rondas = useMemo(() => rondasDeContenido(contenido), [contenido]);
   const intro = introDeContenido(contenido);
@@ -187,14 +219,18 @@ export default function OpcionJustificacion({
   const [respuestas, setRespuestas] = useState<RondaRespuesta[]>(() =>
     rondas.map((_, i) => rondasPrevias[i] ?? { opcion: "", justificacion: "" }),
   );
+  const [resultado, setResultado] = useState<boolean[] | null>(
+    respuestaPrevia ? rondas.map((r, i) => rondasPrevias[i]?.opcion === r.respuesta_correcta) : null,
+  );
+  const bloqueado = resultado !== null;
 
   const ronda = rondas[indiceActual];
   const respuesta = respuestas[indiceActual];
   const esUltima = indiceActual === rondas.length - 1;
 
   function actualizarRespuestaEn(indice: number, cambios: Partial<RondaRespuesta>) {
+    if (bloqueado) return;
     setRespuestas((prev) => prev.map((r, i) => (i === indice ? { ...r, ...cambios } : r)));
-    marcarSinGuardar();
   }
 
   function validarActual(): boolean {
@@ -217,7 +253,7 @@ export default function OpcionJustificacion({
   }
 
   function irASiguiente() {
-    if (!validarActual()) return;
+    if (!bloqueado && !validarActual()) return;
     setIndiceActual((i) => i + 1);
   }
 
@@ -228,8 +264,18 @@ export default function OpcionJustificacion({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (bloqueado) return;
     if (presentacion === "todas_juntas" ? !validarTodas() : !validarActual()) return;
-    await guardar({ respuesta: { rondas: respuestas }, estado: "pendiente_revision" });
+
+    const aciertos = rondas.map((r, i) => respuestas[i].opcion === r.respuesta_correcta);
+    const puntajeAuto = Math.round((aciertos.filter(Boolean).length / rondas.length) * 100);
+
+    const ok = await guardar({
+      respuesta: { rondas: respuestas },
+      estado: "completada",
+      puntaje_auto: puntajeAuto,
+    });
+    if (ok) setResultado(aciertos);
   }
 
   return (
@@ -263,20 +309,18 @@ export default function OpcionJustificacion({
                 respuesta={respuestas[i]}
                 indice={i}
                 onCambiar={(cambios) => actualizarRespuestaEn(i, cambios)}
+                bloqueado={bloqueado}
               />
             </div>
           ))}
 
           {error && <ErrorText>{error}</ErrorText>}
-          {guardado && (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              Guardado. Puedes cambiar tus respuestas cuando quieras.
-            </p>
-          )}
 
-          <Boton type="submit" cargando={cargando}>
-            {cargando ? "Guardando..." : "Guardar mis respuestas"}
-          </Boton>
+          {!bloqueado && (
+            <Boton type="submit" cargando={cargando}>
+              {cargando ? "Guardando..." : "Guardar mis respuestas"}
+            </Boton>
+          )}
         </>
       ) : (
         <>
@@ -297,14 +341,10 @@ export default function OpcionJustificacion({
             respuesta={respuesta}
             indice={indiceActual}
             onCambiar={(cambios) => actualizarRespuestaEn(indiceActual, cambios)}
+            bloqueado={bloqueado}
           />
 
           {error && <ErrorText>{error}</ErrorText>}
-          {guardado && (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              Guardado. Puedes cambiar tus respuestas cuando quieras.
-            </p>
-          )}
 
           <div className="flex items-center gap-2">
             {indiceActual > 0 && (
@@ -314,9 +354,11 @@ export default function OpcionJustificacion({
               </Boton>
             )}
             {esUltima ? (
-              <Boton type="submit" cargando={cargando}>
-                {cargando ? "Guardando..." : "Guardar mis respuestas"}
-              </Boton>
+              !bloqueado && (
+                <Boton type="submit" cargando={cargando}>
+                  {cargando ? "Guardando..." : "Guardar mis respuestas"}
+                </Boton>
+              )
             ) : (
               <Boton type="button" onClick={irASiguiente}>
                 Siguiente

@@ -1724,3 +1724,39 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       el contenedor mide 672px (max-w-2xl) en vez de los 512px
 --       anteriores. Typecheck y build limpios. Datos de prueba limpiados
 --       (incluyendo el video_url de prueba, revertido a null).
+--
+-- 45. Fase S — opcion_justificacion autocalificable:
+--     - RondaContenido gana respuesta_correcta: string (obligatorio, debe
+--       ser una de las opciones). opcion-justificacion.tsx calcula
+--       puntaje_auto (aciertos/total × 100) y guarda con estado:
+--       "completada" en vez de "pendiente_revision" sin puntaje — esto
+--       habilita que casoCalibracion() (Fase J) deje de caer siempre en
+--       "sin_puntaje" para el tipo de actividad más usado (6 de las ~25
+--       actividades). Una vez enviada, la actividad se bloquea (radios y
+--       textarea deshabilitados) y cada opción muestra su estado: la
+--       correcta en verde, la elegida incorrecta en rojo — igual patrón
+--       visual que clasificación/etiquetado. El bloque de ideas_clave no
+--       cambia (sigue siendo pista de calidad de la justificación,
+--       independiente de la calificación de la opción).
+--     - actividad-form.tsx: nuevo <Select> "Respuesta correcta" por
+--       ronda, poblado con las opciones ya escritas arriba; valida que se
+--       haya elegido una que exista en la lista antes de guardar.
+--     - docente/grupos/[id]/page.tsx: comentario actualizado (ya no dice
+--       "solo clasificación y etiquetado tienen puntaje_auto"). Las
+--       entregas de opcion_justificacion dejan de aparecer en la cola
+--       "por revisar" (esperado: ya no necesitan calificación manual; la
+--       docente sigue viendo y pudiendo comentar la justificación).
+--     - Contenido (SQL): se agregó respuesta_correcta a las 26 rondas
+--       existentes en las 6 actividades de este tipo (El circuito de la
+--       comunicación, Niveles de la lengua, Tipologías textuales,
+--       Identifica el modelo expositivo, y las 2 "Técnica ante un
+--       escenario") — las respuestas ya estaban implícitas en el
+--       contenido/ideas_clave autorado en fases anteriores.
+--     - Verificado en vivo con estudiante QA temporal en "Niveles de la
+--       lengua" (modo todas_juntas): 2 aciertos + 1 error intencional
+--       calificó 67%, el mensaje de calibración de confianza apareció
+--       correctamente ("Tu confianza (4/5) estuvo bien calibrada con tu
+--       resultado (67%)" — antes nunca aparecía para este tipo), la
+--       opción correcta de cada pregunta se resaltó en verde y la opción
+--       incorrecta elegida en rojo, y los 3 radios quedaron bloqueados.
+--       Typecheck y build limpios. Datos de prueba limpiados.

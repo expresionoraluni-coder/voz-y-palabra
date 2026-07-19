@@ -99,15 +99,23 @@ export default function ActividadForm({
   const [aprendizajeEsperado, setAprendizajeEsperado] = useState(actividadInicial?.aprendizajeEsperado ?? "");
   const [videoUrl, setVideoUrl] = useState(actividadInicial?.videoUrl ?? "");
 
-  type RondaEditor = { contexto: string; pregunta: string; opciones: string; ideasClave: string };
+  type RondaEditor = {
+    contexto: string;
+    pregunta: string;
+    opciones: string;
+    respuestaCorrecta: string;
+    ideasClave: string;
+  };
   const [introOJ, setIntroOJ] = useState(c.intro ?? "");
   const [rondasOJ, setRondasOJ] = useState<RondaEditor[]>(() => {
     const rondasCrudas = Array.isArray(c.rondas) && c.rondas.length > 0 ? c.rondas : c.pregunta ? [c] : [];
-    if (rondasCrudas.length === 0) return [{ contexto: "", pregunta: "", opciones: "", ideasClave: "" }];
+    if (rondasCrudas.length === 0)
+      return [{ contexto: "", pregunta: "", opciones: "", respuestaCorrecta: "", ideasClave: "" }];
     return rondasCrudas.map((r: Record<string, unknown>) => ({
       contexto: (r.contexto as string) ?? "",
       pregunta: (r.pregunta as string) ?? "",
       opciones: ((r.opciones as string[]) ?? []).join("\n"),
+      respuestaCorrecta: (r.respuesta_correcta as string) ?? "",
       ideasClave: ((r.ideas_clave as string[]) ?? []).join("\n"),
     }));
   });
@@ -372,7 +380,10 @@ export default function ActividadForm({
   }
 
   function agregarRonda() {
-    setRondasOJ((prev) => [...prev, { contexto: "", pregunta: "", opciones: "", ideasClave: "" }]);
+    setRondasOJ((prev) => [
+      ...prev,
+      { contexto: "", pregunta: "", opciones: "", respuestaCorrecta: "", ideasClave: "" },
+    ]);
   }
 
   function quitarRonda(i: number) {
@@ -396,11 +407,21 @@ export default function ActividadForm({
     let contenido: Record<string, unknown> | null = null;
 
     if (nombreTipo === "opcion_justificacion") {
-      const rondasValidas: { contexto?: string; pregunta: string; opciones: string[]; ideas_clave?: string[] }[] = [];
+      const rondasValidas: {
+        contexto?: string;
+        pregunta: string;
+        opciones: string[];
+        respuesta_correcta: string;
+        ideas_clave?: string[];
+      }[] = [];
       for (let i = 0; i < rondasOJ.length; i++) {
         const listaOpciones = lineas(rondasOJ[i].opciones);
         if (!rondasOJ[i].pregunta.trim() || listaOpciones.length < 2) {
           setError(`La pregunta ${i + 1} necesita texto y al menos 2 opciones.`);
+          return;
+        }
+        if (!rondasOJ[i].respuestaCorrecta || !listaOpciones.includes(rondasOJ[i].respuestaCorrecta)) {
+          setError(`Elige la respuesta correcta de la pregunta ${i + 1} (debe ser una de sus opciones).`);
           return;
         }
         const listaIdeasClave = lineas(rondasOJ[i].ideasClave);
@@ -408,6 +429,7 @@ export default function ActividadForm({
           contexto: rondasOJ[i].contexto.trim() || undefined,
           pregunta: rondasOJ[i].pregunta,
           opciones: listaOpciones,
+          respuesta_correcta: rondasOJ[i].respuestaCorrecta,
           ideas_clave: listaIdeasClave.length > 0 ? listaIdeasClave : undefined,
         });
       }
@@ -903,6 +925,26 @@ export default function ActividadForm({
                           className="font-mono text-sm"
                         />
                         <ContadorLineas texto={ronda.opciones} singular="opción" plural="opciones" />
+                      </Field>
+                      <Field>
+                        <Label htmlFor={`respuestaCorrecta-oj-${i}`}>Respuesta correcta</Label>
+                        <Select
+                          id={`respuestaCorrecta-oj-${i}`}
+                          value={ronda.respuestaCorrecta}
+                          onChange={(e) => actualizarRonda(i, { respuestaCorrecta: e.target.value })}
+                          disabled={lineas(ronda.opciones).length === 0}
+                        >
+                          <option value="">Elige la opción correcta</option>
+                          {lineas(ronda.opciones).map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </Select>
+                        <HelpText>
+                          El estudiante ve correcto/incorrecto al enviar — escribe primero las opciones de
+                          arriba.
+                        </HelpText>
                       </Field>
                       <Field>
                         <Label htmlFor={`ideasClave-oj-${i}`}>

@@ -123,9 +123,11 @@ export default async function DetalleGrupo({
     };
   });
 
-  // Precisión promedio por tipo de actividad: solo clasificación y etiquetado
-  // de texto tienen respuesta objetivamente correcta y guardan puntaje_auto.
-  // Ordenado de peor a mejor para que salte a la vista dónde intervenir.
+  // Precisión promedio por tipo de actividad: solo los tipos con respuesta
+  // objetivamente correcta guardan puntaje_auto (clasificación, etiquetado
+  // de texto, opción-justificación, ordenar fragmentos, y comparador en
+  // modo chips). Ordenado de peor a mejor para que salte a la vista dónde
+  // intervenir.
   function nombreTipoDe(en: { actividades: unknown }) {
     const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
     const tipo = (act as { tipos_actividad?: unknown } | undefined)?.tipos_actividad;
