@@ -99,13 +99,19 @@ export default async function ActividadEstudiante({
         .maybeSingle(),
       supabase
         .from("actividades")
-        .select("id, orden")
+        .select("id, orden, requiere_actividad_id")
         .eq("unidad_id", actividad.unidad_id)
         .order("orden"),
     ]);
 
   const respuesta = entregaExistente?.respuesta;
   const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
+  // "Dos niveles": esta actividad requiere a otra (es el nivel 2) o alguna
+  // otra la requiere a ella (es el nivel 1 que la desbloquea) — en ambos
+  // casos se oculta la respuesta correcta y se permite reiniciar, para que
+  // el par siga siendo un filtro real y no algo que se memoriza una vez.
+  const esDosNiveles =
+    !!actividad.requiere_actividad_id || !!hermanas?.some((h) => h.requiere_actividad_id === actividad.id);
 
   const contenidoActividad = (
     <>
@@ -158,6 +164,7 @@ export default async function ActividadEstudiante({
             }
           }
           respuestaPrevia={respuesta as { elegidas: string[] } | undefined}
+          dosNiveles={esDosNiveles}
         />
       )}
       {nombreTipo === "encontrar_corregir" && (

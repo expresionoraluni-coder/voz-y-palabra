@@ -1760,3 +1760,34 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       opción correcta de cada pregunta se resaltó en verde y la opción
 --       incorrecta elegida en rojo, y los 3 radios quedaron bloqueados.
 --       Typecheck y build limpios. Datos de prueba limpiados.
+--
+-- 46. Fase T — actividades de "dos niveles": ocultar respuesta, reiniciar,
+--     desordenar (aplica solo a las 4 actividades de los 2 pares nivel
+--     1/nivel 2 existentes, todas clasificacion):
+--     - actividad/[id]/page.tsx calcula esDosNiveles = esta actividad
+--       requiere a otra (es nivel 2) O alguna hermana de la unidad la
+--       requiere a ella (es nivel 1) — reusa la consulta "hermanas" ya
+--       existente, agregando requiere_actividad_id a su select.
+--     - clasificacion.tsx gana la prop dosNiveles: cuando es true, (a) el
+--       orden de los elementos y de las categorías se revuelve una sola
+--       vez por carga de página (useMemo con deps vacías) conservando el
+--       índice original para no romper la calificación; (b) al bloquear
+--       tras enviar, ya no se muestra "Era: {categoria_correcta}" — solo
+--       "Correcto"/"Incorrecto"; (c) aparece un botón "Reiniciar prueba"
+--       que, tras confirmar, borra la entrega y las reflexiones
+--       (momento prediccion y cierre) de esa actividad para ese
+--       estudiante y hace un window.location.reload() — recarga dura, no
+--       router.refresh(), porque EntregaRecienteProvider guarda su
+--       estado inicial en un useState que no se resincroniza solo con un
+--       refresh de Server Components.
+--     - Sin cambios en actividad-form.tsx: el flag se deriva de
+--       requiere_actividad_id, ya configurable desde la Fase I.
+--     - Verificado en vivo con estudiante QA temporal en "Las 6 funciones
+--       de la lengua": el orden de las 12 tarjetas y de las 6 categorías
+--       llegó revuelto respecto al orden guardado en la base; con 2
+--       errores intencionales se calificó 83% y solo se vieron
+--       "Correcto"/"Incorrecto" (nunca la respuesta correcta); el botón
+--       "Reiniciar prueba" borró la entrega y la predicción (confirmado
+--       por consulta: 0 filas) y la página volvió a mostrar la pantalla
+--       de confianza desde cero. Typecheck y build limpios. Datos de
+--       prueba limpiados.
