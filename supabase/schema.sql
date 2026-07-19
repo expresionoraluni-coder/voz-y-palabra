@@ -1635,3 +1635,38 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       llegar a la ronda 7 aparece el mensaje de Luis con el divisor "3
 --       horas después" y burbuja alineada al lado contrario. Typecheck y
 --       build limpios. Datos de prueba limpiados.
+--
+-- 42. Fase P — "El resumen imposible" simplificado (leer y reflexionar):
+--     - redaccion_checklist gana un campo opcional contenido.modo?:
+--       "escribir" | "leer_reflexionar" (default "escribir",
+--       retrocompatible — redaccion-checklist.tsx no cambió). En modo
+--       "leer_reflexionar" se usa un componente hermano nuevo,
+--       redaccion-lectura.tsx: sin textarea, checklist ni límite de
+--       palabras — en vez de un solo ejemplos_resueltos, usa 3 campos
+--       explícitos (ejemplo_resumen, ejemplo_sintesis, ejemplo_parafrasis)
+--       mostrados en 3 columnas lado a lado (apiladas en móvil). Al
+--       terminar de leer, el estudiante confirma con un botón que guarda
+--       una entrega mínima (estado: "completada", respuesta: {}, sin
+--       puntaje_auto) — solo para que el conteo de avance de la unidad
+--       (Fase I2) siga funcionando igual que con cualquier otra actividad.
+--     - ReflexionActividad y ActividadPostEntrega ganan un prop opcional
+--       placeholderPersonalizado/placeholderReflexionPersonalizado que
+--       reemplaza el placeholder por calibración de siempre — se reusa
+--       toda la infraestructura de reflexión de cierre de la Fase J
+--       (mismo guardado en reflexiones, misma aparición instantánea) en
+--       vez de duplicar lógica, solo se sobreescribe el texto del
+--       placeholder para esta actividad: "¿Qué cambia entre el resumen y
+--       la síntesis? ¿Y entre la síntesis y la paráfrasis?".
+--     - actividad-form.tsx: selector de modo + (en modo lectura) los 3
+--       campos de ejemplo explícitos, reemplazando el textarea único de
+--       ejemplos_resueltos + límite + checklist de ese modo.
+--     - Contenido (SQL): "El resumen imposible" migra a modo
+--       leer_reflexionar, separando el bloque ejemplos_resueltos
+--       (resumen/síntesis/paráfrasis concatenados) en sus 3 campos
+--       explícitos; se aprovechó para quitar un guión largo dentro del
+--       ejemplo de síntesis.
+--     - Verificado en vivo con estudiante QA temporal: las 3 columnas se
+--       ven completas sin textarea ni checklist; al confirmar "Ya leí y
+--       comparé los tres" se guarda la entrega mínima y aparece al
+--       instante la reflexión con el placeholder personalizado. Typecheck
+--       y build limpios. Datos de prueba limpiados.

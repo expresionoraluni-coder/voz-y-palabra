@@ -16,6 +16,7 @@ export default function ActividadPostEntrega({
   textoReflexionPrevio,
   siguienteHref,
   textoSiguiente,
+  placeholderReflexionPersonalizado,
 }: {
   actividadId: string;
   estudianteId: string;
@@ -23,6 +24,7 @@ export default function ActividadPostEntrega({
   textoReflexionPrevio: string | null;
   siguienteHref: string;
   textoSiguiente: string;
+  placeholderReflexionPersonalizado?: string;
 }) {
   const { entregaReciente } = useEntregaReciente();
   if (!entregaReciente) return null;
@@ -35,6 +37,7 @@ export default function ActividadPostEntrega({
         confianza={confianza}
         puntajeAuto={entregaReciente.puntajeAuto}
         textoPrevio={textoReflexionPrevio}
+        placeholderPersonalizado={placeholderReflexionPersonalizado}
       />
       <Link href={siguienteHref}>
         <Boton type="button" className="w-full">

@@ -12,6 +12,7 @@ import Clasificacion from "./clasificacion";
 import EncontrarCorregir from "./encontrar-corregir";
 import Comparador from "./comparador";
 import RedaccionChecklist from "./redaccion-checklist";
+import RedaccionLectura from "./redaccion-lectura";
 import EtiquetadoTexto from "./etiquetado-texto";
 import ConstructorRamificado from "./constructor-ramificado";
 import ActividadPostEntrega from "./actividad-post-entrega";
@@ -73,6 +74,7 @@ export default async function ActividadEstudiante({
     : actividad.tipos_actividad;
   const nombreTipo = tipo?.nombre;
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
+  const modoRedaccion = (actividad.contenido as { modo?: string } | null)?.modo;
 
   const [{ data: entregaExistente }, { data: prediccionExistente }, { data: reflexionExistente }, { data: hermanas }] =
     await Promise.all([
@@ -230,7 +232,23 @@ export default async function ActividadEstudiante({
           respuestaPrevia={respuesta as { celdas: string[][] } | undefined}
         />
       )}
-      {nombreTipo === "redaccion_checklist" && (
+      {nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar" && (
+        <RedaccionLectura
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              texto_fuente: string | null;
+              titulo_fuente?: string | null;
+              ejemplo_resumen: string;
+              ejemplo_sintesis: string;
+              ejemplo_parafrasis: string;
+            }
+          }
+          respuestaPrevia={respuesta as Record<string, unknown> | undefined}
+        />
+      )}
+      {nombreTipo === "redaccion_checklist" && modoRedaccion !== "leer_reflexionar" && (
         <RedaccionChecklist
           actividadId={actividad.id}
           estudianteId={estudiante.id}
@@ -321,6 +339,11 @@ export default async function ActividadEstudiante({
         textoReflexionPrevio={reflexionExistente?.texto ?? null}
         siguienteHref={siguiente ? `/estudiante/actividad/${siguiente.id}` : `/estudiante/unidad/${actividad.unidad_id}`}
         textoSiguiente={siguiente ? "Siguiente actividad" : "Volver a la unidad"}
+        placeholderReflexionPersonalizado={
+          nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
+            ? "¿Qué cambia entre el resumen y la síntesis? ¿Y entre la síntesis y la paráfrasis?"
+            : undefined
+        }
       />
       </EntregaRecienteProvider>
     </div>

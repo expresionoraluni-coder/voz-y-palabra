@@ -14,12 +14,14 @@ export default function ReflexionActividad({
   confianza,
   puntajeAuto,
   textoPrevio,
+  placeholderPersonalizado,
 }: {
   actividadId: string;
   estudianteId: string;
   confianza: number | null;
   puntajeAuto: number | null;
   textoPrevio: string | null;
+  placeholderPersonalizado?: string;
 }) {
   const [editando, setEditando] = useState(!textoPrevio);
   const [texto, setTexto] = useState(textoPrevio ?? "");
@@ -77,7 +79,7 @@ export default function ReflexionActividad({
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             rows={2}
-            placeholder={placeholderReflexion(confianza, puntajeAuto)}
+            placeholder={placeholderPersonalizado ?? placeholderReflexion(confianza, puntajeAuto)}
           />
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" size="sm" disabled={!texto.trim()} cargando={cargando} className="self-start">

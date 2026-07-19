@@ -147,6 +147,12 @@ export default function ActividadForm({
   const [textoFuente, setTextoFuente] = useState(c.texto_fuente ?? "");
   const [ejemplosResueltos, setEjemplosResueltos] = useState(c.ejemplos_resueltos ?? "");
   const [limitePalabras, setLimitePalabras] = useState(String(c.limite_palabras ?? "80"));
+  const [modoRedaccion, setModoRedaccion] = useState<"escribir" | "leer_reflexionar">(
+    c.modo === "leer_reflexionar" ? "leer_reflexionar" : "escribir",
+  );
+  const [ejemploResumen, setEjemploResumen] = useState(c.ejemplo_resumen ?? "");
+  const [ejemploSintesis, setEjemploSintesis] = useState(c.ejemplo_sintesis ?? "");
+  const [ejemploParafrasis, setEjemploParafrasis] = useState(c.ejemplo_parafrasis ?? "");
   const [checklist, setChecklist] = useState((c.checklist ?? []).join("\n"));
 
   const [contexto, setContexto] = useState(c.contexto ?? "");
@@ -230,6 +236,10 @@ export default function ActividadForm({
       if (datos.textoFuente) setTextoFuente(datos.textoFuente);
       if (datos.ejemplosResueltos) setEjemplosResueltos(datos.ejemplosResueltos);
       if (datos.limitePalabras) setLimitePalabras(datos.limitePalabras);
+      if (datos.modoRedaccion) setModoRedaccion(datos.modoRedaccion);
+      if (datos.ejemploResumen) setEjemploResumen(datos.ejemploResumen);
+      if (datos.ejemploSintesis) setEjemploSintesis(datos.ejemploSintesis);
+      if (datos.ejemploParafrasis) setEjemploParafrasis(datos.ejemploParafrasis);
       if (datos.checklist) setChecklist(datos.checklist);
       if (datos.contexto) setContexto(datos.contexto);
       if (datos.etiquetas) setEtiquetas(datos.etiquetas);
@@ -272,6 +282,10 @@ export default function ActividadForm({
       textoFuente,
       ejemplosResueltos,
       limitePalabras,
+      modoRedaccion,
+      ejemploResumen,
+      ejemploSintesis,
+      ejemploParafrasis,
       checklist,
       contexto,
       etiquetas,
@@ -314,6 +328,10 @@ export default function ActividadForm({
     textoFuente,
     ejemplosResueltos,
     limitePalabras,
+    modoRedaccion,
+    ejemploResumen,
+    ejemploSintesis,
+    ejemploParafrasis,
     checklist,
     contexto,
     etiquetas,
@@ -450,6 +468,19 @@ export default function ActividadForm({
       } else {
         contenido = { conceptos: listaConceptos, criterios: listaCriterios };
       }
+    } else if (nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar") {
+      if (!ejemploResumen.trim() || !ejemploSintesis.trim() || !ejemploParafrasis.trim()) {
+        setError("Escribe los 3 ejemplos (resumen, síntesis y paráfrasis) antes de guardar.");
+        return;
+      }
+      contenido = {
+        modo: "leer_reflexionar",
+        texto_fuente: textoFuente || null,
+        titulo_fuente: tituloFuente.trim() || null,
+        ejemplo_resumen: ejemploResumen.trim(),
+        ejemplo_sintesis: ejemploSintesis.trim(),
+        ejemplo_parafrasis: ejemploParafrasis.trim(),
+      };
     } else if (nombreTipo === "redaccion_checklist") {
       const listaChecklist = lineas(checklist);
       const limite = parseInt(limitePalabras, 10);
@@ -1090,11 +1121,30 @@ export default function ActividadForm({
             {nombreTipo === "redaccion_checklist" && (
               <>
                 <Field>
+                  <Label htmlFor="modoRedaccion">Modo</Label>
+                  <Select
+                    id="modoRedaccion"
+                    value={modoRedaccion}
+                    onChange={(e) => setModoRedaccion(e.target.value as "escribir" | "leer_reflexionar")}
+                  >
+                    <option value="escribir">Escribir (redacta con límite y checklist)</option>
+                    <option value="leer_reflexionar">Leer y reflexionar (sin redactar)</option>
+                  </Select>
+                  <HelpText>
+                    En "Leer y reflexionar" el estudiante no escribe nada — solo compara 3 ejemplos ya
+                    resueltos (resumen, síntesis y paráfrasis) y responde una reflexión sobre las
+                    diferencias.
+                  </HelpText>
+                </Field>
+                <Field>
                   <Label htmlFor="tituloFuente">Título del texto fuente (opcional)</Label>
                   <Input id="tituloFuente" value={tituloFuente} onChange={(e) => setTituloFuente(e.target.value)} />
                 </Field>
                 <Field>
-                  <Label htmlFor="textoFuente">Texto fuente (opcional — el estudiante lo leerá antes de escribir)</Label>
+                  <Label htmlFor="textoFuente">
+                    Texto fuente (opcional — el estudiante lo leerá antes{" "}
+                    {modoRedaccion === "escribir" ? "de escribir" : "de comparar los ejemplos"})
+                  </Label>
                   <Textarea
                     id="textoFuente"
                     value={textoFuente}
@@ -1102,45 +1152,83 @@ export default function ActividadForm({
                     rows={5}
                   />
                 </Field>
-                <Field>
-                  <Label htmlFor="ejemplosResueltos">
-                    Ejemplos ya resueltos (opcional — resumen, síntesis y paráfrasis del mismo texto, como
-                    referencia antes de escribir)
-                  </Label>
-                  <Textarea
-                    id="ejemplosResueltos"
-                    value={ejemplosResueltos}
-                    onChange={(e) => setEjemplosResueltos(e.target.value)}
-                    rows={8}
-                  />
-                  <HelpText>
-                    El estudiante lo ve detrás de un botón "Ver ejemplos ya resueltos", no de entrada.
-                  </HelpText>
-                </Field>
-                <Field>
-                  <Label htmlFor="limitePalabras">Límite de palabras</Label>
-                  <Input
-                    id="limitePalabras"
-                    required
-                    type="number"
-                    min={1}
-                    value={limitePalabras}
-                    onChange={(e) => setLimitePalabras(e.target.value)}
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="checklist">Checklist de autorrevisión (uno por línea)</Label>
-                  <Textarea
-                    id="checklist"
-                    required
-                    value={checklist}
-                    onChange={(e) => setChecklist(e.target.value)}
-                    rows={3}
-                    placeholder={"Conservé la idea central\nEliminé ejemplos secundarios\nUsé mis propias palabras"}
-                    className="font-mono text-sm"
-                  />
-                  <ContadorLineas texto={checklist} singular="punto" plural="puntos" />
-                </Field>
+
+                {modoRedaccion === "leer_reflexionar" ? (
+                  <>
+                    <Field>
+                      <Label htmlFor="ejemploResumen">Ejemplo de resumen</Label>
+                      <Textarea
+                        id="ejemploResumen"
+                        required
+                        value={ejemploResumen}
+                        onChange={(e) => setEjemploResumen(e.target.value)}
+                        rows={5}
+                      />
+                    </Field>
+                    <Field>
+                      <Label htmlFor="ejemploSintesis">Ejemplo de síntesis</Label>
+                      <Textarea
+                        id="ejemploSintesis"
+                        required
+                        value={ejemploSintesis}
+                        onChange={(e) => setEjemploSintesis(e.target.value)}
+                        rows={4}
+                      />
+                    </Field>
+                    <Field>
+                      <Label htmlFor="ejemploParafrasis">Ejemplo de paráfrasis</Label>
+                      <Textarea
+                        id="ejemploParafrasis"
+                        required
+                        value={ejemploParafrasis}
+                        onChange={(e) => setEjemploParafrasis(e.target.value)}
+                        rows={6}
+                      />
+                    </Field>
+                  </>
+                ) : (
+                  <>
+                    <Field>
+                      <Label htmlFor="ejemplosResueltos">
+                        Ejemplos ya resueltos (opcional — resumen, síntesis y paráfrasis del mismo texto,
+                        como referencia antes de escribir)
+                      </Label>
+                      <Textarea
+                        id="ejemplosResueltos"
+                        value={ejemplosResueltos}
+                        onChange={(e) => setEjemplosResueltos(e.target.value)}
+                        rows={8}
+                      />
+                      <HelpText>
+                        El estudiante lo ve detrás de un botón "Ver ejemplos ya resueltos", no de entrada.
+                      </HelpText>
+                    </Field>
+                    <Field>
+                      <Label htmlFor="limitePalabras">Límite de palabras</Label>
+                      <Input
+                        id="limitePalabras"
+                        required
+                        type="number"
+                        min={1}
+                        value={limitePalabras}
+                        onChange={(e) => setLimitePalabras(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <Label htmlFor="checklist">Checklist de autorrevisión (uno por línea)</Label>
+                      <Textarea
+                        id="checklist"
+                        required
+                        value={checklist}
+                        onChange={(e) => setChecklist(e.target.value)}
+                        rows={3}
+                        placeholder={"Conservé la idea central\nEliminé ejemplos secundarios\nUsé mis propias palabras"}
+                        className="font-mono text-sm"
+                      />
+                      <ContadorLineas texto={checklist} singular="punto" plural="puntos" />
+                    </Field>
+                  </>
+                )}
               </>
             )}
 
