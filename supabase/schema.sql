@@ -1236,3 +1236,59 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       reiniciar_nip_estudiante desde la UI, la otra por SQL directo
 --       replicando la misma función porque la sesión de la pestaña de
 --       prueba se había invalidado a media verificación).
+--
+-- 32. Fase G — Unidad 2 reconstruida por completo hacia ortografía (punto
+--     16 de las observaciones de la maestra). Solo contenido — ningún
+--     archivo de código nuevo ni modificado; reusa etiquetado_texto,
+--     clasificacion y el motor de rondas de opcion_justificacion tal cual
+--     ya existían. Las 7 actividades tenían 0 entregas reales, así que se
+--     reemplazaron directamente sin necesitar confirmación del usuario:
+--     - "Uso del punto: seguido, aparte y final" (etiquetado_texto, mismo
+--       tipo que ya tenía) — texto de 6 fragmentos sobre hábitos de
+--       estudio sin puntos; el estudiante etiqueta cada uno como punto y
+--       seguido / punto y aparte / punto final.
+--     - "Uso de la coma" (constructor_ramificado → clasificacion) — 6
+--       oraciones, 4 categorías (enumerativa, vocativa, explicativa, antes
+--       de conector).
+--     - "Punto y coma y dos puntos" (constructor_ramificado →
+--       clasificacion) — 6 oraciones con un hueco marcado, 3 categorías
+--       (punto y coma / dos puntos / ninguno, usa coma).
+--     - "Letras que se confunden: B, V, S, C, Z, G, J, H"
+--       (constructor_ramificado → clasificacion) — 8 palabras con hueco,
+--       una por cada una de las 8 letras confusas como categoría.
+--     - "Acentuación: agudas, graves, esdrújulas y sobresdrújulas"
+--       (comparador → clasificacion) — 8 palabras, 4 categorías (2 de cada
+--       una).
+--     - "Signos de puntuación: uso y función" (constructor_ramificado →
+--       clasificacion) — 6 situaciones descritas por su función (no por el
+--       signo literal, para no regalar la respuesta), 5 categorías
+--       (interrogación, exclamación, comillas, paréntesis, guion largo).
+--     - "Identifica el modelo expositivo" (comparador → opcion_justificacion,
+--       motor de rondas) — 4 rondas, cada una con un texto breve nuevo que
+--       ejemplifica uno de los modelos ya vistos en la unidad anterior
+--       (Causa-Efecto, Cronológico, Tesis-Antítesis-Síntesis,
+--       Confrontación); así el contenido de modelos expositivos no se tira,
+--       se conserva como repaso final en vez de ser el eje de toda la
+--       unidad.
+--     - unidades.descripcion y unidades.reto_comunicativo actualizados
+--       (antes hablaban de "modelos expositivos"/"redactar un texto
+--       expositivo", ahora de ortografía y puntuación) — se habían quedado
+--       desalineados con el contenido nuevo.
+--     - aprendizaje_esperado de las 7 actividades queda sin tocar (null,
+--       igual que ya estaba): el plan aprobado marcó explícitamente que el
+--       AE oficial de Unidad 2 describe comprensión lectora, no ortografía,
+--       y que el remapeo se decide con la maestra — no se inventó texto de
+--       AE para no comprometer contenido curricular sin su revisión.
+--     - Verificado en vivo: las 7 actividades en orden correcto, el texto
+--       nuevo del reto_comunicativo visible en inicio y en la unidad,
+--       "Uso del punto" (etiquetado_texto) y "Letras que se confunden"
+--       (clasificacion con 8 categorías, incluida una entrega completa con
+--       100% de aciertos) renderizan y califican bien, el wizard de rondas
+--       de "Identifica el modelo expositivo" funciona con las 4 preguntas.
+--       El formulario de edición de la docente también se probó en las dos
+--       actividades que cambiaron de tipo (clasificacion y
+--       opcion_justificacion): carga el tipo nuevo, el contenido guardado y
+--       la vista previa correctamente. Typecheck limpio (sin cambios de
+--       código, no ameritó build completo). Datos de prueba limpiados y NIP
+--       de la cuenta de prueba usada reiniciado al mismo estado base que
+--       las demás.
