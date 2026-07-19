@@ -1670,3 +1670,34 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       comparé los tres" se guarda la entrega mínima y aparece al
 --       instante la reflexión con el placeholder personalizado. Typecheck
 --       y build limpios. Datos de prueba limpiados.
+--
+-- 43. Fase Q — contenido faltante (solo datos, sin cambios de código):
+--     - Aprendizaje esperado de las 7 actividades de Unidad 2 (antes
+--       null): redactado por tema (puntuación, letras que se confunden,
+--       acentuación, signos de puntuación, modelos expositivos) y
+--       aplicado con un solo UPDATE.
+--     - "Técnica ante un escenario: un solo compañero" y "...: todo el
+--       grupo" tenían solo 2 rondas cada una y cada técnica (Exposición/
+--       Discurso/Debate/Mesa redonda) era la respuesta correcta
+--       exactamente una vez entre las 4 rondas totales (se prestaba a
+--       resolver por eliminación). Se agregaron 2 rondas nuevas a cada
+--       actividad: "un solo compañero" repite Exposición y Discurso (las
+--       únicas técnicas que tienen sentido con un solo interlocutor);
+--       "todo el grupo" repite Debate y Mesa redonda (las que requieren
+--       varias posturas o un moderador) — cada técnica queda como
+--       respuesta correcta 2 veces dentro de su propia actividad.
+--     - Barrido final de guiones largos en contenido de base de datos
+--       (no solo código, cubierto ya en la Fase H): se encontraron y
+--       corrigieron 2 títulos de actividad ("... — nivel 2" → "...
+--       (nivel 2)"), 2 instrucciones y 6 fragmentos de contenido
+--       (contexto/pregunta) en "Uso del punto", "El circuito de la
+--       comunicación" y "Las 6 funciones de la lengua (nivel 2)".
+--       Verificado con una consulta de barrido: cero coincidencias de
+--       "—" en titulo/instrucciones/aprendizaje_esperado/contenido de
+--       actividades ni en nombre/unidad_competencia de unidades.
+--     - Sin cambios de código en esta fase; no aplica typecheck/build.
+--       Verificado en vivo con estudiante QA temporal que "Técnica ante
+--       un escenario: un solo compañero" carga sus 4 rondas
+--       correctamente. Datos de prueba limpiados.
+--
+-- === Fin de las Fases H-Q (segunda ronda de observaciones) ===
