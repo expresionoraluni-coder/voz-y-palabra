@@ -160,7 +160,7 @@ export default function OpcionJustificacion({
         <p className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
           <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
           {ideasMencionadas.length === 0
-            ? "Aún no mencionas ninguna de las ideas que esperábamos en tu justificación — ¿qué más notaste?"
+            ? "Aún no mencionas ninguna de las ideas que esperábamos en tu justificación (¿qué más notaste?)."
             : `Mencionas ${ideasMencionadas.length} de ${ronda.ideas_clave.length} ideas que esperábamos.`}
         </p>
       )}

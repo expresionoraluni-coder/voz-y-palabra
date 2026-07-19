@@ -102,12 +102,7 @@ export default async function UnidadEstudiante({
       />
 
       {!confianzaInicio && (
-        <Confianza
-          estudianteId={estudiante.id}
-          unidadId={id}
-          momento="inicio"
-          unidadCompetencia={unidad.unidad_competencia}
-        />
+        <Confianza estudianteId={estudiante.id} unidadId={id} momento="inicio" />
       )}
 
       {!actividades || actividades.length === 0 ? (
@@ -148,12 +143,7 @@ export default async function UnidadEstudiante({
       )}
 
       {unidadCompleta && !confianzaCierre && (
-        <Confianza
-          estudianteId={estudiante.id}
-          unidadId={id}
-          momento="cierre"
-          unidadCompetencia={unidad.unidad_competencia}
-        />
+        <Confianza estudianteId={estudiante.id} unidadId={id} momento="cierre" />
       )}
 
       {unidadCompleta && (

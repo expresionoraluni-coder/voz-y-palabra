@@ -53,7 +53,7 @@ export default function Comparador({
         for (let k = j + 1; k < celdas[i].length; k++) {
           if (similitudTexto(celdas[i][j], celdas[i][k]) > 0.8) {
             setError(
-              `Tus respuestas para "${contenido.conceptos[j]}" y "${contenido.conceptos[k]}" en "${contenido.criterios[i]}" se parecen mucho — ¿hay una diferencia real ahí?`,
+              `Tus respuestas para "${contenido.conceptos[j]}" y "${contenido.conceptos[k]}" en "${contenido.criterios[i]}" se parecen mucho (¿hay una diferencia real ahí?).`,
             );
             return;
           }
@@ -97,7 +97,7 @@ export default function Comparador({
                       onChange={(e) => actualizar(i, j, e.target.value)}
                       onPaste={bloquearPegado}
                       rows={2}
-                      aria-label={`${criterio} — ${concepto}`}
+                      aria-label={`${criterio} (${concepto})`}
                       className="w-full resize-none rounded-lg border-0 bg-transparent p-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:text-slate-50"
                     />
                   </td>

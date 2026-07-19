@@ -29,7 +29,7 @@ export default function CambiarNipObligatorio() {
     setError(null);
 
     if (nipNuevo !== nipNuevoConfirmar) {
-      setError("Los dos NIP nuevos no coinciden — revísalos.");
+      setError("Los dos NIP nuevos no coinciden (revísalos).");
       return;
     }
     if (nipNuevo === nipActual) {
@@ -71,8 +71,8 @@ export default function CambiarNipObligatorio() {
           Antes de continuar, cambia tu NIP
         </h1>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-500 dark:text-slate-500">
-          Entraste con el NIP que te asignamos desde tu boleta escolar — un compañero podría
-          conocerlo. Cámbialo por uno que solo tú sepas.
+          Entraste con el NIP que te asignamos desde tu boleta escolar (un compañero podría
+          conocerlo). Cámbialo por uno que solo tú sepas.
         </p>
       </div>
 

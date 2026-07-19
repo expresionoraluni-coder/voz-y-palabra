@@ -53,7 +53,7 @@ export default async function ProgresoEstudiante() {
       <PageHeader
         volverHref="/estudiante/inicio"
         titulo="Mi progreso"
-        descripcion="El mismo dato que ve tu profesora, pero sobre ti — solo tú lo ves."
+        descripcion="El mismo dato que ve tu profesora, pero sobre ti (solo tú lo ves)."
       />
 
       {sinDatos ? (

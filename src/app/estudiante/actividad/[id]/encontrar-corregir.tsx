@@ -50,7 +50,7 @@ export default function EncontrarCorregir({
       return;
     }
     if (normalizar(versionCorregida) === normalizar(contenido.texto_original)) {
-      setError("Tu versión corregida es igual al texto original — ¿ya corregiste el error?");
+      setError("Tu versión corregida es igual al texto original (¿ya corregiste el error?).");
       return;
     }
 
@@ -112,7 +112,7 @@ export default function EncontrarCorregir({
           <Lightbulb className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           {mencionaFragmento
             ? "Señalas el fragmento que marcamos como el error."
-            : "No vemos que menciones el fragmento específico con el error — revisa de nuevo."}
+            : "No vemos que menciones el fragmento específico con el error (revisa de nuevo)."}
         </p>
       )}
       {contarPalabras(queEncontraste) >= 4 &&
@@ -122,7 +122,7 @@ export default function EncontrarCorregir({
           <p className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
             <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
             {ideasMencionadas.length === 0
-              ? "Aún no mencionas ninguna de las ideas que esperábamos — ¿qué más notaste?"
+              ? "Aún no mencionas ninguna de las ideas que esperábamos (¿qué más notaste?)."
               : `Mencionas ${ideasMencionadas.length} de ${contenido.ideas_clave.length} ideas que esperábamos.`}
           </p>
         )}

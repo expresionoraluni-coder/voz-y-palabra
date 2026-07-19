@@ -31,7 +31,7 @@ export default function CambiarNip() {
     setError(null);
 
     if (nipNuevo !== nipNuevoConfirmar) {
-      setError("Los dos NIP nuevos no coinciden — revísalos.");
+      setError("Los dos NIP nuevos no coinciden (revísalos).");
       return;
     }
     if (nipNuevo === nipActual) {

@@ -53,11 +53,11 @@ export default function RedaccionChecklist({
     setError(null);
 
     if (muyCorto) {
-      setError(`Tu texto es muy corto — escribe al menos ${minimoPalabras} palabras antes de entregar.`);
+      setError(`Tu texto es muy corto (escribe al menos ${minimoPalabras} palabras antes de entregar).`);
       return;
     }
     if (excedido) {
-      setError(`Tu texto pasa el límite — recórtalo a ${contenido.limite_palabras} palabras o menos antes de entregar.`);
+      setError(`Tu texto pasa el límite (recórtalo a ${contenido.limite_palabras} palabras o menos antes de entregar).`);
       return;
     }
 

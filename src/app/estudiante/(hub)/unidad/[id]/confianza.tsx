@@ -8,18 +8,15 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
-import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 
 export default function Confianza({
   estudianteId,
   unidadId,
   momento,
-  unidadCompetencia,
 }: {
   estudianteId: string;
   unidadId: string;
   momento: "inicio" | "cierre";
-  unidadCompetencia?: string | null;
 }) {
   const router = useRouter();
   const [valor, setValor] = useState(50);
@@ -49,11 +46,10 @@ export default function Confianza({
         <Gauge className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
           {momento === "inicio"
-            ? "Antes de empezar: ¿qué tan seguro te sientes de poder alcanzar la unidad de competencia?"
-            : "Terminaste la unidad: ¿qué tan seguro te sientes de haber alcanzado la unidad de competencia?"}
+            ? "Antes de empezar: ¿qué tan seguro estás de poder dominar esta unidad?"
+            : "Terminaste la unidad: ¿qué tan seguro estás de haberla dominado?"}
         </p>
       </div>
-      {unidadCompetencia && <UnidadCompetenciaTag texto={unidadCompetencia} compacto />}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -88,7 +84,7 @@ export default function Confianza({
       </div>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton onClick={guardar} cargando={cargando} size="sm" className="self-start">
-        {cargando ? "Guardando..." : "Continuar"}
+        {cargando ? "Guardando..." : "Guardar"}
       </Boton>
     </Card>
   );

@@ -143,7 +143,7 @@ export default async function InicioEstudiante({
   const recordatorios: { texto: string; href: string }[] = [];
   for (const ev of eventosProximos ?? []) {
     const dias = diasFaltantes(ev.fecha);
-    if (dias <= 7) recordatorios.push({ texto: `${ev.titulo} — ${textoFaltan(dias)}`, href: "/estudiante/calendario" });
+    if (dias <= 7) recordatorios.push({ texto: `${ev.titulo} (${textoFaltan(dias)})`, href: "/estudiante/calendario" });
   }
   if (unidadActiva && !bitacoraActiva) {
     recordatorios.push({

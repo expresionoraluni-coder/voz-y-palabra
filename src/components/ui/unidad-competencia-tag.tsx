@@ -24,7 +24,7 @@ export default function UnidadCompetenciaTag({
       <Target className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
-          Unidad de competencia — lo que vas a dominar al terminar esta unidad
+          Unidad de competencia (lo que vas a dominar al terminar esta unidad)
         </p>
         <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-300">{texto}</p>
       </div>

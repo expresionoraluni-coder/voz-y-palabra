@@ -85,8 +85,16 @@ export default async function ActividadEstudiante({
         descripcion={actividad.instrucciones}
       />
 
-      {actividad.video_url && (() => {
-        const embed = urlEmbedYoutube(actividad.video_url!);
+      {(() => {
+        if (!actividad.video_url) {
+          return (
+            <div className="flex aspect-video w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800/60 dark:text-slate-600">
+              <Video className="size-6" aria-hidden="true" />
+              <p className="text-xs font-medium">Video próximamente</p>
+            </div>
+          );
+        }
+        const embed = urlEmbedYoutube(actividad.video_url);
         return embed ? (
           <div className="aspect-video w-full overflow-hidden rounded-xl bg-slate-900">
             <iframe
@@ -118,7 +126,7 @@ export default async function ActividadEstudiante({
           {actividad.aprendizaje_esperado && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
-                Aprendizaje esperado — lo que esta actividad busca que logres
+                Aprendizaje esperado (lo que esta actividad busca que logres)
               </p>
               <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-300">
                 {actividad.aprendizaje_esperado}

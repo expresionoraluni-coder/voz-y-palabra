@@ -1370,3 +1370,39 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       la unidad en vez del título de una actividad. Typecheck y build
 --       limpios. Datos de prueba limpiados; NIP de la cuenta de prueba
 --       usada reiniciado al mismo estado base que las demás.
+--
+-- 34. Fase H — segunda ronda de observaciones tras revisar el sitio en
+--     Netlify: bugs y copy (sin cambios de esquema):
+--     - ingreso/estudiante/page.tsx: se eliminó el flujo de confirmación de
+--       NIP embebido en el login (estado nipConfirmar, RPC
+--       estudiante_tiene_nip, campo "Confirma tu NIP") que se activaba
+--       cuando nip_hash era null — duplicaba y contradecía al único flujo
+--       correcto que debe existir (cambiar-nip-obligatorio.tsx, mostrado
+--       tras el primer login con NIP de boleta, que sí pide confirmar).
+--       Ahora el login nunca pide confirmación bajo ninguna circunstancia;
+--       la única confirmación de NIP en toda la app ocurre al reemplazar
+--       el NIP de boleta por uno propio.
+--     - Barrido de guiones largos (—) por paréntesis en ~20 cadenas
+--       visibles al estudiante (mensajes de validación, HelpText, UC/AE).
+--       Se dejaron sin tocar los usos de "—" como marcador de dato ausente
+--       (ej. "Grupo {nombre ?? "—"}").
+--     - bitacora.tsx: placeholder del verbo cambia a infinitivo
+--       ("Identificar"), se agrega hint aclarando "-ar/-er/-ir"; se quitó
+--       el botón "Cambiar" — una vez guardada la meta de la unidad, ya no
+--       se puede editar.
+--     - confianza.tsx: se quitó el UnidadCompetenciaTag (ya se muestra una
+--       vez arriba en la página de unidad) y se cambió el botón de
+--       "Continuar" a "Guardar".
+--     - Redacción de la pregunta de confianza mejorada, tanto por
+--       actividad (prediccion.tsx) como por unidad (confianza.tsx).
+--     - actividad/[id]/page.tsx: cuando video_url es null, ahora se
+--       muestra una caja placeholder ("Video próximamente") en vez de no
+--       mostrar nada — reserva el espacio para cuando la maestra tenga los
+--       videos.
+--     - Verificado en vivo: login sin campo de confirmación en ningún
+--       caso, primer login con NIP de boleta sigue pidiendo cambio+
+--       confirmación correctamente, bitácora con hint de infinitivo y sin
+--       botón de editar, confianza de unidad sin UC duplicada y con botón
+--       "Guardar". Typecheck y build limpios. Estudiante de prueba
+--       temporal creado y eliminado al terminar (la cuenta de revisión
+--       real ya la había usado el usuario, no se tocó).

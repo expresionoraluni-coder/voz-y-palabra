@@ -85,8 +85,9 @@ export default function Bitacora({
               required
               value={verbo}
               onChange={(e) => setVerbo(e.target.value)}
-              placeholder='Ej. "Identifico"'
+              placeholder='Ej. "Identificar"'
             />
+            <HelpText>En infinitivo (termina en -ar, -er o -ir).</HelpText>
           </Field>
           <Field>
             <Label htmlFor="que">Qué</Label>
@@ -107,25 +108,12 @@ export default function Bitacora({
               onChange={(e) => setComo(e.target.value)}
               placeholder='Ej. "analizando conversaciones reales"'
             />
-            <HelpText>Verbo + qué + cómo — algo concreto, no "esforzarme más".</HelpText>
+            <HelpText>Verbo + qué + cómo (algo concreto, no "esforzarme más").</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
-          <div className="flex gap-2">
-            <Boton type="submit" size="sm" cargando={cargando} disabled={!listoParaGuardar} className="self-start">
-              {cargando ? "Guardando..." : "Guardar"}
-            </Boton>
-            {metaPrevia && (
-              <Boton
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setEditando(false)}
-                className="self-start"
-              >
-                Cancelar
-              </Boton>
-            )}
-          </div>
+          <Boton type="submit" size="sm" cargando={cargando} disabled={!listoParaGuardar} className="self-start">
+            {cargando ? "Guardando..." : "Guardar"}
+          </Boton>
         </form>
       </Card>
     );
@@ -139,22 +127,17 @@ export default function Bitacora({
       </div>
       <p className="text-sm italic text-slate-700 dark:text-slate-300">"{metaPrevia}"</p>
       <p className="text-xs text-slate-500 dark:text-slate-500">Progreso de la unidad: {avancePct}%</p>
-      <div className="flex flex-wrap gap-2">
-        <Boton
-          type="button"
-          variant={cumplidaPrevia ? "secondary" : "primary"}
-          size="sm"
-          onClick={alternarCumplida}
-          cargando={cargando}
-          className="self-start"
-        >
-          <CheckCircle2 className="size-3.5" aria-hidden="true" />
-          {cumplidaPrevia ? "Cumplida" : "Marcar como cumplida"}
-        </Boton>
-        <Boton type="button" variant="secondary" size="sm" onClick={() => setEditando(true)} className="self-start">
-          Cambiar
-        </Boton>
-      </div>
+      <Boton
+        type="button"
+        variant={cumplidaPrevia ? "secondary" : "primary"}
+        size="sm"
+        onClick={alternarCumplida}
+        cargando={cargando}
+        className="self-start"
+      >
+        <CheckCircle2 className="size-3.5" aria-hidden="true" />
+        {cumplidaPrevia ? "Cumplida" : "Marcar como cumplida"}
+      </Boton>
     </Card>
   );
 }

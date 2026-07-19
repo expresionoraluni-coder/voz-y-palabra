@@ -18,42 +18,14 @@ export default function IngresoEstudiante() {
   const [codigo, setCodigo] = useState("");
   const [nombre, setNombre] = useState("");
   const [nip, setNip] = useState("");
-  const [nipConfirmar, setNipConfirmar] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [intentosNipFallidos, setIntentosNipFallidos] = useState(0);
   const [nipVisible, setNipVisible] = useState(false);
-  const [primeraVez, setPrimeraVez] = useState<boolean | null>(null);
-
-  // Si ya sabemos el nombre y el grupo, preguntamos si esta persona ya tiene
-  // NIP guardado — así solo pedimos confirmarlo cuando de verdad se está
-  // creando por primera vez, no en cada regreso.
-  async function revisarPrimeraVez() {
-    if (!codigo.trim() || !nombre.trim()) {
-      setPrimeraVez(null);
-      return;
-    }
-    const supabase = createClient();
-    const { data, error: rpcError } = await supabase.rpc("estudiante_tiene_nip", {
-      p_codigo: codigo,
-      p_nombre: nombre,
-    });
-    if (rpcError) {
-      setPrimeraVez(null);
-      return;
-    }
-    setPrimeraVez(!data);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
-    if (primeraVez && nip !== nipConfirmar) {
-      setError("Los dos NIP no coinciden — revísalos.");
-      return;
-    }
-
     setCargando(true);
 
     const supabase = createClient();
@@ -152,7 +124,6 @@ export default function IngresoEstudiante() {
               required
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
-              onBlur={revisarPrimeraVez}
               placeholder="Ej. 1IM4-2026"
               autoComplete="off"
             />
@@ -164,7 +135,6 @@ export default function IngresoEstudiante() {
               required
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              onBlur={revisarPrimeraVez}
               placeholder="Ej. Ana Torres"
               autoComplete="off"
             />
@@ -195,38 +165,12 @@ export default function IngresoEstudiante() {
               </button>
             </div>
             <HelpText>
-              {primeraVez === true
-                ? "La primera vez que entres, este NIP se guarda para que solo tú puedas volver a usar tu nombre. Invéntalo y no lo olvides."
-                : "Es tu boleta escolar (los últimos 4 dígitos). En cuanto entres te vamos a pedir que lo cambies por uno propio."}
+              Si es tu primera vez, usa los últimos 4 dígitos de tu boleta (en cuanto entres te vamos a
+              pedir que lo cambies por uno propio). Si ya tienes tu propio NIP, escribe ese.
             </HelpText>
           </Field>
-          {primeraVez && (
-            <Field>
-              <Label htmlFor="nipConfirmar">Confirma tu NIP</Label>
-              <Input
-                id="nipConfirmar"
-                required
-                type={nipVisible ? "text" : "password"}
-                inputMode="numeric"
-                pattern="[0-9]{4}"
-                maxLength={4}
-                value={nipConfirmar}
-                onChange={(e) => setNipConfirmar(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                placeholder="••••"
-                autoComplete="off"
-              />
-              {nipConfirmar.length === 4 && nipConfirmar !== nip && (
-                <ErrorText>No coincide con el NIP de arriba.</ErrorText>
-              )}
-            </Field>
-          )}
           {error && <ErrorText>{error}</ErrorText>}
-          <Boton
-            type="submit"
-            cargando={cargando}
-            disabled={Boolean(primeraVez) && nip.length === 4 && nip !== nipConfirmar}
-            className="w-full"
-          >
+          <Boton type="submit" cargando={cargando} className="w-full">
             {cargando ? "Entrando..." : "Entrar"}
           </Boton>
         </form>

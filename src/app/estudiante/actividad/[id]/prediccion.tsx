@@ -54,7 +54,7 @@ export default function Prediccion({
       <div className="flex items-center gap-2">
         <Target className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-          ¿Qué tan seguro te sientes de que esta actividad te va a salir bien?
+          ¿Qué tan seguro estás de que vas a resolver bien esta actividad?
         </p>
       </div>
       <div className="flex flex-col gap-1.5">

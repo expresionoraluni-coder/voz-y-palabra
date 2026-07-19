@@ -117,7 +117,7 @@ export default function GrabacionRubrica({
     const duracionActual = analisis?.duracionSegundos ?? respuestaPrevia?.analisisAudio?.duracionSegundos ?? 0;
     if (duracionActual < DURACION_MINIMA_SEGUNDOS) {
       setError(
-        `Tu grabación es muy corta — graba al menos ${DURACION_MINIMA_SEGUNDOS} segundos antes de guardar.`,
+        `Tu grabación es muy corta (graba al menos ${DURACION_MINIMA_SEGUNDOS} segundos antes de guardar).`,
       );
       return;
     }
@@ -157,7 +157,7 @@ export default function GrabacionRubrica({
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 px-6 py-8 dark:border-slate-800">
         <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <ShieldCheck className="size-3.5" aria-hidden="true" />
-          Se queda solo en tu navegador — nunca se sube a ningún lado
+          Se queda solo en tu navegador (nunca se sube a ningún lado)
         </div>
 
         <button
@@ -244,7 +244,7 @@ export default function GrabacionRubrica({
             )}
             <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
               Detectado automáticamente por volumen, sin escuchar ni guardar tu audio. Una pausa breve para
-              respirar está bien — muchas pausas largas seguidas suelen indicar que conviene ensayar más.
+              respirar está bien (muchas pausas largas seguidas suelen indicar que conviene ensayar más).
             </p>
           </div>
         )}
@@ -285,7 +285,7 @@ export default function GrabacionRubrica({
       {error && <ErrorText>{error}</ErrorText>}
       {guardado && (
         <p className="text-sm text-emerald-600 dark:text-emerald-400">
-          Guardado. Tu grabación no se guarda en ningún lado — solo tu autoevaluación.
+          Guardado. Tu grabación no se guarda en ningún lado (solo tu autoevaluación).
         </p>
       )}
       <Boton type="submit" cargando={cargando}>

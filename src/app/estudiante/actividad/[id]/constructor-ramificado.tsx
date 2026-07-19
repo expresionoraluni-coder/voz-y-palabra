@@ -46,7 +46,7 @@ export default function ConstructorRamificado({
     for (let i = 0; i < textos.length - 1; i++) {
       if (similitudTexto(textos[i], textos[i + 1]) > 0.75) {
         setError(
-          `"${contenido.secciones[i].nombre}" y "${contenido.secciones[i + 1].nombre}" se parecen mucho — revisa que cada sección aporte algo distinto.`,
+          `"${contenido.secciones[i].nombre}" y "${contenido.secciones[i + 1].nombre}" se parecen mucho (revisa que cada sección aporte algo distinto).`,
         );
         return;
       }
