@@ -17,6 +17,7 @@ import ConstructorRamificado from "./constructor-ramificado";
 import ActividadPostEntrega from "./actividad-post-entrega";
 import Prediccion from "./prediccion";
 import GrabacionRubrica from "./grabacion-rubrica";
+import OrdenarFragmentos from "./ordenar-fragmentos";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -27,6 +28,7 @@ const TIPOS_CONSTRUIDOS = [
   "etiquetado_texto",
   "constructor_ramificado",
   "grabacion_rubrica",
+  "ordenar_fragmentos",
 ];
 
 export default async function ActividadEstudiante({
@@ -265,6 +267,20 @@ export default async function ActividadEstudiante({
             }
           }
           respuestaPrevia={respuesta as { tema: string; textos: string[] } | undefined}
+        />
+      )}
+      {nombreTipo === "ordenar_fragmentos" && (
+        <OrdenarFragmentos
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              contexto?: string | null;
+              fragmentos: string[];
+              orden_correcto: number[];
+            }
+          }
+          respuestaPrevia={respuesta as { orden: number[] } | undefined}
         />
       )}
       {nombreTipo === "grabacion_rubrica" && (

@@ -1537,3 +1537,46 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       lengua" en modo todas_juntas muestra las 3 preguntas juntas, cada
 --       ideas_clave marcándose en vivo, y guarda con un solo envío.
 --       Typecheck y build limpios. Datos de prueba limpiados.
+--
+-- 39. Fase M — @dnd-kit + nuevo tipo ordenar_fragmentos:
+--     - Se agregan las dependencias @dnd-kit/core, @dnd-kit/sortable y
+--       @dnd-kit/utilities (npm install, sin cambios de configuración).
+--     - Nueva fila en tipos_actividad: "ordenar_fragmentos" — el estudiante
+--       elige, de una bolsa revuelta de fragmentos (que incluye
+--       distractores), solo los que pertenecen y los ordena para armar un
+--       texto coherente; puede reordenar arrastrando (drag-and-drop con
+--       dnd-kit, patrón sortable estándar con manejador dedicado, o
+--       quitar/agregar tocando cada chip) y ve una vista previa en vivo del
+--       texto armado para autoevaluar si fluye.
+--     - Forma de contenido: { contexto?: string; fragmentos: string[]
+--       (bolsa revuelta, incluye distractores); orden_correcto: number[]
+--       (índices dentro de fragmentos, en la secuencia correcta, solo los
+--       que pertenecen) }. Respuesta: { orden: number[] } (índices elegidos
+--       por el estudiante, en su orden). Calificación automática:
+--       puntaje_auto = posiciones que coinciden entre orden y
+--       orden_correcto, dividido entre orden_correcto.length.
+--     - Nuevo componente estudiante/actividad/[id]/ordenar-fragmentos.tsx.
+--       Se agrega a TIPOS_CONSTRUIDOS y al switch de tipos en
+--       actividad/[id]/page.tsx, y a ICONO_TIPO
+--       (src/lib/tipo-actividad-icono.ts).
+--     - actividad-form.tsx: nueva sección de autoría — la docente escribe
+--       los fragmentos ya en el orden correcto (uno por línea) y los
+--       distractores aparte (opcional); al guardar, el servidor del
+--       navegador de la docente revuelve ambas listas una sola vez y
+--       calcula orden_correcto contra los índices ya revueltos, para que
+--       el contenido guardado en la base quede fijo (mismo orden revuelto
+--       para todos los estudiantes).
+--     - Migración de contenido: "Coherencia global del texto" (antes
+--       clasificacion, 3 elementos "pertenece al mensaje" + 3
+--       distractores) cambia de tipo_id y de forma de contenido a
+--       ordenar_fragmentos, conservando los mismos 6 textos. Se reescribe
+--       también actividades.instrucciones para describir la mecánica de
+--       ordenar en vez de clasificar. Sin riesgo de entregas huérfanas:
+--       no hay datos reales de estudiantes en este momento.
+--     - Verificado en vivo con estudiante QA temporal: agregar fragmentos
+--       a la secuencia tocándolos, quitarlos de vuelta a la bolsa,
+--       reordenar y la vista previa del texto armado se actualiza en cada
+--       cambio; al guardar con la secuencia correcta se calificó 100% y
+--       la actividad quedó bloqueada mostrando los íconos de
+--       correcto/incorrecto. Typecheck y build limpios. Datos de prueba
+--       limpiados.

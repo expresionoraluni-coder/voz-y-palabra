@@ -7,6 +7,7 @@ import {
   Tags,
   Workflow,
   Mic,
+  ArrowUpDown,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,4 +20,5 @@ export const ICONO_TIPO: Record<string, LucideIcon> = {
   etiquetado_texto: Tags,
   constructor_ramificado: Workflow,
   grabacion_rubrica: Mic,
+  ordenar_fragmentos: ArrowUpDown,
 };

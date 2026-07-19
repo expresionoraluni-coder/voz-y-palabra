@@ -36,6 +36,7 @@ const TIPOS_DISPONIBLES = [
   "etiquetado_texto",
   "constructor_ramificado",
   "grabacion_rubrica",
+  "ordenar_fragmentos",
 ];
 
 function lineas(texto: string): string[] {
@@ -156,6 +157,18 @@ export default function ActividadForm({
   const [duracionSugerida, setDuracionSugerida] = useState(String(c.duracion_sugerida_segundos ?? "90"));
   const [rubrica, setRubrica] = useState((c.rubrica ?? []).join("\n"));
 
+  const [contextoOF, setContextoOF] = useState(c.contexto ?? "");
+  const [fragmentosCorrectosOF, setFragmentosCorrectosOF] = useState(
+    Array.isArray(c.orden_correcto) && Array.isArray(c.fragmentos)
+      ? c.orden_correcto.map((i: number) => c.fragmentos[i]).join("\n")
+      : "",
+  );
+  const [distractoresOF, setDistractoresOF] = useState(
+    Array.isArray(c.orden_correcto) && Array.isArray(c.fragmentos)
+      ? c.fragmentos.filter((_: string, i: number) => !c.orden_correcto.includes(i)).join("\n")
+      : "",
+  );
+
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
@@ -214,6 +227,9 @@ export default function ActividadForm({
       if (datos.temaGrabacion) setTemaGrabacion(datos.temaGrabacion);
       if (datos.duracionSugerida) setDuracionSugerida(datos.duracionSugerida);
       if (datos.rubrica) setRubrica(datos.rubrica);
+      if (datos.contextoOF) setContextoOF(datos.contextoOF);
+      if (datos.fragmentosCorrectosOF) setFragmentosCorrectosOF(datos.fragmentosCorrectosOF);
+      if (datos.distractoresOF) setDistractoresOF(datos.distractoresOF);
       setBorradorRestaurado(true);
       // eslint-disable-next-line no-empty
     } catch {}
@@ -251,6 +267,9 @@ export default function ActividadForm({
       temaGrabacion,
       duracionSugerida,
       rubrica,
+      contextoOF,
+      fragmentosCorrectosOF,
+      distractoresOF,
     };
     try {
       localStorage.setItem(claveBorrador(unidadId), JSON.stringify(datos));
@@ -288,6 +307,9 @@ export default function ActividadForm({
     temaGrabacion,
     duracionSugerida,
     rubrica,
+    contextoOF,
+    fragmentosCorrectosOF,
+    distractoresOF,
   ]);
 
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
@@ -459,6 +481,29 @@ export default function ActividadForm({
         tema_sugerido: temaGrabacion,
         duracion_sugerida_segundos: duracion || 90,
         rubrica: listaRubrica,
+      };
+    } else if (nombreTipo === "ordenar_fragmentos") {
+      const correctos = lineas(fragmentosCorrectosOF);
+      const distractoresLista = lineas(distractoresOF);
+      if (correctos.length < 2) {
+        setError("Escribe al menos 2 fragmentos en el orden correcto, uno por línea.");
+        return;
+      }
+      // Se revuelve una sola vez al guardar (no en el navegador del
+      // estudiante) para que la bolsa mezclada quede fija en el contenido
+      // guardado — así todos los estudiantes ven el mismo orden revuelto.
+      const combinados = [...correctos, ...distractoresLista];
+      const indices = combinados.map((_, i) => i);
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      const fragmentosMezclados = indices.map((i) => combinados[i]);
+      const ordenCorrecto = correctos.map((_, origIdx) => indices.indexOf(origIdx));
+      contenido = {
+        contexto: contextoOF.trim() || null,
+        fragmentos: fragmentosMezclados,
+        orden_correcto: ordenCorrecto,
       };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
@@ -643,7 +688,7 @@ export default function ActividadForm({
                 Este tipo estará disponible en una fase próxima. Por ahora puedes crear
                 &quot;opcion_justificacion&quot;, &quot;clasificacion&quot;, &quot;encontrar_corregir&quot;,
                 &quot;comparador&quot;, &quot;redaccion_checklist&quot;, &quot;etiquetado_texto&quot;,
-                &quot;constructor_ramificado&quot; o &quot;grabacion_rubrica&quot;.
+                &quot;constructor_ramificado&quot;, &quot;grabacion_rubrica&quot; u &quot;ordenar_fragmentos&quot;.
               </HelpText>
             )}
           </Field>
@@ -1084,6 +1129,56 @@ export default function ActividadForm({
                     className="font-mono text-sm"
                   />
                   <ContadorLineas texto={rubrica} singular="criterio" plural="criterios" />
+                </Field>
+              </>
+            )}
+
+            {nombreTipo === "ordenar_fragmentos" && (
+              <>
+                <Field>
+                  <Label htmlFor="contextoOF">Contexto (opcional — instrucción general antes de la lista)</Label>
+                  <Textarea
+                    id="contextoOF"
+                    value={contextoOF}
+                    onChange={(e) => setContextoOF(e.target.value)}
+                    rows={2}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="fragmentosCorrectosOF">
+                    Fragmentos en el orden correcto (uno por línea)
+                  </Label>
+                  <Textarea
+                    id="fragmentosCorrectosOF"
+                    required
+                    value={fragmentosCorrectosOF}
+                    onChange={(e) => setFragmentosCorrectosOF(e.target.value)}
+                    rows={5}
+                    placeholder={
+                      "La interculturalidad no consiste en que las culturas coexistan sin comunicarse...\nEste diálogo exige reconocer que ninguna cultura posee una perspectiva completa...\nPor ello, las instituciones educativas tienen la responsabilidad de..."
+                    }
+                    className="font-mono text-sm"
+                  />
+                  <ContadorLineas texto={fragmentosCorrectosOF} singular="fragmento" plural="fragmentos" />
+                  <HelpText>
+                    El estudiante los va a ver revueltos junto con los distractores — aquí escríbelos ya en
+                    el orden en que sí tienen coherencia.
+                  </HelpText>
+                </Field>
+                <Field>
+                  <Label htmlFor="distractoresOF">Distractores (opcional, uno por línea)</Label>
+                  <Textarea
+                    id="distractoresOF"
+                    value={distractoresOF}
+                    onChange={(e) => setDistractoresOF(e.target.value)}
+                    rows={3}
+                    placeholder={"Cada país tiene platillos típicos que representan su identidad...\nViajar es una de las mejores formas de conocer gente nueva..."}
+                    className="font-mono text-sm"
+                  />
+                  <ContadorLineas texto={distractoresOF} singular="distractor" plural="distractores" />
+                  <HelpText>
+                    Fragmentos que NO pertenecen a la secuencia — el estudiante debe dejarlos fuera.
+                  </HelpText>
                 </Field>
               </>
             )}
