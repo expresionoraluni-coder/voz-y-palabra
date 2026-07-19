@@ -1,13 +1,12 @@
-import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ChevronRight, Video } from "lucide-react";
+import { Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
-import Boton from "@/components/ui/button";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 import { urlEmbedYoutube } from "@/lib/video-embed";
 import type { ContenidoOpcionJustificacion } from "@/lib/opcion-justificacion";
+import { EntregaRecienteProvider } from "@/lib/entrega-reciente-context";
 import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
 import EncontrarCorregir from "./encontrar-corregir";
@@ -15,7 +14,7 @@ import Comparador from "./comparador";
 import RedaccionChecklist from "./redaccion-checklist";
 import EtiquetadoTexto from "./etiquetado-texto";
 import ConstructorRamificado from "./constructor-ramificado";
-import CalibracionConfianza from "./calibracion-confianza";
+import ActividadPostEntrega from "./actividad-post-entrega";
 import Prediccion from "./prediccion";
 import GrabacionRubrica from "./grabacion-rubrica";
 
@@ -73,26 +72,34 @@ export default async function ActividadEstudiante({
   const nombreTipo = tipo?.nombre;
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
 
-  const [{ data: entregaExistente }, { data: prediccionExistente }, { data: hermanas }] = await Promise.all([
-    supabase
-      .from("entregas")
-      .select("respuesta, puntaje_auto")
-      .eq("actividad_id", id)
-      .eq("estudiante_id", estudiante.id)
-      .maybeSingle(),
-    supabase
-      .from("reflexiones")
-      .select("confianza")
-      .eq("actividad_id", id)
-      .eq("estudiante_id", estudiante.id)
-      .eq("momento", "prediccion")
-      .maybeSingle(),
-    supabase
-      .from("actividades")
-      .select("id, orden")
-      .eq("unidad_id", actividad.unidad_id)
-      .order("orden"),
-  ]);
+  const [{ data: entregaExistente }, { data: prediccionExistente }, { data: reflexionExistente }, { data: hermanas }] =
+    await Promise.all([
+      supabase
+        .from("entregas")
+        .select("respuesta, puntaje_auto")
+        .eq("actividad_id", id)
+        .eq("estudiante_id", estudiante.id)
+        .maybeSingle(),
+      supabase
+        .from("reflexiones")
+        .select("confianza")
+        .eq("actividad_id", id)
+        .eq("estudiante_id", estudiante.id)
+        .eq("momento", "prediccion")
+        .maybeSingle(),
+      supabase
+        .from("reflexiones")
+        .select("texto")
+        .eq("actividad_id", id)
+        .eq("estudiante_id", estudiante.id)
+        .eq("momento", "cierre")
+        .maybeSingle(),
+      supabase
+        .from("actividades")
+        .select("id, orden")
+        .eq("unidad_id", actividad.unidad_id)
+        .order("orden"),
+    ]);
 
   const respuesta = entregaExistente?.respuesta;
   const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
@@ -156,6 +163,13 @@ export default async function ActividadEstudiante({
         </div>
       )}
 
+      <EntregaRecienteProvider
+        inicial={
+          entregaExistente
+            ? { puntajeAuto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta as Record<string, unknown> }
+            : null
+        }
+      >
       {!prediccionExistente && !entregaExistente ? (
         <Prediccion actividadId={actividad.id} estudianteId={estudiante.id} />
       ) : (
@@ -276,21 +290,15 @@ export default async function ActividadEstudiante({
       </Card>
       )}
 
-      {entregaExistente && (
-        <CalibracionConfianza
-          confianza={prediccionExistente?.confianza ?? null}
-          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
-        />
-      )}
-
-      {entregaExistente && (
-        <Link href={siguiente ? `/estudiante/actividad/${siguiente.id}` : `/estudiante/unidad/${actividad.unidad_id}`}>
-          <Boton type="button" className="w-full">
-            {siguiente ? "Siguiente actividad" : "Volver a la unidad"}
-            <ChevronRight className="size-4" aria-hidden="true" />
-          </Boton>
-        </Link>
-      )}
+      <ActividadPostEntrega
+        actividadId={actividad.id}
+        estudianteId={estudiante.id}
+        confianza={prediccionExistente?.confianza ?? null}
+        textoReflexionPrevio={reflexionExistente?.texto ?? null}
+        siguienteHref={siguiente ? `/estudiante/actividad/${siguiente.id}` : `/estudiante/unidad/${actividad.unidad_id}`}
+        textoSiguiente={siguiente ? "Siguiente actividad" : "Volver a la unidad"}
+      />
+      </EntregaRecienteProvider>
     </div>
   );
 }

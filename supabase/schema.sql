@@ -1440,3 +1440,45 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       desde el inicio, botón "Siguiente actividad" enlaza a la actividad
 --       correcta por orden. Typecheck y build limpios. Datos de prueba
 --       limpiados.
+--
+-- 36. Fase J — reflexión de seguridad por actividad (de vuelta, distinta a
+--     como estaba) + arreglo de lentitud:
+--     - calibracion-confianza.tsx se eliminó; su lógica de casos se
+--       extrajo a src/lib/calibracion-confianza.ts (casoCalibracion:
+--       'sin_puntaje'|'sobreconfianza'|'subconfianza'|'bien_calibrado_alto'
+--       |'bien_calibrado_bajo'), reusada tanto para el mensaje informativo
+--       como para el placeholder del textarea nuevo.
+--     - Nuevo src/app/estudiante/actividad/[id]/reflexion-actividad.tsx:
+--       muestra el mensaje de calibración (se conserva) MÁS un textarea
+--       real (antes solo había el mensaje pasivo) cuyo placeholder cambia
+--       según el caso — ej. sobreconfianza: "¿Qué creías dominar y no era
+--       así?"; subconfianza: "¿Qué te hizo dudar de ti...?"; sin puntaje
+--       (tipos no auto-calificados): "¿Qué fue lo más difícil...?". Guarda
+--       en reflexiones (actividad_id set, unidad_id null, momento='cierre')
+--       — mismo patrón que el componente que se había quitado antes;
+--       reactiva el constraint reflexiones_unica_por_actividad que llevaba
+--       sin usarse desde esa remoción. Igual que bitácora/reflexión de
+--       unidad: una vez guardada se muestra de solo lectura con botón
+--       "Cambiar".
+--     - Arreglo de lentitud, dos partes:
+--       1. useEntregaActividad.guardar() ya no espera el RPC
+--          verificar_insignias antes de continuar — se dispara sin
+--          bloquear (ya estaba documentado como "no debe bloquear" pero
+--          seguía con await). Quita un viaje de red completo de cada
+--          entrega, en los 9 tipos de actividad.
+--       2. Nuevo src/lib/entrega-reciente-context.tsx (Context de React,
+--          EntregaRecienteProvider/useEntregaReciente): envuelve el Card
+--          de la actividad + el nuevo actividad-post-entrega.tsx en
+--          actividad/[id]/page.tsx. useEntregaActividad llama
+--          marcarGuardada() justo tras el upsert exitoso, antes de
+--          router.refresh() — así la retroalimentación, la reflexión y el
+--          botón "Siguiente actividad" aparecen al instante desde estado
+--          local en vez de esperar el viaje completo de refresh al
+--          servidor (router.refresh() se sigue llamando para mantener
+--          todo lo demás sincronizado).
+--     - Verificado en vivo: al entregar con confianza alta y puntaje bajo
+--       (5/5 y 20%), el mensaje de sobreconfianza y el textarea con su
+--       placeholder correcto aparecieron en la misma vuelta, sin recarga
+--       visible; guardar la reflexión pasa a modo lectura con "Cambiar";
+--       el botón "Siguiente actividad" conserva su comportamiento de la
+--       Fase I. Typecheck y build limpios. Datos de prueba limpiados.

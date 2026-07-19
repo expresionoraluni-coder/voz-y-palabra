@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
+import { useEntregaReciente } from "@/lib/entrega-reciente-context";
 
 type EntregaPayload = {
   respuesta: Record<string, unknown>;
@@ -20,6 +21,7 @@ type EntregaPayload = {
  */
 export function useEntregaActividad(actividadId: string, estudianteId: string) {
   const router = useRouter();
+  const { marcarGuardada } = useEntregaReciente();
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +47,21 @@ export function useEntregaActividad(actividadId: string, estudianteId: string) {
       return false;
     }
 
-    // No debe bloquear la entrega si falla: otorgar insignias es secundario.
-    try {
-      await supabase.rpc("verificar_insignias");
-    } catch {
-      // silencioso a propósito
-    }
+    // Otorgar insignias es secundario: ni bloquea la entrega si falla, ni
+    // vale la pena esperarlo antes de mostrar la retroalimentación — se
+    // dispara sin esperar (antes un await aquí sumaba un viaje de red
+    // completo a la percepción de lentitud tras cada entrega).
+    void (async () => {
+      try {
+        await supabase.rpc("verificar_insignias");
+      } catch {
+        // silencioso a propósito
+      }
+    })();
+
+    // Aparece al instante sin esperar el refresh del servidor; el refresh
+    // sigue corriendo de fondo para mantener todo lo demás sincronizado.
+    marcarGuardada({ puntajeAuto: payload.puntaje_auto ?? null, respuesta: payload.respuesta });
 
     setGuardado(true);
     setCargando(false);
