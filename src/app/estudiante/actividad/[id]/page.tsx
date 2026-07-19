@@ -219,7 +219,14 @@ export default async function ActividadEstudiante({
         <Comparador
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={actividad.contenido as { conceptos: string[]; criterios: string[] }}
+          contenido={
+            actividad.contenido as {
+              conceptos: string[];
+              criterios: string[];
+              banco_respuestas?: string[];
+              celda_correcta?: string[][];
+            }
+          }
           respuestaPrevia={respuesta as { celdas: string[][] } | undefined}
         />
       )}

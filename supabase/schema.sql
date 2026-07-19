@@ -1580,3 +1580,30 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       la actividad quedó bloqueada mostrando los íconos de
 --       correcto/incorrecto. Typecheck y build limpios. Datos de prueba
 --       limpiados.
+--
+-- 40. Fase N — comparador con chips arrastrables:
+--     - comparador.tsx gana dos campos opcionales al contenido:
+--       banco_respuestas?: string[] (bolsa de chips predefinidos, puede
+--       incluir señuelos de más) y celda_correcta?: string[][] (texto del
+--       chip esperado por celda, mismo tamaño que criterios × conceptos).
+--       Cuando ambos están presentes, cada celda se vuelve una zona de
+--       destino de @dnd-kit (arrastrar o, como alternativa táctil/con
+--       teclado, tocar un chip y luego tocar la celda) en vez de un
+--       textarea libre, y la actividad se autocalifica (puntaje_auto =
+--       celdas correctas / total × 100, estado: "completada"). Sin ambos
+--       campos, se mantiene el textarea de texto libre de siempre
+--       (retrocompatible con las demás actividades de comparador, que no
+--       se tocaron).
+--     - actividad-form.tsx: nueva textarea para el banco de chips (una
+--       respuesta por línea) + una cuadrícula de <select> (mismo layout
+--       que la tabla del estudiante) para mapear la respuesta correcta de
+--       cada celda, mismo patrón que ya usan clasificación/etiquetado.
+--     - Contenido (SQL): "Exposición individual vs. en equipo" (ya tenía 5
+--       criterios × 2 conceptos) gana un banco de 14 chips (10 correctos +
+--       4 señuelos) y su celda_correcta correspondiente.
+--     - Verificado en vivo con estudiante QA temporal: los chips se
+--       colocan tocándolos y tocando la celda destino, una celda ocupada
+--       se puede reemplazar sin perder el chip anterior (vuelve al banco),
+--       y al completar las 10 celdas correctamente se calificó 100% y la
+--       actividad quedó bloqueada. Typecheck y build limpios. Datos de
+--       prueba limpiados.

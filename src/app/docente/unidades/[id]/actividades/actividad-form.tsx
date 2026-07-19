@@ -130,6 +130,18 @@ export default function ActividadForm({
 
   const [conceptos, setConceptos] = useState((c.conceptos ?? []).join("\n"));
   const [criterios, setCriterios] = useState((c.criterios ?? []).join("\n"));
+  const [bancoRespuestasComp, setBancoRespuestasComp] = useState((c.banco_respuestas ?? []).join("\n"));
+  const [celdaCorrectaMapa, setCeldaCorrectaMapa] = useState<Record<string, string>>(() => {
+    const mapa: Record<string, string> = {};
+    if (Array.isArray(c.celda_correcta)) {
+      c.celda_correcta.forEach((fila: string[], i: number) => {
+        fila.forEach((valor, j) => {
+          if (valor) mapa[`${i}-${j}`] = valor;
+        });
+      });
+    }
+    return mapa;
+  });
 
   const [tituloFuente, setTituloFuente] = useState(c.titulo_fuente ?? "");
   const [textoFuente, setTextoFuente] = useState(c.texto_fuente ?? "");
@@ -230,6 +242,8 @@ export default function ActividadForm({
       if (datos.contextoOF) setContextoOF(datos.contextoOF);
       if (datos.fragmentosCorrectosOF) setFragmentosCorrectosOF(datos.fragmentosCorrectosOF);
       if (datos.distractoresOF) setDistractoresOF(datos.distractoresOF);
+      if (datos.bancoRespuestasComp) setBancoRespuestasComp(datos.bancoRespuestasComp);
+      if (datos.celdaCorrectaMapa) setCeldaCorrectaMapa(datos.celdaCorrectaMapa);
       setBorradorRestaurado(true);
       // eslint-disable-next-line no-empty
     } catch {}
@@ -270,6 +284,8 @@ export default function ActividadForm({
       contextoOF,
       fragmentosCorrectosOF,
       distractoresOF,
+      bancoRespuestasComp,
+      celdaCorrectaMapa,
     };
     try {
       localStorage.setItem(claveBorrador(unidadId), JSON.stringify(datos));
@@ -310,6 +326,8 @@ export default function ActividadForm({
     contextoOF,
     fragmentosCorrectosOF,
     distractoresOF,
+    bancoRespuestasComp,
+    celdaCorrectaMapa,
   ]);
 
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
@@ -318,6 +336,9 @@ export default function ActividadForm({
   const IconoTipo = ICONO_TIPO[nombreTipo ?? ""] ?? MessageSquareText;
   const listaCategorias = lineas(categorias);
   const listaEtiquetas = lineas(etiquetas);
+  const listaConceptosComp = lineas(conceptos);
+  const listaCriteriosComp = lineas(criterios);
+  const listaBancoComp = lineas(bancoRespuestasComp);
 
   function actualizarFila(
     filas: FilaAsignacion[],
@@ -412,7 +433,23 @@ export default function ActividadForm({
         setError("Escribe al menos 1 criterio de comparación, uno por línea.");
         return;
       }
-      contenido = { conceptos: listaConceptos, criterios: listaCriterios };
+      if (listaBancoComp.length > 0) {
+        const celdaCorrecta = listaCriterios.map((_, i) =>
+          listaConceptos.map((_, j) => celdaCorrectaMapa[`${i}-${j}`] ?? ""),
+        );
+        if (celdaCorrecta.some((fila) => fila.some((v) => !v))) {
+          setError("Elige la respuesta correcta del banco para cada celda de la cuadrícula.");
+          return;
+        }
+        contenido = {
+          conceptos: listaConceptos,
+          criterios: listaCriterios,
+          banco_respuestas: listaBancoComp,
+          celda_correcta: celdaCorrecta,
+        };
+      } else {
+        contenido = { conceptos: listaConceptos, criterios: listaCriterios };
+      }
     } else if (nombreTipo === "redaccion_checklist") {
       const listaChecklist = lineas(checklist);
       const limite = parseInt(limitePalabras, 10);
@@ -974,6 +1011,79 @@ export default function ActividadForm({
                   />
                   <ContadorLineas texto={criterios} singular="criterio" plural="criterios" />
                 </Field>
+                <Field>
+                  <Label htmlFor="bancoRespuestasComp">
+                    Banco de respuestas para arrastrar (opcional, una por línea)
+                  </Label>
+                  <Textarea
+                    id="bancoRespuestasComp"
+                    value={bancoRespuestasComp}
+                    onChange={(e) => setBancoRespuestasComp(e.target.value)}
+                    rows={4}
+                    placeholder={
+                      "Controlas tú todo el mensaje, sin depender de nadie más.\nSe reparten los temas y cada quien profundiza en su parte."
+                    }
+                    className="font-mono text-sm"
+                  />
+                  <ContadorLineas texto={bancoRespuestasComp} singular="respuesta" plural="respuestas" />
+                  <HelpText>
+                    Si dejas esto vacío, el estudiante escribe libremente en cada celda (sin
+                    calificación automática, como antes). Si lo llenas, cada celda se vuelve un
+                    espacio para arrastrar la respuesta correcta y la actividad se autocalifica —
+                    puedes agregar más respuestas de las que caben en la cuadrícula, como señuelo.
+                  </HelpText>
+                </Field>
+                {listaBancoComp.length > 0 && listaConceptosComp.length > 0 && listaCriteriosComp.length > 0 && (
+                  <Field>
+                    <Label>Respuesta correcta por celda</Label>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 dark:bg-slate-800/60">
+                            <th className="p-2 text-left"></th>
+                            {listaConceptosComp.map((c) => (
+                              <th
+                                key={c}
+                                className="border-l border-slate-200 p-2 text-left text-xs font-medium text-slate-700 dark:border-slate-800 dark:text-slate-300"
+                              >
+                                {c}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {listaCriteriosComp.map((criterio, i) => (
+                            <tr key={i} className="border-t border-slate-200 dark:border-slate-800">
+                              <th
+                                scope="row"
+                                className="w-1/4 p-2 text-left align-top text-xs font-medium text-slate-500 dark:text-slate-500"
+                              >
+                                {criterio}
+                              </th>
+                              {listaConceptosComp.map((_, j) => (
+                                <td key={j} className="border-l border-slate-200 p-1.5 dark:border-slate-800">
+                                  <Select
+                                    value={celdaCorrectaMapa[`${i}-${j}`] ?? ""}
+                                    onChange={(e) =>
+                                      setCeldaCorrectaMapa((prev) => ({ ...prev, [`${i}-${j}`]: e.target.value }))
+                                    }
+                                  >
+                                    <option value="">Elige respuesta</option>
+                                    {listaBancoComp.map((chip) => (
+                                      <option key={chip} value={chip}>
+                                        {chip}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Field>
+                )}
               </>
             )}
 
