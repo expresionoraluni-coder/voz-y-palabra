@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { Video } from "lucide-react";
+import { ChevronRight, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import Boton from "@/components/ui/button";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 import { urlEmbedYoutube } from "@/lib/video-embed";
 import type { ContenidoOpcionJustificacion } from "@/lib/opcion-justificacion";
@@ -45,7 +47,7 @@ export default async function ActividadEstudiante({
     supabase
       .from("actividades")
       .select(
-        "id, unidad_id, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, tipos_actividad(nombre), unidades(unidad_competencia)",
+        "id, unidad_id, orden, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, requiere_actividad_id, tipos_actividad(nombre), unidades(unidad_competencia)",
       )
       .eq("id", id)
       .single(),
@@ -53,13 +55,25 @@ export default async function ActividadEstudiante({
   if (!estudiante) redirect("/ingreso/estudiante");
   if (!actividad) notFound();
 
+  if (actividad.requiere_actividad_id) {
+    const { data: entregaPrerequisito } = await supabase
+      .from("entregas")
+      .select("puntaje_auto")
+      .eq("actividad_id", actividad.requiere_actividad_id)
+      .eq("estudiante_id", estudiante.id)
+      .maybeSingle();
+    if (!entregaPrerequisito || (entregaPrerequisito.puntaje_auto ?? 0) < 70) {
+      redirect(`/estudiante/unidad/${actividad.unidad_id}`);
+    }
+  }
+
   const tipo = Array.isArray(actividad.tipos_actividad)
     ? actividad.tipos_actividad[0]
     : actividad.tipos_actividad;
   const nombreTipo = tipo?.nombre;
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
 
-  const [{ data: entregaExistente }, { data: prediccionExistente }] = await Promise.all([
+  const [{ data: entregaExistente }, { data: prediccionExistente }, { data: hermanas }] = await Promise.all([
     supabase
       .from("entregas")
       .select("respuesta, puntaje_auto")
@@ -73,9 +87,15 @@ export default async function ActividadEstudiante({
       .eq("estudiante_id", estudiante.id)
       .eq("momento", "prediccion")
       .maybeSingle(),
+    supabase
+      .from("actividades")
+      .select("id, orden")
+      .eq("unidad_id", actividad.unidad_id)
+      .order("orden"),
   ]);
 
   const respuesta = entregaExistente?.respuesta;
+  const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col gap-6 px-6 py-10">
@@ -261,6 +281,15 @@ export default async function ActividadEstudiante({
           confianza={prediccionExistente?.confianza ?? null}
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
+      )}
+
+      {entregaExistente && (
+        <Link href={siguiente ? `/estudiante/actividad/${siguiente.id}` : `/estudiante/unidad/${actividad.unidad_id}`}>
+          <Boton type="button" className="w-full">
+            {siguiente ? "Siguiente actividad" : "Volver a la unidad"}
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Boton>
+        </Link>
       )}
     </div>
   );

@@ -1406,3 +1406,37 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       "Guardar". Typecheck y build limpios. Estudiante de prueba
 --       temporal creado y eliminado al terminar (la cuenta de revisión
 --       real ya la había usado el usuario, no se tocó).
+--
+-- 35. Fase I — navegación y gating:
+--     - Botón "Siguiente actividad" en actividad/[id]/page.tsx: consulta
+--       liviana a las actividades hermanas de la unidad (id, orden) dentro
+--       del Promise.all existente; tras completar, enlaza a la siguiente
+--       por orden, o "Volver a la unidad" si era la última.
+--     - Unidades secuenciales: unidad/[id]/page.tsx ahora verifica, para
+--       unidad.orden > 1, que la unidad anterior esté 100% completa Y
+--       tenga su reflexión de cierre guardada — si no, corta antes de
+--       correr las consultas pesadas y muestra un EmptyState "Termina
+--       primero la Unidad N-1" con link. Cálculo de "unidad completa"
+--       extraído a src/lib/progreso-unidad.ts (unidadEstaCompleta),
+--       reusado también en inicio/page.tsx para el cálculo de la unidad
+--       activa (antes usaba pct<100, que en teoría podía desalinearse del
+--       booleano real por redondeo — ahora ambos usan la misma función).
+--     - Gating de nivel 2: nueva columna actividades.requiere_actividad_id
+--       (uuid, nullable, references actividades) — más robusto que
+--       comparar títulos "— nivel 2". Wireada por SQL a los 2 pares
+--       existentes (Las 6 funciones de la lengua → su nivel 2; Ideas
+--       principal/secundaria/terciaria → su nivel 2), ambos confirmados
+--       por DB como tipo clasificacion (si el prerequisito tiene
+--       puntaje_auto ≥ 70 se desbloquea, mismo umbral que ya usa
+--       inicio/page.tsx para "para repasar"). Actividades bloqueadas se
+--       muestran como card no clicable con candado y "Completa primero:
+--       {título}" en la lista de la unidad; actividad/[id]/page.tsx
+--       redirige del lado servidor a la unidad si alguien entra por URL
+--       directa a una actividad bloqueada. Pendiente (no urgente): UI en
+--       actividad-form.tsx para que la docente configure esto sin SQL —
+--       se difirió para priorizar el resto de las fases.
+--     - Verificado en vivo: Unidad 2 bloqueada correctamente antes de
+--       terminar Unidad 1, ambas actividades "nivel 2" se ven con candado
+--       desde el inicio, botón "Siguiente actividad" enlaza a la actividad
+--       correcta por orden. Typecheck y build limpios. Datos de prueba
+--       limpiados.

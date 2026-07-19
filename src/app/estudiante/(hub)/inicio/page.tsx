@@ -29,6 +29,7 @@ import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
 import { proximoRepaso } from "@/lib/calendario-repaso";
+import { unidadEstaCompleta } from "@/lib/progreso-unidad";
 
 type Grupo = { nombre: string } | { nombre: string }[] | null;
 
@@ -128,7 +129,7 @@ export default async function InicioEstudiante({
     const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
     return { ...u, total, hechas, pct };
   });
-  const indiceActiva = unidadesConProgreso.findIndex((u) => u.pct < 100);
+  const indiceActiva = unidadesConProgreso.findIndex((u) => !unidadEstaCompleta(u.total, u.hechas));
   const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
   const { data: bitacoraActiva } = unidadActiva
