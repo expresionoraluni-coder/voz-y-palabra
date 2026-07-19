@@ -1,117 +1,142 @@
-import { LineChart } from "lucide-react";
+import { CheckCircle2, Flame, NotebookPen, Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
 import EmptyState from "@/components/ui/empty-state";
+import MetricCard from "@/components/ui/metric-card";
+import { calcularRacha } from "@/lib/racha";
+import { casoCalibracion } from "@/lib/calibracion-confianza";
+import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function ProgresoEstudiante() {
   const supabase = await createClient();
   const estudiante = await requireEstudiante(supabase);
 
-  const { data: entregas } = await supabase
-    .from("entregas")
-    .select("puntaje_auto, respuesta, actividades(tipos_actividad(nombre))")
-    .eq("estudiante_id", estudiante.id);
+  const [{ data: unidades }, { data: entregas }, { data: predicciones }, { data: bitacoras }, { data: reflexionesCierre }] =
+    await Promise.all([
+      supabase.from("unidades").select("id, nombre, orden, actividades(id)").order("orden"),
+      supabase
+        .from("entregas")
+        .select("actividad_id, puntaje_auto, created_at")
+        .eq("estudiante_id", estudiante.id),
+      supabase
+        .from("reflexiones")
+        .select("actividad_id, confianza")
+        .eq("estudiante_id", estudiante.id)
+        .eq("momento", "prediccion")
+        .not("confianza", "is", null),
+      supabase.from("bitacora").select("unidad_id, cumplida").eq("estudiante_id", estudiante.id),
+      supabase
+        .from("reflexiones")
+        .select("unidad_id")
+        .eq("estudiante_id", estudiante.id)
+        .eq("momento", "cierre")
+        .not("unidad_id", "is", null),
+    ]);
 
-  const precisionPorTipo = Object.values(
-    (entregas ?? [])
-      .filter((en) => en.puntaje_auto !== null)
-      .reduce(
-        (acc, en) => {
-          const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
-          const tipo = act
-            ? Array.isArray(act.tipos_actividad)
-              ? act.tipos_actividad[0]
-              : act.tipos_actividad
-            : undefined;
-          const nombre = tipo?.nombre ?? "otro";
-          acc[nombre] ??= { nombre, suma: 0, total: 0 };
-          acc[nombre].suma += en.puntaje_auto ?? 0;
-          acc[nombre].total += 1;
-          return acc;
-        },
-        {} as Record<string, { nombre: string; suma: number; total: number }>,
-      ),
-  )
-    .map((x) => ({ nombre: x.nombre, promedio: Math.round(x.suma / x.total), n: x.total }))
-    .sort((a, b) => a.promedio - b.promedio);
+  const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
+  const unidadesConProgreso = (unidades ?? []).map((u) => {
+    const total = u.actividades.length;
+    const hechas = u.actividades.filter((a) => idsCompletadas.has(a.id)).length;
+    return { ...u, total, hechas, pct: total > 0 ? Math.round((hechas / total) * 100) : 0 };
+  });
 
-  const analisisTexto = (entregas ?? [])
-    .map((en) => (en.respuesta as { analisisTexto?: { variedadLexica: number } } | null)?.analisisTexto)
-    .filter((a): a is { variedadLexica: number } => !!a && typeof a.variedadLexica === "number");
-  const variedadLexicaPromedio =
-    analisisTexto.length > 0
-      ? Math.round(analisisTexto.reduce((s, a) => s + a.variedadLexica, 0) / analisisTexto.length)
-      : null;
+  const racha = calcularRacha((entregas ?? []).map((e) => e.created_at));
 
-  const sinDatos = precisionPorTipo.length === 0 && variedadLexicaPromedio === null;
+  const conCalibracion = (predicciones ?? [])
+    .map((p) => {
+      const entrega = entregas?.find((e) => e.actividad_id === p.actividad_id);
+      return entrega?.puntaje_auto != null ? casoCalibracion(p.confianza, entrega.puntaje_auto) : null;
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+  const bienCalibradas = conCalibracion.filter(
+    (c) => c === "bien_calibrado_alto" || c === "bien_calibrado_bajo",
+  ).length;
+
+  const metasCumplidas = (bitacoras ?? []).filter((b) => b.cumplida).length;
+  const totalUnidades = unidadesConProgreso.length;
+  const reflexionesCerradas = new Set((reflexionesCierre ?? []).map((r) => r.unidad_id)).size;
+
+  const sinDatos = idsCompletadas.size === 0;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/estudiante/inicio"
         titulo="Mi progreso"
-        descripcion="El mismo dato que ve tu profesora, pero sobre ti (solo tú lo ves)."
+        descripcion="Cómo vas en el curso (solo tú lo ves)."
       />
 
       {sinDatos ? (
         <EmptyState
-          icon={LineChart}
-          titulo="Todavía no hay suficientes entregas"
-          descripcion="Cuando completes algunas actividades, vas a ver aquí en qué tipo de ejercicio te conviene practicar más."
+          icon={Target}
+          titulo="Todavía no hay avance que mostrar"
+          descripcion="Cuando completes tu primera actividad, vas a ver aquí cómo vas."
         />
       ) : (
         <>
-          {precisionPorTipo.length > 0 && (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-slate-900 dark:text-slate-50">
-                Precisión por tipo de actividad
-              </h2>
-              <Card className="flex flex-col gap-4 p-5">
-                {precisionPorTipo.map((t) => (
-                  <div key={t.nombre}>
+          <div className="grid grid-cols-2 gap-3">
+            <MetricCard etiqueta="Racha" valor={`${racha} ${racha === 1 ? "día" : "días"}`} icon={Flame} tono="amber" />
+            <MetricCard
+              etiqueta="Reflexiones de cierre"
+              valor={`${reflexionesCerradas}/${totalUnidades}`}
+              icon={NotebookPen}
+              tono="indigo"
+            />
+          </div>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium text-slate-900 dark:text-slate-50">Avance por unidad</h2>
+            <Card className="flex flex-col gap-4 p-5">
+              {unidadesConProgreso.map((u) => {
+                const tema = temaUnidad(u.orden);
+                return (
+                  <div key={u.id}>
                     <div className="mb-1.5 flex justify-between text-sm">
-                      <span className="capitalize text-slate-700 dark:text-slate-300">
-                        {t.nombre.replaceAll("_", " ")}
+                      <span className="text-slate-700 dark:text-slate-300">
+                        Unidad {u.orden}. {u.nombre}
                       </span>
                       <span className="font-medium text-slate-900 dark:text-slate-50">
-                        {t.promedio}% · {t.n} {t.n === 1 ? "entrega" : "entregas"}
+                        {u.hechas}/{u.total}
                       </span>
                     </div>
-                    <ProgressBar
-                      porcentaje={t.promedio}
-                      gradiente={
-                        t.promedio >= 70
-                          ? "from-emerald-500 to-emerald-600"
-                          : t.promedio >= 40
-                            ? "from-amber-500 to-amber-600"
-                            : "from-red-500 to-red-600"
-                      }
-                    />
+                    <ProgressBar porcentaje={u.pct} gradiente={tema.barra} />
                   </div>
-                ))}
+                );
+              })}
+            </Card>
+          </section>
+
+          {conCalibracion.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-medium text-slate-900 dark:text-slate-50">Autoconocimiento</h2>
+              <Card className="flex items-center gap-3 p-5">
+                <Target className="size-8 shrink-0 text-indigo-500" aria-hidden="true" />
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  Le atinas a tu seguridad en{" "}
+                  <strong className="text-slate-900 dark:text-slate-50">
+                    {bienCalibradas} de {conCalibracion.length}
+                  </strong>{" "}
+                  actividades (tu confianza antes de empezar coincidió con tu resultado real).
+                </p>
               </Card>
             </section>
           )}
 
-          {variedadLexicaPromedio !== null && (
+          {totalUnidades > 0 && (
             <section className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-slate-900 dark:text-slate-50">
-                Redacción
-              </h2>
-              <Card className="p-5">
-                <div className="mb-1.5 flex justify-between text-sm">
-                  <span className="text-slate-700 dark:text-slate-300">Variedad léxica promedio</span>
-                  <span className="font-medium text-slate-900 dark:text-slate-50">
-                    {variedadLexicaPromedio}%
-                  </span>
-                </div>
-                <ProgressBar
-                  porcentaje={variedadLexicaPromedio}
-                  gradiente={variedadLexicaPromedio >= 60 ? "from-emerald-500 to-emerald-600" : "from-amber-500 to-amber-600"}
-                />
+              <h2 className="text-sm font-medium text-slate-900 dark:text-slate-50">Metas cumplidas</h2>
+              <Card className="flex items-center gap-3 p-5">
+                <CheckCircle2 className="size-8 shrink-0 text-emerald-500" aria-hidden="true" />
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  Cumples las metas que te propones en{" "}
+                  <strong className="text-slate-900 dark:text-slate-50">
+                    {metasCumplidas}/{totalUnidades}
+                  </strong>{" "}
+                  unidades.
+                </p>
               </Card>
             </section>
           )}

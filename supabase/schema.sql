@@ -1482,3 +1482,24 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       visible; guardar la reflexión pasa a modo lectura con "Cambiar";
 --       el botón "Siguiente actividad" conserva su comportamiento de la
 --       Fase I. Typecheck y build limpios. Datos de prueba limpiados.
+--
+-- 37. Fase K — portafolio y progreso:
+--     - portafolio/page.tsx: ya no consulta ni muestra entregas — ahora
+--       compila únicamente reflexiones, tanto la de cierre por unidad
+--       (como ya tenía) como las de cierre por actividad (nuevas desde la
+--       Fase J), agrupadas bajo la unidad correspondiente vía
+--       actividades.unidad_id. Se quitó el import de resumen-respuesta.ts
+--       (sigue usándose en la ficha de la docente, no se tocó ese archivo).
+--     - progreso/page.tsx rediseñado por completo: se quitó "precisión
+--       por tipo de actividad" y "variedad léxica promedio" (más
+--       analítica de docente que motivador para un estudiante). Nuevo
+--       contenido, todo con tablas ya existentes: racha actual (reusa
+--       calcularRacha de src/lib/racha.ts), reflexiones de cierre
+--       completadas (X/3), avance por unidad (mismo patrón que
+--       inicio/page.tsx), % de actividades donde la confianza estuvo bien
+--       calibrada (reusa casoCalibracion de la Fase J) en tono positivo,
+--       y metas de bitácora cumplidas (X/3).
+--     - Verificado en vivo: portafolio muestra la reflexión de unidad y la
+--       de actividad juntas, sin ningún resumen de entrega; progreso
+--       muestra las 5 secciones nuevas con datos reales. Typecheck y
+--       build limpios. Datos de prueba limpiados.
