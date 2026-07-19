@@ -1179,3 +1179,60 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       auto-calificación 100% correcta). Build y typecheck limpios.
 --       Datos de prueba limpiados en cada caso, incluida la restauración
 --       del NIP de las cuentas de prueba tras cada verificación.
+--
+-- 31. Fase F — Unidad 3 completa (puntos 4, 17, 18, 19, 20, 21 de las
+--     observaciones de la maestra). Solo contenido (directo en la base real
+--     vía SQL) — ningún archivo de código nuevo, las 3 actividades
+--     rehechas reusan el motor de rondas de opcion_justificacion (Fase A) y
+--     clasificacion tal cual ya existían:
+--     - "Simulador de exposición oral" (grabacion_rubrica) eliminada — 0
+--       entregas reales, sin necesidad de confirmación del usuario (a
+--       diferencia del circuito de Fase E, que sí tenía entregas). El
+--       simulador narrado del punto 4 ya había quedado cubierto en Fase A
+--       con el nuevo "circuito de la comunicación" de Unidad 1.
+--     - Cualidades objetivas y subjetivas: la clasificación estaba
+--       invertida — corregida con las listas exactas de la maestra.
+--       Renombrada "Cualidades internas y externas de la exposición oral".
+--       15 elementos: 13 internos/subjetivos (autodominio, organización de
+--       las ideas, proyección de las emociones, dicción, fluidez, ritmo,
+--       coherencia, sencillez, claridad, concisión, volumen, tono y
+--       modulación, movimientos corporales y gesticulación) + 2
+--       externos/objetivos (conocimiento del público, empleo de la lengua
+--       adecuada). El rediseño grande con videos del PIFI (correcto/con
+--       errores) sigue bloqueado — la maestra no tiene los videos aún.
+--     - Técnica ante un escenario (×2, "un solo compañero" y "todo el
+--       grupo"): reconstruidas con el motor de rondas — antes usaban
+--       opciones ad-hoc que no correspondían a técnicas reales de
+--       exposición oral (ej. "lectura en voz alta", "apoyo visual"), ahora
+--       las 4 opciones en ambas son siempre Exposición / Discurso / Debate
+--       / Mesa redonda, con 2 rondas de contexto cada una: "un solo
+--       compañero" cubre Exposición (explicar un tema perdido) y Discurso
+--       (persuadir de unirse a un proyecto); "todo el grupo" cubre Debate
+--       (celulares en examen) y Mesa redonda (IA en la escuela,
+--       moderada).
+--     - Exposición individual vs. en equipo (comparador): de 3 a 5
+--       criterios — se agregaron "¿Cómo se reparte la responsabilidad?" y
+--       "¿Qué tan fácil es prepararse con poco tiempo?". Sin cambio de
+--       código (comparador.tsx no tiene forma de guardar respuestas
+--       modelo, igual que el resto de comparadores existentes — no se le
+--       agregó ese campo para no romper el patrón).
+--     - Nueva actividad "Elementos no verbales de la exposición"
+--       (clasificacion), insertada en orden 2 (entre cualidades y las
+--       técnicas): 6 elementos sobre Kinésica / Proxémica / Paralingüística.
+--     - Orden final de Unidad 3 (5 actividades, antes 5 con grabación en
+--       vez de elementos no verbales): cualidades → elementos no verbales →
+--       técnica (un compañero) → técnica (todo el grupo) → individual vs.
+--       equipo.
+--     - aprendizaje_esperado actualizado en las 5 actividades (AE1 para
+--       cualidades y elementos no verbales, AE2 para las 3 restantes).
+--     - Verificado en vivo de punta a punta: unidad completa (orden y UC/AE
+--       correctos), las 15+6 opciones de clasificación renderizan bien, el
+--       wizard de rondas funciona en ambas técnicas (incluido el revelado
+--       de ideas_clave tras guardar), el desglose por ronda se ve
+--       correctamente en la ficha de la docente, y el comparador muestra
+--       los 5 criterios. Build y typecheck limpios. Datos de prueba
+--       limpiados (entregas y reflexiones de prueba borradas; NIP de ambas
+--       cuentas de prueba reiniciado — una vía la función
+--       reiniciar_nip_estudiante desde la UI, la otra por SQL directo
+--       replicando la misma función porque la sesión de la pestaña de
+--       prueba se había invalidado a media verificación).
