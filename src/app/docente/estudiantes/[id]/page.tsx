@@ -67,9 +67,10 @@ export default async function FichaEstudiante({
       .eq("estudiante_id", id),
     supabase
       .from("reflexiones")
-      .select("texto, created_at, actividades(titulo)")
+      .select("texto, created_at, unidades(nombre)")
       .eq("estudiante_id", id)
       .eq("momento", "cierre")
+      .not("unidad_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(5),
     supabase
@@ -203,16 +204,16 @@ export default async function FichaEstudiante({
       {reflexiones && reflexiones.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Reflexiones recientes
+            Reflexiones de cierre de unidad
           </h2>
           <div className="flex flex-col gap-2">
             {reflexiones.map((r, i) => {
-              const act = Array.isArray(r.actividades) ? r.actividades[0] : r.actividades;
+              const unidad = Array.isArray(r.unidades) ? r.unidades[0] : r.unidades;
               return (
                 <Card key={i} className="flex gap-2.5 p-3.5">
                   <Quote className="mt-0.5 size-3.5 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">{act?.titulo}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">{unidad?.nombre}</p>
                     <p className="text-sm text-slate-800 dark:text-slate-200">{r.texto}</p>
                   </div>
                 </Card>

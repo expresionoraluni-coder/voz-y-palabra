@@ -8,6 +8,7 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 
 export default function Confianza({
   estudianteId,
@@ -52,9 +53,7 @@ export default function Confianza({
             : "Terminaste la unidad: ¿qué tan seguro te sientes de haber alcanzado la unidad de competencia?"}
         </p>
       </div>
-      {unidadCompetencia && (
-        <p className="text-xs text-slate-500 dark:text-slate-500">{unidadCompetencia}</p>
-      )}
+      {unidadCompetencia && <UnidadCompetenciaTag texto={unidadCompetencia} compacto />}
       <div className="flex items-center gap-3">
         <button
           type="button"

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { CheckCircle2, Circle, Target, TrendingUp } from "lucide-react";
+import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import Confianza from "./confianza";
 import Bitacora from "./bitacora";
+import ReflexionCierre from "./reflexion-cierre";
 import PageHeader from "@/components/ui/page-header";
 import { CardLink } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
 import EmptyState from "@/components/ui/empty-state";
+import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function UnidadEstudiante({
@@ -38,7 +40,7 @@ export default async function UnidadEstudiante({
   if (!estudiante) redirect("/ingreso/estudiante");
   if (!unidad) notFound();
 
-  const [{ data: confianzas }, { data: bitacora }] = await Promise.all([
+  const [{ data: confianzas }, { data: bitacora }, { data: reflexionCierre }] = await Promise.all([
     supabase
       .from("autoevaluaciones_confianza")
       .select("momento, valor")
@@ -49,6 +51,13 @@ export default async function UnidadEstudiante({
       .select("meta, cumplida")
       .eq("estudiante_id", estudiante.id)
       .eq("unidad_id", id)
+      .maybeSingle(),
+    supabase
+      .from("reflexiones")
+      .select("texto")
+      .eq("estudiante_id", estudiante.id)
+      .eq("unidad_id", id)
+      .eq("momento", "cierre")
       .maybeSingle(),
   ]);
 
@@ -72,12 +81,7 @@ export default async function UnidadEstudiante({
         descripcion={unidad.reto_comunicativo}
       />
 
-      {unidad.unidad_competencia && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
-          <Target className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-          <p className="text-sm text-slate-700 dark:text-slate-300">{unidad.unidad_competencia}</p>
-        </div>
-      )}
+      {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}
 
       {totalActividades > 0 && (
         <div className="flex items-center gap-3">
@@ -149,6 +153,15 @@ export default async function UnidadEstudiante({
           unidadId={id}
           momento="cierre"
           unidadCompetencia={unidad.unidad_competencia}
+        />
+      )}
+
+      {unidadCompleta && (
+        <ReflexionCierre
+          estudianteId={estudiante.id}
+          unidadId={id}
+          metaPrevia={bitacora?.meta ?? null}
+          textoPrevio={reflexionCierre?.texto ?? null}
         />
       )}
 

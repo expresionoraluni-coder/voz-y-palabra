@@ -1,8 +1,9 @@
 import { redirect, notFound } from "next/navigation";
-import { Target, Video } from "lucide-react";
+import { Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 import { urlEmbedYoutube } from "@/lib/video-embed";
 import type { ContenidoOpcionJustificacion } from "@/lib/opcion-justificacion";
 import OpcionJustificacion from "./opcion-justificacion";
@@ -12,7 +13,7 @@ import Comparador from "./comparador";
 import RedaccionChecklist from "./redaccion-checklist";
 import EtiquetadoTexto from "./etiquetado-texto";
 import ConstructorRamificado from "./constructor-ramificado";
-import Reflexion from "./reflexion";
+import CalibracionConfianza from "./calibracion-confianza";
 import Prediccion from "./prediccion";
 import GrabacionRubrica from "./grabacion-rubrica";
 
@@ -58,29 +59,21 @@ export default async function ActividadEstudiante({
   const nombreTipo = tipo?.nombre;
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
 
-  const [{ data: entregaExistente }, { data: prediccionExistente }, { data: reflexionExistente }] =
-    await Promise.all([
-      supabase
-        .from("entregas")
-        .select("respuesta, puntaje_auto")
-        .eq("actividad_id", id)
-        .eq("estudiante_id", estudiante.id)
-        .maybeSingle(),
-      supabase
-        .from("reflexiones")
-        .select("texto, confianza")
-        .eq("actividad_id", id)
-        .eq("estudiante_id", estudiante.id)
-        .eq("momento", "prediccion")
-        .maybeSingle(),
-      supabase
-        .from("reflexiones")
-        .select("texto")
-        .eq("actividad_id", id)
-        .eq("estudiante_id", estudiante.id)
-        .eq("momento", "cierre")
-        .maybeSingle(),
-    ]);
+  const [{ data: entregaExistente }, { data: prediccionExistente }] = await Promise.all([
+    supabase
+      .from("entregas")
+      .select("respuesta, puntaje_auto")
+      .eq("actividad_id", id)
+      .eq("estudiante_id", estudiante.id)
+      .maybeSingle(),
+    supabase
+      .from("reflexiones")
+      .select("confianza")
+      .eq("actividad_id", id)
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "prediccion")
+      .maybeSingle(),
+  ]);
 
   const respuesta = entregaExistente?.respuesta;
 
@@ -118,18 +111,19 @@ export default async function ActividadEstudiante({
       })()}
 
       {(actividad.aprendizaje_esperado || unidadDeActividad?.unidad_competencia) && (
-        <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
           {unidadDeActividad?.unidad_competencia && (
-            <p className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-500">
-              <Target className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-              {unidadDeActividad.unidad_competencia}
-            </p>
+            <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} compacto />
           )}
           {actividad.aprendizaje_esperado && (
-            <p className="text-sm text-slate-700 dark:text-slate-300">
-              <span className="font-medium text-slate-900 dark:text-slate-50">Aprendizaje esperado: </span>
-              {actividad.aprendizaje_esperado}
-            </p>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
+                Aprendizaje esperado — lo que esta actividad busca que logres
+              </p>
+              <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-300">
+                {actividad.aprendizaje_esperado}
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -255,12 +249,8 @@ export default async function ActividadEstudiante({
       )}
 
       {entregaExistente && (
-        <Reflexion
-          actividadId={actividad.id}
-          estudianteId={estudiante.id}
-          textoPrevio={reflexionExistente?.texto}
-          prediccionTexto={prediccionExistente?.texto}
-          confianzaPrevia={prediccionExistente?.confianza ?? null}
+        <CalibracionConfianza
+          confianza={prediccionExistente?.confianza ?? null}
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}

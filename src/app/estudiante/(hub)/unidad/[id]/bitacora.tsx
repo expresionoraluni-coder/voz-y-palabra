@@ -8,6 +8,7 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 
 export default function Bitacora({
   estudianteId,
@@ -75,9 +76,7 @@ export default function Bitacora({
             ¿Qué aprendizaje esperas alcanzar en esta unidad?
           </p>
         </div>
-        {unidadCompetencia && (
-          <p className="text-xs text-slate-500 dark:text-slate-500">{unidadCompetencia}</p>
-        )}
+        {unidadCompetencia && <UnidadCompetenciaTag texto={unidadCompetencia} compacto />}
         <form onSubmit={guardarMeta} className="flex flex-col gap-3">
           <Field>
             <Label htmlFor="verbo">Verbo</Label>

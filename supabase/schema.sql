@@ -1292,3 +1292,81 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       código, no ameritó build completo). Datos de prueba limpiados y NIP
 --       de la cuenta de prueba usada reiniciado al mismo estado base que
 --       las demás.
+--
+-- 33. Reflexión pasa de ser por actividad a ser por unidad, y UC/AE ganan
+--     etiquetas visibles — pedido explícito del usuario tras cerrar las
+--     Fases A-G ("recuerda que hay una sola reflexión, una por unidad, se
+--     da al inicio y al final; el de las actividades es de seguridad"):
+--     - Antes: cada una de las 25 actividades pedía, al terminarla, una
+--       reflexión abierta ("¿qué fue lo más difícil de este ejercicio?",
+--       reflexion.tsx, momento='cierre', actividad_id set). El nivel de
+--       unidad solo tenía confianza numérica (autoevaluaciones_confianza,
+--       inicio/cierre) y la bitácora de meta (solo inicio). No había
+--       ninguna reflexión abierta a nivel unidad.
+--     - Ahora: reflexion.tsx se eliminó por completo. En su lugar,
+--       calibracion-confianza.tsx (nuevo, sin estado ni guardado) muestra
+--       automáticamente un mensaje de calibración confianza-vs-puntaje bajo
+--       la actividad cuando ambos datos existen (solo aplica a los tipos
+--       auto-calificados: clasificacion, etiquetado_texto) — sin pedir
+--       nada, es puramente informativo ("seguridad", no "reflexión").
+--       reflexion-cierre.tsx (nuevo, en unidad/[id]/) pide una reflexión
+--       abierta real ("¿qué aprendiste? ¿lograste lo que dijiste en tu
+--       bitácora?") una sola vez, cuando la unidad llega a 100% — hace
+--       pareja con bitacora.tsx (que ya cubría el "inicio": "¿qué
+--       aprendizaje esperas alcanzar?"). Reusa reflexiones.unidad_id, que
+--       ya existía en el esquema (agregado en un changelog de índices
+--       anterior) pero nunca se había usado — actividad_id queda null en
+--       estas filas nuevas.
+--     - Migración: nueva constraint reflexiones_unica_por_unidad UNIQUE
+--       (estudiante_id, unidad_id, momento) — la constraint vieja
+--       (estudiante_id, actividad_id, momento) no sirve para el upsert de
+--       las filas nuevas porque actividad_id es null ahí (NULL≠NULL en un
+--       UNIQUE de Postgres). Las dos constraints conviven sin pisarse:
+--       cada fila solo hace match contra la que le corresponde según cuál
+--       de las dos columnas trae valor.
+--     - verificar_insignias() actualizado: 'Primera reflexión'/'Mente
+--       reflexiva' ahora cuentan reflexiones con unidad_id not null (antes
+--       contaban actividad_id). Con solo 3 unidades en todo el curso, el
+--       máximo de reflexiones de cierre pasó de 25 a 3 — el umbral de
+--       'Mente reflexiva' bajó de 5 a 3 (alcanzable: reflexionar al cerrar
+--       las 3 unidades) y sus descripciones en insignias se actualizaron
+--       para no mencionar "actividad"/"5".
+--     - Efecto secundario aceptado, no corregido: DIEGO RAMIREZ (5) e ISMA
+--       (1) ya tenían reflexiones de cierre viejas por actividad en
+--       producción antes de este cambio — esas filas NO se borraron (no es
+--       dato de prueba), pero portafolio y la ficha de la docente ya no
+--       las muestran porque ahora buscan unidad_id not null en vez de
+--       actividad_id not null. Es un cambio de visualización, no de datos.
+--     - portafolio/page.tsx y docente/estudiantes/[id]/page.tsx
+--       actualizados para consultar/mostrar la reflexión una vez por
+--       unidad (antes: repetida bajo cada tarjeta de actividad completada).
+--     - UC/AE sin etiqueta visible, punto aparte del mismo pedido ("que se
+--       entienda que es una UC y un AE"): unidad_competencia se mostraba
+--       como texto suelto sin ningún rótulo en las 4 pantallas donde
+--       aparece (unidad/[id], actividad/[id], confianza.tsx, bitacora.tsx)
+--       — un estudiante de 15 años no tenía forma de saber qué era esa
+--       oración. Nuevo componente compartido
+--       components/ui/unidad-competencia-tag.tsx con dos variantes: la
+--       versión completa (solo en el banner de unidad/[id]) trae un
+--       eyebrow "UNIDAD DE COMPETENCIA — LO QUE VAS A DOMINAR AL TERMINAR
+--       ESTA UNIDAD"; la versión compacta (actividad/[id], confianza.tsx,
+--       bitacora.tsx) solo antepone "Unidad de competencia: " en línea,
+--       para no repetir la explicación completa cada vez que ya se vio una
+--       vez en la unidad. El bloque de "Aprendizaje esperado" en
+--       actividad/[id] recibió el mismo tratamiento de eyebrow explicativo
+--       ("APRENDIZAJE ESPERADO — LO QUE ESTA ACTIVIDAD BUSCA QUE LOGRES"),
+--       ya que ahí sí cambia de contenido en cada actividad.
+--     - Verificado en vivo de punta a punta con las 5 actividades de
+--       Unidad 3: el mensaje de calibración aparece correctamente después
+--       de las auto-calificadas (13/15 y "bien calibrada") y NO aparece
+--       después de las de opción-justificación/comparador (sin
+--       puntaje_auto, como se esperaba); al completar la unidad aparecen
+--       los dos gates de cierre (confianza + reflexión) junto a los
+--       eyebrows de UC/AE ya legibles; se guardó la reflexión de cierre,
+--       se confirmó el estado "Cambiar" de solo lectura, y se otorgaron
+--       correctamente las insignias "Unidad 3 completa" y "Primera
+--       reflexión" (verificar_insignias() sin errores). Portafolio y ficha
+--       de la docente muestran la reflexión una sola vez, con el nombre de
+--       la unidad en vez del título de una actividad. Typecheck y build
+--       limpios. Datos de prueba limpiados; NIP de la cuenta de prueba
+--       usada reiniciado al mismo estado base que las demás.
