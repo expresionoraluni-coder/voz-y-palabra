@@ -1791,3 +1791,23 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       por consulta: 0 filas) y la página volvió a mostrar la pantalla
 --       de confianza desde cero. Typecheck y build limpios. Datos de
 --       prueba limpiados.
+--
+-- 47. Fase U — "Coherencia" menos obvia + pulido del chat:
+--     - "Coherencia global del texto": los 3 distractores (antes: mole/
+--       sushi, viajar, cifras de turismo — de un tema totalmente distinto
+--       a interculturalidad, se resolvía "por tema" sin leer) se
+--       reescribieron del MISMO tema (políticas de lenguas indígenas,
+--       globalización laboral, bilingüismo y memoria) pero sin encajar en
+--       la secuencia lógica de las 3 correctas — ahora exige leer el
+--       argumento, no solo detectar el tema ajeno. orden_correcto
+--       recalculado para los nuevos índices; instrucciones actualizadas.
+--       Sin cambios de código (mismo componente ordenar-fragmentos.tsx de
+--       la Fase M).
+--     - "El circuito de la comunicación" (HiloChat, dentro de
+--       opcion-justificacion.tsx): pulido visual agregado de paso durante
+--       la Fase S — cada burbuja ahora lleva un avatar circular con la
+--       inicial del remitente (Ana/Luis) y sombra sutil, en vez de solo
+--       texto plano.
+--     - Verificado en vivo con estudiante QA temporal: los 6 fragmentos
+--       de "Coherencia" se ven todos sobre el mismo tema (interculturalidad/
+--       lenguas/globalización), sin distractor obviamente ajeno.
