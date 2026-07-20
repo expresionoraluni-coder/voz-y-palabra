@@ -106,7 +106,6 @@ export default async function UnidadEstudiante({
   ]);
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
-  const confianzaCierre = confianzas?.find((c) => c.momento === "cierre");
 
   const totalActividades = actividades?.length ?? 0;
   const completadas =
@@ -115,6 +114,18 @@ export default async function UnidadEstudiante({
   const unidadCompleta = totalActividades > 0 && completadas === totalActividades;
   const pct = totalActividades > 0 ? Math.round((completadas / totalActividades) * 100) : 0;
   const tema = temaUnidad(unidad.orden);
+
+  // Desempeño real de la unidad, para comparar contra la confianza inicial
+  // en la reflexión de cierre — se deriva de las mismas entregas ya traídas
+  // arriba, sin consulta nueva (solo cuentan las que sí se autocalifican).
+  const puntajesAuto = (actividades ?? [])
+    .flatMap((a) => (Array.isArray(a.entregas) ? a.entregas : []))
+    .map((e) => e.puntaje_auto)
+    .filter((p): p is number => p != null);
+  const promedioUnidad =
+    puntajesAuto.length > 0
+      ? Math.round(puntajesAuto.reduce((suma, p) => suma + p, 0) / puntajesAuto.length)
+      : null;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
@@ -145,9 +156,7 @@ export default async function UnidadEstudiante({
         unidadCompetencia={unidad.unidad_competencia}
       />
 
-      {!confianzaInicio && (
-        <Confianza estudianteId={estudiante.id} unidadId={id} momento="inicio" />
-      )}
+      {!confianzaInicio && <Confianza estudianteId={estudiante.id} unidadId={id} />}
 
       {!actividades || actividades.length === 0 ? (
         <EmptyState
@@ -209,27 +218,15 @@ export default async function UnidadEstudiante({
         </div>
       )}
 
-      {unidadCompleta && !confianzaCierre && (
-        <Confianza estudianteId={estudiante.id} unidadId={id} momento="cierre" />
-      )}
-
       {unidadCompleta && (
         <ReflexionCierre
           estudianteId={estudiante.id}
           unidadId={id}
           metaPrevia={bitacora?.meta ?? null}
           textoPrevio={reflexionCierre?.texto ?? null}
+          confianzaInicioPct={confianzaInicio?.valor ?? null}
+          promedioUnidad={promedioUnidad}
         />
-      )}
-
-      {confianzaInicio && confianzaCierre && (
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/40">
-          <TrendingUp className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          <p className="text-sm text-slate-700 dark:text-slate-300">
-            Tu confianza pasó de <strong className="text-slate-900 dark:text-slate-50">{confianzaInicio.valor}%</strong> a{" "}
-            <strong className="text-slate-900 dark:text-slate-50">{confianzaCierre.valor}%</strong> en esta unidad.
-          </p>
-        </div>
       )}
     </div>
   );

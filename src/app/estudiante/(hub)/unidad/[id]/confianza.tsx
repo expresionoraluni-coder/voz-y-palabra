@@ -12,11 +12,9 @@ import Boton from "@/components/ui/button";
 export default function Confianza({
   estudianteId,
   unidadId,
-  momento,
 }: {
   estudianteId: string;
   unidadId: string;
-  momento: "inicio" | "cierre";
 }) {
   const router = useRouter();
   const [valor, setValor] = useState(50);
@@ -28,7 +26,7 @@ export default function Confianza({
     setCargando(true);
     const supabase = createClient();
     const { error: upsertError } = await supabase.from("autoevaluaciones_confianza").upsert(
-      { estudiante_id: estudianteId, unidad_id: unidadId, momento, valor },
+      { estudiante_id: estudianteId, unidad_id: unidadId, momento: "inicio", valor },
       { onConflict: "estudiante_id,unidad_id,momento" },
     );
     if (upsertError) {
@@ -45,9 +43,7 @@ export default function Confianza({
       <div className="flex items-center gap-2">
         <Gauge className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-          {momento === "inicio"
-            ? "Antes de empezar: ¿qué tan seguro estás de poder dominar esta unidad?"
-            : "Terminaste la unidad: ¿qué tan seguro estás de haberla dominado?"}
+          Antes de empezar: ¿qué tan seguro estás de poder dominar esta unidad?
         </p>
       </div>
       <div className="flex items-center gap-3">

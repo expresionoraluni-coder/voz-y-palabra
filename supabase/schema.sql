@@ -1865,3 +1865,41 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       muestra los 4 mensajes con avatares y el divisor "unos minutos
 --       después"; la actividad llega hasta "Pregunta 9 de 9" navegando
 --       con "Siguiente". Datos de prueba limpiados.
+--
+-- 50. Fase X — reflexión de cierre de unidad, calibrada por desempeño real
+--     (deja de repetir la pregunta de seguridad del inicio; solo cambios
+--     de código, sin migración de contenido):
+--     - src/lib/calibracion-confianza.ts: se extrajo el núcleo de
+--       casoCalibracion a una función interna basada en porcentajes
+--       (casoCalibracionPct), reutilizada por casoCalibracion (nivel
+--       actividad, convierte 1-5 a %) y por dos funciones nuevas a nivel
+--       unidad que ya reciben porcentaje directo (autoevaluaciones_
+--       confianza.valor es 0-100): mensajeCalibracionUnidad y
+--       placeholderReflexionUnidad, con copy de estrategia de estudio en
+--       vez de dificultad puntual de una actividad.
+--     - unidad/[id]/page.tsx: se quitó el segundo <Confianza
+--       momento="cierre"> (ya no se vuelve a preguntar seguridad al
+--       final) y el resumen viejo "tu confianza pasó de X% a Y%". El
+--       promedio real de desempeño de la unidad (promedioUnidad) se
+--       calcula de los mismos datos que la página ya trae
+--       (actividades[].entregas[].puntaje_auto, usado para el gating de
+--       nivel 2) — sin consulta nueva.
+--     - confianza.tsx: se quitó el prop `momento` (solo queda "inicio",
+--       hardcodeado); autoevaluaciones_confianza.momento='cierre' deja de
+--       escribirse desde aquí (las filas viejas, si las hay, ya no se
+--       leen — sin necesidad de migración).
+--     - reflexion-cierre.tsx: ganó props confianzaInicioPct/
+--       promedioUnidad; muestra el mensaje de mensajeCalibracionUnidad
+--       (si hay datos) arriba del formulario —tanto en el estado
+--       colapsado como en el de edición— y el placeholder del Textarea
+--       usa placeholderReflexionUnidad, mismo patrón visual que
+--       reflexion-actividad.tsx (Fase J).
+--     - Verificado en vivo con estudiante QA temporal (datos de entregas
+--       y confianza insertados directo por SQL, sin rehacer las 13
+--       actividades de Unidad 1 a mano): caso sobreconfianza (confianza
+--       inicial 90%, promedio real 40%) mostró "...te confiaste de más"
+--       y el placeholder de estrategia correspondiente; caso bien
+--       calibrado (75% vs. 80%) mostró "...estuvo bien calibrada con tu
+--       resultado promedio". Ningún caso mostró la pregunta de seguridad
+--       repetida al final. Datos de prueba limpiados (entregas,
+--       reflexiones, autoevaluaciones_confianza, estudiante, auth.users).
