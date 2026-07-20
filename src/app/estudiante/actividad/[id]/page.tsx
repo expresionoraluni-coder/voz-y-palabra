@@ -18,6 +18,7 @@ import ActividadPostEntrega from "./actividad-post-entrega";
 import Prediccion from "./prediccion";
 import GrabacionRubrica from "./grabacion-rubrica";
 import OrdenarFragmentos from "./ordenar-fragmentos";
+import EvaluarVideos from "./evaluar-videos";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -29,6 +30,7 @@ const TIPOS_CONSTRUIDOS = [
   "constructor_ramificado",
   "grabacion_rubrica",
   "ordenar_fragmentos",
+  "evaluar_videos",
 ];
 
 export default async function ActividadEstudiante({
@@ -273,6 +275,21 @@ export default async function ActividadEstudiante({
             }
           }
           respuestaPrevia={respuesta as { orden: number[] } | undefined}
+        />
+      )}
+      {nombreTipo === "evaluar_videos" && (
+        <EvaluarVideos
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              intro?: string | null;
+              cualidades: string[];
+              video_bien: { url: string | null; presentes: string[] };
+              video_mal: { url: string | null; ausentes: string[] };
+            }
+          }
+          respuestaPrevia={respuesta as { marcadas_bien: string[]; marcadas_mal: string[] } | undefined}
         />
       )}
       {nombreTipo === "grabacion_rubrica" && (

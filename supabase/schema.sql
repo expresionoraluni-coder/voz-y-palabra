@@ -1968,3 +1968,54 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       opciones por fragmento. Los textos se leyeron como narrativas
 --       coherentes, no como listas de oraciones sueltas. Datos de
 --       prueba limpiados.
+--
+-- 52. Fase Z — "Cualidades internas y externas de la exposición oral"
+--     rediseñada: evaluar dos videos en vez de clasificar 15 conceptos:
+--     - Nuevo tipo `evaluar_videos` (insertado en tipos_actividad).
+--       Contenido: { intro?, cualidades: string[], video_bien: { url,
+--       presentes: string[] }, video_mal: { url, ausentes: string[] } }.
+--       Respuesta: { marcadas_bien: string[], marcadas_mal: string[] }.
+--       Calificación: coincidencia binaria por cualidad y por video (¿el
+--       estado marcado — sí/no — coincide con el correcto?), sumada y
+--       dividida entre cualidades.length × 2 — dar 5 de 6 correctas suma
+--       parcial, no es todo-o-nada por conjunto completo.
+--     - Nuevo componente src/app/estudiante/actividad/[id]/evaluar-videos.tsx:
+--       dos bloques (Video A "sí respeta las cualidades" / Video B "no
+--       las respeta"), cada uno con su embed de YouTube (urlEmbedYoutube)
+--       o un EmptyState "Video próximamente" si `url` es null, seguido de
+--       un checklist de las `cualidades` para marcar cuáles identifica en
+--       ESE video. Al enviar, se bloquea y se muestra ✓/✗ por cualidad y
+--       por video (mismo patrón visual que clasificacion.tsx).
+--     - actividad/[id]/page.tsx: agregado a TIPOS_CONSTRUIDOS y al
+--       switch. lib/tipo-actividad-icono.ts: ícono Video para el tipo.
+--     - actividad-form.tsx: nueva sección de autoría — intro, textarea de
+--       cualidades (una por línea), URL + checklist de "cuáles cualidades
+--       sí demuestra" para el Video A, URL + checklist de "cuáles le
+--       hacen falta" para el Video B (mismo patrón de checklist ya usado
+--       en redaccion_checklist, ahora reutilizable porque las cualidades
+--       pasan por el mismo parser `lineas()` que el resto de campos "uno
+--       por línea"). Persistencia de borrador extendida con los 6 campos
+--       nuevos.
+--     - Migración de contenido: "Cualidades internas y externas de la
+--       exposición oral" cambia tipo_id a evaluar_videos, con 8
+--       cualidades (subconjunto de las 15 originales) y AMBOS
+--       video_bien.url/video_mal.url en null — no hay videos reales
+--       todavía, y no se debe inventar ninguna URL. Por la misma razón,
+--       video_bien.presentes y video_mal.ausentes quedan como arrays
+--       vacíos: no se puede afirmar qué cualidades demuestra o le faltan
+--       a un video que no existe. **Pendiente para la docente**: una vez
+--       que suba los 2 videos reales, tiene que volver a esta actividad
+--       en su panel y marcar manualmente, viéndolos, cuáles cualidades sí
+--       demuestra el Video A y cuáles le faltan al Video B — mientras
+--       tanto, con ambos conjuntos vacíos, la actividad califica 100% a
+--       cualquiera que no marque nada (matemáticamente correcto pero
+--       pedagógicamente vacío hasta que se complete).
+--     - Verificado en vivo con estudiante QA temporal: la actividad
+--       muestra los 2 bloques con "Video próximamente" y sus checklists;
+--       al enviar sin marcar nada, calificó 100% (consistente con los
+--       conjuntos correctos vacíos). Verificado también en vivo con la
+--       cuenta de revisión de la docente: el formulario de edición
+--       carga el tipo "evaluar_videos", las 8 cualidades y ambos
+--       checklists correctamente pre-llenados (ninguno marcado); no se
+--       guardaron cambios durante la verificación. Datos de prueba
+--       limpiados.

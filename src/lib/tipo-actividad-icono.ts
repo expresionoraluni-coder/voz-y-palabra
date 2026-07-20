@@ -8,6 +8,7 @@ import {
   Workflow,
   Mic,
   ArrowUpDown,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -21,4 +22,5 @@ export const ICONO_TIPO: Record<string, LucideIcon> = {
   constructor_ramificado: Workflow,
   grabacion_rubrica: Mic,
   ordenar_fragmentos: ArrowUpDown,
+  evaluar_videos: Video,
 };

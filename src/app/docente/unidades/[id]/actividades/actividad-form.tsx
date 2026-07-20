@@ -37,6 +37,7 @@ const TIPOS_DISPONIBLES = [
   "constructor_ramificado",
   "grabacion_rubrica",
   "ordenar_fragmentos",
+  "evaluar_videos",
 ];
 
 function lineas(texto: string): string[] {
@@ -195,6 +196,13 @@ export default function ActividadForm({
       : "",
   );
 
+  const [introVideos, setIntroVideos] = useState(c.intro ?? "");
+  const [cualidadesEV, setCualidadesEV] = useState((c.cualidades ?? []).join("\n"));
+  const [videoBienUrl, setVideoBienUrl] = useState(c.video_bien?.url ?? "");
+  const [videoBienPresentes, setVideoBienPresentes] = useState<string[]>(c.video_bien?.presentes ?? []);
+  const [videoMalUrl, setVideoMalUrl] = useState(c.video_mal?.url ?? "");
+  const [videoMalAusentes, setVideoMalAusentes] = useState<string[]>(c.video_mal?.ausentes ?? []);
+
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
@@ -262,6 +270,12 @@ export default function ActividadForm({
       if (datos.distractoresOF) setDistractoresOF(datos.distractoresOF);
       if (datos.bancoRespuestasComp) setBancoRespuestasComp(datos.bancoRespuestasComp);
       if (datos.celdaCorrectaMapa) setCeldaCorrectaMapa(datos.celdaCorrectaMapa);
+      if (datos.introVideos) setIntroVideos(datos.introVideos);
+      if (datos.cualidadesEV) setCualidadesEV(datos.cualidadesEV);
+      if (datos.videoBienUrl) setVideoBienUrl(datos.videoBienUrl);
+      if (datos.videoBienPresentes) setVideoBienPresentes(datos.videoBienPresentes);
+      if (datos.videoMalUrl) setVideoMalUrl(datos.videoMalUrl);
+      if (datos.videoMalAusentes) setVideoMalAusentes(datos.videoMalAusentes);
       setBorradorRestaurado(true);
       // eslint-disable-next-line no-empty
     } catch {}
@@ -308,6 +322,12 @@ export default function ActividadForm({
       distractoresOF,
       bancoRespuestasComp,
       celdaCorrectaMapa,
+      introVideos,
+      cualidadesEV,
+      videoBienUrl,
+      videoBienPresentes,
+      videoMalUrl,
+      videoMalAusentes,
     };
     try {
       localStorage.setItem(claveBorrador(unidadId), JSON.stringify(datos));
@@ -354,6 +374,12 @@ export default function ActividadForm({
     distractoresOF,
     bancoRespuestasComp,
     celdaCorrectaMapa,
+    introVideos,
+    cualidadesEV,
+    videoBienUrl,
+    videoBienPresentes,
+    videoMalUrl,
+    videoMalAusentes,
   ]);
 
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
@@ -365,6 +391,7 @@ export default function ActividadForm({
   const listaConceptosComp = lineas(conceptos);
   const listaCriteriosComp = lineas(criterios);
   const listaBancoComp = lineas(bancoRespuestasComp);
+  const listaCualidadesEV = lineas(cualidadesEV);
 
   function actualizarFila(
     filas: FilaAsignacion[],
@@ -373,6 +400,10 @@ export default function ActividadForm({
     cambios: Partial<FilaAsignacion>,
   ) {
     set(filas.map((f, idx) => (idx === i ? { ...f, ...cambios } : f)));
+  }
+
+  function alternarCualidad(lista: string[], set: (v: string[]) => void, cualidad: string) {
+    set(lista.includes(cualidad) ? lista.filter((c) => c !== cualidad) : [...lista, cualidad]);
   }
 
   function actualizarRonda(i: number, cambios: Partial<RondaEditor>) {
@@ -595,6 +626,24 @@ export default function ActividadForm({
         fragmentos: fragmentosMezclados,
         orden_correcto: ordenCorrecto,
       };
+    } else if (nombreTipo === "evaluar_videos") {
+      const listaCualidades = lineas(cualidadesEV);
+      if (listaCualidades.length < 3) {
+        setError("Escribe al menos 3 cualidades a evaluar, una por línea.");
+        return;
+      }
+      contenido = {
+        intro: introVideos.trim() || null,
+        cualidades: listaCualidades,
+        video_bien: {
+          url: videoBienUrl.trim() || null,
+          presentes: videoBienPresentes.filter((c) => listaCualidades.includes(c)),
+        },
+        video_mal: {
+          url: videoMalUrl.trim() || null,
+          ausentes: videoMalAusentes.filter((c) => listaCualidades.includes(c)),
+        },
+      };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -778,7 +827,8 @@ export default function ActividadForm({
                 Este tipo estará disponible en una fase próxima. Por ahora puedes crear
                 &quot;opcion_justificacion&quot;, &quot;clasificacion&quot;, &quot;encontrar_corregir&quot;,
                 &quot;comparador&quot;, &quot;redaccion_checklist&quot;, &quot;etiquetado_texto&quot;,
-                &quot;constructor_ramificado&quot;, &quot;grabacion_rubrica&quot; u &quot;ordenar_fragmentos&quot;.
+                &quot;constructor_ramificado&quot;, &quot;grabacion_rubrica&quot;, &quot;ordenar_fragmentos&quot; u
+                &quot;evaluar_videos&quot;.
               </HelpText>
             )}
           </Field>
@@ -1420,6 +1470,93 @@ export default function ActividadForm({
                     Fragmentos que NO pertenecen a la secuencia — el estudiante debe dejarlos fuera.
                   </HelpText>
                 </Field>
+              </>
+            )}
+
+            {nombreTipo === "evaluar_videos" && (
+              <>
+                <Field>
+                  <Label htmlFor="introVideos">Introducción (opcional)</Label>
+                  <Textarea
+                    id="introVideos"
+                    value={introVideos}
+                    onChange={(e) => setIntroVideos(e.target.value)}
+                    rows={2}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="cualidadesEV">Cualidades a evaluar (una por línea)</Label>
+                  <Textarea
+                    id="cualidadesEV"
+                    required
+                    value={cualidadesEV}
+                    onChange={(e) => setCualidadesEV(e.target.value)}
+                    rows={5}
+                    placeholder={"Volumen\nDicción\nContacto visual\nOrganización de las ideas"}
+                    className="font-mono text-sm"
+                  />
+                  <ContadorLineas texto={cualidadesEV} singular="cualidad" plural="cualidades" />
+                </Field>
+                <Field>
+                  <Label htmlFor="videoBienUrl">Video A — URL (respeta las cualidades)</Label>
+                  <Input
+                    id="videoBienUrl"
+                    type="url"
+                    value={videoBienUrl}
+                    onChange={(e) => setVideoBienUrl(e.target.value)}
+                    placeholder="https://youtube.com/..."
+                  />
+                  <HelpText>
+                    Si todavía no tienes el video, déjalo vacío — el estudiante ve &quot;Video
+                    próximamente&quot; hasta que lo agregues.
+                  </HelpText>
+                </Field>
+                {listaCualidadesEV.length > 0 && (
+                  <Field>
+                    <Label>¿Cuáles cualidades sí demuestra el Video A?</Label>
+                    <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                      {listaCualidadesEV.map((c) => (
+                        <label key={c} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                          <input
+                            type="checkbox"
+                            checked={videoBienPresentes.includes(c)}
+                            onChange={() => alternarCualidad(videoBienPresentes, setVideoBienPresentes, c)}
+                            className="size-4 shrink-0 rounded border-slate-300 accent-indigo-600 dark:border-slate-600"
+                          />
+                          {c}
+                        </label>
+                      ))}
+                    </div>
+                  </Field>
+                )}
+                <Field>
+                  <Label htmlFor="videoMalUrl">Video B — URL (no respeta las cualidades)</Label>
+                  <Input
+                    id="videoMalUrl"
+                    type="url"
+                    value={videoMalUrl}
+                    onChange={(e) => setVideoMalUrl(e.target.value)}
+                    placeholder="https://youtube.com/..."
+                  />
+                </Field>
+                {listaCualidadesEV.length > 0 && (
+                  <Field>
+                    <Label>¿Cuáles cualidades le hacen falta al Video B?</Label>
+                    <div className="flex flex-col gap-1.5 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                      {listaCualidadesEV.map((c) => (
+                        <label key={c} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                          <input
+                            type="checkbox"
+                            checked={videoMalAusentes.includes(c)}
+                            onChange={() => alternarCualidad(videoMalAusentes, setVideoMalAusentes, c)}
+                            className="size-4 shrink-0 rounded border-slate-300 accent-indigo-600 dark:border-slate-600"
+                          />
+                          {c}
+                        </label>
+                      ))}
+                    </div>
+                  </Field>
+                )}
               </>
             )}
           </Card>
