@@ -2310,3 +2310,41 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       para reintentar. Después se completó el flujo normal (texto
 --       corregido perfecto) y calificó correctamente: "0 errores de 71
 --       palabras". Cuenta QA eliminada al terminar.
+--
+-- 58. Sexta observación: textos de ortografía más largos y sobre
+--     autorregulación/metacognición/autonomía + video en TODAS las
+--     actividades (incluso ya resueltas).
+--     - Contenido: los 4 textos de `corregir_ortografia` se reescribieron
+--       de ~40-70 palabras a 118-131 palabras cada uno, y cambiaron de
+--       tema genérico (hábitos de estudio, proyectos escolares) a los
+--       tres ejes que la propia app promueve: "Mayúsculas y minúsculas"
+--       trata sobre planificar el estudio (autorregulación),
+--       "+ Acentuación" sobre monitorear la propia comprensión
+--       (metacognición), "+ Letras que se confunden" sobre ajustar la
+--       estrategia tras evaluarse (autorregulación en la ejecución), y
+--       "Repaso integrador" cierra con autonomía del aprendizaje. Los
+--       textos_incorrecto se generaron con un script Node desechable que
+--       reutiliza la MISMA lógica de tokenizar/quitarPuntuacionBorde de
+--       `comparar-ortografia.ts`, para garantizar mecánicamente que
+--       texto_correcto y texto_incorrecto tengan el mismo número de
+--       palabras en el mismo orden (nunca a mano) — verificado antes de
+--       subir a la base: 9, 28, 27 y 28 errores sembrados respectivamente
+--       (todos muy por encima del máximo aceptable de 5). Las 4 entregas
+--       de la cuenta de revisión se reemplazaron con los textos_correcto
+--       nuevos (100% cada una).
+--     - Código: `actividad/[id]/page.tsx` — el paso de video (`VideoIntro`)
+--       ya envolvía todo el contenido cuando no había entrega previa
+--       desde la Fase AD4, pero se saltaba para actividades ya resueltas;
+--       como la cuenta de revisión tiene 22 de 23 actividades completadas,
+--       en la práctica el video nunca aparecía al revisar. Se quitó la
+--       condición `!entregaExistente`: ahora `VideoIntro` envuelve
+--       siempre el contenido, sin importar si ya hay entrega — quien ya
+--       resolvió ve el mismo paso de video (o "Video próximamente") con
+--       un botón "Continuar" antes de ver su resultado.
+--     - Verificado en vivo con estudiante QA temporal: se sembró una
+--       entrega en "Mayúsculas y minúsculas" y se confirmó que el video
+--       aparece igual que en una actividad sin entregar; se completó
+--       "+ Acentuación" (sin entrega previa) con el texto nuevo de 120
+--       palabras perfectamente corregido → "0 errores de 120 palabras" y
+--       calibración de confianza correcta. Typecheck y build limpios.
+--       Cuenta QA eliminada al terminar.

@@ -469,13 +469,9 @@ export default async function ActividadEstudiante({
         }
       />
 
-      {!entregaExistente ? (
-        <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
-          {contenidoActividad}
-        </VideoIntro>
-      ) : (
-        contenidoActividad
-      )}
+      <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
+        {contenidoActividad}
+      </VideoIntro>
     </div>
   );
 }
