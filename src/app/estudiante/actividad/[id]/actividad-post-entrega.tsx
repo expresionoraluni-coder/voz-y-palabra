@@ -4,7 +4,19 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import Boton from "@/components/ui/button";
 import ReflexionActividad from "./reflexion-actividad";
+import CelebracionUnidad from "./celebracion-unidad";
 import { useEntregaReciente } from "@/lib/entrega-reciente-context";
+
+type UnidadCompletada = {
+  unidadId: string;
+  mensajeCelebracion: string;
+  metaPrevia: string | null;
+  textoReflexionCierrePrevio: string | null;
+  confianzaInicioPct: number | null;
+  promedioUnidad: number | null;
+  siguienteHref: string;
+  textoSiguiente: string;
+};
 
 // Su visibilidad depende del contexto (cliente), no de props del servidor,
 // a propósito: así aparece al instante justo tras guardar, sin esperar el
@@ -17,6 +29,7 @@ export default function ActividadPostEntrega({
   siguienteHref,
   textoSiguiente,
   placeholderReflexionPersonalizado,
+  unidadCompletada,
 }: {
   actividadId: string;
   estudianteId: string;
@@ -25,6 +38,7 @@ export default function ActividadPostEntrega({
   siguienteHref: string;
   textoSiguiente: string;
   placeholderReflexionPersonalizado?: string;
+  unidadCompletada?: UnidadCompletada | null;
 }) {
   const { entregaReciente } = useEntregaReciente();
   if (!entregaReciente) return null;
@@ -39,12 +53,26 @@ export default function ActividadPostEntrega({
         textoPrevio={textoReflexionPrevio}
         placeholderPersonalizado={placeholderReflexionPersonalizado}
       />
-      <Link href={siguienteHref}>
-        <Boton type="button" className="w-full">
-          {textoSiguiente}
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </Boton>
-      </Link>
+      {unidadCompletada ? (
+        <CelebracionUnidad
+          estudianteId={estudianteId}
+          unidadId={unidadCompletada.unidadId}
+          mensajeCelebracion={unidadCompletada.mensajeCelebracion}
+          metaPrevia={unidadCompletada.metaPrevia}
+          textoReflexionCierrePrevio={unidadCompletada.textoReflexionCierrePrevio}
+          confianzaInicioPct={unidadCompletada.confianzaInicioPct}
+          promedioUnidad={unidadCompletada.promedioUnidad}
+          siguienteHref={unidadCompletada.siguienteHref}
+          textoSiguiente={unidadCompletada.textoSiguiente}
+        />
+      ) : (
+        <Link href={siguienteHref}>
+          <Boton type="button" className="w-full">
+            {textoSiguiente}
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Boton>
+        </Link>
+      )}
     </>
   );
 }

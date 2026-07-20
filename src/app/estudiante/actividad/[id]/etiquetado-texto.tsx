@@ -72,38 +72,41 @@ export default function EtiquetadoTexto({
         <p className="text-sm text-slate-500 dark:text-slate-500">{contenido.contexto}</p>
       )}
       {contenido.en_linea ? (
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-3 rounded-xl border border-slate-200 px-4 py-3.5 text-sm leading-loose text-slate-900 dark:border-slate-800 dark:text-slate-50">
+        // Flujo de texto normal (nada de flex): así el navegador ajusta
+        // línea por línea igual que un párrafo cualquiera. Con flexbox,
+        // cada fragmento (a veces una oración larga) se centraba como
+        // bloque contra el <select>, y el <select> terminaba flotando a
+        // medio párrafo cuando el texto ocupaba más de una línea — el
+        // "todo se desalinea" que reportó la usuaria.
+        <p className="rounded-xl border border-slate-200 px-4 py-4 text-sm leading-[2.4] text-slate-900 dark:border-slate-800 dark:text-slate-50">
           {contenido.fragmentos.map((f, i) => (
-            <span key={i} className="inline-flex items-center gap-1">
-              <span>{f.texto}</span>
-              <Select
+            <span key={i}>
+              {f.texto}{" "}
+              <select
                 value={elegidas[i]}
                 disabled={bloqueado}
                 onChange={(e) => actualizar(i, e.target.value)}
-                className="!w-auto !px-1.5 !py-0.5 !text-xs"
+                className={`mx-0.5 rounded-md border-b-2 px-1.5 py-0.5 align-middle text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-default disabled:opacity-100 ${
+                  resultado
+                    ? resultado[i]
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      : "border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                    : "border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300"
+                }`}
               >
                 <option value="">elige</option>
-                {(f.opciones ?? contenido.etiquetas).map((e) => (
-                  <option key={e} value={e}>
-                    {e}
+                {(f.opciones ?? contenido.etiquetas).map((op) => (
+                  <option key={op} value={op}>
+                    {op}
                   </option>
                 ))}
-              </Select>
-              {resultado &&
-                (resultado[i] ? (
-                  <CheckCircle2
-                    className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
-                    <XCircle className="size-4 shrink-0" aria-hidden="true" />
-                    (era: {f.etiqueta_correcta})
-                  </span>
-                ))}
+              </select>
+              {resultado && !resultado[i] && (
+                <span className="ml-1 text-xs text-red-600 dark:text-red-400">(era: {f.etiqueta_correcta})</span>
+              )}{" "}
             </span>
           ))}
-        </div>
+        </p>
       ) : (
         contenido.fragmentos.map((f, i) => (
           <div

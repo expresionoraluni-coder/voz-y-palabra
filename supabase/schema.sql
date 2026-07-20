@@ -2066,3 +2066,66 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       promedio 100% sobre las 4 completadas; "El circuito..." con 9
 --       rondas completas y respuestas correctas verificadas en la
 --       primera y última ronda.
+--
+-- === Quinta ronda de observaciones ===
+--
+-- 54. Fase AB — dos correcciones puntuales pedidas tras revisar en vivo:
+--     - **Desalineación de etiquetado_texto en_linea**: el contenedor
+--       usaba `flex flex-wrap items-center` con cada fragmento como un
+--       `inline-flex` (texto + <select> juntos). Cuando un fragmento era
+--       una oración larga que ocupaba 2-3 líneas, `items-center` centraba
+--       el <select> contra la altura TOTAL del fragmento envuelto, así
+--       que el menú terminaba flotando a medio párrafo en vez de pegado
+--       a la última palabra — exactamente el "todo se desalinea" que
+--       reportó la usuaria, y se notaba mucho más en la Unidad 2 nueva
+--       (Fase Y) por tener textos largos con 8-12 blancos mezclados.
+--       src/app/estudiante/actividad/[id]/etiquetado-texto.tsx: se quitó
+--       el flexbox por completo — ahora es un <p> de flujo normal
+--       (`display: block`) con cada <select> nativo como `inline-block`
+--       dentro del texto, igual que cualquier palabra: el navegador hace
+--       el salto de línea él solo, sin centrado artificial. El <select>
+--       se restyled como chip compacto (borde inferior punteado, fondo
+--       de color) que cambia a verde/rojo una vez calificado, sin el
+--       ícono de check/x que antes competía por espacio en la línea.
+--     - **Reflexión de cierre de unidad no aparecía de inmediato**: antes,
+--       terminar la última actividad de una unidad solo llevaba de vuelta
+--       a la lista de la unidad, donde la reflexión de cierre aparecía
+--       hasta abajo, sin ningún aviso — la usuaria pidió que apareciera
+--       "de inmediato" con un mensaje de felicitación, en el mismo lugar
+--       donde el estudiante termina.
+--       - actividad/[id]/page.tsx: la consulta de `hermanas` ahora trae
+--         también `entregas(puntaje_auto)` de cada actividad de la
+--         unidad; con eso se calcula `unidadRecienCompletada` (esta
+--         entrega existe Y todas las hermanas ya tienen la suya) sin
+--         una consulta aparte. Si es así, se arma un objeto con el
+--         mensaje de felicitación, el promedio real de la unidad (mismo
+--         cálculo que en unidad/[id]/page.tsx), la confianza inicial, la
+--         meta de bitácora, la reflexión de cierre previa (si la hay), y
+--         el link a la unidad siguiente (o a inicio si era la última) —
+--         se pasa como prop `unidadCompletada` a ActividadPostEntrega.
+--       - Nuevo componente celebracion-unidad.tsx: reutiliza
+--         ReflexionCierre (el mismo componente de la Fase X, importado
+--         directo de la carpeta de la unidad) dentro de una tarjeta verde
+--         con ícono de fiesta y el mensaje de felicitación, seguida del
+--         botón "Continuar a Unidad X" (o "Volver al inicio" si era la
+--         última unidad).
+--       - actividad-post-entrega.tsx: cuando recibe `unidadCompletada`,
+--         muestra ese bloque en vez del botón simple "Siguiente
+--         actividad/Volver a la unidad" — la reflexión de la actividad
+--         individual (ReflexionActividad) se sigue mostrando igual,
+--         arriba, sin cambios.
+--       - La página de la unidad (unidad/[id]/page.tsx) no se tocó: sigue
+--         mostrando la reflexión de cierre si se vuelve a visitar más
+--         tarde para editarla, como punto de acceso secundario.
+--     - Verificado en vivo con estudiante QA temporal: se completaron la
+--       Unidad 1 y 4 de las 5 actividades de Unidad 2 por SQL, dejando
+--       "Repaso integrador de ortografía" (el texto con más blancos
+--       mezclados) para resolverla en el navegador — el texto se leyó
+--       de corrido sin saltos raros (confirmado también por estructura
+--       DOM: contenedor `display:block`, cada <select> `inline-block`
+--       con `vertical-align:middle`); al enviar la última actividad, en
+--       la misma página apareció de inmediato "¡Completaste la Unidad 2:
+--       Exposición escrita!" con el mensaje de calibración correcto
+--       ("dijiste sentirte solo 60% seguro, pero tu resultado promedio
+--       fue 100%...") y el botón "Continuar a Unidad 3: Exposición
+--       oral". Datos de prueba limpiados.

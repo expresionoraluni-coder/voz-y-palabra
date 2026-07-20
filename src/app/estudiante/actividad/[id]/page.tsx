@@ -77,34 +77,66 @@ export default async function ActividadEstudiante({
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const modoRedaccion = (actividad.contenido as { modo?: string } | null)?.modo;
 
-  const [{ data: entregaExistente }, { data: prediccionExistente }, { data: reflexionExistente }, { data: hermanas }] =
-    await Promise.all([
-      supabase
-        .from("entregas")
-        .select("respuesta, puntaje_auto")
-        .eq("actividad_id", id)
-        .eq("estudiante_id", estudiante.id)
-        .maybeSingle(),
-      supabase
-        .from("reflexiones")
-        .select("confianza")
-        .eq("actividad_id", id)
-        .eq("estudiante_id", estudiante.id)
-        .eq("momento", "prediccion")
-        .maybeSingle(),
-      supabase
-        .from("reflexiones")
-        .select("texto")
-        .eq("actividad_id", id)
-        .eq("estudiante_id", estudiante.id)
-        .eq("momento", "cierre")
-        .maybeSingle(),
-      supabase
-        .from("actividades")
-        .select("id, orden, requiere_actividad_id")
-        .eq("unidad_id", actividad.unidad_id)
-        .order("orden"),
-    ]);
+  const [
+    { data: entregaExistente },
+    { data: prediccionExistente },
+    { data: reflexionExistente },
+    { data: hermanas },
+    { data: unidades },
+    { data: confianzaInicioUnidad },
+    { data: bitacoraUnidad },
+    { data: reflexionCierreUnidad },
+  ] = await Promise.all([
+    supabase
+      .from("entregas")
+      .select("respuesta, puntaje_auto")
+      .eq("actividad_id", id)
+      .eq("estudiante_id", estudiante.id)
+      .maybeSingle(),
+    supabase
+      .from("reflexiones")
+      .select("confianza")
+      .eq("actividad_id", id)
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "prediccion")
+      .maybeSingle(),
+    supabase
+      .from("reflexiones")
+      .select("texto")
+      .eq("actividad_id", id)
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "cierre")
+      .maybeSingle(),
+    supabase
+      .from("actividades")
+      .select("id, orden, requiere_actividad_id, entregas(puntaje_auto)")
+      .eq("unidad_id", actividad.unidad_id)
+      .order("orden"),
+    // Traídos siempre (son consultas ligeras) para poder armar, sin una
+    // segunda vuelta al servidor, la celebración de "unidad completada" si
+    // esta entrega resultó ser la que faltaba.
+    supabase.from("unidades").select("id, nombre, orden").order("orden"),
+    supabase
+      .from("autoevaluaciones_confianza")
+      .select("valor")
+      .eq("estudiante_id", estudiante.id)
+      .eq("unidad_id", actividad.unidad_id)
+      .eq("momento", "inicio")
+      .maybeSingle(),
+    supabase
+      .from("bitacora")
+      .select("meta")
+      .eq("estudiante_id", estudiante.id)
+      .eq("unidad_id", actividad.unidad_id)
+      .maybeSingle(),
+    supabase
+      .from("reflexiones")
+      .select("texto")
+      .eq("estudiante_id", estudiante.id)
+      .eq("unidad_id", actividad.unidad_id)
+      .eq("momento", "cierre")
+      .maybeSingle(),
+  ]);
 
   const respuesta = entregaExistente?.respuesta;
   const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
@@ -114,6 +146,40 @@ export default async function ActividadEstudiante({
   // el par siga siendo un filtro real y no algo que se memoriza una vez.
   const esDosNiveles =
     !!actividad.requiere_actividad_id || !!hermanas?.some((h) => h.requiere_actividad_id === actividad.id);
+
+  // Si esta entrega fue justo la que le faltaba a la unidad, se abre la
+  // celebración con la reflexión de cierre aquí mismo — la usuaria pidió
+  // que no dependiera de que el estudiante navegue de vuelta a la unidad
+  // por su cuenta para encontrarla.
+  const unidadRecienCompletada =
+    !!entregaExistente && !!hermanas && hermanas.every((h) => Array.isArray(h.entregas) && h.entregas.length > 0);
+  let unidadCompletadaProps = null;
+  if (unidadRecienCompletada) {
+    const unidadActual = unidades?.find((u) => u.id === actividad.unidad_id);
+    const unidadSiguiente = unidadActual ? unidades?.find((u) => u.orden === unidadActual.orden + 1) : undefined;
+    const puntajesAuto = (hermanas ?? [])
+      .flatMap((h) => (Array.isArray(h.entregas) ? h.entregas : []))
+      .map((e) => e.puntaje_auto)
+      .filter((p): p is number => p != null);
+    const promedioUnidad =
+      puntajesAuto.length > 0
+        ? Math.round(puntajesAuto.reduce((suma, p) => suma + p, 0) / puntajesAuto.length)
+        : null;
+    unidadCompletadaProps = {
+      unidadId: actividad.unidad_id,
+      mensajeCelebracion: unidadActual
+        ? `¡Completaste la Unidad ${unidadActual.orden}: ${unidadActual.nombre}!`
+        : "¡Completaste la unidad!",
+      metaPrevia: bitacoraUnidad?.meta ?? null,
+      textoReflexionCierrePrevio: reflexionCierreUnidad?.texto ?? null,
+      confianzaInicioPct: confianzaInicioUnidad?.valor ?? null,
+      promedioUnidad,
+      siguienteHref: unidadSiguiente ? `/estudiante/unidad/${unidadSiguiente.id}` : "/estudiante/inicio",
+      textoSiguiente: unidadSiguiente
+        ? `Continuar a Unidad ${unidadSiguiente.orden}: ${unidadSiguiente.nombre}`
+        : "Volver al inicio",
+    };
+  }
 
   const contenidoActividad = (
     <>
@@ -328,6 +394,7 @@ export default async function ActividadEstudiante({
             ? "¿Qué cambia entre el resumen y la síntesis? ¿Y entre la síntesis y la paráfrasis?"
             : undefined
         }
+        unidadCompletada={unidadCompletadaProps}
       />
       </EntregaRecienteProvider>
     </>
