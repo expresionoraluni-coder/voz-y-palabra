@@ -241,7 +241,7 @@ export default async function ActividadEstudiante({
             actividad.contenido as {
               contexto: string | null;
               etiquetas: string[];
-              fragmentos: { texto: string; etiqueta_correcta: string }[];
+              fragmentos: { texto: string; etiqueta_correcta: string; opciones?: string[] }[];
               en_linea?: boolean;
             }
           }

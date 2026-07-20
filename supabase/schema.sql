@@ -1903,3 +1903,68 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       resultado promedio". Ningún caso mostró la pregunta de seguridad
 --       repetida al final. Datos de prueba limpiados (entregas,
 --       reflexiones, autoevaluaciones_confianza, estudiante, auth.users).
+--
+-- 51. Fase Y — Unidad 2 rediseñada: texto largo con espacios pequeños
+--     incrustados, en 4 actividades de complejidad creciente (en vez de 6
+--     actividades separadas por categoría gramatical):
+--     - src/app/estudiante/actividad/[id]/etiquetado-texto.tsx: el tipo
+--       Fragmento gana `opciones?: string[]` — en modo en_linea, cada
+--       <Select> usa `f.opciones ?? contenido.etiquetas`, así un mismo
+--       texto mezcla blancos de distinta naturaleza (tipo de punto,
+--       mayúscula/minúscula, tilde diacrítica, letra faltante, signo de
+--       puntuación) sin compartir una sola lista global de opciones. Cast
+--       equivalente actualizado en actividad/[id]/page.tsx. Se redujo aún
+--       más el tamaño del <select> en línea (!text-xs !px-1.5 !py-0.5).
+--     - Y2 (UI de autoría en actividad-form.tsx para las opciones por
+--       fragmento) queda PENDIENTE a propósito, documentado aquí: igual
+--       que `en_linea` (sin toggle en el formulario desde la Fase L), las
+--       4 actividades nuevas se autoraron directo por SQL — no bloquea el
+--       resto de la fase.
+--     - Contenido: se reescribieron 4 actividades reusando 4 ids
+--       existentes (para no romper referencias) y cambiando su tipo a
+--       etiquetado_texto donde hacía falta:
+--       · df9b1096 "Uso del punto..." → "Puntuación básica: puntos y
+--         mayúsculas" (orden 1, ya era etiquetado_texto): 8 blancos —
+--         5 de tipo de punto + 3 de mayúscula/minúscula (nombre propio,
+--         día de la semana, nombre de materia — estos 2 últimos
+--         aprovechan la interferencia con el inglés, que si capitaliza
+--         días/meses/materias).
+--       · aaadbd59 "Uso de la coma" → "+ Comas, punto y coma, dos puntos
+--         y signos de pregunta/exclamación" (orden 2, clasificacion →
+--         etiquetado_texto): 8 blancos — 3 de coma sí/no, 3 de punto y
+--         coma/dos puntos/ninguno, 2 de ¿...?/¡...!/ninguno sobre
+--         preguntas y exclamaciones reportadas en diálogo indirecto con
+--         dos puntos (se evitó a propósito la pregunta indirecta con
+--         "si", que en español nunca lleva ¿?).
+--       · 719397f7 "Punto y coma y dos puntos" → "+ Acentuación y letras
+--         que se confunden" (orden 3, clasificacion → etiquetado_texto):
+--         8 blancos — 3 de tilde diacrítica (tu/tú, si/sí usado dos
+--         veces para contrastar sus dos usos en el mismo texto), 3 de
+--         letra faltante (B/V, S/C/Z, G/J, con el guión bajo como blanco
+--         visual, igual que la actividad que reemplaza), 1 de coma y 1
+--         de punto (retomados de las 2 actividades anteriores).
+--       · 02e9a559 "Letras que se confunden..." → "Repaso integrador de
+--         ortografía" (orden 4, clasificacion → etiquetado_texto): único
+--         texto que junta las 9 categorías — puntos, mayúsculas, comas,
+--         punto y coma/dos puntos, tilde, letra, y el bloque de 5 signos
+--         (¿...?/¡...!/comillas/paréntesis/raya de diálogo) que absorbe
+--         el contenido de la actividad de signos que se elimina — 12
+--         blancos en total.
+--     - Se BORRARON 33b25dc0 ("Acentuación: agudas, graves...") y
+--       8f17c10d ("Signos de puntuación: uso y función") — su contenido
+--       queda absorbido en las 4 de arriba. Se limpiaron antes sus
+--       entregas/reflexiones de la cuenta de revisión (solo lo mínimo
+--       para poder borrar por FK; el reseed completo de Unidad 2 es la
+--       Fase AA).
+--     - f289d6f0 "Identifica el modelo expositivo" se renumeró de
+--       orden=7 a orden=5 (sin cambios de contenido) — queda como última
+--       actividad de la unidad, ahora de 5 actividades (antes 7).
+--     - Verificado en vivo con estudiante QA temporal, resolviendo las 4
+--       actividades completas con las respuestas correctas de cada
+--       blanco (calculadas a mano por tipo de decisión): las 4 dieron
+--       puntaje_auto = 100, confirmando que la lógica de calificación
+--       existente de etiquetado_texto (comparación índice a índice)
+--       sigue funcionando sin cambios sobre el contenido nuevo con
+--       opciones por fragmento. Los textos se leyeron como narrativas
+--       coherentes, no como listas de oraciones sueltas. Datos de
+--       prueba limpiados.

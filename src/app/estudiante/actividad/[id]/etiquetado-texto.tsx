@@ -6,7 +6,7 @@ import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
-type Fragmento = { texto: string; etiqueta_correcta: string };
+type Fragmento = { texto: string; etiqueta_correcta: string; opciones?: string[] };
 
 export default function EtiquetadoTexto({
   actividadId,
@@ -80,10 +80,10 @@ export default function EtiquetadoTexto({
                 value={elegidas[i]}
                 disabled={bloqueado}
                 onChange={(e) => actualizar(i, e.target.value)}
-                className="!w-auto !px-2 !py-1 !text-sm"
+                className="!w-auto !px-1.5 !py-0.5 !text-xs"
               >
                 <option value="">elige</option>
-                {contenido.etiquetas.map((e) => (
+                {(f.opciones ?? contenido.etiquetas).map((e) => (
                   <option key={e} value={e}>
                     {e}
                   </option>
