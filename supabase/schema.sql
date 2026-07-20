@@ -2019,3 +2019,50 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       checklists correctamente pre-llenados (ninguno marcado); no se
 --       guardaron cambios durante la verificación. Datos de prueba
 --       limpiados.
+--
+-- 53. Fase AA — reseed de la cuenta de revisión para todo lo cambiado en
+--     las Fases W-Z (sobre ESTUDIANTE DE REVISIÓN, id
+--     1b0c4522-cb9f-4250-9e5f-bfb6a5d553fa):
+--     - Se borraron entregas + reflexiones (momento='prediccion')
+--       desactualizadas de: las 4 actividades de Unidad 2 (df9b1096,
+--       aaadbd59, 719397f7, 02e9a559 — cambiaron de forma en Fase Y),
+--       "El circuito de la comunicación" (9 rondas nuevas, Fase W),
+--       ambas "Técnica ante un escenario" y "Exposición individual vs.
+--       en equipo" (banco nuevo, Fase W). NO se tocó "Identifica el
+--       modelo expositivo" (solo cambió su orden, sin cambio de
+--       contenido) ni "Cualidades..." (ya sin entrega desde la Fase Z).
+--     - Se reinsertaron 8 entregas 100%-correctas + su predicción de
+--       confianza (4/5), derivando la respuesta directo del contenido
+--       de cada actividad por SQL (mismo patrón que la Fase V): para
+--       etiquetado_texto, `elegidas` = etiqueta_correcta de cada
+--       fragmento en orden; para opcion_justificacion, `rondas[].opcion`
+--       = respuesta_correcta de cada ronda; para comparador, `celdas` =
+--       `celda_correcta` directo.
+--     - **Hallazgo importante, no una acción mía**: al revisar el estado
+--       antes de tocar nada, la Unidad 1 ya tenía sus 2 actividades de
+--       nivel 2 completadas de verdad (17% y 67%, con timestamps de
+--       "ahora") y una confianza inicial de unidad genuina (15%) — la
+--       usuaria ya había estado probando el flujo de reinicio de la
+--       Fase T por su cuenta. No se tocó nada de eso.
+--     - **Efecto secundario a comunicar**: al dejar "Cualidades..." sin
+--       entrega (Fase Z, a propósito), la Unidad 3 pasa de 5/5 a 4/5 —
+--       esto significa que su reflexión de cierre de Unidad 3 (que ya
+--       existía, con texto propio) DEJA DE MOSTRARSE en la página de la
+--       unidad hasta que "Cualidades..." tenga una entrega real (con
+--       videos ya subidos). La fila de esa reflexión sigue en la base,
+--       solo se oculta por la condición `unidadCompleta` — no se pierde,
+--       pero conviene que la usuaria lo sepa antes de notar que
+--       "desapareció".
+--     - **Aviso honesto sobre las 4 actividades de Unidad 2, el circuito,
+--       las técnicas y el comparador de equipo**: si la usuaria alcanzó
+--       a probar alguna de ellas con su forma ANTERIOR (antes de las
+--       Fases W/Y) durante la ventana entre esa migración y este reseed,
+--       ese intento específico ya no existe — se reemplazó por la
+--       entrega de prueba 100% de esta fase, porque el cambio de forma
+--       del contenido (tipo distinto, rondas distintas, banco distinto)
+--       hace imposible conservar una respuesta vieja compatible.
+--     - Verificado por consulta: Unidad 2 ahora 5/5 con promedio 100%;
+--       Unidad 3 ahora 4/5 (Cualidades pendiente a propósito) con
+--       promedio 100% sobre las 4 completadas; "El circuito..." con 9
+--       rondas completas y respuestas correctas verificadas en la
+--       primera y última ronda.
