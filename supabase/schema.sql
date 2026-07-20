@@ -2278,3 +2278,35 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       placeholder de video y el indicador "X de Y" aparecieron
 --       correctamente en la misma prueba. Typecheck y build limpios.
 --       Datos de prueba limpiados.
+--
+-- 57. Fix urgente: "las de ortografía no agarra" (bug reportado por la
+--     usuaria justo después de la Fase AD). Causa raíz: al cambiar las 4
+--     actividades de Unidad 2 de `etiquetado_texto` a
+--     `corregir_ortografia` (Fase AD3), la cuenta de revisión conservó
+--     entregas viejas con la forma anterior (`{elegidas: [...]}`) en vez
+--     de `{texto_reescrito: string}`. El componente asumía que cualquier
+--     `respuestaPrevia` truthy era válida y llamaba
+--     `calificarOrtografia(texto_correcto, respuestaPrevia.texto_reescrito)`
+--     con `texto_reescrito === undefined`, y `tokenizar()` tronaba al
+--     llamar `.trim()` sobre `undefined` — la página quedaba en blanco
+--     para la estudiante. Es la misma clase de bug ya vista en la Fase
+--     AC (respuesta vieja incompatible tras cambiar la forma de una
+--     actividad), ahora disparada por un cambio de `tipo_id` en vez de
+--     un cambio de opciones.
+--     - Fix de código:
+--       `src/app/estudiante/actividad/[id]/corregir-ortografia.tsx` — la
+--       inicialización de `resultado` ahora exige
+--       `respuestaPrevia?.texto_reescrito` (no solo que `respuestaPrevia`
+--       exista) antes de calificar; si la entrega es de una forma vieja
+--       incompatible, se trata como si no hubiera entrega todavía en vez
+--       de tronar.
+--     - Fix de datos: las 4 entregas viejas de la cuenta de revisión se
+--       reemplazaron por unas con la forma correcta
+--       (`texto_reescrito` = el propio `texto_correcto`, 100%).
+--     - Verificado en vivo con estudiante QA temporal: se sembró
+--       deliberadamente una entrega con la forma vieja
+--       (`{elegidas: [...]}`) en "Mayúsculas y minúsculas" y se confirmó
+--       que la página ya NO truena — muestra el formulario en blanco
+--       para reintentar. Después se completó el flujo normal (texto
+--       corregido perfecto) y calificó correctamente: "0 errores de 71
+--       palabras". Cuenta QA eliminada al terminar.

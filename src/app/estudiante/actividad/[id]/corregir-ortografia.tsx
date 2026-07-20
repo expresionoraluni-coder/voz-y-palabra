@@ -26,8 +26,13 @@ export default function CorregirOrtografia({
   // recalifica de una vez contra el contenido actual — así se muestra
   // bloqueada desde el primer render, sin exponer una respuesta editable
   // que ya fue calificada.
+  // Se exige que texto_reescrito exista de verdad (no solo que
+  // respuestaPrevia sea un objeto truthy): una entrega vieja de un tipo
+  // anterior con otra forma de respuesta (ej. { elegidas: [...] } de
+  // etiquetado_texto, si la actividad cambió de tipo) no debe tronar la
+  // calificación — se trata como si no hubiera entrega todavía.
   const [resultado, setResultado] = useState<ReturnType<typeof calificarOrtografia> | null>(
-    respuestaPrevia ? calificarOrtografia(contenido.texto_correcto, respuestaPrevia.texto_reescrito) : null,
+    respuestaPrevia?.texto_reescrito ? calificarOrtografia(contenido.texto_correcto, respuestaPrevia.texto_reescrito) : null,
   );
   const bloqueado = resultado !== null;
 
