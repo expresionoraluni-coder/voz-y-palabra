@@ -64,6 +64,9 @@ export default function ReflexionCierre({
   }
 
   if (!editando) {
+    // Sin botón "Cambiar" a propósito: igual que la reflexión de cada
+    // actividad, una vez guardada queda fija — es una fotografía honesta
+    // de lo que pensaste al cerrar la unidad, no algo para pulir después.
     return (
       <Card className="flex flex-col gap-2.5 p-5">
         <div className="flex items-center gap-2">
@@ -77,9 +80,6 @@ export default function ReflexionCierre({
           </div>
         )}
         <p className="text-sm italic text-slate-700 dark:text-slate-300">&quot;{texto}&quot;</p>
-        <Boton type="button" variant="secondary" size="sm" onClick={() => setEditando(true)} className="self-start">
-          Cambiar
-        </Boton>
       </Card>
     );
   }

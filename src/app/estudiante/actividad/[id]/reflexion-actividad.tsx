@@ -60,15 +60,14 @@ export default function ReflexionActividad({
         </div>
       )}
       {!editando ? (
-        <>
-          <p className="flex items-start gap-1.5 text-sm italic text-slate-700 dark:text-slate-300">
-            <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
-            &quot;{texto}&quot;
-          </p>
-          <Boton type="button" variant="secondary" size="sm" onClick={() => setEditando(true)} className="self-start">
-            Cambiar
-          </Boton>
-        </>
+        // Sin botón "Cambiar" a propósito: una vez guardada, la reflexión
+        // queda fija — igual que una entrega calificada, es una fotografía
+        // honesta de lo que pensaste en ese momento, no algo para pulir
+        // después de ver el resultado.
+        <p className="flex items-start gap-1.5 text-sm italic text-slate-700 dark:text-slate-300">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
+          &quot;{texto}&quot;
+        </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex items-center gap-1.5 text-sm font-medium text-slate-900 dark:text-slate-50">

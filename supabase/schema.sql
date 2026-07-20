@@ -2129,3 +2129,57 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       ("dijiste sentirte solo 60% seguro, pero tu resultado promedio
 --       fue 100%...") y el botón "Continuar a Unidad 3: Exposición
 --       oral". Datos de prueba limpiados.
+--
+-- 55. Fase AC — tres correcciones más, pedidas tras revisar en vivo:
+--     - **Reflexiones ya no se pueden cambiar**: se quitó el botón
+--       "Cambiar" de reflexion-actividad.tsx y de reflexion-cierre.tsx —
+--       una vez guardada, la reflexión (de actividad o de cierre de
+--       unidad) queda fija para siempre, igual que una entrega
+--       calificada. Antes se podía reescribir después de ver el
+--       resultado, lo cual le quitaba sentido a que fuera una fotografía
+--       honesta del momento.
+--     - **Opciones de las 4 actividades de ortografía de Unidad 2,
+--       ahora con el signo real en vez del nombre de la categoría**: se
+--       reescribieron las etiquetas/opciones de las 4 actividades (sin
+--       tocar el texto de los fragmentos ni la estructura) —
+--       "Punto y seguido/aparte/final" → ". seguido"/". aparte"/". final";
+--       "Mayúscula/Minúscula" → "A"/"a"; "Va coma/No va coma" → ","/"nada";
+--       "Punto y coma/Dos puntos/Ninguno" → ";"/":"/"nada";
+--       "Interrogación/Exclamación/Ninguno" → "¿?"/"¡!"/"nada";
+--       "Comillas/Paréntesis/Raya/Ninguno" → "« »"/"( )"/"—"/"nada";
+--       las tildes diacríticas (tu/tú, si/sí) se dejaron como las
+--       palabras mismas, sin la aclaración entre paréntesis; las letras
+--       (B/V, S/C/Z, G/J) no cambiaron, ya eran solo la letra.
+--     - **"Cualidades..." (evaluar_videos) — se llenaron `presentes` y
+--       `ausentes` con las 8 cualidades completas** (antes se habían
+--       dejado como arrays vacíos por no tener los videos todavía): la
+--       usuaria aclaró que "pendiente el video" solo significa que el
+--       archivo/URL falta, no que el resto del contenido deba quedar
+--       incompleto — video_bien.presentes = las 8 cualidades (modelo a
+--       seguir al grabar); video_mal.ausentes = las 8 cualidades (todas
+--       ausentes, como guion claro de qué evitar al grabar el segundo
+--       video). video_bien.url y video_mal.url siguen en null — eso sí
+--       es lo único que falta agregar cuando existan los videos reales.
+--     - **Bug propio descubierto y corregido durante la verificación**:
+--       cambiar las etiquetas de las 4 actividades de Unidad 2 dejó
+--       desalineadas las entregas ya guardadas de la cuenta de revisión
+--       (Fase AA), que tenían el `respuesta.elegidas` con las etiquetas
+--       VIEJAS en texto — al recalcular contra las etiquetas nuevas
+--       (símbolos), cada comparación fallaba aunque puntaje_auto en la
+--       base siguiera diciendo 100. Se volvieron a regenerar esas 4
+--       entregas con las etiquetas nuevas (mismo patrón de siempre:
+--       derivado directo de `contenido`).
+--     - **Nota de proceso**: durante la verificación, una sesión de
+--       navegador con un auth_user_id de una cuenta QA ya borrada
+--       (session anónima huérfana, no cerrada explícitamente entre
+--       pruebas) terminó mostrando por unos segundos datos de la cuenta
+--       de revisión real en vez de la cuenta QA nueva — no se escribió
+--       nada nuevo sobre esos datos (la página solo los leyó), pero
+--       confirmó por qué siempre hay que cerrar sesión (localStorage +
+--       cookies) entre cuentas QA temporales, no solo borrar sus filas.
+--     - Verificado en vivo con estudiante QA temporal (con cierre de
+--       sesión explícito antes de empezar, esta vez): las 4 actividades
+--       de Unidad 2 con las opciones nuevas dieron 100% correctas; la
+--       reflexión de actividad y la de cierre de unidad, una vez
+--       guardadas, no mostraron botón "Cambiar" en ningún caso. Datos de
+--       prueba limpiados y sesión de navegador cerrada al final.
