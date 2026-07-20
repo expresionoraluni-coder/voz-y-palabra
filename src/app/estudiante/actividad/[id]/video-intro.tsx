@@ -3,17 +3,21 @@
 import { useState, type ReactNode } from "react";
 import { ChevronRight, Video } from "lucide-react";
 import Boton from "@/components/ui/button";
+import EmptyState from "@/components/ui/empty-state";
 import { urlEmbedYoutube } from "@/lib/video-embed";
 
 // El video es un paso previo y opcional, no un bloque mezclado con la
 // actividad: se ve (o se salta) y solo después aparece el resto del
-// contenido — así no compite por espacio con las preguntas.
+// contenido — así no compite por espacio con las preguntas. El espacio se
+// reserva para TODAS las actividades, tengan o no video todavía (cuando
+// falta, se muestra "Video próximamente" en vez de saltarse el paso) —
+// así queda listo para cuando la docente suba el video real.
 export default function VideoIntro({
   videoUrl,
   titulo,
   children,
 }: {
-  videoUrl: string;
+  videoUrl: string | null;
   titulo: string;
   children: ReactNode;
 }) {
@@ -21,7 +25,7 @@ export default function VideoIntro({
 
   if (avanzado) return <>{children}</>;
 
-  const embed = urlEmbedYoutube(videoUrl);
+  const embed = videoUrl ? urlEmbedYoutube(videoUrl) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -35,7 +39,7 @@ export default function VideoIntro({
             className="size-full"
           />
         </div>
-      ) : (
+      ) : videoUrl ? (
         <a
           href={videoUrl}
           target="_blank"
@@ -45,6 +49,8 @@ export default function VideoIntro({
           <Video className="size-4 shrink-0" aria-hidden="true" />
           Ver video
         </a>
+      ) : (
+        <EmptyState icon={Video} titulo="Video próximamente" descripcion="Tu profesora lo agregará pronto." />
       )}
       <Boton type="button" onClick={() => setAvanzado(true)} className="w-full">
         Continuar a la actividad

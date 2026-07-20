@@ -1,4 +1,6 @@
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -19,6 +21,7 @@ import Prediccion from "./prediccion";
 import GrabacionRubrica from "./grabacion-rubrica";
 import OrdenarFragmentos from "./ordenar-fragmentos";
 import EvaluarVideos from "./evaluar-videos";
+import CorregirOrtografia from "./corregir-ortografia";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -31,6 +34,7 @@ const TIPOS_CONSTRUIDOS = [
   "grabacion_rubrica",
   "ordenar_fragmentos",
   "evaluar_videos",
+  "corregir_ortografia",
 ];
 
 export default async function ActividadEstudiante({
@@ -146,6 +150,13 @@ export default async function ActividadEstudiante({
   // el par siga siendo un filtro real y no algo que se memoriza una vez.
   const esDosNiveles =
     !!actividad.requiere_actividad_id || !!hermanas?.some((h) => h.requiere_actividad_id === actividad.id);
+
+  // Navegación anterior/siguiente entre actividades de la unidad, visible
+  // desde que se entra (no solo tras entregar, a diferencia del botón de
+  // abajo) — si el destino es un nivel 2 todavía bloqueado, el guard del
+  // inicio de esta misma página ya se encarga de redirigir con su mensaje.
+  const indiceActual = hermanas?.findIndex((h) => h.id === actividad.id) ?? -1;
+  const actividadAnterior = indiceActual > 0 ? hermanas![indiceActual - 1] : null;
 
   // Si esta entrega fue justo la que le faltaba a la unidad, se abre la
   // celebración con la reflexión de cierre aquí mismo — la usuaria pidió
@@ -358,6 +369,21 @@ export default async function ActividadEstudiante({
           respuestaPrevia={respuesta as { marcadas_bien: string[]; marcadas_mal: string[] } | undefined}
         />
       )}
+      {nombreTipo === "corregir_ortografia" && (
+        <CorregirOrtografia
+          actividadId={actividad.id}
+          estudianteId={estudiante.id}
+          contenido={
+            actividad.contenido as {
+              contexto?: string | null;
+              texto_incorrecto: string;
+              texto_correcto: string;
+              temas?: string[];
+            }
+          }
+          respuestaPrevia={respuesta as { texto_reescrito: string } | undefined}
+        />
+      )}
       {nombreTipo === "grabacion_rubrica" && (
         <GrabacionRubrica
           actividadId={actividad.id}
@@ -406,9 +432,44 @@ export default async function ActividadEstudiante({
         volverHref={`/estudiante/unidad/${actividad.unidad_id}`}
         titulo={actividad.titulo}
         descripcion={actividad.instrucciones}
+        accion={
+          hermanas && hermanas.length > 1 && indiceActual >= 0 ? (
+            <div className="flex shrink-0 items-center gap-1">
+              {actividadAnterior ? (
+                <Link
+                  href={`/estudiante/actividad/${actividadAnterior.id}`}
+                  aria-label="Actividad anterior"
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50"
+                >
+                  <ChevronLeft className="size-4" aria-hidden="true" />
+                </Link>
+              ) : (
+                <span className="flex size-8 items-center justify-center text-slate-300 dark:text-slate-700">
+                  <ChevronLeft className="size-4" aria-hidden="true" />
+                </span>
+              )}
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-500">
+                {indiceActual + 1} de {hermanas.length}
+              </span>
+              {siguiente ? (
+                <Link
+                  href={`/estudiante/actividad/${siguiente.id}`}
+                  aria-label="Actividad siguiente"
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50"
+                >
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
+              ) : (
+                <span className="flex size-8 items-center justify-center text-slate-300 dark:text-slate-700">
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </span>
+              )}
+            </div>
+          ) : undefined
+        }
       />
 
-      {actividad.video_url && !entregaExistente ? (
+      {!entregaExistente ? (
         <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
           {contenidoActividad}
         </VideoIntro>

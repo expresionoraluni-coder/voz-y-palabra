@@ -19,6 +19,8 @@ export function resumenRespuesta(tipo: string | undefined, respuesta: Respuesta)
     }
     case "encontrar_corregir":
       return `${respuesta.que_encontraste ?? ""} → ${respuesta.version_corregida ?? ""}`;
+    case "corregir_ortografia":
+      return (respuesta.texto_reescrito as string) ?? "";
     case "comparador":
       return "Completó la tabla de comparación.";
     case "redaccion_checklist":

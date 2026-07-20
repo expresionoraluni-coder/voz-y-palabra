@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, MessageSquareText, Plus, Trash2 } from "lucide-
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
 import { ICONO_TIPO } from "@/lib/tipo-actividad-icono";
+import { compararPalabras } from "@/lib/comparar-ortografia";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui/field";
@@ -38,6 +39,7 @@ const TIPOS_DISPONIBLES = [
   "grabacion_rubrica",
   "ordenar_fragmentos",
   "evaluar_videos",
+  "corregir_ortografia",
 ];
 
 function lineas(texto: string): string[] {
@@ -203,6 +205,11 @@ export default function ActividadForm({
   const [videoMalUrl, setVideoMalUrl] = useState(c.video_mal?.url ?? "");
   const [videoMalAusentes, setVideoMalAusentes] = useState<string[]>(c.video_mal?.ausentes ?? []);
 
+  const [contextoOrtografia, setContextoOrtografia] = useState(c.contexto ?? "");
+  const [textoIncorrecto, setTextoIncorrecto] = useState(c.texto_incorrecto ?? "");
+  const [textoCorrecto, setTextoCorrecto] = useState(c.texto_correcto ?? "");
+  const [temasOrtografia, setTemasOrtografia] = useState((c.temas ?? []).join("\n"));
+
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
@@ -276,6 +283,10 @@ export default function ActividadForm({
       if (datos.videoBienPresentes) setVideoBienPresentes(datos.videoBienPresentes);
       if (datos.videoMalUrl) setVideoMalUrl(datos.videoMalUrl);
       if (datos.videoMalAusentes) setVideoMalAusentes(datos.videoMalAusentes);
+      if (datos.contextoOrtografia) setContextoOrtografia(datos.contextoOrtografia);
+      if (datos.textoIncorrecto) setTextoIncorrecto(datos.textoIncorrecto);
+      if (datos.textoCorrecto) setTextoCorrecto(datos.textoCorrecto);
+      if (datos.temasOrtografia) setTemasOrtografia(datos.temasOrtografia);
       setBorradorRestaurado(true);
       // eslint-disable-next-line no-empty
     } catch {}
@@ -328,6 +339,10 @@ export default function ActividadForm({
       videoBienPresentes,
       videoMalUrl,
       videoMalAusentes,
+      contextoOrtografia,
+      textoIncorrecto,
+      textoCorrecto,
+      temasOrtografia,
     };
     try {
       localStorage.setItem(claveBorrador(unidadId), JSON.stringify(datos));
@@ -380,6 +395,10 @@ export default function ActividadForm({
     videoBienPresentes,
     videoMalUrl,
     videoMalAusentes,
+    contextoOrtografia,
+    textoIncorrecto,
+    textoCorrecto,
+    temasOrtografia,
   ]);
 
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
@@ -392,6 +411,7 @@ export default function ActividadForm({
   const listaCriteriosComp = lineas(criterios);
   const listaBancoComp = lineas(bancoRespuestasComp);
   const listaCualidadesEV = lineas(cualidadesEV);
+  const listaTemasOrtografia = lineas(temasOrtografia);
 
   function actualizarFila(
     filas: FilaAsignacion[],
@@ -644,6 +664,25 @@ export default function ActividadForm({
           ausentes: videoMalAusentes.filter((c) => listaCualidades.includes(c)),
         },
       };
+    } else if (nombreTipo === "corregir_ortografia") {
+      if (!textoIncorrecto.trim() || !textoCorrecto.trim()) {
+        setError("Escribe el texto con errores y su versión correcta.");
+        return;
+      }
+      // Se valida contra el propio tokenizador del estudiante para
+      // detectar de una vez si la docente escribió textos idénticos por
+      // error (nada que corregir).
+      const diferencias = compararPalabras(textoCorrecto, textoIncorrecto).filter((c) => !c.correcto).length;
+      if (diferencias === 0) {
+        setError("El texto incorrecto y el correcto son idénticos — no hay nada que corregir.");
+        return;
+      }
+      contenido = {
+        contexto: contextoOrtografia.trim() || null,
+        texto_incorrecto: textoIncorrecto,
+        texto_correcto: textoCorrecto,
+        temas: listaTemasOrtografia.length > 0 ? listaTemasOrtografia : undefined,
+      };
     } else {
       setError("Este tipo de actividad todavía no está disponible para crear.");
       return;
@@ -827,8 +866,8 @@ export default function ActividadForm({
                 Este tipo estará disponible en una fase próxima. Por ahora puedes crear
                 &quot;opcion_justificacion&quot;, &quot;clasificacion&quot;, &quot;encontrar_corregir&quot;,
                 &quot;comparador&quot;, &quot;redaccion_checklist&quot;, &quot;etiquetado_texto&quot;,
-                &quot;constructor_ramificado&quot;, &quot;grabacion_rubrica&quot;, &quot;ordenar_fragmentos&quot; u
-                &quot;evaluar_videos&quot;.
+                &quot;constructor_ramificado&quot;, &quot;grabacion_rubrica&quot;, &quot;ordenar_fragmentos&quot;,
+                &quot;evaluar_videos&quot; o &quot;corregir_ortografia&quot;.
               </HelpText>
             )}
           </Field>
@@ -1557,6 +1596,62 @@ export default function ActividadForm({
                     </div>
                   </Field>
                 )}
+              </>
+            )}
+
+            {nombreTipo === "corregir_ortografia" && (
+              <>
+                <Field>
+                  <Label htmlFor="contextoOrtografia">Contexto (opcional)</Label>
+                  <Textarea
+                    id="contextoOrtografia"
+                    value={contextoOrtografia}
+                    onChange={(e) => setContextoOrtografia(e.target.value)}
+                    rows={2}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="textoIncorrecto">Texto con errores (el estudiante lo verá tal cual)</Label>
+                  <Textarea
+                    id="textoIncorrecto"
+                    required
+                    value={textoIncorrecto}
+                    onChange={(e) => setTextoIncorrecto(e.target.value)}
+                    rows={6}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="textoCorrecto">Versión correcta (clave de calificación — no la ve el estudiante)</Label>
+                  <Textarea
+                    id="textoCorrecto"
+                    required
+                    value={textoCorrecto}
+                    onChange={(e) => setTextoCorrecto(e.target.value)}
+                    rows={6}
+                  />
+                  <HelpText>
+                    Debe tener las mismas palabras, en el mismo orden, que el texto con errores — solo cambia
+                    mayúsculas, tildes o letras. Se compara palabra por palabra.
+                  </HelpText>
+                </Field>
+                {textoIncorrecto.trim() && textoCorrecto.trim() && (
+                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                    {compararPalabras(textoCorrecto, textoIncorrecto).filter((c) => !c.correcto).length}{" "}
+                    diferencia(s) detectada(s) entre ambos textos (se acepta hasta 5 como aprobatorio).
+                  </p>
+                )}
+                <Field>
+                  <Label htmlFor="temasOrtografia">Temas que cubre (opcional, uno por línea)</Label>
+                  <Textarea
+                    id="temasOrtografia"
+                    value={temasOrtografia}
+                    onChange={(e) => setTemasOrtografia(e.target.value)}
+                    rows={2}
+                    placeholder={"Tildes diacríticas\nMayúsculas\nB/V"}
+                    className="font-mono text-sm"
+                  />
+                  <ContadorLineas texto={temasOrtografia} singular="tema" plural="temas" />
+                </Field>
               </>
             )}
           </Card>

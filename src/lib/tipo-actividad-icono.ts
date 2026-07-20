@@ -9,6 +9,7 @@ import {
   Mic,
   ArrowUpDown,
   Video,
+  SpellCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,4 +24,5 @@ export const ICONO_TIPO: Record<string, LucideIcon> = {
   grabacion_rubrica: Mic,
   ordenar_fragmentos: ArrowUpDown,
   evaluar_videos: Video,
+  corregir_ortografia: SpellCheck,
 };

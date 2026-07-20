@@ -2183,3 +2183,98 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       reflexión de actividad y la de cierre de unidad, una vez
 --       guardadas, no mostraron botón "Cambiar" en ningún caso. Datos de
 --       prueba limpiados y sesión de navegador cerrada al final.
+--
+-- 56. Fase AD — quinta ronda de observaciones: nuevo mecanismo de
+--     ortografía (reescribir en vez de elegir), portafolio, navegación,
+--     video y AE tomados del programa oficial:
+--     - **Portafolio (dato, no bug)**: la cuenta de revisión tenía 23
+--       predicciones de confianza pero solo 1 reflexión de cierre por
+--       actividad (las Fases V/AA sembraron entregas por SQL sin nunca
+--       escribir el texto libre de "qué aprendiste"). Se insertaron 19
+--       reflexiones placeholder ("Reflexión de prueba: repasé el tema y
+--       pude aplicarlo en la actividad.") para las actividades con
+--       entrega que no tenían una — sin tocar las 2 de nivel 2 (esas son
+--       intentos genuinos de la usuaria, no se les inventa nada).
+--     - **Nuevo tipo `corregir_ortografia`**: reemplaza el mecanismo de
+--       dropdowns en línea (Fases Y/AB/AC) que la usuaria rechazó dos
+--       veces. Contenido: { contexto?, texto_incorrecto, texto_correcto,
+--       temas? } — texto_correcto es la clave de calificación, enviada
+--       al cliente igual que en el resto de los tipos (esta app no
+--       oculta claves de calificación en ningún tipo). Respuesta:
+--       { texto_reescrito }. Nueva librería
+--       src/lib/comparar-ortografia.ts: tokeniza ambos textos por
+--       espacios, compara posición por posición (recortando puntuación
+--       de borde antes de comparar — la puntuación no es lo que se
+--       evalúa aquí), cuenta errores, `aprobado = errores <= 5` (tal
+--       cual lo pidió la usuaria), `puntajeAuto` = % de posiciones
+--       correctas (misma semántica que el resto de la app). Nuevo
+--       componente corregir-ortografia.tsx, calcado del patrón de
+--       bloqueo de clasificacion.tsx: texto original de solo lectura
+--       (anti-copia), Textarea vacío (no pre-llenado, igual que
+--       encontrar_corregir), y tras bloquear, reconstrucción palabra por
+--       palabra coloreada verde/rojo con "(era: X)" en las incorrectas.
+--       Wiring: TIPOS_CONSTRUIDOS/switch en actividad/[id]/page.tsx,
+--       ícono SpellCheck en tipo-actividad-icono.ts, caso nuevo en
+--       resumen-respuesta.ts (si no, la ficha del estudiante en el panel
+--       docente mostraría el JSON crudo — gap real encontrado al
+--       revisar ese archivo), nueva sección de autoría en
+--       actividad-form.tsx (con vista previa en vivo de cuántas
+--       diferencias hay entre ambos textos), tipo insertado en
+--       tipos_actividad.
+--     - **Unidad 2 rediseñada de nuevo: SOLO ortografía**. La usuaria
+--       fue explícita: nada de ¿? ¡! comillas/paréntesis/raya — eso es
+--       puntuación, no ortografía. Las 4 actividades (mismos ids:
+--       df9b1096, aaadbd59, 719397f7, 02e9a559) cambian de
+--       etiquetado_texto a corregir_ortografia, progresión por tema:
+--       "Mayúsculas y minúsculas" (6 errores) → "+ Acentuación" (8
+--       errores, incluye la diacrítica el/él) → "+ Letras que se
+--       confunden" (12 errores: b/v, s/z, g/j, h) → "Repaso integrador
+--       de ortografía" (19 errores, junta las tres categorías) — todos
+--       verificados por consulta SQL simulando la comparación palabra
+--       por palabra antes de probar en vivo, y confirmando que ambos
+--       textos de cada par tienen el mismo número de palabras (71/71,
+--       40/40, 46/46, 61/61).
+--     - **Video al inicio de cada actividad, restaurado para todas**:
+--       video-intro.tsx acepta `videoUrl: string | null`; cuando es
+--       null, muestra el EmptyState "Video próximamente" (reutilizado
+--       de evaluar-videos.tsx) en vez de saltarse el paso — revierte
+--       parcialmente la Fase R de esta sesión, que había quitado ese
+--       placeholder (Fase H, ronda anterior a esta sesión, ya lo había
+--       resuelto una vez). actividad/[id]/page.tsx ya no condiciona el
+--       wrap en VideoIntro a que exista video_url, solo a `!entregaExistente`.
+--       Ahora mismo ninguna de las 23 actividades tiene video_url — el
+--       placeholder aparece consistentemente en las 23 hasta que la
+--       docente suba videos reales.
+--     - **Navegación entre actividades**: indicador "X de Y" con
+--       flechas anterior/siguiente en el `accion` de PageHeader,
+--       siempre visible (no solo tras entregar, a diferencia del botón
+--       "Siguiente actividad" existente) — calculado de la consulta
+--       `hermanas` ya existente, sin consulta nueva.
+--     - **Aprendizajes Esperados tomados del programa oficial**: la
+--       usuaria compartió el documento oficial de la Unidad de
+--       Aprendizaje ("Expresión Oral y Escrita I", IPN NMS). Se
+--       auditaron los `aprendizaje_esperado` de las 23 actividades
+--       contra los 9 AE reales del programa (3 por unidad) — la mayoría
+--       YA coincidía textualmente con el original (de fases anteriores
+--       a esta sesión). Se corrigieron 2 que no coincidían: "Identifica
+--       el modelo expositivo" tenía un AE completamente inventado →
+--       ahora usa el AE2.3 real ("Valora la estructura de los textos de
+--       divulgación..."); "Cualidades internas y externas..." tenía el
+--       AE3.1 real con una oración añadida de más → se dejó el AE3.1
+--       exacto del programa. Los 4 de ortografía nuevos usan el AE2.2
+--       real ("Distingue diversas estructuras de oraciones..."). Se
+--       verificó también que los 3 `unidad_competencia` (uno por
+--       unidad) ya coinciden exactamente con la sección "Programa
+--       Sintético" del documento oficial — sin cambios ahí.
+--     - Verificado en vivo con estudiante QA temporal (sesión cerrada
+--       explícitamente antes y después): actividad 1 con texto
+--       perfectamente corregido dio 100% (0 errores de 71 palabras);
+--       actividad 2 con una corrección parcial (3 de 8 errores dejados
+--       a propósito) dio "3 errores de 40 palabras — dentro del máximo
+--       aceptable (5)" y 93%, con el texto reconstruido mostrando
+--       "(era: camión)", "(era: Pensó)", "(era: él)" junto a cada
+--       palabra incorrecta — confirma que la tolerancia de 5 errores y
+--       la calificación parcial funcionan juntas correctamente. El
+--       placeholder de video y el indicador "X de Y" aparecieron
+--       correctamente en la misma prueba. Typecheck y build limpios.
+--       Datos de prueba limpiados.
