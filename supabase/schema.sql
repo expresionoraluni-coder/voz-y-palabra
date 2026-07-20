@@ -1841,3 +1841,27 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       resumen de esta fase, ofreciendo excluir nivel 2 del conteo de
 --       "unidad completa" si prefiere poder navegar directo a las
 --       Unidades 2 y 3 sin antes resolver las de nivel 2.
+--
+-- === Cuarta ronda de observaciones (Fases W en adelante) ===
+--
+-- 49. Fase W — contenido rápido: circuito extendido, técnicas juntas,
+--     comparador rehecho (sin cambios de código, toda la mecánica ya
+--     existía de fases anteriores):
+--     - "El circuito de la comunicación": el hilo pasa de 2 a 4 mensajes
+--       (Ana pregunta → Luis no entiende, 3 horas después → Ana aclara
+--       qué era "lo de mañana", unos minutos después → Luis confirma).
+--       Se agregaron 2 rondas nuevas (9 en total) sobre esta segunda
+--       parte del intercambio: una sobre la mejora en claridad del
+--       código de Ana, otra sobre el cierre exitoso del circuito con la
+--       confirmación de Luis — ambas con su respuesta_correcta.
+--     - "Técnica ante un escenario" (×2): se agregó
+--       "presentacion": "todas_juntas" a su contenido.
+--     - "Exposición individual vs. en equipo": se reescribieron los 5
+--       criterios (ahora frases nominales en vez de preguntas, ej.
+--       "Preparación del contenido" en vez de "¿Qué ventaja tiene?") y
+--       el banco de 14 chips (10 correctos + 4 señuelos) con respuestas
+--       más concretas y menos repetitivas entre sí.
+--     - Verificado en vivo con estudiante QA temporal: el hilo de chat
+--       muestra los 4 mensajes con avatares y el divisor "unos minutos
+--       después"; la actividad llega hasta "Pregunta 9 de 9" navegando
+--       con "Siguiente". Datos de prueba limpiados.
