@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
 import { useEntregaReciente } from "@/lib/entrega-reciente-context";
+import type { ResultadoCalificacion } from "@/app/estudiante/actividad/[id]/acciones-calificacion";
 
 type EntregaPayload = {
   respuesta: Record<string, unknown>;
@@ -76,5 +77,32 @@ export function useEntregaActividad(actividadId: string, estudianteId: string) {
     setGuardado((g) => (g ? false : g));
   }
 
-  return { cargando, guardado, error, setError, guardar, marcarSinGuardar };
+  // Para los tipos con clave de calificación secreta: en vez de calcular el
+  // puntaje en el cliente y hacer upsert directo, se invoca una Server
+  // Action (ver acciones-calificacion.ts) que recalcula todo del lado del
+  // servidor y guarda ella misma la entrega — aquí solo se refleja el
+  // resultado ya calificado que devuelve, nunca se recalcula nada.
+  async function guardarConAccion(
+    accion: () => Promise<ResultadoCalificacion>,
+  ): Promise<Record<string, unknown> | null> {
+    setError(null);
+    setGuardado(false);
+    setCargando(true);
+
+    const resultado = await accion();
+
+    if (!resultado.ok) {
+      setError(resultado.error);
+      setCargando(false);
+      return null;
+    }
+
+    marcarGuardada({ puntajeAuto: resultado.puntajeAuto, respuesta: resultado.respuesta });
+    setGuardado(true);
+    setCargando(false);
+    router.refresh();
+    return resultado.respuesta;
+  }
+
+  return { cargando, guardado, error, setError, guardar, guardarConAccion, marcarSinGuardar };
 }

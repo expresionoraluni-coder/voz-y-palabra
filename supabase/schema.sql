@@ -2449,3 +2449,78 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       al guardar la confianza pasó a la Pantalla 2 (lista de
 --       actividades) sin que la bitácora reapareciera ahí. Typecheck y
 --       build limpios. Cuenta QA eliminada al terminar.
+--
+-- 61. Fase 7: calificación en servidor — las respuestas correctas ya no
+--     viajan al cliente antes de contestar (fase grande, planeada aparte
+--     tras la auditoría de la Fase 6, ejecutada en 6 sub-fases).
+--     - Primera Server Action del proyecto: `src/app/estudiante/actividad/
+--       [id]/acciones-calificacion.ts` (`"use server"`). Un helper
+--       privado compartido (`contextoCalificacion`) resuelve la sesión y
+--       trae `contenido` fresco del servidor en cada llamada — nunca
+--       confía en un `estudianteId`/`contenido` que mande el cliente,
+--       exactamente como pide la documentación de Next para Server
+--       Actions ("todo endpoint de acción es alcanzable directo, sin
+--       pasar por la UI"). `verificar_insignias` se llama con `await`
+--       (no fire-and-forget como en el hook viejo): dentro de una función
+--       serverless de Netlify una promesa sin esperar puede quedar
+--       congelada al devolver la respuesta.
+--     - 7 de los 11 tipos de actividad tenían una clave secreta expuesta
+--       completa en el prop `contenido` desde el primer render:
+--       `opcion_justificacion`, `clasificacion` (+ variante `dosNiveles`),
+--       `comparador` (solo submodo "chips"), `etiquetado_texto`,
+--       `ordenar_fragmentos`, `evaluar_videos`, `corregir_ortografia`. Los
+--       otros 4 tipos + 2 submodos (revisión humana o autoevaluación, sin
+--       clave) quedaron intactos, siguen usando `guardar()` del hook
+--       `useEntregaActividad` sin cambios.
+--     - Principio de diseño: calificar una sola vez, en el servidor, al
+--       entregar — el resultado detallado (snapshot de aciertos/fallos)
+--       se persiste dentro de `entregas.respuesta` junto a la respuesta
+--       cruda, y el cliente en montajes futuros solo LEE ese snapshot,
+--       nunca vuelve a recalcular contra la clave. `clasificacion`/
+--       `etiquetado_texto` ya guardaban `itemsSnapshot` desde antes (lo
+--       usa la matriz de confusión docente) — solo cambió DÓNDE se
+--       calcula, no el campo; los otros 5 tipos ganaron un campo nuevo
+--       análogo (`resultado`, `resultadoCeldas`, `resultadoPorPosicion`,
+--       `comparacion`). `page.tsx` sanea `contenido` por tipo (nuevas
+--       funciones `sanitizarContenido*`) antes de pasarlo al client
+--       component — la clave nunca llega al bundle del cliente para
+--       estos 7 tipos, ni antes ni después de contestar.
+--     - Decisión de alcance explícita, documentada: esto cierra la fuga
+--       de *inspección* (ver la clave antes de contestar). NO cierra la
+--       fuga de *forjar el envío* (RLS de `entregas` sigue permitiendo
+--       que un estudiante técnico mande `puntaje_auto`/`respuesta`
+--       directo a la API REST) — eso ya era así para los 11 tipos y
+--       seguirá siendo así; cerrarlo requeriría angostar RLS + mover la
+--       escritura a una función `SECURITY DEFINER`, cambio mayor que
+--       queda fuera de esta fase.
+--     - Corrección encontrada durante el diseño (no en la propuesta
+--       inicial): en `opcion_justificacion` la UI resalta en verde cuál
+--       opción era la correcta, no solo si se acertó — el snapshot de ese
+--       tipo necesitó guardar el texto de la opción correcta
+--       (`opcionCorrecta`), no solo un booleano.
+--     - Corrección encontrada: el discriminador de submodo de
+--       `comparador` (`modoChips`) dependía de `celda_correcta` — al
+--       quitarla del contenido saneado, el discriminador pasó a usar
+--       `banco_respuestas?.length` (campo no secreto, 1:1 con
+--       `celda_correcta` según valida el formulario de autoría).
+--     - Backfill de la cuenta de revisión real: 21 entregas ya existentes
+--       en los 7 tipos (comparador×1, corregir_ortografia×4,
+--       etiquetado_texto×1, opcion_justificacion×6, ordenar_fragmentos×1;
+--       clasificacion×8 ya tenía `itemsSnapshot`) se actualizaron por SQL
+--       agregando el snapshot correspondiente — derivado directamente del
+--       `contenido` real de cada actividad (no reescrito a mano), ya que
+--       las 13 entregas afectadas ya eran 100% correctas. Sin esto, esas
+--       actividades habrían aparecido como "sin resolver" para la usuaria
+--       la próxima vez que las abriera.
+--     - Verificado en vivo con estudiante QA temporal, sub-fase por
+--       sub-fase: en cada tipo se confirmó (a) que la clave secreta NO
+--       aparece en el HTML/RSC payload ni antes ni después de contestar
+--       (`document.documentElement.outerHTML.includes(campo)` → false en
+--       los 7 tipos), y (b) que la calificación se comporta idéntico a
+--       antes (mismo puntaje, mismos colores/"Era: X", persistencia tras
+--       recargar). Caso especial verificado con cuidado: `clasificacion`
+--       con `dosNiveles` (Las 6 funciones de la lengua) siguió ocultando
+--       la clave tras calificar (solo "Correcto"/"Incorrecto") y el botón
+--       "Reiniciar prueba" siguió borrando la entrega correctamente.
+--       Typecheck y build limpios tras cada sub-fase. Cuenta QA eliminada
+--       al terminar.

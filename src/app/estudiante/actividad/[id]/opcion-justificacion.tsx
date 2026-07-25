@@ -10,9 +10,9 @@ import { ideasClaveMencionadas } from "@/lib/ideas-clave";
 import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
 import {
-  type ContenidoOpcionJustificacion,
+  type ContenidoOpcionJustificacionPublico,
   type MensajeChat,
-  type RondaContenido,
+  type RondaContenidoPublica,
   type RondaRespuesta,
   rondasDeContenido,
   introDeContenido,
@@ -20,6 +20,9 @@ import {
   mensajesDeContenido,
   rondasDeRespuesta,
 } from "@/lib/opcion-justificacion";
+import { calificarOpcionJustificacionAccion } from "./acciones-calificacion";
+
+type ItemResultado = { correcta: boolean; opcionCorrecta: string };
 
 function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
   if (mensajes.length === 0) return null;
@@ -76,12 +79,14 @@ function PreguntaRonda({
   indice,
   onCambiar,
   bloqueado,
+  opcionCorrecta,
 }: {
-  ronda: RondaContenido;
+  ronda: RondaContenidoPublica;
   respuesta: RondaRespuesta;
   indice: number;
   onCambiar: (cambios: Partial<RondaRespuesta>) => void;
   bloqueado: boolean;
+  opcionCorrecta?: string;
 }) {
   const ideasMencionadas = useMemo(
     () => ideasClaveMencionadas(respuesta.justificacion, ronda.ideas_clave ?? []),
@@ -101,7 +106,7 @@ function PreguntaRonda({
         <div className="flex flex-col gap-2">
           {ronda.opciones.map((op) => {
             const seleccionada = respuesta.opcion === op;
-            const esCorrecta = op === ronda.respuesta_correcta;
+            const esCorrecta = op === opcionCorrecta;
             let estilo =
               "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50";
             if (bloqueado && esCorrecta) {
@@ -204,10 +209,10 @@ export default function OpcionJustificacion({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: ContenidoOpcionJustificacion;
+  contenido: ContenidoOpcionJustificacionPublico;
   respuestaPrevia?: Record<string, unknown>;
 }) {
-  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
 
   const rondas = useMemo(() => rondasDeContenido(contenido), [contenido]);
   const intro = introDeContenido(contenido);
@@ -219,8 +224,12 @@ export default function OpcionJustificacion({
   const [respuestas, setRespuestas] = useState<RondaRespuesta[]>(() =>
     rondas.map((_, i) => rondasPrevias[i] ?? { opcion: "", justificacion: "" }),
   );
-  const [resultado, setResultado] = useState<boolean[] | null>(
-    respuestaPrevia ? rondas.map((r, i) => rondasPrevias[i]?.opcion === r.respuesta_correcta) : null,
+  // El detalle de aciertos (con el texto de la opción correcta) ya se
+  // calificó en el servidor al entregar (ver acciones-calificacion.ts) —
+  // aquí solo se lee, nunca se recalcula. Entregas de antes de este cambio
+  // sin `resultado` se tratan como si no hubiera entrega todavía.
+  const [resultado, setResultado] = useState<ItemResultado[] | null>(
+    (respuestaPrevia?.resultado as ItemResultado[] | undefined) ?? null,
   );
   const bloqueado = resultado !== null;
 
@@ -267,15 +276,8 @@ export default function OpcionJustificacion({
     if (bloqueado) return;
     if (presentacion === "todas_juntas" ? !validarTodas() : !validarActual()) return;
 
-    const aciertos = rondas.map((r, i) => respuestas[i].opcion === r.respuesta_correcta);
-    const puntajeAuto = Math.round((aciertos.filter(Boolean).length / rondas.length) * 100);
-
-    const ok = await guardar({
-      respuesta: { rondas: respuestas },
-      estado: "completada",
-      puntaje_auto: puntajeAuto,
-    });
-    if (ok) setResultado(aciertos);
+    const guardada = await guardarConAccion(() => calificarOpcionJustificacionAccion(actividadId, respuestas));
+    if (guardada) setResultado(guardada.resultado as ItemResultado[]);
   }
 
   return (
@@ -310,6 +312,7 @@ export default function OpcionJustificacion({
                 indice={i}
                 onCambiar={(cambios) => actualizarRespuestaEn(i, cambios)}
                 bloqueado={bloqueado}
+                opcionCorrecta={resultado?.[i]?.opcionCorrecta}
               />
             </div>
           ))}
@@ -342,6 +345,7 @@ export default function OpcionJustificacion({
             indice={indiceActual}
             onCambiar={(cambios) => actualizarRespuestaEn(indiceActual, cambios)}
             bloqueado={bloqueado}
+            opcionCorrecta={resultado?.[indiceActual]?.opcionCorrecta}
           />
 
           {error && <ErrorText>{error}</ErrorText>}

@@ -7,8 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { bloquearCopiar } from "@/lib/anti-copiar";
+import type { ContenidoClasificacionPublico } from "@/lib/calificacion-clasificacion";
+import { calificarClasificacionAccion } from "./acciones-calificacion";
 
-type Elemento = { texto: string; categoria_correcta: string };
+type ItemSnapshot = { texto: string; correcta: string };
 
 function mezclar<T>(arr: T[]): T[] {
   const copia = [...arr];
@@ -28,20 +30,27 @@ export default function Clasificacion({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { categorias: string[]; elementos: Elemento[]; contexto?: string | null };
-  respuestaPrevia?: { elegidas: string[] };
+  contenido: ContenidoClasificacionPublico;
+  respuestaPrevia?: { elegidas: string[]; itemsSnapshot?: ItemSnapshot[] };
   dosNiveles?: boolean;
 }) {
-  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
   const [reiniciando, setReiniciando] = useState(false);
   const [elegidas, setElegidas] = useState<string[]>(
     respuestaPrevia?.elegidas ?? contenido.elementos.map(() => ""),
   );
-  // Si ya había una entrega previa, se muestra directo como calificada — si
-  // no, alguien podría ver "Era: X" y reenviar corregido para sacar 100%.
+  // El detalle de aciertos/fallos ya se calificó en el servidor al entregar
+  // (ver acciones-calificacion.ts) y se guardó junto a la respuesta
+  // (itemsSnapshot, el mismo campo que ya usaba la matriz de confusión
+  // docente) — aquí solo se lee, nunca se recalcula. Entregas de antes de
+  // este cambio sin itemsSnapshot se tratan como si no hubiera entrega
+  // todavía, en vez de tronar.
+  const [itemsSnapshot, setItemsSnapshot] = useState<ItemSnapshot[] | null>(
+    respuestaPrevia?.itemsSnapshot ?? null,
+  );
   const [resultado, setResultado] = useState<boolean[] | null>(
-    respuestaPrevia
-      ? contenido.elementos.map((el, i) => el.categoria_correcta === respuestaPrevia.elegidas[i])
+    respuestaPrevia?.itemsSnapshot
+      ? respuestaPrevia.itemsSnapshot.map((item, i) => item.correcta === respuestaPrevia.elegidas[i])
       : null,
   );
   const bloqueado = resultado !== null;
@@ -78,23 +87,12 @@ export default function Clasificacion({
       return;
     }
 
-    const aciertos = contenido.elementos.map((el, i) => el.categoria_correcta === elegidas[i]);
-    const puntajeAuto = Math.round(
-      (aciertos.filter(Boolean).length / contenido.elementos.length) * 100,
-    );
-
-    const ok = await guardar({
-      respuesta: {
-        elegidas,
-        // Copia de texto+respuesta correcta al momento de entregar: si la
-        // docente edita la actividad después (reordena/agrega elementos),
-        // la matriz de confusión del grupo no debe desalinearse.
-        itemsSnapshot: contenido.elementos.map((el) => ({ texto: el.texto, correcta: el.categoria_correcta })),
-      },
-      estado: "completada",
-      puntaje_auto: puntajeAuto,
-    });
-    if (ok) setResultado(aciertos);
+    const guardada = await guardarConAccion(() => calificarClasificacionAccion(actividadId, elegidas));
+    if (guardada) {
+      const snapshot = guardada.itemsSnapshot as ItemSnapshot[];
+      setItemsSnapshot(snapshot);
+      setResultado(snapshot.map((item, i) => item.correcta === elegidas[i]));
+    }
   }
 
   async function reiniciarPrueba() {
@@ -156,7 +154,7 @@ export default function Clasificacion({
                 ) : (
                   <XCircle className="size-4 shrink-0" aria-hidden="true" />
                 )}
-                {resultado[i] ? "Correcto" : dosNiveles ? "Incorrecto" : `Era: ${el.categoria_correcta}`}
+                {resultado[i] ? "Correcto" : dosNiveles ? "Incorrecto" : `Era: ${itemsSnapshot?.[i]?.correcta ?? ""}`}
               </p>
             )}
           </div>

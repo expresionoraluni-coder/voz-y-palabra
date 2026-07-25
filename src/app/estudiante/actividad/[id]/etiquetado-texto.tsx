@@ -5,8 +5,10 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import type { ContenidoEtiquetadoTextoPublico } from "@/lib/calificacion-etiquetado-texto";
+import { calificarEtiquetadoTextoAccion } from "./acciones-calificacion";
 
-type Fragmento = { texto: string; etiqueta_correcta: string; opciones?: string[] };
+type ItemSnapshot = { texto: string; correcta: string };
 
 export default function EtiquetadoTexto({
   actividadId,
@@ -16,18 +18,24 @@ export default function EtiquetadoTexto({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { contexto: string | null; etiquetas: string[]; fragmentos: Fragmento[]; en_linea?: boolean };
-  respuestaPrevia?: { elegidas: string[] };
+  contenido: ContenidoEtiquetadoTextoPublico;
+  respuestaPrevia?: { elegidas: string[]; itemsSnapshot?: ItemSnapshot[] };
 }) {
-  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
   const [elegidas, setElegidas] = useState<string[]>(
     respuestaPrevia?.elegidas ?? contenido.fragmentos.map(() => ""),
   );
-  // Si ya había una entrega previa, se muestra directo como calificada — si
-  // no, alguien podría ver "Era: X" y reenviar corregido para sacar 100%.
+  // El detalle de aciertos/fallos ya se calificó en el servidor al entregar
+  // (ver acciones-calificacion.ts) y se guardó junto a la respuesta
+  // (itemsSnapshot) — aquí solo se lee, nunca se recalcula. Entregas de
+  // antes de este cambio sin itemsSnapshot se tratan como si no hubiera
+  // entrega todavía, en vez de tronar.
+  const [itemsSnapshot, setItemsSnapshot] = useState<ItemSnapshot[] | null>(
+    respuestaPrevia?.itemsSnapshot ?? null,
+  );
   const [resultado, setResultado] = useState<boolean[] | null>(
-    respuestaPrevia
-      ? contenido.fragmentos.map((f, i) => f.etiqueta_correcta === respuestaPrevia.elegidas[i])
+    respuestaPrevia?.itemsSnapshot
+      ? respuestaPrevia.itemsSnapshot.map((item, i) => item.correcta === respuestaPrevia.elegidas[i])
       : null,
   );
   const bloqueado = resultado !== null;
@@ -47,23 +55,12 @@ export default function EtiquetadoTexto({
       return;
     }
 
-    const aciertos = contenido.fragmentos.map((f, i) => f.etiqueta_correcta === elegidas[i]);
-    const puntajeAuto = Math.round(
-      (aciertos.filter(Boolean).length / contenido.fragmentos.length) * 100,
-    );
-
-    const ok = await guardar({
-      respuesta: {
-        elegidas,
-        // Copia de texto+etiqueta correcta al momento de entregar: si la
-        // docente edita la actividad después, la matriz de confusión del
-        // grupo no debe desalinearse.
-        itemsSnapshot: contenido.fragmentos.map((f) => ({ texto: f.texto, correcta: f.etiqueta_correcta })),
-      },
-      estado: "completada",
-      puntaje_auto: puntajeAuto,
-    });
-    if (ok) setResultado(aciertos);
+    const guardada = await guardarConAccion(() => calificarEtiquetadoTextoAccion(actividadId, elegidas));
+    if (guardada) {
+      const snapshot = guardada.itemsSnapshot as ItemSnapshot[];
+      setItemsSnapshot(snapshot);
+      setResultado(snapshot.map((item, i) => item.correcta === elegidas[i]));
+    }
   }
 
   return (
@@ -102,7 +99,9 @@ export default function EtiquetadoTexto({
                 ))}
               </select>
               {resultado && !resultado[i] && (
-                <span className="ml-1 text-xs text-red-600 dark:text-red-400">(era: {f.etiqueta_correcta})</span>
+                <span className="ml-1 text-xs text-red-600 dark:text-red-400">
+                  (era: {itemsSnapshot?.[i]?.correcta ?? ""})
+                </span>
               )}{" "}
             </span>
           ))}
@@ -135,7 +134,7 @@ export default function EtiquetadoTexto({
                 ) : (
                   <XCircle className="size-4 shrink-0" aria-hidden="true" />
                 )}
-                {resultado[i] ? "Correcto" : `Era: ${f.etiqueta_correcta}`}
+                {resultado[i] ? "Correcto" : `Era: ${itemsSnapshot?.[i]?.correcta ?? ""}`}
               </p>
             )}
           </div>

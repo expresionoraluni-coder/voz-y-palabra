@@ -19,6 +19,8 @@ import Boton from "@/components/ui/button";
 import { similitudTexto } from "@/lib/similitud-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
+import { esModoChips, type ContenidoComparadorPublico } from "@/lib/calificacion-comparador";
+import { calificarComparadorChipsAccion } from "./acciones-calificacion";
 
 function ChipArrastrable({
   chip,
@@ -123,24 +125,22 @@ export default function Comparador({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: {
-    conceptos: string[];
-    criterios: string[];
-    banco_respuestas?: string[];
-    celda_correcta?: string[][];
-  };
-  respuestaPrevia?: { celdas: string[][] };
+  contenido: ContenidoComparadorPublico;
+  respuestaPrevia?: { celdas: string[][]; resultadoCeldas?: boolean[][] };
 }) {
-  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
-  const modoChips = !!(contenido.banco_respuestas && contenido.celda_correcta);
+  const { cargando, guardado, error, setError, guardar, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
+    actividadId,
+    estudianteId,
+  );
+  const modoChips = esModoChips(contenido);
 
   const vacio = () => contenido.criterios.map(() => contenido.conceptos.map(() => ""));
   const [celdas, setCeldas] = useState<string[][]>(respuestaPrevia?.celdas ?? vacio());
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  // El detalle por celda ya se calificó en el servidor al entregar (ver
+  // acciones-calificacion.ts) — aquí solo se lee, nunca se recalcula.
   const [resultado, setResultado] = useState<boolean[][] | null>(
-    respuestaPrevia && modoChips
-      ? contenido.celda_correcta!.map((fila, i) => fila.map((correcta, j) => respuestaPrevia.celdas[i]?.[j] === correcta))
-      : null,
+    modoChips ? (respuestaPrevia?.resultadoCeldas ?? null) : null,
   );
   const bloqueado = resultado !== null;
 
@@ -202,14 +202,8 @@ export default function Comparador({
         setError("Completa todas las celdas antes de guardar.");
         return;
       }
-      const resultadoCalc = contenido.celda_correcta!.map((fila, i) =>
-        fila.map((correcta, j) => celdas[i][j] === correcta),
-      );
-      const total = resultadoCalc.flat().length;
-      const aciertos = resultadoCalc.flat().filter(Boolean).length;
-      const puntajeAuto = Math.round((aciertos / total) * 100);
-      const ok = await guardar({ respuesta: { celdas }, estado: "completada", puntaje_auto: puntajeAuto });
-      if (ok) setResultado(resultadoCalc);
+      const guardada = await guardarConAccion(() => calificarComparadorChipsAccion(actividadId, celdas));
+      if (guardada) setResultado(guardada.resultadoCeldas as boolean[][]);
       return;
     }
 

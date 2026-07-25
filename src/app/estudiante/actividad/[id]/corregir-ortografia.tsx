@@ -7,7 +7,10 @@ import { Field, Label, HelpText, Textarea, ErrorText } from "@/components/ui/fie
 import Boton from "@/components/ui/button";
 import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
 import { contarPalabras } from "@/lib/contar-palabras";
-import { calificarOrtografia, type ComparacionPalabra } from "@/lib/comparar-ortografia";
+import type { ComparacionPalabra, ContenidoOrtografiaPublico } from "@/lib/comparar-ortografia";
+import { calificarCorregirOrtografia } from "./acciones-calificacion";
+
+type ResultadoOrtografia = { comparacion: ComparacionPalabra[]; totalPalabras: number; errores: number; aprobado: boolean };
 
 export default function CorregirOrtografia({
   actividadId,
@@ -17,22 +20,33 @@ export default function CorregirOrtografia({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { contexto?: string | null; texto_incorrecto: string; texto_correcto: string; temas?: string[] };
-  respuestaPrevia?: { texto_reescrito: string };
+  contenido: ContenidoOrtografiaPublico;
+  respuestaPrevia?: {
+    texto_reescrito: string;
+    comparacion?: ComparacionPalabra[];
+    totalPalabras?: number;
+    errores?: number;
+    aprobado?: boolean;
+  };
 }) {
-  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
   const [textoReescrito, setTextoReescrito] = useState(respuestaPrevia?.texto_reescrito ?? "");
-  // Igual que en clasificacion.tsx: si ya había una entrega previa, se
-  // recalifica de una vez contra el contenido actual — así se muestra
-  // bloqueada desde el primer render, sin exponer una respuesta editable
-  // que ya fue calificada.
-  // Se exige que texto_reescrito exista de verdad (no solo que
-  // respuestaPrevia sea un objeto truthy): una entrega vieja de un tipo
-  // anterior con otra forma de respuesta (ej. { elegidas: [...] } de
-  // etiquetado_texto, si la actividad cambió de tipo) no debe tronar la
-  // calificación — se trata como si no hubiera entrega todavía.
-  const [resultado, setResultado] = useState<ReturnType<typeof calificarOrtografia> | null>(
-    respuestaPrevia?.texto_reescrito ? calificarOrtografia(contenido.texto_correcto, respuestaPrevia.texto_reescrito) : null,
+  // El detalle de la comparación ya se calificó en el servidor al entregar
+  // (ver acciones-calificacion.ts) y se guardó junto a la respuesta — aquí
+  // solo se lee, nunca se recalcula (la clave `texto_correcto` ya no llega
+  // al cliente). Se exige que `comparacion` exista de verdad: una entrega
+  // vieja de un tipo anterior con otra forma de respuesta, o de antes de
+  // este cambio, se trata como si no hubiera entrega todavía en vez de
+  // tronar.
+  const [resultado, setResultado] = useState<ResultadoOrtografia | null>(
+    respuestaPrevia?.comparacion
+      ? {
+          comparacion: respuestaPrevia.comparacion,
+          totalPalabras: respuestaPrevia.totalPalabras ?? 0,
+          errores: respuestaPrevia.errores ?? 0,
+          aprobado: respuestaPrevia.aprobado ?? false,
+        }
+      : null,
   );
   const bloqueado = resultado !== null;
 
@@ -50,13 +64,15 @@ export default function CorregirOrtografia({
       return;
     }
 
-    const calificacion = calificarOrtografia(contenido.texto_correcto, textoReescrito);
-    const ok = await guardar({
-      respuesta: { texto_reescrito: textoReescrito },
-      estado: "completada",
-      puntaje_auto: calificacion.puntajeAuto,
-    });
-    if (ok) setResultado(calificacion);
+    const guardada = await guardarConAccion(() => calificarCorregirOrtografia(actividadId, textoReescrito));
+    if (guardada) {
+      setResultado({
+        comparacion: guardada.comparacion as ComparacionPalabra[],
+        totalPalabras: guardada.totalPalabras as number,
+        errores: guardada.errores as number,
+        aprobado: guardada.aprobado as boolean,
+      });
+    }
   }
 
   return (

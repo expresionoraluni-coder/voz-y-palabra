@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
-import type { ContenidoOpcionJustificacion } from "@/lib/opcion-justificacion";
+import {
+  type ContenidoOpcionJustificacion,
+  sanitizarContenido as sanitizarContenidoOpcionJustificacion,
+} from "@/lib/opcion-justificacion";
 import { EntregaRecienteProvider } from "@/lib/entrega-reciente-context";
 import VideoIntro from "./video-intro";
 import OpcionJustificacion from "./opcion-justificacion";
@@ -22,6 +25,12 @@ import GrabacionRubrica from "./grabacion-rubrica";
 import OrdenarFragmentos from "./ordenar-fragmentos";
 import EvaluarVideos from "./evaluar-videos";
 import CorregirOrtografia from "./corregir-ortografia";
+import { sanitizarContenidoEvaluarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
+import { sanitizarContenidoOrdenarFragmentos, type ContenidoOrdenarFragmentos } from "@/lib/calificacion-ordenar-fragmentos";
+import { sanitizarContenidoComparador, type ContenidoComparador } from "@/lib/calificacion-comparador";
+import { sanitizarContenidoClasificacion, type ContenidoClasificacion } from "@/lib/calificacion-clasificacion";
+import { sanitizarContenidoEtiquetadoTexto, type ContenidoEtiquetadoTexto } from "@/lib/calificacion-etiquetado-texto";
+import { sanitizarContenidoOrtografia, type ContenidoOrtografia } from "@/lib/comparar-ortografia";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -227,7 +236,7 @@ export default async function ActividadEstudiante({
         <OpcionJustificacion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={actividad.contenido as ContenidoOpcionJustificacion}
+          contenido={sanitizarContenidoOpcionJustificacion(actividad.contenido as ContenidoOpcionJustificacion)}
           respuestaPrevia={respuesta as Record<string, unknown> | undefined}
         />
       )}
@@ -235,14 +244,10 @@ export default async function ActividadEstudiante({
         <Clasificacion
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              categorias: string[];
-              elementos: { texto: string; categoria_correcta: string }[];
-              contexto?: string | null;
-            }
+          contenido={sanitizarContenidoClasificacion(actividad.contenido as ContenidoClasificacion)}
+          respuestaPrevia={
+            respuesta as { elegidas: string[]; itemsSnapshot?: { texto: string; correcta: string }[] } | undefined
           }
-          respuestaPrevia={respuesta as { elegidas: string[] } | undefined}
           dosNiveles={esDosNiveles}
         />
       )}
@@ -267,15 +272,10 @@ export default async function ActividadEstudiante({
         <Comparador
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              conceptos: string[];
-              criterios: string[];
-              banco_respuestas?: string[];
-              celda_correcta?: string[][];
-            }
+          contenido={sanitizarContenidoComparador(actividad.contenido as ContenidoComparador)}
+          respuestaPrevia={
+            respuesta as { celdas: string[][]; resultadoCeldas?: boolean[][] } | undefined
           }
-          respuestaPrevia={respuesta as { celdas: string[][] } | undefined}
         />
       )}
       {nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar" && (
@@ -316,15 +316,10 @@ export default async function ActividadEstudiante({
         <EtiquetadoTexto
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              contexto: string | null;
-              etiquetas: string[];
-              fragmentos: { texto: string; etiqueta_correcta: string; opciones?: string[] }[];
-              en_linea?: boolean;
-            }
+          contenido={sanitizarContenidoEtiquetadoTexto(actividad.contenido as ContenidoEtiquetadoTexto)}
+          respuestaPrevia={
+            respuesta as { elegidas: string[]; itemsSnapshot?: { texto: string; correcta: string }[] } | undefined
           }
-          respuestaPrevia={respuesta as { elegidas: string[] } | undefined}
         />
       )}
       {nombreTipo === "constructor_ramificado" && (
@@ -344,44 +339,38 @@ export default async function ActividadEstudiante({
         <OrdenarFragmentos
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              contexto?: string | null;
-              fragmentos: string[];
-              orden_correcto: number[];
-            }
-          }
-          respuestaPrevia={respuesta as { orden: number[] } | undefined}
+          contenido={sanitizarContenidoOrdenarFragmentos(actividad.contenido as ContenidoOrdenarFragmentos)}
+          respuestaPrevia={respuesta as { orden: number[]; resultadoPorPosicion?: boolean[] } | undefined}
         />
       )}
       {nombreTipo === "evaluar_videos" && (
         <EvaluarVideos
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              intro?: string | null;
-              cualidades: string[];
-              video_bien: { url: string | null; presentes: string[] };
-              video_mal: { url: string | null; ausentes: string[] };
-            }
+          contenido={sanitizarContenidoEvaluarVideos(actividad.contenido as ContenidoEvaluarVideos)}
+          respuestaPrevia={
+            respuesta as
+              | { marcadas_bien: string[]; marcadas_mal: string[]; resultado?: { bien: boolean[]; mal: boolean[] } }
+              | undefined
           }
-          respuestaPrevia={respuesta as { marcadas_bien: string[]; marcadas_mal: string[] } | undefined}
         />
       )}
       {nombreTipo === "corregir_ortografia" && (
         <CorregirOrtografia
           actividadId={actividad.id}
           estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              contexto?: string | null;
-              texto_incorrecto: string;
-              texto_correcto: string;
-              temas?: string[];
-            }
+          contenido={sanitizarContenidoOrtografia(actividad.contenido as ContenidoOrtografia)}
+          respuestaPrevia={
+            respuesta as
+              | {
+                  texto_reescrito: string;
+                  comparacion?: { correcta: string; escrita: string; correcto: boolean }[];
+                  totalPalabras?: number;
+                  errores?: number;
+                  aprobado?: boolean;
+                }
+              | undefined
           }
-          respuestaPrevia={respuesta as { texto_reescrito: string } | undefined}
         />
       )}
       {nombreTipo === "grabacion_rubrica" && (

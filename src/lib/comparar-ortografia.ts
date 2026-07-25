@@ -1,5 +1,22 @@
 export type ComparacionPalabra = { correcta: string; escrita: string; correcto: boolean };
 
+export type ContenidoOrtografia = {
+  contexto?: string | null;
+  texto_incorrecto: string;
+  texto_correcto: string;
+  temas?: string[];
+};
+
+export type ContenidoOrtografiaPublico = {
+  contexto?: string | null;
+  texto_incorrecto: string;
+  temas?: string[];
+};
+
+export function sanitizarContenidoOrtografia(contenido: ContenidoOrtografia): ContenidoOrtografiaPublico {
+  return { contexto: contenido.contexto, texto_incorrecto: contenido.texto_incorrecto, temas: contenido.temas };
+}
+
 function tokenizar(texto: string): string[] {
   return texto.trim().split(/\s+/).filter(Boolean);
 }

@@ -7,13 +7,8 @@ import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import { urlEmbedYoutube } from "@/lib/video-embed";
-
-type ContenidoEvaluarVideos = {
-  intro?: string | null;
-  cualidades: string[];
-  video_bien: { url: string | null; presentes: string[] };
-  video_mal: { url: string | null; ausentes: string[] };
-};
+import type { ContenidoEvaluarVideosPublico } from "@/lib/calificacion-evaluar-videos";
+import { calificarEvaluarVideos } from "./acciones-calificacion";
 
 function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion: string; url: string | null }) {
   const embed = url ? urlEmbedYoutube(url) : null;
@@ -58,26 +53,19 @@ export default function EvaluarVideos({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: ContenidoEvaluarVideos;
-  respuestaPrevia?: { marcadas_bien: string[]; marcadas_mal: string[] };
+  contenido: ContenidoEvaluarVideosPublico;
+  respuestaPrevia?: { marcadas_bien: string[]; marcadas_mal: string[]; resultado?: { bien: boolean[]; mal: boolean[] } };
 }) {
-  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
   const [marcadasBien, setMarcadasBien] = useState<string[]>(respuestaPrevia?.marcadas_bien ?? []);
   const [marcadasMal, setMarcadasMal] = useState<string[]>(respuestaPrevia?.marcadas_mal ?? []);
-  // Igual que en clasificacion.tsx: si ya había una entrega previa, se
-  // muestra directo como calificada, para que nadie vea el resultado y
-  // reenvíe corregido para sacar 100%.
+  // El detalle de aciertos/fallos ya se calificó en el servidor al entregar
+  // (ver acciones-calificacion.ts) y se guardó junto a la respuesta — aquí
+  // solo se lee, nunca se recalcula (la clave ya no llega al cliente). Si la
+  // entrega es de antes de este cambio y no trae `resultado`, se trata como
+  // si no hubiera entrega todavía en vez de tronar.
   const [resultado, setResultado] = useState<{ bien: boolean[]; mal: boolean[] } | null>(
-    respuestaPrevia
-      ? {
-          bien: contenido.cualidades.map(
-            (c) => contenido.video_bien.presentes.includes(c) === respuestaPrevia.marcadas_bien.includes(c),
-          ),
-          mal: contenido.cualidades.map(
-            (c) => contenido.video_mal.ausentes.includes(c) === respuestaPrevia.marcadas_mal.includes(c),
-          ),
-        }
-      : null,
+    respuestaPrevia?.resultado ?? null,
   );
   const bloqueado = resultado !== null;
 
@@ -92,25 +80,8 @@ export default function EvaluarVideos({
     if (bloqueado) return;
     setError(null);
 
-    // Calificación por coincidencia binaria: cada cualidad, en cada video,
-    // cuenta como acierto si su estado marcado (sí/no) coincide con el
-    // estado correcto — no es todo-o-nada por conjunto completo, así que
-    // marcar 5 de 6 correctamente sí suma en vez de valer cero.
-    const bien = contenido.cualidades.map(
-      (c) => contenido.video_bien.presentes.includes(c) === marcadasBien.includes(c),
-    );
-    const mal = contenido.cualidades.map(
-      (c) => contenido.video_mal.ausentes.includes(c) === marcadasMal.includes(c),
-    );
-    const aciertos = bien.filter(Boolean).length + mal.filter(Boolean).length;
-    const puntajeAuto = Math.round((aciertos / (contenido.cualidades.length * 2)) * 100);
-
-    const ok = await guardar({
-      respuesta: { marcadas_bien: marcadasBien, marcadas_mal: marcadasMal },
-      estado: "completada",
-      puntaje_auto: puntajeAuto,
-    });
-    if (ok) setResultado({ bien, mal });
+    const guardada = await guardarConAccion(() => calificarEvaluarVideos(actividadId, marcadasBien, marcadasMal));
+    if (guardada) setResultado(guardada.resultado as { bien: boolean[]; mal: boolean[] });
   }
 
   function checklist(lista: "bien" | "mal", marcadas: string[], resultadoLista?: boolean[]) {

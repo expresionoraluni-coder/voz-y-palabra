@@ -22,6 +22,8 @@ import { CheckCircle2, GripVertical, Plus, X, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import type { ContenidoOrdenarFragmentosPublico } from "@/lib/calificacion-ordenar-fragmentos";
+import { calificarOrdenarFragmentos } from "./acciones-calificacion";
 
 function FragmentoOrdenado({
   id,
@@ -106,17 +108,18 @@ export default function OrdenarFragmentos({
 }: {
   actividadId: string;
   estudianteId: string;
-  contenido: { contexto?: string | null; fragmentos: string[]; orden_correcto: number[] };
-  respuestaPrevia?: { orden: number[] };
+  contenido: ContenidoOrdenarFragmentosPublico;
+  respuestaPrevia?: { orden: number[]; resultadoPorPosicion?: boolean[] };
 }) {
-  const { cargando, error, setError, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
 
   const [secuencia, setSecuencia] = useState<number[]>(respuestaPrevia?.orden ?? []);
-  const [resultado, setResultado] = useState<boolean[] | null>(
-    respuestaPrevia
-      ? contenido.orden_correcto.map((idx, i) => respuestaPrevia.orden[i] === idx)
-      : null,
-  );
+  // El detalle por posición ya se calificó en el servidor al entregar (ver
+  // acciones-calificacion.ts) y se guardó junto a la respuesta — aquí solo
+  // se lee, nunca se recalcula (la clave ya no llega al cliente). Entregas
+  // de antes de este cambio sin `resultadoPorPosicion` se tratan como si no
+  // hubiera entrega todavía, en vez de tronar.
+  const [resultado, setResultado] = useState<boolean[] | null>(respuestaPrevia?.resultadoPorPosicion ?? null);
   const bloqueado = resultado !== null;
 
   const disponibles = useMemo(
@@ -163,17 +166,8 @@ export default function OrdenarFragmentos({
       return;
     }
 
-    const aciertos = contenido.orden_correcto.map((idx, i) => secuencia[i] === idx);
-    const puntajeAuto = Math.round(
-      (aciertos.filter(Boolean).length / contenido.orden_correcto.length) * 100,
-    );
-
-    const ok = await guardar({
-      respuesta: { orden: secuencia },
-      estado: "completada",
-      puntaje_auto: puntajeAuto,
-    });
-    if (ok) setResultado(aciertos);
+    const guardada = await guardarConAccion(() => calificarOrdenarFragmentos(actividadId, secuencia));
+    if (guardada) setResultado(guardada.resultadoPorPosicion as boolean[]);
   }
 
   return (
