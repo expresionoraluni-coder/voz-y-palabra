@@ -2348,3 +2348,78 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       palabras perfectamente corregido → "0 errores de 120 palabras" y
 --       calibración de confianza correcta. Typecheck y build limpios.
 --       Cuenta QA eliminada al terminar.
+--
+-- 59. Sexta ronda: pantalla de unidad en dos pasos + auditoría de seguridad
+--     completa (código + base de datos en vivo).
+--     - UX: `unidad/[id]/page.tsx` — la UC (Unidad de Competencia) y la
+--       pregunta de confianza inicial ahora se muestran solas en una
+--       primera pantalla (mismo patrón que `Prediccion` a nivel actividad:
+--       el servidor decide la rama según si ya existe
+--       `autoevaluaciones_confianza` con `momento='inicio'`, sin redirect
+--       ni estado de cliente). Al responder, `router.refresh()` ya
+--       existente hace que el servidor pase a la segunda pantalla
+--       (progreso + bitácora + lista de actividades + reflexión de
+--       cierre), sin repetir la UC. `PageHeader` queda fuera del
+--       ternario, visible en ambas pantallas.
+--     - Auditoría de seguridad: se investigó con 3 agentes en paralelo
+--       (UI de unidad; RLS/auth/exposición de datos; inyección/XSS/
+--       secretos/APIs) y se verificó todo contra la base de datos real
+--       vía `get_advisors`, lectura directa de `pg_policies` y del código
+--       fuente de las 10 funciones `SECURITY DEFINER` expuestas por RPC
+--       (el `schema.sql` del repo está incompleto — solo cubre el
+--       esquema original, el resto son comentarios que describen cambios
+--       ya aplicados en producción, no SQL ejecutable — así que no
+--       bastaba con leer el repo).
+--     - **Confirmado correcto, sin cambios**: las 10 tablas con datos de
+--       estudiantes tienen RLS con políticas que aíslan bien (cada
+--       estudiante solo ve/edita sus propias filas vía
+--       `estudiante_actual()`, cada docente solo las de sus grupos vía
+--       `docente_id = auth.uid()`); las 10 funciones RPC validan
+--       autorización internamente antes de tocar datos ajenos; el NIP se
+--       compara con bcrypt del lado servidor; `ingresar_estudiante` solo
+--       vincula la sesión anónima a la fila del estudiante DESPUÉS de
+--       validar el NIP; no hay `dangerouslySetInnerHTML` en todo el
+--       proyecto (cero XSS); no hay secretos comiteados (`.env*` bien
+--       ignorado, sin `service_role` key en `src/`); el login anónimo es
+--       el mecanismo intencional del login sin contraseña, correctamente
+--       controlado por RLS.
+--     - **Corregido (2 fixes, vía migración SQL, sin tocar frontend)**:
+--       (1) `ingresar_estudiante` distinguía "nombre no encontrado"
+--       (excepción) de "NIP incorrecto" (fila con `error`) — un script
+--       que ya supiera el código de grupo podía usar esa diferencia de
+--       forma de respuesta para enumerar qué nombres son estudiantes
+--       reales del grupo. Se unificaron las 3 ramas de credenciales
+--       inválidas (grupo no encontrado, nombre no encontrado, cuenta
+--       dada de baja) a la misma forma de fila que ya usaban "NIP
+--       incorrecto"/"bloqueado", con `pg_sleep(0.5)` parejo — mensajes de
+--       texto se mantienen distintos por UX (ayudan a un estudiante real
+--       que se equivocó), el frontend no necesitó cambios (ya manejaba
+--       `fila?.error` genéricamente). (2) Sin límite de tamaño en
+--       columnas de texto libre (`entregas.respuesta`,
+--       `reflexiones.texto`, `bitacora.meta`) — como todas las
+--       escrituras van del cliente Supabase autenticado directo a la
+--       tabla (sin Server Actions/API routes de por medio), un estudiante
+--       podía mandar un payload de varios MB por request directo sin que
+--       nada lo detuviera. Se agregaron `CHECK` de tamaño (20000 / 5000 /
+--       2000 caracteres respectivamente) — verificado antes que ningún
+--       dato existente los excede (máximos reales: 1483 / 157 / 24).
+--     - **Documentado, no abordado en esta fase** (por alcance): las
+--       respuestas correctas de las actividades viajan completas al
+--       cliente antes de responder (limitación arquitectónica conocida,
+--       resolverla implica mover calificación al servidor para los 11
+--       tipos — cambio grande); `actividades`/`unidades` compartidas
+--       entre cualquier cuenta docente (parece intencional, solo hay una
+--       cuenta activa); "Leaked Password Protection" desactivado en
+--       Supabase Auth (se activa con un clic en el Dashboard, no hay
+--       herramienta en este entorno para tocarlo); sin rate-limiting de
+--       infraestructura en el login más allá del bloqueo por NIP ya
+--       existente (agregar más requeriría infraestructura nueva,
+--       desproporcionado para el tamaño de la app).
+--     - Verificado en vivo con estudiante QA temporal: unidad nueva (sin
+--       confianza previa) mostró solo UC + pregunta de seguridad, sin
+--       lista de actividades; al responder pasó a la pantalla de
+--       actividades sin repetir la UC; al recargar entró directo a la
+--       pantalla de actividades (no volvió a preguntar). Login con
+--       nombre inexistente confirmado: ya no truena, muestra el mismo
+--       mensaje de ayuda de siempre. Typecheck y build limpios. Cuenta
+--       QA eliminada al terminar.

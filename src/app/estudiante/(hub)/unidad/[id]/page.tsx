@@ -136,97 +136,102 @@ export default async function UnidadEstudiante({
         descripcion={unidad.reto_comunicativo}
       />
 
-      {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}
-
-      {totalActividades > 0 && (
-        <div className="flex items-center gap-3">
-          <ProgressBar porcentaje={pct} gradiente={tema.barra} />
-          <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-500">
-            {completadas}/{totalActividades}
-          </span>
-        </div>
-      )}
-
-      <Bitacora
-        estudianteId={estudiante.id}
-        unidadId={id}
-        metaPrevia={bitacora?.meta ?? null}
-        cumplidaPrevia={bitacora?.cumplida ?? false}
-        avancePct={pct}
-        unidadCompetencia={unidad.unidad_competencia}
-      />
-
-      {!confianzaInicio && <Confianza estudianteId={estudiante.id} unidadId={id} />}
-
-      {!actividades || actividades.length === 0 ? (
-        <EmptyState
-          icon={TrendingUp}
-          titulo="Todavía no hay actividades publicadas"
-          descripcion="Tu profesora las agregará pronto."
-        />
+      {!confianzaInicio ? (
+        <>
+          {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}
+          <Confianza estudianteId={estudiante.id} unidadId={id} />
+        </>
       ) : (
-        <div className="flex flex-col gap-2">
-          {actividades.map((a) => {
-            const completada = Array.isArray(a.entregas) && a.entregas.length > 0;
-            const prerequisito = a.requiere_actividad_id
-              ? actividades.find((p) => p.id === a.requiere_actividad_id)
-              : null;
-            const entregaPrerequisito = prerequisito?.entregas?.[0];
-            const bloqueada = Boolean(
-              prerequisito && (!entregaPrerequisito || (entregaPrerequisito.puntaje_auto ?? 0) < 70),
-            );
+        <>
+          {totalActividades > 0 && (
+            <div className="flex items-center gap-3">
+              <ProgressBar porcentaje={pct} gradiente={tema.barra} />
+              <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-500">
+                {completadas}/{totalActividades}
+              </span>
+            </div>
+          )}
 
-            if (bloqueada) {
-              return (
-                <div
-                  key={a.id}
-                  className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 px-4 py-3.5 opacity-60 dark:border-slate-800"
-                >
-                  <Lock className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
-                  <span className="flex-1 font-medium text-slate-500 dark:text-slate-500">{a.titulo}</span>
-                  <span className="text-xs text-slate-400 dark:text-slate-600">
-                    Completa primero: {prerequisito!.titulo}
-                  </span>
-                </div>
-              );
-            }
+          <Bitacora
+            estudianteId={estudiante.id}
+            unidadId={id}
+            metaPrevia={bitacora?.meta ?? null}
+            cumplidaPrevia={bitacora?.cumplida ?? false}
+            avancePct={pct}
+            unidadCompetencia={unidad.unidad_competencia}
+          />
 
-            return (
-              <Link key={a.id} href={`/estudiante/actividad/${a.id}`}>
-                <CardLink className="flex items-center gap-3 px-4 py-3.5">
-                  {completada ? (
-                    <CheckCircle2 className="size-5 shrink-0 text-emerald-500" aria-hidden="true" />
-                  ) : (
-                    <Circle className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
-                  )}
-                  <span className="flex-1 font-medium text-slate-900 dark:text-slate-50">
-                    {a.titulo}
-                  </span>
-                  <span
-                    className={
-                      completada
-                        ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
-                        : "text-xs text-slate-500 dark:text-slate-400"
-                    }
-                  >
-                    {completada ? "Completada" : "Sin empezar"}
-                  </span>
-                </CardLink>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+          {!actividades || actividades.length === 0 ? (
+            <EmptyState
+              icon={TrendingUp}
+              titulo="Todavía no hay actividades publicadas"
+              descripcion="Tu profesora las agregará pronto."
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {actividades.map((a) => {
+                const completada = Array.isArray(a.entregas) && a.entregas.length > 0;
+                const prerequisito = a.requiere_actividad_id
+                  ? actividades.find((p) => p.id === a.requiere_actividad_id)
+                  : null;
+                const entregaPrerequisito = prerequisito?.entregas?.[0];
+                const bloqueada = Boolean(
+                  prerequisito && (!entregaPrerequisito || (entregaPrerequisito.puntaje_auto ?? 0) < 70),
+                );
 
-      {unidadCompleta && (
-        <ReflexionCierre
-          estudianteId={estudiante.id}
-          unidadId={id}
-          metaPrevia={bitacora?.meta ?? null}
-          textoPrevio={reflexionCierre?.texto ?? null}
-          confianzaInicioPct={confianzaInicio?.valor ?? null}
-          promedioUnidad={promedioUnidad}
-        />
+                if (bloqueada) {
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 px-4 py-3.5 opacity-60 dark:border-slate-800"
+                    >
+                      <Lock className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
+                      <span className="flex-1 font-medium text-slate-500 dark:text-slate-500">{a.titulo}</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-600">
+                        Completa primero: {prerequisito!.titulo}
+                      </span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <Link key={a.id} href={`/estudiante/actividad/${a.id}`}>
+                    <CardLink className="flex items-center gap-3 px-4 py-3.5">
+                      {completada ? (
+                        <CheckCircle2 className="size-5 shrink-0 text-emerald-500" aria-hidden="true" />
+                      ) : (
+                        <Circle className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
+                      )}
+                      <span className="flex-1 font-medium text-slate-900 dark:text-slate-50">
+                        {a.titulo}
+                      </span>
+                      <span
+                        className={
+                          completada
+                            ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                            : "text-xs text-slate-500 dark:text-slate-400"
+                        }
+                      >
+                        {completada ? "Completada" : "Sin empezar"}
+                      </span>
+                    </CardLink>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {unidadCompleta && (
+            <ReflexionCierre
+              estudianteId={estudiante.id}
+              unidadId={id}
+              metaPrevia={bitacora?.meta ?? null}
+              textoPrevio={reflexionCierre?.texto ?? null}
+              confianzaInicioPct={confianzaInicio?.valor ?? null}
+              promedioUnidad={promedioUnidad}
+            />
+          )}
+        </>
       )}
     </div>
   );
