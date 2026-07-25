@@ -2423,3 +2423,29 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       nombre inexistente confirmado: ya no truena, muestra el mismo
 --       mensaje de ayuda de siempre. Typecheck y build limpios. Cuenta
 --       QA eliminada al terminar.
+--
+-- 60. Fix de la Fase 59: la bitácora ("¿Qué aprendizaje esperas alcanzar
+--     en esta unidad?") seguía apareciendo en la pantalla de actividades
+--     — se había dejado ahí por error al mover solo UC+Confianza a la
+--     Pantalla 1. Se movió el componente `<Bitacora>` completo a la
+--     Pantalla 1 (junto a UC y Confianza) — ahora la pregunta se responde
+--     una sola vez, al entrar a la unidad por primera vez, y no vuelve a
+--     aparecer en la lista de actividades.
+--     - Nota de comportamiento: como `<Bitacora>` (que también incluye
+--       el resumen "Lo que esperas aprender" + botón "Marcar como
+--       cumplida" una vez que ya hay meta guardada) ahora solo vive en la
+--       Pantalla 1, se vuelve inalcanzable una vez que se contesta la
+--       confianza inicial — igual que la UC. Se detectó y corrigió el
+--       caso real ya existente en la cuenta de revisión: Unidad 2 ya
+--       tenía confianza respondida pero nunca se había guardado una meta
+--       de bitácora (por eso la usuaria la seguía viendo en el listado,
+--       era la única unidad con ese desfase) — se sembró una meta
+--       placeholder por SQL para esa unidad, consistente con el resto de
+--       datos de prueba de la cuenta.
+--     - Verificado en vivo con estudiante QA temporal: unidad nueva
+--       mostró UC + bitácora + confianza juntas en la Pantalla 1; se
+--       guardó la meta de bitácora (quedó mostrando "Lo que esperas
+--       aprender" + "Marcar como cumplida" sin salir de la Pantalla 1);
+--       al guardar la confianza pasó a la Pantalla 2 (lista de
+--       actividades) sin que la bitácora reapareciera ahí. Typecheck y
+--       build limpios. Cuenta QA eliminada al terminar.

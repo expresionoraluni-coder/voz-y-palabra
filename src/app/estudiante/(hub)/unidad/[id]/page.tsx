@@ -139,6 +139,14 @@ export default async function UnidadEstudiante({
       {!confianzaInicio ? (
         <>
           {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}
+          <Bitacora
+            estudianteId={estudiante.id}
+            unidadId={id}
+            metaPrevia={bitacora?.meta ?? null}
+            cumplidaPrevia={bitacora?.cumplida ?? false}
+            avancePct={pct}
+            unidadCompetencia={unidad.unidad_competencia}
+          />
           <Confianza estudianteId={estudiante.id} unidadId={id} />
         </>
       ) : (
@@ -151,15 +159,6 @@ export default async function UnidadEstudiante({
               </span>
             </div>
           )}
-
-          <Bitacora
-            estudianteId={estudiante.id}
-            unidadId={id}
-            metaPrevia={bitacora?.meta ?? null}
-            cumplidaPrevia={bitacora?.cumplida ?? false}
-            avancePct={pct}
-            unidadCompetencia={unidad.unidad_competencia}
-          />
 
           {!actividades || actividades.length === 0 ? (
             <EmptyState
