@@ -2696,3 +2696,28 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     eliminada al terminar, cuenta de revisión de la usuaria sin tocar.
 --     Pendiente: 1 actividad sigue sin `video_url` a propósito (repaso
 --     integrador) y los 2 videos reales de Cualidades siguen sin subir.
+--
+-- 65. Quitar el paso de video cuando la actividad no tiene `video_url`.
+--     Con casi todas las actividades ya con video real (entrada anterior),
+--     el placeholder "Video próximamente" de `video-intro.tsx` solo le
+--     pegaba a "Repaso integrador de ortografía" — que nunca va a tener
+--     uno (su propia nota de guion ya lo decía). La usuaria pidió
+--     quitarlo directamente en vez de seguir mostrando un "próximamente"
+--     que nunca se cumple. `estudiante/actividad/[id]/page.tsx`: la rama
+--     que envolvía el contenido en `<VideoIntro>` ahora solo lo hace si
+--     `actividad.video_url` existe; sin él, se salta directo al
+--     contenido (sin paso de video, sin placeholder, sin clic extra).
+--     `video-intro.tsx`: se quitó la rama muerta `EmptyState`/"Video
+--     próximamente" (ya no se puede alcanzar) y su import; `videoUrl`
+--     pasa de `string | null` a `string`, porque el componente ahora
+--     solo se monta cuando sí hay video. Junto con este cambio se hizo
+--     un reset completo de los datos de progreso de la cuenta de
+--     revisión (entregas, reflexiones, confianza, bitácora, insignias,
+--     avisos/eventos/retroalimentación) y se generó una contraseña
+--     nueva para la única cuenta docente del proyecto — la usuaria pidió
+--     probar el sitio ya desplegado desde cero en los tres roles
+--     (docente + dos estudiantes). Verificado en vivo: login de docente
+--     con la contraseña nueva, login de los dos estudiantes mostrando el
+--     flujo de "primera vez" (crear NIP), y "Repaso integrador de
+--     ortografía" pasando directo de la pregunta de confianza al
+--     contenido, sin ningún paso de video. Typecheck y build limpios.

@@ -461,10 +461,12 @@ export default async function ActividadEstudiante({
       >
         {!prediccionExistente && !entregaExistente ? (
           <Prediccion actividadId={actividad.id} estudianteId={estudiante.id} />
-        ) : (
+        ) : actividad.video_url ? (
           <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
             {contenidoTrasVideo}
           </VideoIntro>
+        ) : (
+          contenidoTrasVideo
         )}
       </EntregaRecienteProvider>
     </div>
