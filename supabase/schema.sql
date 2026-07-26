@@ -2658,3 +2658,41 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     nuevo → sigue apareciendo el video primero, y tras "Continuar" el
 --     resultado ya calificado. Typecheck y build limpios. Cuenta QA
 --     eliminada al terminar, cuenta de revisión de la usuaria sin tocar.
+--
+-- 64. Primera tanda de `video_url` real (YouTube no listado). La usuaria
+--     produjo sus primeros videos con NotebookLM a partir del guion
+--     entregado en la fase anterior. Antes de conectarlos se evaluó
+--     Supabase Storage como hosting y se descartó: el proyecto está en
+--     plan `free` (`get_organization`), que da solo 1 GB de storage y
+--     5 GB de egress/mes (`supabase.com/pricing`) — los archivos locales
+--     de la usuaria ya pesaban ~458 MB entre 12 videos, y la
+--     transferencia gratuita se agotaría casi de inmediato en cuanto un
+--     grupo real los viera. Se optó por YouTube "No listado" (gratis,
+--     sin límite práctico de transferencia, y ya es el formato que
+--     `urlEmbedYoutube` en `src/lib/video-embed.ts` espera). 22 de 23
+--     actividades quedaron con `video_url` vía `UPDATE` directo (sin
+--     archivo de migración, mismo patrón de siempre):
+--       - Los pares nivel 1 + nivel 2 ("Las 6 funciones de la lengua",
+--         "Ideas principal/secundaria/terciaria") y "Técnica ante un
+--         escenario" (un solo compañero + todo el grupo), y el par "El
+--         resumen imposible" + "Practica tu resumen", comparten el mismo
+--         link — un solo video cubre ambas actividades, tal como estaba
+--         planeado en el guion.
+--       - "Repaso integrador de ortografía" se dejó sin `video_url` a
+--         propósito (la nota del guion ya avisaba que no necesita un
+--         video dedicado, puede reusar cualquiera de los tres anteriores
+--         de la unidad si la usuaria lo pide más adelante).
+--       - "Cualidades internas y externas de la exposición oral" recibió
+--         un video de teoría nuevo (corrección sobre la fase anterior,
+--         que la había dejado totalmente fuera de alcance) — sigue
+--         necesitando además los dos videos reales bien/mal, que quedan
+--         como tarea aparte de la usuaria, no de NotebookLM.
+--     Verificado en vivo con estudiante QA temporal: video individual
+--     cargando el iframe correcto, video compartido resolviendo igual
+--     para ambas actividades del par, "Video próximamente" seguía
+--     apareciendo sin errores en la actividad sin video, y el video de
+--     teoría de Cualidades cargando correctamente. Sin cambios de
+--     código (nada toca `src/`), sin build/typecheck. Cuenta QA
+--     eliminada al terminar, cuenta de revisión de la usuaria sin tocar.
+--     Pendiente: 1 actividad sigue sin `video_url` a propósito (repaso
+--     integrador) y los 2 videos reales de Cualidades siguen sin subir.
