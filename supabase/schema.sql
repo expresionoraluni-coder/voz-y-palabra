@@ -2633,3 +2633,28 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       REVISIÓN`, código `REVISION-01`) reseteada a estado limpio al
 --       inicio de esta fase (petición explícita, para que pudiera vivir
 --       el sitio desde cero) y quedó sin tocar el resto de la fase.
+--
+-- 63. Fix: orden pregunta de confianza / video en actividad/[id]. Antes
+--     `VideoIntro` envolvía TODO el contenido (video → predicción →
+--     card), así que el video se veía antes de la pregunta de
+--     confianza. La usuaria pidió el orden inverso: pregunta primero
+--     (una sola vez, nunca vuelve a aparecer tras contestarla) y video
+--     después — pero el video sí debe verse en cada reingreso posterior
+--     (antes y después de haber entregado la actividad), porque
+--     `VideoIntro` guarda "ya lo vi" en estado local de React (`avanzado`),
+--     no en la base, así que se resetea en cada carga de página.
+--     `estudiante/actividad/[id]/page.tsx`: se sacó el ternario
+--     `!prediccionExistente && !entregaExistente ? <Prediccion/> :
+--     <Card/>` de dentro de `<VideoIntro>` y se invirtió el anidamiento
+--     — ahora `<Prediccion/>` se evalúa primero (sin video), y solo en
+--     la rama "ya hay predicción o entrega" se entra a `<VideoIntro>`,
+--     que envuelve la Card + `ActividadPostEntrega`. El bloque de
+--     AE/UC se quedó visible en todos los pasos, igual que antes.
+--     Verificado en vivo con estudiante QA temporal: actividad nueva
+--     (sin predicción) → aparece la pregunta sola, sin video; al
+--     contestarla → aparece el video (sin volver a preguntar); al
+--     recargar antes de resolver la actividad → vuelve a aparecer el
+--     video (no la pregunta); al resolver la actividad y recargar de
+--     nuevo → sigue apareciendo el video primero, y tras "Continuar" el
+--     resultado ya calificado. Typecheck y build limpios. Cuenta QA
+--     eliminada al terminar, cuenta de revisión de la usuaria sin tocar.

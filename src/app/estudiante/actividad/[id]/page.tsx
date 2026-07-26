@@ -201,36 +201,30 @@ export default async function ActividadEstudiante({
     };
   }
 
-  const contenidoActividad = (
-    <>
-      {(actividad.aprendizaje_esperado || unidadDeActividad?.unidad_competencia) && (
-        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
-          {unidadDeActividad?.unidad_competencia && (
-            <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} compacto />
-          )}
-          {actividad.aprendizaje_esperado && (
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
-                Aprendizaje esperado (lo que esta actividad busca que logres)
-              </p>
-              <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-300">
-                {actividad.aprendizaje_esperado}
-              </p>
-            </div>
-          )}
+  const bloqueAeUc = (actividad.aprendizaje_esperado || unidadDeActividad?.unidad_competencia) && (
+    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
+      {unidadDeActividad?.unidad_competencia && (
+        <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} compacto />
+      )}
+      {actividad.aprendizaje_esperado && (
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
+            Aprendizaje esperado (lo que esta actividad busca que logres)
+          </p>
+          <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-300">{actividad.aprendizaje_esperado}</p>
         </div>
       )}
+    </div>
+  );
 
-      <EntregaRecienteProvider
-        inicial={
-          entregaExistente
-            ? { puntajeAuto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta as Record<string, unknown> }
-            : null
-        }
-      >
-      {!prediccionExistente && !entregaExistente ? (
-        <Prediccion actividadId={actividad.id} estudianteId={estudiante.id} />
-      ) : (
+  // La pregunta de confianza va ANTES del video (y solo se muestra una vez,
+  // nunca vuelve a aparecer tras contestarla) — el video, en cambio, es un
+  // paso que sí se repite en cada visita (VideoIntro guarda "ya lo vi" en
+  // estado local de React, no en la base), así que debe quedar DESPUÉS de
+  // la pregunta para que un reingreso posterior (predicción ya contestada)
+  // muestre el video de nuevo sin volver a preguntar.
+  const contenidoTrasVideo = (
+    <>
       <Card className="p-5 sm:p-6">
       {nombreTipo === "opcion_justificacion" && (
         <OpcionJustificacion
@@ -395,7 +389,6 @@ export default async function ActividadEstudiante({
         </p>
       )}
       </Card>
-      )}
 
       <ActividadPostEntrega
         actividadId={actividad.id}
@@ -411,7 +404,6 @@ export default async function ActividadEstudiante({
         }
         unidadCompletada={unidadCompletadaProps}
       />
-      </EntregaRecienteProvider>
     </>
   );
 
@@ -458,9 +450,23 @@ export default async function ActividadEstudiante({
         }
       />
 
-      <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
-        {contenidoActividad}
-      </VideoIntro>
+      {bloqueAeUc}
+
+      <EntregaRecienteProvider
+        inicial={
+          entregaExistente
+            ? { puntajeAuto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta as Record<string, unknown> }
+            : null
+        }
+      >
+        {!prediccionExistente && !entregaExistente ? (
+          <Prediccion actividadId={actividad.id} estudianteId={estudiante.id} />
+        ) : (
+          <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
+            {contenidoTrasVideo}
+          </VideoIntro>
+        )}
+      </EntregaRecienteProvider>
     </div>
   );
 }
