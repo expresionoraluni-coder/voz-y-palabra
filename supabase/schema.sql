@@ -2524,3 +2524,112 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       "Reiniciar prueba" siguió borrando la entrega correctamente.
 --       Typecheck y build limpios tras cada sub-fase. Cuenta QA eliminada
 --       al terminar.
+--
+-- 62. Octava fase: hardening de seguridad completo (auditoría "IA que
+--     busca vacíos") — la usuaria pidió tratar el sitio como si un
+--     escáner automatizado lo revisara, justo después de cerrar la
+--     Fase 7. Auditoría con 3 agentes en paralelo (RLS de las 17 tablas,
+--     autorización server-side/IDOR, exposición de secretos), todo
+--     confirmado en vivo contra producción (`pg_policies`/`pg_trigger`/
+--     `pg_proc` reales, no solo lo que documentaba este archivo).
+--     - **Hallazgo crítico cerrado**: `entregas` permitía que cualquier
+--       estudiante, con su propio JWT y la anon key (pública por
+--       diseño), escribiera directo por API REST `puntaje_auto`/
+--       `estado`/`evaluacion_docente` — el único trigger de protección
+--       (`trg_proteger_entrega`) corría en `BEFORE UPDATE`, nunca en
+--       `INSERT`, y ni en UPDATE protegía `puntaje_auto`/`estado`. Un
+--       trigger más estricto no podía cerrarlo de verdad: la Server
+--       Action de la Fase 7 escribía con el mismo JWT de sesión que un
+--       fetch directo, Postgres no puede distinguir el origen. Cierre
+--       real: nuevo cliente `src/lib/supabase/admin.ts` (service role,
+--       `import "server-only"`, solo se llama desde dentro de Server
+--       Actions ya validadas) + policy de `entregas` para el estudiante
+--       reducida a solo `SELECT`:
+--       ```sql
+--       drop policy "estudiante administra sus entregas" on entregas;
+--       create policy "estudiante lee sus entregas" on entregas
+--         for select using (estudiante_id = estudiante_actual());
+--       ```
+--       Los 4 tipos de revisión humana que antes escribían directo desde
+--       el cliente (`encontrar_corregir`, `redaccion_checklist`,
+--       `constructor_ramificado`, `grabacion_rubrica`) más el submodo
+--       texto-libre de `comparador` y el submodo `leer_reflexionar` de
+--       `redaccion_checklist` se migraron a una Server Action nueva y
+--       genérica (`src/app/estudiante/actividad/[id]/acciones-entrega.ts`,
+--       `guardarEntregaAbiertaAccion`/`reiniciarEntregaAccion`), que
+--       reusa `contextoCalificacion`/`guardarEntregaCalificada` de la
+--       Fase 7 (ahora exportados). El método `guardar()` (upsert directo)
+--       de `useEntregaActividad.ts` quedó retirado por completo — el
+--       único camino de escritura del hook es `guardarConAccion`.
+--     - **Fuga que reabría la Fase 7, cerrada**: no existía ningún
+--       chequeo de rol en `/docente/**` — cada página solo verificaba
+--       `if (!user)`, nunca que existiera fila en `docentes`. Como
+--       `unidades`/`actividades` tienen lectura RLS abierta a
+--       "cualquier sesión autenticada" (el estudiante la necesita para
+--       su flujo normal), un estudiante con sesión válida podía navegar
+--       directo a la pantalla de edición de una actividad y ver la
+--       clave de respuesta de CUALQUIER actividad de la plataforma, no
+--       solo las desbloqueadas para él. Cerrado con un solo archivo:
+--       `src/app/docente/layout.tsx` (Server Component, redirige si no
+--       hay sesión o si la sesión no tiene fila en `docentes`).
+--     - **`WITH CHECK` incompleto en `avisos`/`eventos`/
+--       `retroalimentacion_docente`**: las tres policies `for all`
+--       validaban solo `docente_id = auth.uid()`, nunca que la FK
+--       secundaria (`grupo_id`/`entrega_id`) perteneciera a esa misma
+--       docente — una docente B podía, en teoría, inyectar un aviso,
+--       evento o comentario en el grupo/entrega de la docente A. Cerrado
+--       agregando `with check` con subquery de propiedad real a las tres
+--       (SQL completo en el archivo de tests). Ningún componente cliente
+--       cambió — ya mandaban `docente_id` correcto, faltaba la
+--       validación del lado de la base.
+--     - **Enumeración de nombres sin límite**: `ingresar_estudiante`
+--       tenía rate-limit real para el NIP (5 intentos → bloqueo 15 min)
+--       pero ninguno para la fase previa de "adivinar el nombre" dentro
+--       de un código de grupo conocido. Dos tablas nuevas
+--       (`intentos_nombre_estudiante`, `intentos_nombre_grupo`, sin
+--       policies — solo la función `SECURITY DEFINER` las toca) y
+--       `ingresar_estudiante` modificada con dos capas: por sesión
+--       (mismo umbral 5/15min que el resto de la app) y por grupo
+--       (ventana deslizante de 5 min, fricción creciente con
+--       `pg_sleep` SIN bloqueo duro — un candado por grupo tumbaría a
+--       un salón real de estudiantes cometiendo typos a la vez; la capa
+--       por sesión ya cierra el caso casual, la capa por grupo cierra
+--       el atajo de "sesión anónima nueva por intento").
+--     - **Documentado, explícitamente diferido** (decisión, no
+--       descuido): la policy de lectura de `actividades`/`unidades`
+--       sigue abierta a cualquier sesión autenticada (el estudiante la
+--       necesita) — en teoría, con el SDK de Supabase en la mano, un
+--       estudiante podría leer `contenido` (con clave) de cualquier
+--       actividad vía `select` directo, sin pasar por ninguna ruta.
+--       Cerrarlo bien requiere separar columnas públicas/privadas o
+--       servir el detalle vía función `SECURITY DEFINER` — cambio de
+--       forma comparable al de `entregas`, candidato a fase aparte.
+--       `unidades`/`actividades` sin `docente_id` (cualquier docente
+--       edita el currículo de cualquier otra) se deja igual — "currículo
+--       compartido" intencional mientras solo haya una docente real
+--       activa; revisar si algún día hay una segunda. El DELETE directo
+--       de `reflexiones` (botón "Reiniciar prueba") no se tocó, mismo
+--       patrón de antes, fuera del alcance pedido.
+--     - Verificado en vivo, exhaustivo, con estudiante QA temporal y
+--       simulaciones de sesión por SQL (transacciones con rollback,
+--       mismo patrón que `rls_seguridad.sql`): fetch directo con el JWT
+--       real de una sesión de estudiante contra `/rest/v1/entregas`
+--       (POST, forjando `puntaje_auto: 100` + `evaluacion_docente:
+--       "logrado"`) → `403`, `"new row violates row-level security
+--       policy"`; INSERT/UPDATE directo simulado igual de bloqueado;
+--       upsert del cliente admin sobre una entrega con
+--       `evaluacion_docente` ya puesta → no lo bloquea el trigger
+--       (verificado empíricamente); los 6 tipos migrados + los 7 de la
+--       Fase 7 siguen calificando/guardando igual; "Reiniciar prueba"
+--       sigue funcionando; un estudiante con sesión válida navegando
+--       directo a la URL de edición de la docente → redirige, sin
+--       cargar el contenido. `supabase/tests/rls_seguridad.sql`
+--       extendido de 17 a 21 casos (VP-C1 reescrito para el nuevo
+--       modelo — el estudiante ya no tiene ninguna policy de escritura
+--       en `entregas`, ni siquiera de su propia `respuesta`; 4 casos
+--       nuevos para avisos/eventos/retroalimentación cruzados y
+--       enumeración de nombres) — 21/21 pasan. Typecheck y build
+--       limpios. Cuenta de revisión de la usuaria (`ESTUDIANTE DE
+--       REVISIÓN`, código `REVISION-01`) reseteada a estado limpio al
+--       inicio de esta fase (petición explícita, para que pudiera vivir
+--       el sitio desde cero) y quedó sin tocar el resto de la fase.

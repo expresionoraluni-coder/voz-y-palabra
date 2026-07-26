@@ -7,6 +7,7 @@ import Boton from "@/components/ui/button";
 import { similitudTexto } from "@/lib/similitud-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
+import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 type Seccion = { nombre: string; guia: string };
 
@@ -21,7 +22,10 @@ export default function ConstructorRamificado({
   contenido: { tema_sugerido: string | null; secciones: Seccion[] };
   respuestaPrevia?: { tema: string; textos: string[] };
 }) {
-  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
+    actividadId,
+    estudianteId,
+  );
   const [tema, setTema] = useState(respuestaPrevia?.tema ?? "");
   const [textos, setTextos] = useState<string[]>(
     respuestaPrevia?.textos ?? contenido.secciones.map(() => ""),
@@ -52,7 +56,9 @@ export default function ConstructorRamificado({
       }
     }
 
-    await guardar({ respuesta: { tema, textos }, estado: "pendiente_revision" });
+    await guardarConAccion(() =>
+      guardarEntregaAbiertaAccion(actividadId, "constructor_ramificado", { tema, textos }, "pendiente_revision"),
+    );
   }
 
   return (

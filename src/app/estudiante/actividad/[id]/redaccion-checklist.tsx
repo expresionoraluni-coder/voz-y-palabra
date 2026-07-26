@@ -8,6 +8,7 @@ import Boton from "@/components/ui/button";
 import { analizarTexto, overlapConFuente } from "@/lib/analisis-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
+import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 export default function RedaccionChecklist({
   actividadId,
@@ -26,7 +27,10 @@ export default function RedaccionChecklist({
   };
   respuestaPrevia?: { texto: string; checklist_marcado: boolean[] };
 }) {
-  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
+    actividadId,
+    estudianteId,
+  );
   const [texto, setTexto] = useState(respuestaPrevia?.texto ?? "");
   const [marcado, setMarcado] = useState<boolean[]>(
     respuestaPrevia?.checklist_marcado ?? contenido.checklist.map(() => false),
@@ -61,20 +65,24 @@ export default function RedaccionChecklist({
       return;
     }
 
-    await guardar({
-      respuesta: {
-        texto,
-        checklist_marcado: marcado,
-        analisisTexto: {
-          variedadLexica: analisis.variedadLexica,
-          muletillas: analisis.muletillasDetectadas.length,
-          conectores: analisis.conectoresUsados.length,
-          ideasFuenteRetomadas: overlap?.retomadas.length,
-          ideasFuenteTotal: overlap?.total,
+    await guardarConAccion(() =>
+      guardarEntregaAbiertaAccion(
+        actividadId,
+        "redaccion_checklist",
+        {
+          texto,
+          checklist_marcado: marcado,
+          analisisTexto: {
+            variedadLexica: analisis.variedadLexica,
+            muletillas: analisis.muletillasDetectadas.length,
+            conectores: analisis.conectoresUsados.length,
+            ideasFuenteRetomadas: overlap?.retomadas.length,
+            ideasFuenteTotal: overlap?.total,
+          },
         },
-      },
-      estado: "pendiente_revision",
-    });
+        "pendiente_revision",
+      ),
+    );
   }
 
   return (

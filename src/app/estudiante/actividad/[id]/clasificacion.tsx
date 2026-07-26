@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, RotateCcw, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { createClient } from "@/lib/supabase/client";
+import { reiniciarEntregaAccion } from "./acciones-entrega";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { bloquearCopiar } from "@/lib/anti-copiar";
@@ -100,7 +101,7 @@ export default function Clasificacion({
       return;
     setReiniciando(true);
     const supabase = createClient();
-    await supabase.from("entregas").delete().eq("actividad_id", actividadId).eq("estudiante_id", estudianteId);
+    await reiniciarEntregaAccion(actividadId, "clasificacion");
     await supabase
       .from("reflexiones")
       .delete()

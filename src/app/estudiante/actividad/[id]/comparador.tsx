@@ -21,6 +21,7 @@ import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
 import { esModoChips, type ContenidoComparadorPublico } from "@/lib/calificacion-comparador";
 import { calificarComparadorChipsAccion } from "./acciones-calificacion";
+import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 function ChipArrastrable({
   chip,
@@ -128,7 +129,7 @@ export default function Comparador({
   contenido: ContenidoComparadorPublico;
   respuestaPrevia?: { celdas: string[][]; resultadoCeldas?: boolean[][] };
 }) {
-  const { cargando, guardado, error, setError, guardar, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
     actividadId,
     estudianteId,
   );
@@ -229,7 +230,7 @@ export default function Comparador({
       }
     }
 
-    await guardar({ respuesta: { celdas }, estado: "pendiente_revision" });
+    await guardarConAccion(() => guardarEntregaAbiertaAccion(actividadId, "comparador", { celdas }, "pendiente_revision"));
   }
 
   const tabla = (

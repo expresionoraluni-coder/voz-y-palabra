@@ -7,6 +7,7 @@ import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { analizarAudio, AnalisisAudio } from "@/lib/analisis-audio";
 import { bloquearPegado } from "@/lib/anti-copiar";
+import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 export default function GrabacionRubrica({
   actividadId,
@@ -28,7 +29,10 @@ export default function GrabacionRubrica({
     };
   };
 }) {
-  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
+    actividadId,
+    estudianteId,
+  );
   const [grabando, setGrabando] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [analizando, setAnalizando] = useState(false);
@@ -122,25 +126,28 @@ export default function GrabacionRubrica({
       return;
     }
 
-    await guardar({
-      respuesta: {
-        autoevaluacion,
-        reflexion,
-        analisisAudio: analisis
-          ? {
-              duracionSegundos: Math.round(analisis.duracionSegundos),
-              numPausas: analisis.pausas.length,
-              tiempoPausadoSegundos: Math.round(analisis.tiempoPausadoSegundos),
-              consistenciaVolumen: analisis.consistenciaVolumen,
-            }
-          : respuestaPrevia?.analisisAudio,
-      },
-      // Antes "completada": grabación-rúbrica es de los tipos que la
-      // docente evalúa (ver comentario-entrega.tsx), pero con "completada"
-      // nunca llegaba a su cola de revisión — mismo bug que comparador y
-      // opción-justificación.
-      estado: "pendiente_revision",
-    });
+    await guardarConAccion(() =>
+      guardarEntregaAbiertaAccion(
+        actividadId,
+        "grabacion_rubrica",
+        {
+          autoevaluacion,
+          reflexion,
+          analisisAudio: analisis
+            ? {
+                duracionSegundos: Math.round(analisis.duracionSegundos),
+                numPausas: analisis.pausas.length,
+                tiempoPausadoSegundos: Math.round(analisis.tiempoPausadoSegundos),
+                consistenciaVolumen: analisis.consistenciaVolumen,
+              }
+            : respuestaPrevia?.analisisAudio,
+        },
+        // "completada" nunca llegaba a la cola de revisión de la docente
+        // (ver comentario-entrega.tsx) — grabación-rúbrica es de los tipos
+        // que ella evalúa.
+        "pendiente_revision",
+      ),
+    );
   }
 
   return (

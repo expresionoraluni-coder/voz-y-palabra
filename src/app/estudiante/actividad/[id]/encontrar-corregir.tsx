@@ -8,6 +8,7 @@ import Boton from "@/components/ui/button";
 import { ideasClaveMencionadas } from "@/lib/ideas-clave";
 import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
+import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 function normalizar(texto: string) {
   return texto.trim().toLowerCase().replace(/\s+/g, " ");
@@ -24,7 +25,10 @@ export default function EncontrarCorregir({
   contenido: { texto_original: string; pista: string | null; fragmento_erroneo?: string; ideas_clave?: string[] };
   respuestaPrevia?: { que_encontraste: string; version_corregida: string };
 }) {
-  const { cargando, guardado, error, setError, guardar, marcarSinGuardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
+    actividadId,
+    estudianteId,
+  );
   const [queEncontraste, setQueEncontraste] = useState(
     respuestaPrevia?.que_encontraste ?? "",
   );
@@ -54,10 +58,14 @@ export default function EncontrarCorregir({
       return;
     }
 
-    await guardar({
-      respuesta: { que_encontraste: queEncontraste, version_corregida: versionCorregida },
-      estado: "pendiente_revision",
-    });
+    await guardarConAccion(() =>
+      guardarEntregaAbiertaAccion(
+        actividadId,
+        "encontrar_corregir",
+        { que_encontraste: queEncontraste, version_corregida: versionCorregida },
+        "pendiente_revision",
+      ),
+    );
   }
 
   return (

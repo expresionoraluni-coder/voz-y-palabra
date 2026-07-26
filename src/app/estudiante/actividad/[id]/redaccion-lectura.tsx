@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import Boton from "@/components/ui/button";
 import { bloquearCopiar } from "@/lib/anti-copiar";
+import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 export default function RedaccionLectura({
   actividadId,
@@ -22,7 +23,7 @@ export default function RedaccionLectura({
   };
   respuestaPrevia?: Record<string, unknown>;
 }) {
-  const { cargando, guardar } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
   const [entregado, setEntregado] = useState(!!respuestaPrevia);
 
   const columnas = [
@@ -34,8 +35,10 @@ export default function RedaccionLectura({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (entregado) return;
-    const ok = await guardar({ respuesta: {}, estado: "completada" });
-    if (ok) setEntregado(true);
+    const guardada = await guardarConAccion(() =>
+      guardarEntregaAbiertaAccion(actividadId, "redaccion_checklist", {}, "completada"),
+    );
+    if (guardada) setEntregado(true);
   }
 
   return (

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { mensajeError } from "@/lib/mensaje-error";
 import { calificarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
 import { calificarOrden, type ContenidoOrdenarFragmentos } from "@/lib/calificacion-ordenar-fragmentos";
@@ -18,7 +19,7 @@ import { calificarOrtografia, type ContenidoOrtografia } from "@/lib/comparar-or
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type ResultadoCalificacion =
-  | { ok: true; puntajeAuto: number; respuesta: Record<string, unknown> }
+  | { ok: true; puntajeAuto: number | null; respuesta: Record<string, unknown> }
   | { ok: false; error: string };
 
 const SESION_INVALIDA = "Tu sesión ya no es válida, entra de nuevo.";
@@ -27,7 +28,7 @@ const SESION_INVALIDA = "Tu sesión ya no es válida, entra de nuevo.";
 // (documentado así por Next) — nunca se confía en un estudianteId/contenido
 // que mande el cliente: aquí siempre se resuelve la sesión real y se trae
 // el contenido (incluida la clave de calificación) fresco de la base.
-async function contextoCalificacion(
+export async function contextoCalificacion(
   actividadId: string,
   tipoEsperado: string,
 ): Promise<
@@ -67,23 +68,32 @@ async function contextoCalificacion(
   };
 }
 
-// Guarda con `await` en verificar_insignias (a diferencia del fire-and-forget
-// de useEntregaActividad.ts): dentro de una función serverless de Netlify no
-// hay garantía de que una promesa sin esperar termine antes de que el
-// runtime corte la ejecución al devolver la respuesta.
-async function guardarEntregaCalificada(
+// El upsert va con el cliente admin (service role), no con el de sesión del
+// estudiante: RLS de `entregas` ya no le da al estudiante ningún permiso de
+// escritura directa (ver sub-fase 5 del hardening de seguridad) — la única
+// vía de escritura es esta función, después de que la Server Action que la
+// llama ya validó/recalculó todo del lado del servidor. `verificar_insignias`
+// sigue yendo por el cliente de SESIÓN (con `await`, a diferencia del
+// fire-and-forget de useEntregaActividad.ts: dentro de una función
+// serverless de Netlify no hay garantía de que una promesa sin esperar
+// termine antes de que el runtime corte la ejecución al devolver la
+// respuesta) — es SECURITY DEFINER pero igual necesita auth.uid() real para
+// resolver estudiante_actual(), que el cliente admin no tiene.
+export async function guardarEntregaCalificada(
   supabase: SupabaseServerClient,
   estudianteId: string,
   actividadId: string,
   respuesta: Record<string, unknown>,
-  puntajeAuto: number,
+  puntajeAuto: number | null,
+  estado: "completada" | "pendiente_revision" = "completada",
 ): Promise<ResultadoCalificacion> {
-  const { error } = await supabase.from("entregas").upsert(
+  const admin = createAdminClient();
+  const { error } = await admin.from("entregas").upsert(
     {
       estudiante_id: estudianteId,
       actividad_id: actividadId,
       respuesta,
-      estado: "completada" as const,
+      estado,
       puntaje_auto: puntajeAuto,
     },
     { onConflict: "estudiante_id,actividad_id" },

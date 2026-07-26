@@ -18,7 +18,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(17);
+select plan(21);
 
 -- ============================================================
 -- Fixtures
@@ -55,31 +55,35 @@ insert into entregas (id, estudiante_id, actividad_id, respuesta, evaluacion_doc
    '88888888-8888-8888-8888-888888888888', '{}'::jsonb, null);
 
 -- ============================================================
--- VP-C1: el estudiante no puede falsificar la evaluación de la
--- docente ni reasignar su entrega, pero sí puede seguir editando
--- su propia respuesta.
+-- VP-C1 (histórico) → reemplazado por el hardening de seguridad de la
+-- Octava fase: antes, un estudiante podía editar su propia `respuesta`
+-- directo por API (el trigger solo protegía evaluacion_docente/
+-- estudiante_id/actividad_id). Ahora el estudiante ya NO tiene ninguna
+-- policy de escritura en `entregas` — toda escritura pasa por Server
+-- Actions con un cliente service role, así que ni siquiera llega a
+-- ejecutarse el UPDATE (0 filas afectadas, sin necesidad del trigger
+-- para este caso).
 -- ============================================================
+select is_empty(
+  $$ select policyname from pg_policies
+     where schemaname = 'public' and tablename = 'entregas'
+       and policyname = 'estudiante administra sus entregas' $$,
+  'Fase 8: ya no existe la policy de escritura amplia del estudiante en entregas'
+);
+
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
 
-select throws_ok(
-  $$ update entregas set evaluacion_docente = 'logrado' where id = '99999999-9999-9999-9999-999999999999' $$,
-  'P0001', 'No puedes modificar la evaluación de la docente.',
-  'VP-C1: estudiante no puede falsificar evaluacion_docente'
-);
-
-select lives_ok(
-  $$ update entregas set respuesta = '{"texto":"cambiado"}'::jsonb where id = '99999999-9999-9999-9999-999999999999' $$,
-  'VP-C1: estudiante sí puede seguir editando su propia respuesta'
-);
-
-select throws_ok(
-  $$ update entregas set actividad_id = gen_random_uuid() where id = '99999999-9999-9999-9999-999999999999' $$,
-  'P0001', 'No puedes reasignar esta entrega.',
-  'VP-C1: estudiante no puede reasignar la entrega a otra actividad'
-);
+update entregas set respuesta = '{"forjado":true}'::jsonb, puntaje_auto = 100
+  where id = '99999999-9999-9999-9999-999999999999';
 
 reset role;
+
+select is(
+  (select respuesta from entregas where id = '99999999-9999-9999-9999-999999999999'),
+  '{}'::jsonb,
+  'Fase 8: el intento de UPDATE directo del estudiante sobre su propia entrega no tiene ningún efecto'
+);
 
 -- La docente dueña del grupo sí puede evaluar (que el trigger no bloquee
 -- el caso legítimo).
@@ -283,6 +287,79 @@ end $$;
 select ok(
   crear_perfil_docente('__test__ Nueva Docente', 'CODIGO-DE-PRUEBA') like 'Demasiados intentos%',
   'VP-A2: bloqueado tras 5 intentos fallidos del código de invitación'
+);
+
+reset role;
+
+-- ============================================================
+-- Fase 8 (hardening): WITH CHECK real en avisos/eventos/
+-- retroalimentacion_docente — antes solo validaban `docente_id =
+-- auth.uid()`, sin validar que la FK secundaria (grupo_id/entrega_id)
+-- perteneciera a esa misma docente.
+-- ============================================================
+insert into auth.users (id, email) values
+  ('11111111-1111-1111-1111-111111111112', '__test__docenteB@example.com');
+insert into docentes (id, nombre, correo) values
+  ('11111111-1111-1111-1111-111111111112', '__test__ Docente B', '__test__docenteB@example.com');
+insert into grupos (id, nombre, codigo_acceso, docente_id) values
+  ('44444444-4444-4444-4444-444444444445', '__test__ Grupo B', '__TEST__GRUPOB', '11111111-1111-1111-1111-111111111112');
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111112","role":"authenticated"}', true);
+
+select throws_ok(
+  $$ insert into avisos (docente_id, grupo_id, titulo, mensaje) values
+     ('11111111-1111-1111-1111-111111111112', '44444444-4444-4444-4444-444444444444', 'x', 'x') $$,
+  '42501', null,
+  'Fase 8: docente B no puede crear un aviso en el grupo de la docente A'
+);
+
+select lives_ok(
+  $$ insert into avisos (docente_id, grupo_id, titulo, mensaje) values
+     ('11111111-1111-1111-1111-111111111112', '44444444-4444-4444-4444-444444444445', 'x', 'x') $$,
+  'Fase 8: docente B sí puede crear un aviso en su propio grupo'
+);
+
+select throws_ok(
+  $$ insert into eventos (docente_id, grupo_id, unidad_id, titulo, tipo, fecha) values
+     ('11111111-1111-1111-1111-111111111112', '44444444-4444-4444-4444-444444444444',
+      '66666666-6666-6666-6666-666666666666', 'x', 'otro', now()) $$,
+  '42501', null,
+  'Fase 8: docente B no puede crear un evento en el grupo de la docente A'
+);
+
+select throws_ok(
+  $$ insert into retroalimentacion_docente (entrega_id, docente_id, comentario) values
+     ('99999999-9999-9999-9999-999999999999', '11111111-1111-1111-1111-111111111112', 'x') $$,
+  '42501', null,
+  'Fase 8: docente B no puede comentar una entrega de un estudiante de la docente A'
+);
+
+reset role;
+
+-- ============================================================
+-- Fase 8 (hardening): rate-limit de la fase "adivinar nombre" del
+-- login de estudiante — antes solo el NIP tenía candado real; probar
+-- varios nombres dentro de un código de grupo conocido no tenía
+-- ningún límite.
+-- ============================================================
+insert into auth.users (id, email) values
+  ('99999999-0000-0000-0000-000000000003', '__test__sesion-nombre@example.com');
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"99999999-0000-0000-0000-000000000003","role":"authenticated"}', true);
+
+do $$
+begin
+  for i in 1..5 loop
+    perform ingresar_estudiante('__TEST__GRUPO', '__test__ Nombre Que No Existe', '0000');
+  end loop;
+end $$;
+
+select ok(
+  (select error from ingresar_estudiante('__TEST__GRUPO', '__test__ Nombre Que No Existe', '0000') limit 1)
+    like 'Demasiados intentos%',
+  'Fase 8: bloqueado tras 5 intentos de nombre inválido dentro de un grupo conocido'
 );
 
 reset role;
