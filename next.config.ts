@@ -29,6 +29,7 @@ const cabecerasSeguridad = [
       "img-src 'self' data:",
       "font-src 'self' data:",
       "connect-src 'self' https://*.supabase.co",
+      "frame-src https://www.youtube.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

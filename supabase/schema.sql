@@ -2721,3 +2721,19 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     flujo de "primera vez" (crear NIP), y "Repaso integrador de
 --     ortografía" pasando directo de la pregunta de confianza al
 --     contenido, sin ningún paso de video. Typecheck y build limpios.
+--
+-- 66. Fix: los videos no cargaban en producción — CSP sin `frame-src`.
+--     La usuaria reportó "Este contenido está bloqueado" al entrar desde
+--     su propio navegador. Diagnosticado con `curl` contra el servidor
+--     local: la Content-Security-Policy de `next.config.ts` (agregada en
+--     una fase de seguridad anterior, VP-M5) tiene `default-src 'self'`
+--     sin ningún `frame-src` — por spec de CSP, sin `frame-src` explícito
+--     el navegador cae a `default-src`, así que CUALQUIER iframe de otro
+--     origen (incluido el embed de YouTube) quedaba bloqueado desde que
+--     se agregó esa cabecera, mucho antes de que hubiera ningún
+--     `video_url` real que probar — nadie lo había notado porque la
+--     verificación anterior solo revisó `iframe.src` por JS, nunca si el
+--     contenido realmente cargaba. Fix de una línea: se agregó
+--     `frame-src https://www.youtube.com` a la política. Verificado con
+--     `curl` contra `next start` (modo producción) confirmando la
+--     cabecera nueva en la respuesta real. Typecheck y build limpios.
