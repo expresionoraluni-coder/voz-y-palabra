@@ -2737,3 +2737,49 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     `frame-src https://www.youtube.com` a la política. Verificado con
 --     `curl` contra `next start` (modo producción) confirmando la
 --     cabecera nueva en la respuesta real. Typecheck y build limpios.
+--
+-- 67. Revisión global del sitio (5 agentes en paralelo: seguridad,
+--     bugs de frontend, integridad de datos, panel docente, rendimiento)
+--     y corrección de los 5 hallazgos sin ambigüedad de diseño:
+--     - **Bug real, alto impacto**: ningún componente de actividad tenía
+--       `key={actividad.id}` en `page.tsx` — Next.js no remonta el árbol
+--       al navegar entre actividades con los botones ‹ › (Fase AD5, client-
+--       side navigation), así que `EntregaRecienteProvider` y el estado
+--       interno de cada componente (`clasificacion.tsx`, `comparador.tsx`,
+--       `etiquetado-texto.tsx`, `opcion-justificacion.tsx`,
+--       `ordenar-fragmentos.tsx`, `evaluar-videos.tsx`,
+--       `corregir-ortografia.tsx`, `video-intro.tsx`) arrastraban datos de
+--       la actividad anterior — en `comparador.tsx` esto podía tronar la
+--       página (`resultado[i][j]` sobre un arreglo de otra dimensión).
+--       Fix: `key={actividad.id}` en `<EntregaRecienteProvider>`. Verificado
+--       en vivo con navegación real por clic (no recarga dura): se sembró
+--       una entrega falsa en la actividad 1, se navegó por el link
+--       "Actividad siguiente" a la actividad 2 (sin entrega), y esta
+--       mostró correctamente su propia pregunta de confianza en vez de
+--       arrastrar el estado de la actividad 1.
+--     - `next` 16.2.10 → 16.2.12 (3 CVEs "high" del framework ya
+--       parchados en ese punto de versión). `npm audit` restante son
+--       `brace-expansion` (solo ESLint, herramienta de desarrollo, nunca
+--       corre en producción) y `sharp` (usado por `next/image`, que este
+--       proyecto no usa en ningún lado — confirmado por grep) — ninguno
+--       de los dos se corrigió porque requieren downgradear next o
+--       eslint, y no representan riesgo real dado cómo se usa el sitio.
+--     - `resumen-respuesta.ts`: agregados los casos `ordenar_fragmentos`
+--       y `evaluar_videos` (antes caían a JSON crudo en la ficha del
+--       estudiante del panel docente).
+--     - `useEliminarFila` (compartido por avisos y eventos): ahora pide
+--       `window.confirm(...)` con el título del aviso/evento antes de
+--       borrar — antes era un clic sin ninguna confirmación.
+--     - CSP: se agregó `media-src 'self' blob:` explícito (antes
+--       dependía implícitamente de que `blob:` matcheara `'self'` bajo
+--       `default-src`, usado por `grabacion-rubrica.tsx`).
+--     Quedan documentados pero SIN corregir (requieren más lógica de
+--     validación, no son ambiguos pero sí de mayor alcance): en
+--     `actividad-form.tsx`, editar el banco de respuestas de `comparador`
+--     después de llenar la tabla puede desincronizar `celda_correcta` sin
+--     aviso; y guardar `corregir_ortografia` no valida en el momento que
+--     `texto_incorrecto`/`texto_correcto` mantengan el mismo número de
+--     palabras (el contenido ya cargado hoy sí está bien alineado,
+--     verificado). Todo lo demás (RLS, Server Actions, secretos,
+--     integridad de las 23 actividades, build) salió limpio. Typecheck y
+--     build limpios. Cuenta QA eliminada al terminar.

@@ -9,7 +9,8 @@ export function useEliminarFila(tabla: string) {
   const router = useRouter();
   const [borrando, setBorrando] = useState<string | null>(null);
 
-  async function eliminar(id: string) {
+  async function eliminar(id: string, mensajeConfirmacion: string) {
+    if (!window.confirm(mensajeConfirmacion)) return;
     setBorrando(id);
     const supabase = createClient();
     await supabase.from(tabla).delete().eq("id", id);

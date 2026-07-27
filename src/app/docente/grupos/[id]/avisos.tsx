@@ -95,7 +95,7 @@ export default function Avisos({
                 </div>
                 <button
                   type="button"
-                  onClick={() => eliminar(a.id)}
+                  onClick={() => eliminar(a.id, `¿Eliminar el aviso "${a.titulo}"?`)}
                   disabled={borrando === a.id}
                   aria-label={`Eliminar aviso ${a.titulo}`}
                   className="shrink-0 text-slate-300 transition-colors hover:text-red-500 disabled:opacity-50 dark:text-slate-600 dark:hover:text-red-400"

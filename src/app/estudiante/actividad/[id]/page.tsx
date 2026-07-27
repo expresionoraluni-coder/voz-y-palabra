@@ -453,6 +453,7 @@ export default async function ActividadEstudiante({
       {bloqueAeUc}
 
       <EntregaRecienteProvider
+        key={actividad.id}
         inicial={
           entregaExistente
             ? { puntajeAuto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta as Record<string, unknown> }

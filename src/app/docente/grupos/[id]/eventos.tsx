@@ -147,7 +147,7 @@ export default function Eventos({
                   </Badge>
                   <button
                     type="button"
-                    onClick={() => eliminar(ev.id)}
+                    onClick={() => eliminar(ev.id, `¿Eliminar el evento "${ev.titulo}"?`)}
                     disabled={borrando === ev.id}
                     aria-label={`Eliminar ${ev.titulo}`}
                     className="text-slate-300 transition-colors hover:text-red-500 disabled:opacity-50 dark:text-slate-600 dark:hover:text-red-400"

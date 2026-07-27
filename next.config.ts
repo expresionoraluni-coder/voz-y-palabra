@@ -28,6 +28,7 @@ const cabecerasSeguridad = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self' data:",
+      "media-src 'self' blob:",
       "connect-src 'self' https://*.supabase.co",
       "frame-src https://www.youtube.com",
       "frame-ancestors 'none'",

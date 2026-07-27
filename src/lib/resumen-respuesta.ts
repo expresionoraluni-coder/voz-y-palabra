@@ -29,6 +29,20 @@ export function resumenRespuesta(tipo: string | undefined, respuesta: Respuesta)
       const textos = (respuesta.textos as string[]) ?? [];
       return `Tema: ${respuesta.tema ?? ""}. ${textos.join(" ")}`.slice(0, 300);
     }
+    case "ordenar_fragmentos": {
+      const resultado = respuesta.resultadoPorPosicion as boolean[] | undefined;
+      if (resultado?.length) {
+        const aciertos = resultado.filter(Boolean).length;
+        return `Ordenó los fragmentos: ${aciertos} de ${resultado.length} en la posición correcta.`;
+      }
+      const orden = (respuesta.orden as number[]) ?? [];
+      return `Ordenó ${orden.length} fragmento(s).`;
+    }
+    case "evaluar_videos": {
+      const bien = (respuesta.marcadas_bien as string[]) ?? [];
+      const mal = (respuesta.marcadas_mal as string[]) ?? [];
+      return `Marcó ${bien.length} cualidad(es) en el video que sí las respeta y ${mal.length} en el que no.`;
+    }
     default:
       return JSON.stringify(respuesta);
   }
