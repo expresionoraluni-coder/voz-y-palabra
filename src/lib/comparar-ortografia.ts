@@ -17,7 +17,7 @@ export function sanitizarContenidoOrtografia(contenido: ContenidoOrtografia): Co
   return { contexto: contenido.contexto, texto_incorrecto: contenido.texto_incorrecto, temas: contenido.temas };
 }
 
-function tokenizar(texto: string): string[] {
+export function tokenizar(texto: string): string[] {
   return texto.trim().split(/\s+/).filter(Boolean);
 }
 

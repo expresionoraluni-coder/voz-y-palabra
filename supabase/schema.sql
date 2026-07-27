@@ -2783,3 +2783,35 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     verificado). Todo lo demás (RLS, Server Actions, secretos,
 --     integridad de las 23 actividades, build) salió limpio. Typecheck y
 --     build limpios. Cuenta QA eliminada al terminar.
+--
+-- 68. Cierre de la revisión global: los 2 puntos diferidos de la entrada
+--     anterior, más "que no puedan pegar respuestas de una IA" (petición
+--     de la docente).
+--     - `actividad-form.tsx` (comparador): la validación al guardar ahora
+--       también revisa que cada valor de `celda_correcta` siga existiendo
+--       en el `banco_respuestas` vigente (antes solo revisaba que no
+--       estuviera vacío) — si la docente edita el banco después de llenar
+--       la tabla, ya no se puede guardar una celda apuntando a una opción
+--       que ya quitó.
+--     - `actividad-form.tsx` (corregir_ortografia): se exportó `tokenizar`
+--       de `comparar-ortografia.ts` y se usa para bloquear el guardado si
+--       `texto_incorrecto`/`texto_correcto` no tienen exactamente el mismo
+--       número de palabras — antes solo había un texto de ayuda, no una
+--       validación real. Verificado en vivo: se rompió la alineación a
+--       propósito ("118 palabras vs 119"), el guardado se bloqueó con el
+--       mensaje correcto y la base de datos no se tocó.
+--     - Anti copiar-y-pegar (`bloquearPegado` de `lib/anti-copiar.ts`,
+--       patrón ya usado en 9 componentes): se encontraron 4 campos de
+--       texto libre sin este bloqueo, el más importante siendo
+--       `reflexion-actividad.tsx` — la reflexión que aparece DESPUÉS de
+--       entregar cualquiera de las 11 actividades, así que el hueco
+--       aplicaba a toda la plataforma, no a un tipo en particular. Se
+--       agregó también a `reflexion-cierre.tsx` (reflexión de cierre de
+--       unidad), los 3 campos de `bitacora.tsx` (verbo/qué/cómo de la
+--       meta de unidad) y el campo "tema" de `constructor-ramificado.tsx`
+--       (su textarea por sección ya lo tenía, ese input suelto no).
+--       Recordatorio ya documentado en `anti-copiar.ts`: es un freno, no
+--       una barrera real — no detiene devtools ni que alguien escriba a
+--       mano lo que generó en otra pestaña, solo le quita la opción más
+--       fácil (copiar y pegar directo).
+--     Typecheck y build limpios.

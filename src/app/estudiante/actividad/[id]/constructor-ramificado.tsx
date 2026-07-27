@@ -76,6 +76,7 @@ export default function ConstructorRamificado({
             setTema(e.target.value);
             marcarSinGuardar();
           }}
+          onPaste={bloquearPegado}
         />
       </Field>
 

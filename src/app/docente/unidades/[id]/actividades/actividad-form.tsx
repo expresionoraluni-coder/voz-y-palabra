@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, MessageSquareText, Plus, Trash2 } from "lucide-
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
 import { ICONO_TIPO } from "@/lib/tipo-actividad-icono";
-import { compararPalabras } from "@/lib/comparar-ortografia";
+import { compararPalabras, tokenizar } from "@/lib/comparar-ortografia";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui/field";
@@ -528,8 +528,10 @@ export default function ActividadForm({
         const celdaCorrecta = listaCriterios.map((_, i) =>
           listaConceptos.map((_, j) => celdaCorrectaMapa[`${i}-${j}`] ?? ""),
         );
-        if (celdaCorrecta.some((fila) => fila.some((v) => !v))) {
-          setError("Elige la respuesta correcta del banco para cada celda de la cuadrícula.");
+        if (celdaCorrecta.some((fila) => fila.some((v) => !v || !listaBancoComp.includes(v)))) {
+          setError(
+            "Elige la respuesta correcta del banco para cada celda de la cuadrícula (si editaste el banco de respuestas, revisa que ninguna celda haya quedado apuntando a una opción que ya quitaste).",
+          );
           return;
         }
         contenido = {
@@ -667,6 +669,19 @@ export default function ActividadForm({
     } else if (nombreTipo === "corregir_ortografia") {
       if (!textoIncorrecto.trim() || !textoCorrecto.trim()) {
         setError("Escribe el texto con errores y su versión correcta.");
+        return;
+      }
+      // La calificación compara palabra por palabra POR POSICIÓN (mismo
+      // tokenizador que usa el estudiante) — si los dos textos no tienen
+      // exactamente el mismo número de palabras, la comparación se
+      // desalinea a partir de ahí y el estudiante puede corregir todo bien
+      // y aun así salir mal calificado, sin que nadie lo note.
+      const numPalabrasIncorrecto = tokenizar(textoIncorrecto).length;
+      const numPalabrasCorrecto = tokenizar(textoCorrecto).length;
+      if (numPalabrasIncorrecto !== numPalabrasCorrecto) {
+        setError(
+          `El texto con errores tiene ${numPalabrasIncorrecto} palabra(s) y la versión correcta tiene ${numPalabrasCorrecto} — deben tener exactamente las mismas palabras, en el mismo orden (solo cambia ortografía, no se agregan ni quitan palabras).`,
+        );
         return;
       }
       // Se valida contra el propio tokenizador del estudiante para

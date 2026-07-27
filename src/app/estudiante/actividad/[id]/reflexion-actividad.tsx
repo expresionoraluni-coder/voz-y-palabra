@@ -7,6 +7,7 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { mensajeCalibracion, placeholderReflexion } from "@/lib/calibracion-confianza";
+import { bloquearPegado } from "@/lib/anti-copiar";
 
 export default function ReflexionActividad({
   actividadId,
@@ -77,6 +78,7 @@ export default function ReflexionActividad({
           <Textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
+            onPaste={bloquearPegado}
             rows={2}
             placeholder={placeholderPersonalizado ?? placeholderReflexion(confianza, puntajeAuto)}
           />

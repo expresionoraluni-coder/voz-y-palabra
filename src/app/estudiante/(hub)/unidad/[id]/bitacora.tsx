@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
+import { bloquearPegado } from "@/lib/anti-copiar";
 
 export default function Bitacora({
   estudianteId,
@@ -85,6 +86,7 @@ export default function Bitacora({
               required
               value={verbo}
               onChange={(e) => setVerbo(e.target.value)}
+              onPaste={bloquearPegado}
               placeholder='Ej. "Identificar"'
             />
             <HelpText>En infinitivo (termina en -ar, -er o -ir).</HelpText>
@@ -96,6 +98,7 @@ export default function Bitacora({
               required
               value={que}
               onChange={(e) => setQue(e.target.value)}
+              onPaste={bloquearPegado}
               placeholder='Ej. "los elementos del circuito de la comunicación"'
             />
           </Field>
@@ -106,6 +109,7 @@ export default function Bitacora({
               required
               value={como}
               onChange={(e) => setComo(e.target.value)}
+              onPaste={bloquearPegado}
               placeholder='Ej. "analizando conversaciones reales"'
             />
             <HelpText>Verbo + qué + cómo (algo concreto, no "esforzarme más").</HelpText>
