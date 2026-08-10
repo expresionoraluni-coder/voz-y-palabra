@@ -18,7 +18,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(21);
+select plan(25);
 
 -- ============================================================
 -- Fixtures
@@ -360,6 +360,48 @@ select ok(
   (select error from ingresar_estudiante('__TEST__GRUPO', '__test__ Nombre Que No Existe', '0000') limit 1)
     like 'Demasiados intentos%',
   'Fase 8: bloqueado tras 5 intentos de nombre inválido dentro de un grupo conocido'
+);
+
+reset role;
+
+-- ============================================================
+-- Cerrar RLS (posterior a la Fase 8): actividades/unidades ya no
+-- tienen policy de lectura abierta a "cualquier sesión autenticada" —
+-- un estudiante con su propio JWT ya no puede leer directo por API
+-- REST el `contenido` (con clave de respuesta) de ninguna actividad.
+-- La única policy que queda en ambas tablas es "docente administra
+-- ...", FOR ALL, condicionada a que auth.uid() tenga fila en
+-- `docentes` — así que el acceso de la docente real queda intacto y
+-- el estudiante queda sin ninguna vía de lectura directa.
+-- ============================================================
+select is_empty(
+  $$ select policyname from pg_policies
+     where schemaname = 'public' and tablename in ('actividades', 'unidades')
+       and policyname in ('cualquiera con sesión lee actividades', 'cualquiera con sesión lee unidades') $$,
+  'Cerrar RLS: ya no existen las policies de lectura abierta en actividades/unidades'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+
+select is_empty(
+  $$ select id from actividades where id = '88888888-8888-8888-8888-888888888888' $$,
+  'Cerrar RLS: el estudiante ya no puede leer actividades directo por API'
+);
+
+select is_empty(
+  $$ select id from unidades where id = '66666666-6666-6666-6666-666666666666' $$,
+  'Cerrar RLS: el estudiante ya no puede leer unidades directo por API'
+);
+
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+
+select isnt_empty(
+  $$ select id from actividades where id = '88888888-8888-8888-8888-888888888888' $$,
+  'Cerrar RLS: la docente dueña sigue pudiendo leer actividades sin cambios'
 );
 
 reset role;

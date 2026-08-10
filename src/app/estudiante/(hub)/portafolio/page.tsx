@@ -1,5 +1,6 @@
 import { FolderHeart, Quote, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import BotonImprimir from "./boton-imprimir";
 import PageHeader from "@/components/ui/page-header";
@@ -10,6 +11,7 @@ type Grupo = { nombre: string } | { nombre: string }[] | null;
 
 export default async function Portafolio() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const estudiante = await requireEstudiante<{ id: string; nombre: string; grupos: Grupo }>(
     supabase,
     "id, nombre, grupos(nombre)",
@@ -18,15 +20,17 @@ export default async function Portafolio() {
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
   const [{ data: unidades }, { data: confianzas }, { data: reflexiones }] = await Promise.all([
-    supabase.from("unidades").select("id, nombre, orden").order("orden"),
+    admin.from("unidades").select("id, nombre, orden").order("orden"),
     supabase
       .from("autoevaluaciones_confianza")
       .select("unidad_id, momento, valor")
       .eq("estudiante_id", estudiante.id),
     // Trae tanto las reflexiones de cierre por unidad (unidad_id set) como
     // las de cierre por actividad (actividad_id set) — el portafolio ahora
-    // solo compila reflexiones, nunca entregas.
-    supabase
+    // solo compila reflexiones, nunca entregas. Vía admin porque embebe
+    // `actividades` (ya sin lectura abierta); el filtro por estudiante_id
+    // sigue siendo explícito, no depende de RLS para aislarse.
+    admin
       .from("reflexiones")
       .select("unidad_id, texto, actividades(titulo, unidad_id)")
       .eq("estudiante_id", estudiante.id)

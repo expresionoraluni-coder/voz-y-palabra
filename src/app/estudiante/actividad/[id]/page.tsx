@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
@@ -53,14 +54,19 @@ export default async function ActividadEstudiante({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const admin = createAdminClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
 
+  // `actividades`/`unidades` ya no tienen ninguna policy de lectura abierta
+  // a estudiantes (RLS cerrado) — el contenido, incluida la clave de
+  // calificación, solo se trae del lado del servidor con el cliente admin,
+  // nunca con el JWT de sesión del estudiante.
   const [{ data: estudiante }, { data: actividad }] = await Promise.all([
     supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
-    supabase
+    admin
       .from("actividades")
       .select(
         "id, unidad_id, orden, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, requiere_actividad_id, tipos_actividad(nombre), unidades(unidad_competencia)",
@@ -94,7 +100,8 @@ export default async function ActividadEstudiante({
     { data: entregaExistente },
     { data: prediccionExistente },
     { data: reflexionExistente },
-    { data: hermanas },
+    { data: actividadesDeUnidad },
+    { data: entregasDeUnidad },
     { data: unidades },
     { data: confianzaInicioUnidad },
     { data: bitacoraUnidad },
@@ -120,15 +127,24 @@ export default async function ActividadEstudiante({
       .eq("estudiante_id", estudiante.id)
       .eq("momento", "cierre")
       .maybeSingle(),
-    supabase
+    admin
       .from("actividades")
-      .select("id, orden, requiere_actividad_id, entregas(puntaje_auto)")
+      .select("id, orden, requiere_actividad_id")
       .eq("unidad_id", actividad.unidad_id)
       .order("orden"),
+    // Las entregas de las actividades hermanas se traen aparte, con el
+    // cliente de SESIÓN (no admin) filtradas por el propio estudiante —
+    // si se pidieran embebidas en la consulta admin de arriba, el cliente
+    // admin ignora RLS y traería las entregas de TODO el grupo, no solo
+    // las propias.
+    supabase
+      .from("entregas")
+      .select("actividad_id, puntaje_auto")
+      .eq("estudiante_id", estudiante.id),
     // Traídos siempre (son consultas ligeras) para poder armar, sin una
     // segunda vuelta al servidor, la celebración de "unidad completada" si
     // esta entrega resultó ser la que faltaba.
-    supabase.from("unidades").select("id, nombre, orden").order("orden"),
+    admin.from("unidades").select("id, nombre, orden").order("orden"),
     supabase
       .from("autoevaluaciones_confianza")
       .select("valor")
@@ -150,6 +166,15 @@ export default async function ActividadEstudiante({
       .eq("momento", "cierre")
       .maybeSingle(),
   ]);
+
+  // Misma forma que antes (`entregas(puntaje_auto)` embebido), reconstruida
+  // en JS a partir de las dos consultas separadas de arriba.
+  const hermanas = actividadesDeUnidad?.map((a) => ({
+    ...a,
+    entregas: (entregasDeUnidad ?? [])
+      .filter((e) => e.actividad_id === a.id)
+      .map((e) => ({ puntaje_auto: e.puntaje_auto })),
+  }));
 
   const respuesta = entregaExistente?.respuesta;
   const siguiente = hermanas?.find((a) => a.orden > actividad.orden);

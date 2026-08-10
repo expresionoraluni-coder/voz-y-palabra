@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { proximoRepaso } from "@/lib/calendario-repaso";
 
 export default async function CalendarioEstudiante() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const estudiante = await requireEstudiante<{ id: string; grupo_id: string }>(
     supabase,
     "id, grupo_id",
@@ -22,8 +24,8 @@ export default async function CalendarioEstudiante() {
       .select("id, titulo, tipo, fecha, unidad_id")
       .eq("grupo_id", estudiante.grupo_id)
       .order("fecha"),
-    supabase.from("unidades").select("id, nombre, orden"),
-    supabase.from("actividades").select("id, titulo, unidad_id"),
+    admin.from("unidades").select("id, nombre, orden"),
+    admin.from("actividades").select("id, titulo, unidad_id"),
     supabase
       .from("entregas")
       .select("actividad_id, puntaje_auto, created_at")

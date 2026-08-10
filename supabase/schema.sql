@@ -2862,3 +2862,73 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     directo, sin pasar por la UI) -- documentado como decision
 --     consciente desde la Octava fase, y 3 de los 7 informes externos
 --     lo volvieron a encontrar de forma independiente.
+--
+-- 70. Cierre del punto diferido de la entrada anterior: la usuaria
+--     confirmo explicitamente cerrar ahora la lectura abierta de
+--     actividades/unidades. Via MCP de Supabase:
+--       drop policy "cualquiera con sesión lee actividades" on actividades;
+--       drop policy "cualquiera con sesión lee unidades" on unidades;
+--     No hizo falta crear ninguna policy nueva -- "docente administra
+--     actividades"/"unidades" (FOR ALL, ya condicionada a que
+--     auth.uid() tenga fila en docentes) ya cubria el SELECT de la
+--     docente; con las dos policies abiertas fuera, un estudiante con
+--     su propio JWT ya no tiene ninguna via de lectura directa sobre
+--     esas dos tablas.
+--
+--     Migrar la lectura del lado estudiante al cliente admin (7
+--     archivos) sin reabrir el hueco por otra puerta: switchear
+--     "select" a un cliente service-role bypassa RLS tambien en
+--     cualquier relacion embebida en la misma consulta -- si una
+--     consulta de actividades/unidades traia `entregas(...)` embebida
+--     (usado para calcular "unidad completa"/hermanas), pasarla a
+--     admin sin mas hubiera filtrado entregas de CUALQUIER estudiante,
+--     no solo el actual (RLS ya no interviene con el cliente admin).
+--     Resuelto de dos formas segun el caso: (a) separar la consulta en
+--     dos -- actividades/unidades por admin (sin el embed sensible) +
+--     entregas por el cliente de sesion con `.eq("estudiante_id", ...)`
+--     explicito -- y unirlas en JS (acciones-calificacion.ts,
+--     estudiante/actividad/[id]/page.tsx, estudiante/(hub)/unidad/[id]/
+--     page.tsx); (b) dejar el embed tal cual cuando la tabla embebida
+--     no es sensible (`actividades(id)` sin datos de otro estudiante,
+--     usado en calendario/progreso) o cuando la consulta externa ya
+--     trae su propio `.eq("estudiante_id", ...)` explicito e
+--     independiente de RLS (portafolio: reflexiones; inicio: entregas).
+--     Los 7 archivos: acciones-calificacion.ts, estudiante/actividad/
+--     [id]/page.tsx, estudiante/(hub)/unidad/[id]/page.tsx,
+--     estudiante/(hub)/calendario/page.tsx, estudiante/(hub)/progreso/
+--     page.tsx, estudiante/(hub)/portafolio/page.tsx, estudiante/(hub)/
+--     inicio/page.tsx.
+--
+--     Verificado en vivo, antes y despues, con curl + el JWT real de
+--     una sesion de estudiante (extraido de document.cookie): ANTES
+--     del drop, `GET /rest/v1/actividades?select=contenido` con la
+--     anon key + ese JWT devolvia el `contenido` completo (incluida la
+--     clave de respuesta) de actividades ajenas a la actual; DESPUES,
+--     el mismo request devuelve un arreglo vacio. Flujo completo de
+--     estudiante reprobado en los 3 modulos de UI (actividad individual,
+--     unidad, calendario/progreso/portafolio/inicio) sin ninguna
+--     regresion. Lado docente verificado en vivo por separado
+--     (dashboard, lista de actividades de una unidad, formulario de
+--     editar actividad con la clave de respuesta completa) -- sin
+--     cambios, como se esperaba, porque nunca dependio de las policies
+--     que se quitaron.
+--
+--     Extendidas 4 pruebas pgTAP nuevas en rls_seguridad.sql (21 -> 25):
+--     confirma que las dos policies abiertas ya no existen, que un
+--     estudiante ya no puede leer actividades/unidades por API directa,
+--     y que la docente si puede. Typecheck y build limpios.
+--
+--     Durante la verificacion en vivo de esta fase se encontro y
+--     corrigio un error propio (no reportado por la usuaria): al probar
+--     la validacion de corregir_ortografia en una fase anterior, un
+--     textarea equivocado (índice de DOM mal asumido) escribio texto de
+--     prueba ("PALABRAEXTRA") sobre el campo `contexto` real de
+--     "Mayúsculas y minúsculas" en produccion -- detectado al ver el
+--     texto contaminado durante esta verificacion, corregido de
+--     inmediato con un UPDATE restaurando el texto original.
+--
+--     Pendiente, no de codigo: la usuaria debe rotar
+--     SUPABASE_SERVICE_ROLE_KEY desde el dashboard de Supabase (motivo:
+--     entrada 69, la clave viajo en un ZIP a herramientas de IA
+--     externas) y compartir la clave nueva para actualizar .env.local
+--     (y despues Netlify por separado).

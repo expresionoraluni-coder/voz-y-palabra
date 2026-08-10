@@ -48,7 +48,10 @@ export async function contextoCalificacion(
     .single();
   if (!estudiante) return { ok: false, error: SESION_INVALIDA };
 
-  const { data: actividad } = await supabase
+  // Vía admin: el estudiante ya no tiene ningún permiso de SELECT directo
+  // sobre `actividades` (RLS cerrado), así que esta es la única forma de
+  // traer el contenido con la clave de calificación del lado del servidor.
+  const { data: actividad } = await createAdminClient()
     .from("actividades")
     .select("id, contenido, tipos_actividad(nombre)")
     .eq("id", actividadId)

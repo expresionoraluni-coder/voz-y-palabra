@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import CerrarSesion from "@/components/cerrar-sesion";
 import CambiarNip from "@/components/cambiar-nip";
@@ -51,6 +52,7 @@ export default async function InicioEstudiante({
 }) {
   const { nip } = await searchParams;
   const supabase = await createClient();
+  const admin = createAdminClient();
   const estudiante = await requireEstudiante<{
     id: string;
     nombre: string;
@@ -73,13 +75,15 @@ export default async function InicioEstudiante({
     { data: avisos },
     { data: eventosProximos },
   ] = await Promise.all([
-    supabase
+    admin
       .from("unidades")
       .select("id, nombre, orden, reto_comunicativo, actividades(id)")
       .order("orden"),
     // Revisa y otorga insignias nuevas cada vez que el estudiante visita su inicio.
     supabase.rpc("verificar_insignias"),
-    supabase
+    // Vía admin porque embebe `actividades` (ya sin lectura abierta); el
+    // filtro por estudiante_id sigue siendo explícito, no depende de RLS.
+    admin
       .from("entregas")
       .select("actividad_id, puntaje_auto, created_at, actividades(titulo)")
       .eq("estudiante_id", estudiante.id),

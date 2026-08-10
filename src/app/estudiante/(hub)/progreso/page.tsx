@@ -1,5 +1,6 @@
 import { CheckCircle2, Flame, NotebookPen, Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -12,11 +13,12 @@ import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function ProgresoEstudiante() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const estudiante = await requireEstudiante(supabase);
 
   const [{ data: unidades }, { data: entregas }, { data: predicciones }, { data: bitacoras }, { data: reflexionesCierre }] =
     await Promise.all([
-      supabase.from("unidades").select("id, nombre, orden, actividades(id)").order("orden"),
+      admin.from("unidades").select("id, nombre, orden, actividades(id)").order("orden"),
       supabase
         .from("entregas")
         .select("actividad_id, puntaje_auto, created_at")

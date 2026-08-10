@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { CheckCircle2, Circle, Lock, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Confianza from "./confianza";
 import Bitacora from "./bitacora";
 import ReflexionCierre from "./reflexion-cierre";
@@ -20,38 +21,54 @@ export default async function UnidadEstudiante({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const admin = createAdminClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
 
-  const [{ data: estudiante }, { data: unidad }, { data: actividades }] = await Promise.all([
-    supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
-    supabase
+  const { data: estudiante } = await supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single();
+  if (!estudiante) redirect("/ingreso/estudiante");
+
+  // `unidades`/`actividades` ya no tienen policy de lectura abierta a
+  // estudiantes — se traen con el cliente admin. Las entregas del propio
+  // estudiante se traen aparte con el cliente de SESIÓN (filtradas por RLS
+  // a sus propias filas) y se combinan en JS — si se pidieran embebidas en
+  // la consulta admin, el cliente admin ignora RLS y traería las entregas
+  // de todo el grupo, no solo las propias.
+  const [{ data: unidad }, { data: actividadesRaw }, { data: entregasEstudiante }] = await Promise.all([
+    admin
       .from("unidades")
       .select("id, nombre, orden, reto_comunicativo, unidad_competencia")
       .eq("id", id)
       .single(),
-    supabase
+    admin
       .from("actividades")
-      .select("id, titulo, instrucciones, requiere_actividad_id, entregas(id, puntaje_auto)")
+      .select("id, titulo, instrucciones, requiere_actividad_id")
       .eq("unidad_id", id)
       .order("orden"),
+    supabase.from("entregas").select("actividad_id, puntaje_auto").eq("estudiante_id", estudiante.id),
   ]);
-  if (!estudiante) redirect("/ingreso/estudiante");
   if (!unidad) notFound();
 
+  const actividades = actividadesRaw?.map((a) => ({
+    ...a,
+    entregas: (entregasEstudiante ?? [])
+      .filter((e) => e.actividad_id === a.id)
+      .map((e) => ({ puntaje_auto: e.puntaje_auto })),
+  }));
+
   if (unidad.orden > 1) {
-    const { data: unidadAnterior } = await supabase
+    const { data: unidadAnterior } = await admin
       .from("unidades")
-      .select("id, nombre, actividades(id, entregas(id))")
+      .select("id, nombre, actividades(id)")
       .eq("orden", unidad.orden - 1)
       .single();
 
     if (unidadAnterior) {
       const totalAnterior = unidadAnterior.actividades.length;
-      const hechasAnterior = unidadAnterior.actividades.filter(
-        (a) => Array.isArray(a.entregas) && a.entregas.length > 0,
+      const hechasAnterior = unidadAnterior.actividades.filter((a) =>
+        (entregasEstudiante ?? []).some((e) => e.actividad_id === a.id),
       ).length;
       const { data: reflexionAnterior } = await supabase
         .from("reflexiones")
