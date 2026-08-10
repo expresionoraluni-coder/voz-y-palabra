@@ -12,7 +12,11 @@ type FilaEstudiante = {
 };
 
 function celdaCSV(valor: string | number): string {
-  const texto = String(valor);
+  // Si la celda empieza con =, +, - o @, Excel/Sheets puede interpretarla
+  // como fórmula al abrir el CSV — se antepone un apóstrofo para que se
+  // trate siempre como texto literal (inyección de fórmulas en CSV).
+  let texto = String(valor);
+  if (/^[=+\-@]/.test(texto)) texto = `'${texto}`;
   return /[",\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
 }
 

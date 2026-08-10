@@ -35,6 +35,7 @@ export function calificarVideos(contenido: ContenidoEvaluarVideos, marcadasBien:
     (c) => contenido.video_mal.ausentes.includes(c) === marcadasMal.includes(c),
   );
   const aciertos = bien.filter(Boolean).length + mal.filter(Boolean).length;
-  const puntajeAuto = Math.round((aciertos / (contenido.cualidades.length * 2)) * 100);
+  const total = contenido.cualidades.length * 2;
+  const puntajeAuto = total === 0 ? 0 : Math.round((aciertos / total) * 100);
   return { puntajeAuto, resultado: { bien, mal } };
 }

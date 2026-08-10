@@ -36,7 +36,7 @@ export default function Eventos({
   const [unidadId, setUnidadId] = useState(unidades[0]?.id ?? "");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { borrando, eliminar } = useEliminarFila("eventos");
+  const { borrando, error: errorEliminar, eliminar } = useEliminarFila("eventos");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,6 +80,7 @@ export default function Eventos({
           <Field>
             <Input
               required
+              aria-label="Título del evento"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Ej. Examen de Unidad 2"
@@ -87,7 +88,7 @@ export default function Eventos({
           </Field>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Field>
-              <Select value={tipo} onChange={(e) => setTipo(e.target.value as TipoEvento)}>
+              <Select aria-label="Tipo de evento" value={tipo} onChange={(e) => setTipo(e.target.value as TipoEvento)}>
                 {Object.entries(TIPOS_EVENTO).map(([valor, { etiqueta }]) => (
                   <option key={valor} value={valor}>
                     {etiqueta}
@@ -96,7 +97,7 @@ export default function Eventos({
               </Select>
             </Field>
             <Field>
-              <Select value={unidadId} onChange={(e) => setUnidadId(e.target.value)}>
+              <Select aria-label="Unidad" value={unidadId} onChange={(e) => setUnidadId(e.target.value)}>
                 {unidades.map((u) => (
                   <option key={u.id} value={u.id}>
                     Unidad {u.orden}
@@ -105,7 +106,13 @@ export default function Eventos({
               </Select>
             </Field>
             <Field>
-              <Input required type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              <Input
+                required
+                type="date"
+                aria-label="Fecha"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+              />
             </Field>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -125,6 +132,7 @@ export default function Eventos({
           </Boton>
         </form>
 
+        {errorEliminar && <ErrorText>{errorEliminar}</ErrorText>}
         {ordenados.length > 0 && (
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
             {ordenados.map((ev) => {

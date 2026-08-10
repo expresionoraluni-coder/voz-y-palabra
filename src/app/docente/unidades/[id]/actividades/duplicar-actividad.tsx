@@ -23,11 +23,12 @@ export default function DuplicarActividad({
 
     const { data: original, error: fetchError } = await supabase
       .from("actividades")
-      .select("tipo_id, titulo, instrucciones, contenido")
+      .select("tipo_id, titulo, instrucciones, contenido, video_url, aprendizaje_esperado")
       .eq("id", actividadId)
       .single();
     if (fetchError || !original) {
       setCargando(false);
+      alert("No se pudo duplicar la actividad. Intenta de nuevo.");
       return;
     }
 
@@ -47,6 +48,8 @@ export default function DuplicarActividad({
         titulo: `${original.titulo} (copia)`,
         instrucciones: original.instrucciones,
         contenido: original.contenido,
+        video_url: original.video_url,
+        aprendizaje_esperado: original.aprendizaje_esperado,
         orden: (count ?? 0) + 1,
       })
       .select("id")
@@ -54,6 +57,7 @@ export default function DuplicarActividad({
 
     if (insertError || !nueva) {
       setCargando(false);
+      alert("No se pudo duplicar la actividad. Intenta de nuevo.");
       return;
     }
 

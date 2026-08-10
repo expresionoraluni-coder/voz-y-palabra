@@ -63,6 +63,8 @@ export default function Confianza({
           step={5}
           value={valor}
           onChange={(e) => setValor(Number(e.target.value))}
+          aria-label="Qué tan seguro estás de dominar esta unidad"
+          aria-valuetext={`${valor} por ciento`}
           className="h-2 flex-1 cursor-pointer accent-indigo-600"
         />
         <button

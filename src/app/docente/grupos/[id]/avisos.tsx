@@ -24,7 +24,7 @@ export default function Avisos({
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { borrando, eliminar } = useEliminarFila("avisos");
+  const { borrando, error: errorEliminar, eliminar } = useEliminarFila("avisos");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +64,7 @@ export default function Avisos({
           <Field>
             <Input
               required
+              aria-label="Título del aviso"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Título"
@@ -72,6 +73,7 @@ export default function Avisos({
           <Field>
             <Textarea
               required
+              aria-label="Mensaje del aviso"
               value={mensaje}
               onChange={(e) => setMensaje(e.target.value)}
               rows={2}
@@ -84,6 +86,7 @@ export default function Avisos({
           </Boton>
         </form>
 
+        {errorEliminar && <ErrorText>{errorEliminar}</ErrorText>}
         {avisos.length > 0 && (
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
             {avisos.map((a) => (

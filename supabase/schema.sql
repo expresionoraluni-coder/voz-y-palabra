@@ -2815,3 +2815,50 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       mano lo que generó en otra pestaña, solo le quita la opción más
 --       fácil (copiar y pegar directo).
 --     Typecheck y build limpios.
+
+-- 69. Contraste con 7 auditorias externas (IAs distintas, analisis
+--     estatico sobre un ZIP del directorio completo, sin acceso a la
+--     base real) que la usuaria pidio revisar. Hallazgo mas importante:
+--     el ZIP compartido con esas herramientas incluia .env.local con la
+--     SUPABASE_SERVICE_ROLE_KEY real -- nunca estuvo en git (gitignore
+--     correcto, verificado), pero si viajo en el ZIP a servicios de IA
+--     externos fuera de nuestro control. Se le pidio a la usuaria rotar
+--     la clave de inmediato (accion de panel, no de codigo).
+--
+--     La mayoria de los hallazgos de "P0 bloqueador" de los informes
+--     mas alarmistas resultaron ser lectura equivocada de schema.sql
+--     como si debiera ser un script de migracion reproducible -- es un
+--     changelog narrativo a proposito, ya con 21 pruebas pgTAP en vivo
+--     verificando el estado real. No se toco nada por esos puntos.
+--
+--     De lo que si era real y nuevo (no cubierto en fases anteriores),
+--     se corrigio en esta pasada:
+--     - npm audit fix (sin --force): sharp, postcss y una nueva
+--       advisory de nanoid quedaron en 0 vulnerabilidades. next quedo
+--       en 16.3.0 via el propio rango semver de package.json, sin
+--       cambio de codigo.
+--     - duplicar-actividad.tsx: el select+insert no traia video_url ni
+--       aprendizaje_esperado, aunque el formulario si los maneja --
+--       duplicar una actividad con video perdia el video en la copia.
+--       Verificado en vivo (duplicar "Mayusculas y minusculas", la
+--       copia si trajo el video_url y el aprendizaje_esperado; se borro
+--       la copia de prueba despues).
+--     - useEliminarFila.ts (avisos/eventos): el error de delete() se
+--       ignoraba por completo -- ahora se captura y se muestra con
+--       ErrorText, mismo patron que el resto de los formularios.
+--     - exportar-grupo.tsx: proteccion contra inyeccion de formulas CSV
+--       (una celda que empiece con =+-@ se antepone con un apostrofo).
+--     - calificacion-evaluar-videos.ts: guardia para no dividir entre
+--       cero si cualidades.length es 0 (antes daba NaN, no 100% como
+--       decía uno de los informes — se revisó el código real).
+--     - aria-label agregado a: el slider de confianza de unidad (no
+--       tenia ninguno), y los campos de avisos/eventos que solo se
+--       identificaban por placeholder.
+--     Typecheck y build limpios.
+--
+--     Pendiente de decision de la usuaria, no corregido en esta pasada:
+--     cerrar la lectura abierta de actividades/unidades (cualquier
+--     sesion autenticada puede leer contenido con clave via API/SDK
+--     directo, sin pasar por la UI) -- documentado como decision
+--     consciente desde la Octava fase, y 3 de los 7 informes externos
+--     lo volvieron a encontrar de forma independiente.
