@@ -13,6 +13,10 @@ Esta lista valida que la docente pueda preparar y monitorear el curso con pocas 
 7. Abrir un caso de apoyo y comprobar que la interfaz explica que no es una calificación.
 8. Añadir una orientación opcional, marcar el caso como atendido y comprobar que aparece para el estudiante.
 9. Cerrar o recuperar la conexión y comprobar que se avisa antes de guardar cambios.
+10. En la lista de estudiantes, buscar por nombre, filtrar por estado y seleccionar varias filas.
+11. Dar de baja varias filas y comprobar que solo cambia ese grupo; reactivar una fila desde la lista de bajas.
+12. Cargar un CSV/TSV con columnas `Nombre` y `Boleta`, revisar la vista previa, corregir filas incompletas y guardar.
+13. Crear una actividad y escribir una pista breve en “Ayuda si te atoras”; abrirla como estudiante y comprobar que aparece cerrada hasta solicitarla.
 
 ## Compatibilidad y accesibilidad
 
@@ -30,3 +34,8 @@ Esta lista valida que la docente pueda preparar y monitorear el curso con pocas 
 ## Fuera de esta fase
 
 La orientación individual docente-estudiante es opcional. El panel debe servir para organizar, preparar contenido y detectar dónde conviene apoyar, sin convertir los comentarios docentes en requisito para que el curso avance ni en una calificación.
+
+## Automatización
+
+- `npm run test:contracts` verifica que las Server Actions mantengan validación de sesión y que el SQL no reabra las policies de unidades y actividades.
+- El workflow de GitHub ejecuta typecheck, lint, build y la suite pgTAP de RLS en una base Supabase efímera. No usa el proyecto remoto ni secretos de producción.

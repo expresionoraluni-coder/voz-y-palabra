@@ -1,20 +1,17 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ChevronRight, ClipboardCheck, LifeBuoy, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { ClipboardCheck, LifeBuoy, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
 import Eventos from "./eventos";
 import EditarGrupo from "./editar-grupo";
 import EliminarGrupo from "./eliminar-grupo";
-import ExportarGrupo from "./exportar-grupo";
+import GrupoEstudiantesPanel from "./grupo-estudiantes-panel";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
-import Avatar from "@/components/ui/avatar";
-import EmptyState from "@/components/ui/empty-state";
 import { temaUnidad } from "@/lib/unidad-tema";
 
 const DIAS_INACTIVIDAD = 10;
@@ -476,7 +473,7 @@ export default async function DetalleGrupo({
       )}
 
       {entregasPorRevisar.length > 0 && (
-        <section className="flex flex-col gap-3">
+        <section id="apoyo" className="scroll-mt-16 flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
             Casos de apoyo para atender
           </h2>
@@ -506,65 +503,13 @@ export default async function DetalleGrupo({
       </div>
 
       <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
-      <AgregarEstudiantes
-        grupoId={grupo.id}
-        nombresExistentes={[...(estudiantes ?? []), ...(estudiantesBaja ?? [])].map((e) => e.nombre)}
-      />
-
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Estudiantes ({estudiantes?.length ?? 0})
-          </h2>
-          {estudiantes && estudiantes.length > 0 && (
-            <ExportarGrupo nombreGrupo={grupo.nombre} estudiantes={porEstudiante} />
-          )}
-        </div>
-        {!estudiantes || estudiantes.length === 0 ? (
-          <EmptyState icon={Users} titulo="Todavía no hay estudiantes en este grupo" />
-        ) : (
-          <div className="flex flex-col gap-2">
-            {porEstudiante.map((e) => (
-              <Link key={e.id} href={`/docente/estudiantes/${e.id}`}>
-                <CardLink className="flex items-center gap-3 px-4 py-3">
-                  <Avatar nombre={e.nombre} size="sm" />
-                  <span className="flex-1 text-sm font-medium text-slate-900 dark:text-slate-50">
-                    {e.nombre}
-                  </span>
-                  <div className="flex w-24 items-center gap-2">
-                    <ProgressBar porcentaje={e.avance} etiqueta={`Avance de ${e.nombre}: ${e.avance}%`} />
-                    <span className="w-8 shrink-0 text-right text-xs text-slate-500 dark:text-slate-500">
-                      {e.avance}%
-                    </span>
-                  </div>
-                  <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-                </CardLink>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {estudiantesBaja && estudiantesBaja.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-slate-500 dark:text-slate-500">
-            Dados de baja ({estudiantesBaja.length})
-          </h2>
-          <div className="flex flex-col gap-2">
-            {estudiantesBaja.map((e) => (
-              <Link key={e.id} href={`/docente/estudiantes/${e.id}`}>
-                <CardLink className="flex items-center gap-3 px-4 py-3 opacity-60">
-                  <Avatar nombre={e.nombre} size="sm" />
-                  <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {e.nombre}
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-                </CardLink>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        <GrupoEstudiantesPanel
+          grupoId={grupo.id}
+          nombreGrupo={grupo.nombre}
+          estudiantes={porEstudiante}
+          estudiantesBaja={estudiantesBaja ?? []}
+          nombresExistentes={[...(estudiantes ?? []), ...(estudiantesBaja ?? [])].map((e) => e.nombre)}
+        />
 
       <section className="flex flex-col gap-3 border-t border-slate-200 pt-6 dark:border-slate-800">
         <h2 className="text-sm font-medium text-slate-500 dark:text-slate-500">Zona de riesgo</h2>

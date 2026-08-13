@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, BookOpen, CheckCircle2, ChevronRight, ClipboardCheck, Plus, Sparkles, Users } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, ChevronRight, ClipboardCheck, LifeBuoy, Plus, Sparkles, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
@@ -54,6 +54,8 @@ export default async function DashboardDocente() {
     const relacion = Array.isArray(grupo.estudiantes) ? grupo.estudiantes[0] : grupo.estudiantes;
     return (relacion?.count ?? 0) === 0;
   });
+  const gruposConAtencion = (grupos ?? []).filter((grupo) => (porRevisarPorGrupo.get(grupo.id) ?? 0) > 0);
+  const totalCasosApoyo = [...porRevisarPorGrupo.values()].reduce((total, cantidad) => total + cantidad, 0);
   const primeraUnidad = unidades?.[0];
   const siguientePaso = !grupos?.length
     ? {
@@ -124,6 +126,38 @@ export default async function DashboardDocente() {
         <MetricCard etiqueta="Estudiantes" valor={totalEstudiantes} icon={Users} tono="emerald" />
         <MetricCard etiqueta="Actividades creadas" valor={actividades?.length ?? 0} icon={CheckCircle2} tono="slate" />
       </section>
+
+      {totalCasosApoyo > 0 && (
+        <section aria-labelledby="resumen-apoyo">
+          <Card className="flex flex-col gap-3 border-amber-100 bg-amber-50/70 p-5 dark:border-amber-900 dark:bg-amber-950/25">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                <LifeBuoy className="size-4" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Resumen de apoyo</p>
+                <h2 id="resumen-apoyo" className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-50">
+                  {totalCasosApoyo} caso{totalCasosApoyo === 1 ? "" : "s"} para revisar cuando tengas tiempo
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                  Es una guía para decidir dónde acercarte; no es una lista de calificaciones ni bloquea el avance del grupo.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {gruposConAtencion.slice(0, 3).map((grupo) => (
+                <Link
+                  key={grupo.id}
+                  href={`/docente/grupos/${grupo.id}#apoyo`}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-white px-3 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100 dark:hover:bg-amber-950/50"
+                >
+                  {grupo.nombre} · {porRevisarPorGrupo.get(grupo.id)}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">

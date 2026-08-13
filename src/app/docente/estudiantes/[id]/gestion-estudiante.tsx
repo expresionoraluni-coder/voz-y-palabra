@@ -128,15 +128,17 @@ export default function GestionEstudiante({
   return (
     <div className="flex items-center gap-4">
       <button
+        type="button"
         onClick={() => setConfirmando("baja")}
-        className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
+        className="flex items-center gap-1.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:text-slate-50"
       >
         <UserX className="size-4" aria-hidden="true" />
         Dar de baja
       </button>
       <button
+        type="button"
         onClick={() => setConfirmando("eliminar")}
-        className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+        className="flex items-center gap-1.5 rounded-md text-sm font-medium text-red-500 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-400 dark:hover:text-red-300"
       >
         <Trash2 className="size-4" aria-hidden="true" />
         Eliminar

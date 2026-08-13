@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:contracts": "node scripts/verify-security-contracts.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

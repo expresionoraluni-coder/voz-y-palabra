@@ -10,6 +10,7 @@ Esta lista acompaña el flujo autodirigido. La orientación de una docente es op
 - Definir la meta y la confianza inicial.
 - Abrir una actividad disponible.
 - Leer la instrucción, el aprendizaje esperado y los pasos.
+- Abrir “¿Te atoraste? Ver una pista” solo si hace falta y comprobar que orienta sin mostrar la respuesta.
 - Resolver, guardar y volver a abrir la actividad.
 - Completar una unidad y escribir la reflexión de cierre.
 - Confirmar que el progreso y las insignias se actualicen.

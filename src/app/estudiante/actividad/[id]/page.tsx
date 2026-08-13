@@ -98,6 +98,7 @@ export default async function ActividadEstudiante({
   const nombreTipo = tipo?.nombre;
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const modoRedaccion = (actividad.contenido as { modo?: string } | null)?.modo;
+  const ayudaActividad = (actividad.contenido as { _ayuda?: string } | null)?._ayuda;
 
   const [
     { data: entregaExistente },
@@ -507,6 +508,7 @@ export default async function ActividadEstudiante({
         tieneVideo={Boolean(actividad.video_url)}
         completada={Boolean(entregaExistente)}
         aprendizajeEsperado={actividad.aprendizaje_esperado}
+        ayuda={ayudaActividad}
       />
 
       {bloqueAeUc}

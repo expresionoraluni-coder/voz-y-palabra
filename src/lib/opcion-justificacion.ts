@@ -77,7 +77,8 @@ export function rondasDeRespuesta(r?: Record<string, unknown> | null): RondaResp
 }
 
 function quitarClave(r: RondaContenido): RondaContenidoPublica {
-  const { respuesta_correcta: _respuestaCorrecta, ...resto } = r;
+  const resto = { ...r } as RondaContenidoPublica & { respuesta_correcta?: string };
+  delete resto.respuesta_correcta;
   return resto;
 }
 

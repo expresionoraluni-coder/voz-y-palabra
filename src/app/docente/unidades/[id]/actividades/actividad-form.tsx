@@ -112,6 +112,7 @@ export default function ActividadForm({
   const [instrucciones, setInstrucciones] = useState(actividadInicial?.instrucciones ?? "");
   const [aprendizajeEsperado, setAprendizajeEsperado] = useState(actividadInicial?.aprendizajeEsperado ?? "");
   const [videoUrl, setVideoUrl] = useState(actividadInicial?.videoUrl ?? "");
+  const [ayuda, setAyuda] = useState(typeof c._ayuda === "string" ? c._ayuda : "");
 
   type RondaEditor = {
     contexto: string;
@@ -256,6 +257,7 @@ export default function ActividadForm({
       if (datos.instrucciones) setInstrucciones(datos.instrucciones);
       if (datos.aprendizajeEsperado) setAprendizajeEsperado(datos.aprendizajeEsperado);
       if (datos.videoUrl) setVideoUrl(datos.videoUrl);
+      if (datos.ayuda) setAyuda(datos.ayuda);
       if (datos.introOJ) setIntroOJ(datos.introOJ);
       if (datos.rondasOJ) setRondasOJ(datos.rondasOJ);
       if (datos.categorias) setCategorias(datos.categorias);
@@ -312,6 +314,7 @@ export default function ActividadForm({
       instrucciones,
       aprendizajeEsperado,
       videoUrl,
+      ayuda,
       introOJ,
       rondasOJ,
       categorias,
@@ -368,6 +371,7 @@ export default function ActividadForm({
     instrucciones,
     aprendizajeEsperado,
     videoUrl,
+    ayuda,
     introOJ,
     rondasOJ,
     categorias,
@@ -711,6 +715,8 @@ export default function ActividadForm({
       return;
     }
 
+    if (contenido && ayuda.trim()) contenido = { ...contenido, _ayuda: ayuda.trim() };
+
     setCargando(true);
     const supabase = createClient();
 
@@ -928,6 +934,20 @@ export default function ActividadForm({
             <HelpText>
               El estudiante lo ve en esta actividad, junto con la unidad de competencia de la unidad
               completa.
+            </HelpText>
+          </Field>
+
+          <Field>
+            <Label htmlFor="ayuda">Ayuda si te atoras (opcional)</Label>
+            <Textarea
+              id="ayuda"
+              value={ayuda}
+              onChange={(e) => setAyuda(e.target.value)}
+              rows={2}
+              placeholder="Ej. Primero identifica quién habla y quién escucha; después explica qué cambia entre ambos papeles."
+            />
+            <HelpText>
+              Se mostrará como una pista breve al estudiante, sin revelar la respuesta. Una idea, ejemplo o pregunta guía suele ayudar más que otra instrucción larga.
             </HelpText>
           </Field>
 

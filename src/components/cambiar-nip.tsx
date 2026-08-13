@@ -70,8 +70,9 @@ export default function CambiarNip() {
   if (!abierto) {
     return (
       <button
+        type="button"
         onClick={() => setAbierto(true)}
-        className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
+        className="flex items-center gap-1.5 rounded-md text-sm font-medium text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:text-slate-50"
       >
         <KeyRound className="size-4" aria-hidden="true" />
         Cambiar mi NIP
@@ -83,7 +84,7 @@ export default function CambiarNip() {
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
         <span>Tu NIP quedó cambiado. Úsalo la próxima vez que entres.</span>
-        <button onClick={cerrar} className="shrink-0 font-medium underline underline-offset-2">
+        <button type="button" onClick={cerrar} className="shrink-0 rounded-md font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
           Cerrar
         </button>
       </div>

@@ -14,6 +14,8 @@ import type { ResultadoCalificacion } from "@/app/estudiante/actividad/[id]/acci
  * cliente fallaría de todas formas.
  */
 export function useEntregaActividad(actividadId: string, estudianteId: string) {
+  void actividadId;
+  void estudianteId;
   const router = useRouter();
   const { marcarGuardada } = useEntregaReciente();
   const [cargando, setCargando] = useState(false);
