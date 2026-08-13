@@ -10,7 +10,9 @@ Esta lista valida que la docente pueda preparar y monitorear el curso con pocas 
 4. Agregar estudiantes y confirmar que la alerta o el avance lleva al perfil correcto.
 5. Abrir una unidad y reconocer el objetivo de la unidad y el nombre comprensible de cada tipo de actividad.
 6. Crear o editar una actividad siguiendo la ruta rápida: dinámica, instrucción y contenido.
-7. Cerrar o recuperar la conexión y comprobar que se avisa antes de guardar cambios.
+7. Abrir un caso de apoyo y comprobar que la interfaz explica que no es una calificación.
+8. Añadir una orientación opcional, marcar el caso como atendido y comprobar que aparece para el estudiante.
+9. Cerrar o recuperar la conexión y comprobar que se avisa antes de guardar cambios.
 
 ## Compatibilidad y accesibilidad
 
@@ -27,4 +29,4 @@ Esta lista valida que la docente pueda preparar y monitorear el curso con pocas 
 
 ## Fuera de esta fase
 
-La retroalimentación individual docente-estudiante sigue pendiente. El panel debe servir para organizar, preparar contenido y detectar dónde conviene revisar, sin convertir los comentarios docentes en requisito para que el curso avance.
+La orientación individual docente-estudiante es opcional. El panel debe servir para organizar, preparar contenido y detectar dónde conviene apoyar, sin convertir los comentarios docentes en requisito para que el curso avance ni en una calificación.

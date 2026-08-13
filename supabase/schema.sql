@@ -288,6 +288,20 @@ create policy "docente ve entregas de sus grupos" on entregas
       where g.docente_id = (select auth.uid())
     )
   );
+create policy "docente actualiza apoyo en entregas" on entregas
+  for update to authenticated
+  using (
+    estudiante_id in (
+      select e.id from estudiantes e join grupos g on g.id = e.grupo_id
+      where g.docente_id = (select auth.uid())
+    )
+  )
+  with check (
+    estudiante_id in (
+      select e.id from estudiantes e join grupos g on g.id = e.grupo_id
+      where g.docente_id = (select auth.uid())
+    )
+  );
 
 -- reflexiones: mismo patrón que entregas
 create policy "estudiante administra sus reflexiones" on reflexiones
@@ -328,10 +342,29 @@ create policy "docente ve insignias de sus grupos" on insignias_otorgadas
     )
   );
 
--- retroalimentacion_docente: el docente escribe; el estudiante dueño de la entrega la lee
+-- retroalimentacion_docente: el docente registra apoyos solo en entregas de sus grupos;
+-- el estudiante dueño de la entrega las lee
 create policy "docente administra su retroalimentación" on retroalimentacion_docente
-  for all to authenticated using (docente_id = (select auth.uid()))
-  with check (docente_id = (select auth.uid()));
+  for all to authenticated using (
+    docente_id = (select auth.uid())
+    and entrega_id in (
+      select en.id
+      from entregas en
+      join estudiantes e on e.id = en.estudiante_id
+      join grupos g on g.id = e.grupo_id
+      where g.docente_id = (select auth.uid())
+    )
+  )
+  with check (
+    docente_id = (select auth.uid())
+    and entrega_id in (
+      select en.id
+      from entregas en
+      join estudiantes e on e.id = en.estudiante_id
+      join grupos g on g.id = e.grupo_id
+      where g.docente_id = (select auth.uid())
+    )
+  );
 create policy "estudiante lee retroalimentación de sus entregas" on retroalimentacion_docente
   for select to authenticated using (
     entrega_id in (select id from entregas where estudiante_id = estudiante_actual())

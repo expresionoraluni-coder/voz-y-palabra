@@ -1,6 +1,6 @@
 # Lista de verificación del recorrido estudiantil
 
-Esta lista acompaña el flujo autodirigido. La retroalimentación de una docente queda fuera de esta fase.
+Esta lista acompaña el flujo autodirigido. La orientación de una docente es opcional y nunca bloquea el avance.
 
 ## Recorrido principal
 

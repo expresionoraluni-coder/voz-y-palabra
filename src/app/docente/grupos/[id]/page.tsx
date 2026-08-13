@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ChevronRight, ClipboardCheck, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { ChevronRight, ClipboardCheck, LifeBuoy, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import Avisos from "./avisos";
@@ -323,13 +323,23 @@ export default async function DetalleGrupo({
           tono="emerald"
         />
         <MetricCard
-          etiqueta="Por revisar"
+          etiqueta="Casos de apoyo"
           valor={entregasPorRevisar.length}
           icon={ClipboardCheck}
           tono="amber"
         />
         <MetricCard etiqueta="Estudiantes" valor={estudiantes?.length ?? 0} icon={Users} tono="slate" />
       </div>
+
+      <Card className="flex items-start gap-3 border-sky-100 bg-sky-50/60 p-4 dark:border-sky-900 dark:bg-sky-950/30">
+        <LifeBuoy className="mt-0.5 size-5 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden="true" />
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Panel de apoyo, no de calificación</h2>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+            Estas señales ayudan a decidir cuándo acercarte a un estudiante. El grupo puede seguir avanzando aunque no registres una orientación.
+          </p>
+        </div>
+      </Card>
 
       {alertas.length > 0 && (
         <Alert tono="warning" titulo="Alertas">
@@ -445,18 +455,18 @@ export default async function DetalleGrupo({
       {totalEvaluadas > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Evaluación cualitativa de la docente
+            Señales de apoyo
           </h2>
           <div className="grid grid-cols-3 gap-3">
-            <MetricCard etiqueta="Logrado" valor={evaluacionDistribucion.logrado} icon={ThumbsUp} tono="emerald" />
+            <MetricCard etiqueta="Puede continuar" valor={evaluacionDistribucion.logrado} icon={ThumbsUp} tono="emerald" />
             <MetricCard
-              etiqueta="En proceso"
+              etiqueta="Conviene practicar"
               valor={evaluacionDistribucion.en_proceso}
               icon={TrendingUp}
               tono="amber"
             />
             <MetricCard
-              etiqueta="Necesita apoyo"
+              etiqueta="Requiere acompañamiento"
               valor={evaluacionDistribucion.necesita_apoyo}
               icon={ClipboardCheck}
               tono="slate"
@@ -468,7 +478,7 @@ export default async function DetalleGrupo({
       {entregasPorRevisar.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Entregas por revisar
+            Casos de apoyo para atender
           </h2>
           <div className="flex flex-col gap-2">
             {entregasPorRevisar.map((en) => {
@@ -481,7 +491,7 @@ export default async function DetalleGrupo({
                     <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
                       <strong className="font-medium">{est?.nombre}</strong> · {act?.titulo}
                     </span>
-                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Revisar</span>
+                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Abrir caso</span>
                   </CardLink>
                 </Link>
               );

@@ -237,9 +237,9 @@ export default async function FichaEstudiante({
                   : act.tipos_actividad
                 : undefined;
               const EVALUACION_BADGE = {
-                logrado: { texto: "Logrado", tono: "success" as const },
-                en_proceso: { texto: "En proceso", tono: "warning" as const },
-                necesita_apoyo: { texto: "Necesita apoyo", tono: "error" as const },
+                logrado: { texto: "Puede continuar", tono: "success" as const },
+                en_proceso: { texto: "Conviene practicar", tono: "warning" as const },
+                necesita_apoyo: { texto: "Requiere acompañamiento", tono: "error" as const },
               };
               const evaluacionBadge = en.evaluacion_docente
                 ? EVALUACION_BADGE[en.evaluacion_docente as keyof typeof EVALUACION_BADGE]
@@ -261,12 +261,12 @@ export default async function FichaEstudiante({
                     <div className="flex shrink-0 items-center gap-1.5">
                       {en.puntaje_auto !== null && (
                         <Badge tono={en.puntaje_auto >= 70 ? "success" : en.puntaje_auto >= 40 ? "warning" : "error"}>
-                          {en.puntaje_auto}% correcto
+                          {en.puntaje_auto}% de aciertos
                         </Badge>
                       )}
                       {prediccion && <Badge tono={toneConfianza}>Confianza {prediccion.confianza}/5</Badge>}
                       {evaluacionBadge && <Badge tono={evaluacionBadge.tono}>{evaluacionBadge.texto}</Badge>}
-                      {en.estado === "pendiente_revision" && <Badge tono="warning">Por revisar</Badge>}
+                      {en.estado === "pendiente_revision" && <Badge tono="warning">Caso de apoyo</Badge>}
                     </div>
                   </div>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">

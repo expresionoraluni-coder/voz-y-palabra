@@ -133,11 +133,21 @@ create or replace function public.proteger_columnas_entrega()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  if not exists (
-    select 1 from public.grupos g join public.estudiantes e on e.grupo_id = g.id
-    where g.docente_id = auth.uid() and e.id = new.estudiante_id
+  if auth.uid() is not null and exists (
+    select 1
+    from public.grupos g
+    join public.estudiantes e on e.grupo_id = g.id
+    where g.docente_id = auth.uid() and e.id = old.estudiante_id
   ) then
-    if new.evaluacion_docente is distinct from old.evaluacion_docente then raise exception 'No puedes modificar la evaluación de la docente.'; end if;
+    if new.estudiante_id is distinct from old.estudiante_id
+      or new.actividad_id is distinct from old.actividad_id
+      or new.respuesta is distinct from old.respuesta
+      or new.puntaje_auto is distinct from old.puntaje_auto
+      or new.created_at is distinct from old.created_at then
+      raise exception 'La docente solo puede actualizar el estado de apoyo de una entrega.';
+    end if;
+  else
+    if auth.uid() is not null and new.evaluacion_docente is distinct from old.evaluacion_docente then raise exception 'No puedes modificar la evaluación de la docente.'; end if;
     if new.estudiante_id is distinct from old.estudiante_id or new.actividad_id is distinct from old.actividad_id then raise exception 'No puedes reasignar esta entrega.'; end if;
   end if;
   return new;

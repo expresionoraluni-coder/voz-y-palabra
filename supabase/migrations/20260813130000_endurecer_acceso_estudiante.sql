@@ -32,6 +32,23 @@ create policy "estudiante lee sus entregas"
   for select to authenticated
   using (estudiante_id = public.estudiante_actual());
 
+drop policy if exists "docente actualiza apoyo en entregas" on public.entregas;
+create policy "docente actualiza apoyo en entregas"
+  on public.entregas
+  for update to authenticated
+  using (estudiante_id in (
+    select e.id
+    from public.estudiantes e
+    join public.grupos g on g.id = e.grupo_id
+    where g.docente_id = (select auth.uid())
+  ))
+  with check (estudiante_id in (
+    select e.id
+    from public.estudiantes e
+    join public.grupos g on g.id = e.grupo_id
+    where g.docente_id = (select auth.uid())
+  ));
+
 -- Estas funciones son triggers internos y no deben ser endpoints de RPC.
 revoke execute on function public.proteger_columnas_entrega() from public, anon, authenticated;
 revoke execute on function public.proteger_correo_docente() from public, anon, authenticated;
@@ -52,9 +69,30 @@ alter policy "docente administra sus avisos" on public.avisos
 alter policy "docente administra sus eventos" on public.eventos
   using (docente_id = (select auth.uid()))
   with check (docente_id = (select auth.uid()));
-alter policy "docente administra su retroalimentación" on public.retroalimentacion_docente
-  using (docente_id = (select auth.uid()))
-  with check (docente_id = (select auth.uid()));
+drop policy if exists "docente administra su retroalimentación" on public.retroalimentacion_docente;
+create policy "docente administra su retroalimentación"
+  on public.retroalimentacion_docente
+  for all to authenticated
+  using (
+    docente_id = (select auth.uid())
+    and entrega_id in (
+      select en.id
+      from public.entregas en
+      join public.estudiantes e on e.id = en.estudiante_id
+      join public.grupos g on g.id = e.grupo_id
+      where g.docente_id = (select auth.uid())
+    )
+  )
+  with check (
+    docente_id = (select auth.uid())
+    and entrega_id in (
+      select en.id
+      from public.entregas en
+      join public.estudiantes e on e.id = en.estudiante_id
+      join public.grupos g on g.id = e.grupo_id
+      where g.docente_id = (select auth.uid())
+    )
+  );
 
 alter policy "docente ve entregas de sus grupos" on public.entregas
   using (estudiante_id in (

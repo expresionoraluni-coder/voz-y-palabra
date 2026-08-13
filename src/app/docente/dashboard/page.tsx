@@ -156,13 +156,13 @@ export default async function DashboardDocente() {
                       {Array.isArray(g.estudiantes) ? g.estudiantes[0]?.count ?? 0 : 0} estudiantes
                     </p>
                     <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                      {porRevisarPorGrupo.get(g.id) ?? 0} pendientes · abre para ver el avance
+                      {porRevisarPorGrupo.get(g.id) ?? 0} casos de apoyo · abre para ver el avance
                     </p>
                   </div>
                   {(porRevisarPorGrupo.get(g.id) ?? 0) > 0 && (
                     <Badge tono="warning">
                       <ClipboardCheck className="size-3" aria-hidden="true" />
-                      {porRevisarPorGrupo.get(g.id)} por revisar
+                      {porRevisarPorGrupo.get(g.id)} atención
                     </Badge>
                   )}
                   <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />

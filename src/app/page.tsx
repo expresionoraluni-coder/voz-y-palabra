@@ -42,7 +42,7 @@ export default function Home() {
         </div>
 
         <p className="max-w-sm text-base text-indigo-100/70">
-          Practica, recibe retroalimentación y construye tu portafolio a lo largo de las
+          Practica, recibe orientación cuando la necesites y construye tu portafolio a lo largo de las
           3 unidades del curso.
         </p>
 

@@ -10,4 +10,4 @@ Antes de desplegar una migración:
 4. Probar RLS con sesión anónima, estudiante y docente.
 5. Aplicarla en una ventana de mantenimiento y comprobar el flujo de ingreso y entrega.
 
-La migración de hardening de este directorio no se ejecuta desde Netlify ni desde la aplicación. La plataforma no necesita acceso de escritura administrativo desde el navegador.
+La migración de hardening de este directorio no se ejecuta desde Netlify ni desde la aplicación. La orientación docente se valida en una Server Action y se guarda desde el servidor; la plataforma no necesita acceso de escritura administrativo desde el navegador.
