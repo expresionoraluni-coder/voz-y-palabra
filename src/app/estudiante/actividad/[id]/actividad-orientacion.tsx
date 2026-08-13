@@ -15,7 +15,7 @@ export default function ActividadOrientacion({
     ? ["Revisa el tema y la rúbrica", "Graba tu participación con calma", "Escúchate y guarda tu autoevaluación"]
     : esRedaccion
       ? ["Lee el texto o ejemplo de referencia", "Escribe con tus propias palabras", "Revisa tu respuesta antes de guardarla"]
-      : ["Lee la consigna completa", "Responde paso a paso", "Revisa y guarda tu actividad"];
+      : ["Lee la instrucción completa", "Responde paso a paso", "Revisa y guarda tu actividad"];
 
   return (
     <section
