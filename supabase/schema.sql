@@ -181,17 +181,18 @@ create policy "estudiante lee su propia fila" on estudiantes
 create policy "estudiante edita su propia fila" on estudiantes
   for update using (auth_user_id = auth.uid());
 
--- unidades y tipos_actividad: catálogo de lectura abierta para cualquiera con sesión
-create policy "cualquiera con sesión lee unidades" on unidades
-  for select using (auth.role() = 'authenticated');
+-- unidades: los estudiantes las reciben solo desde Server Components que ya
+-- validaron su sesión; no se expone lectura directa por el Data API.
+drop policy if exists "cualquiera con sesión lee unidades" on unidades;
 create policy "docente administra unidades" on unidades
   for all using (auth.jwt()->>'role' = 'authenticated' and exists (select 1 from docentes where id = auth.uid()));
 create policy "cualquiera con sesión lee tipos de actividad" on tipos_actividad
   for select using (auth.role() = 'authenticated');
 
--- actividades: lectura abierta con sesión; solo el docente administra
-create policy "cualquiera con sesión lee actividades" on actividades
-  for select using (auth.role() = 'authenticated');
+-- actividades: el contenido, incluida la clave de calificación, tampoco se
+-- expone por el Data API; la lectura del estudiante ocurre exclusivamente en
+-- el servidor después de validar su identidad.
+drop policy if exists "cualquiera con sesión lee actividades" on actividades;
 create policy "docente administra actividades" on actividades
   for all using (exists (select 1 from docentes where id = auth.uid()));
 
