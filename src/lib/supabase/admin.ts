@@ -13,10 +13,14 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 // proyecto (mismo estado que el resto del código, que usa @supabase/ssr sin
 // ese problema por cómo tipa su default) — <any> evita el falso error sin
 // fingir una seguridad de tipos que hoy no existe en ningún otro cliente.
+// El proyecto aún no tiene tipos Database generados; el cliente admin opera
+// sobre tablas cuyo esquema se valida en las capas de servidor que lo llaman.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let cliente: ReturnType<typeof createSupabaseClient<any>> | undefined;
 
 export function createAdminClient() {
   if (!cliente) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cliente = createSupabaseClient<any>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,

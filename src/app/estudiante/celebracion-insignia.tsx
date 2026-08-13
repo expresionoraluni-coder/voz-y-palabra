@@ -32,6 +32,8 @@ export default function CelebracionInsignia({
     }
 
     const encontradas = insignias.filter((i) => !vistas.includes(i.nombre));
+    // La lista depende de localStorage y se actualiza una sola vez al montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (encontradas.length > 0) setNuevas(encontradas);
 
     try {

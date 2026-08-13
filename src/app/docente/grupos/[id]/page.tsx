@@ -19,6 +19,11 @@ import { temaUnidad } from "@/lib/unidad-tema";
 
 const DIAS_INACTIVIDAD = 10;
 
+type AlertaDocente = {
+  texto: string;
+  estudianteId: string;
+};
+
 export default async function DetalleGrupo({
   params,
 }: {
@@ -89,6 +94,8 @@ export default async function DetalleGrupo({
   if (!grupo) notFound();
 
   const totalActividades = actividades?.length ?? 0;
+  // La actividad se mide respecto al momento en que se solicita el panel.
+  // eslint-disable-next-line react-hooks/purity
   const hoy = Date.now();
 
   const porEstudiante = (estudiantes ?? []).map((e) => {
@@ -242,13 +249,13 @@ export default async function DetalleGrupo({
   const totalEvaluadas =
     evaluacionDistribucion.logrado + evaluacionDistribucion.en_proceso + evaluacionDistribucion.necesita_apoyo;
 
-  const alertas: string[] = [];
+  const alertas: AlertaDocente[] = [];
   for (const e of porEstudiante) {
     if (e.totalEntregas === 0) {
       const diasDesdeAlta = Math.floor((hoy - new Date(e.created_at).getTime()) / (1000 * 60 * 60 * 24));
-      if (diasDesdeAlta >= 3) alertas.push(`${e.nombre} todavía no ha empezado a practicar.`);
+      if (diasDesdeAlta >= 3) alertas.push({ estudianteId: e.id, texto: `${e.nombre} todavía no ha empezado a practicar.` });
     } else if (e.diasInactivo !== null && e.diasInactivo > DIAS_INACTIVIDAD) {
-      alertas.push(`${e.nombre} sin actividad hace ${e.diasInactivo} días.`);
+      alertas.push({ estudianteId: e.id, texto: `${e.nombre} sin actividad hace ${e.diasInactivo} días.` });
     }
   }
   for (const c of confianzas ?? []) {
@@ -256,7 +263,7 @@ export default async function DetalleGrupo({
     const est = porEstudiante.find((e) => e.id === c.estudiante_id);
     if (!est) continue;
     if (c.valor >= 70 && est.totalEntregas === 0) {
-      alertas.push(`${est.nombre} dice sentirse seguro pero no ha completado actividades.`);
+      alertas.push({ estudianteId: est.id, texto: `${est.nombre} dice sentirse seguro pero no ha completado actividades.` });
       continue;
     }
     if (c.valor >= 70 && est.totalEntregas > 0) {
@@ -266,9 +273,10 @@ export default async function DetalleGrupo({
       if (misPuntajes.length > 0) {
         const promedio = misPuntajes.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / misPuntajes.length;
         if (promedio < 50) {
-          alertas.push(
-            `${est.nombre} dice sentirse seguro pero su precisión real es de ${Math.round(promedio)}%.`,
-          );
+          alertas.push({
+            estudianteId: est.id,
+            texto: `${est.nombre} dice sentirse seguro pero su precisión real es de ${Math.round(promedio)}%.`,
+          });
         }
       }
     }
@@ -325,9 +333,17 @@ export default async function DetalleGrupo({
 
       {alertas.length > 0 && (
         <Alert tono="warning" titulo="Alertas">
-          <ul className="flex flex-col gap-1">
-            {alertas.map((a, i) => (
-              <li key={i}>{a}</li>
+          <ul className="flex flex-col gap-2">
+            {alertas.map((a) => (
+              <li key={`${a.estudianteId}-${a.texto}`} className="flex flex-wrap items-center justify-between gap-2">
+                <span>{a.texto}</span>
+                <Link
+                  href={`/docente/estudiantes/${a.estudianteId}`}
+                  className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-xs font-semibold text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-200 dark:hover:text-amber-50"
+                >
+                  Ver perfil
+                </Link>
+              </li>
             ))}
           </ul>
         </Alert>
@@ -413,7 +429,7 @@ export default async function DetalleGrupo({
             {confusionesTop.map((c, i) => (
               <div key={i} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                 <span className="text-slate-700 dark:text-slate-300">
-                  <strong className="font-medium text-slate-900 dark:text-slate-50">"{c.elemento}"</strong> se
+                  <strong className="font-medium text-slate-900 dark:text-slate-50">&quot;{c.elemento}&quot;</strong> se
                   confunde con <strong className="font-medium text-amber-600 dark:text-amber-400">{c.elegida}</strong>{" "}
                   <span className="text-slate-500 dark:text-slate-400">(era {c.correcta})</span>
                 </span>

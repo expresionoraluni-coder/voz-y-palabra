@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookOpen, ChevronRight, ClipboardCheck, Plus, Users } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, ChevronRight, ClipboardCheck, Plus, Sparkles, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
-import { CardLink } from "@/components/ui/card";
+import { Card, CardLink } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
 import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
+import MetricCard from "@/components/ui/metric-card";
 import { temaUnidad } from "@/lib/unidad-tema";
 
 export default async function DashboardDocente() {
@@ -18,7 +19,7 @@ export default async function DashboardDocente() {
 
   if (!user) redirect("/ingreso/profesora");
 
-  const [{ data: docente }, { data: grupos }, { data: unidades }, { data: entregasPorRevisar }] =
+  const [{ data: docente }, { data: grupos }, { data: unidades }, { data: actividades }, { data: entregasPorRevisar }] =
     await Promise.all([
       supabase.from("docentes").select("nombre").eq("id", user.id).single(),
       supabase
@@ -28,6 +29,7 @@ export default async function DashboardDocente() {
         .eq("estudiantes.activo", true)
         .order("created_at", { ascending: false }),
       supabase.from("unidades").select("id, nombre, orden, reto_comunicativo").order("orden"),
+      supabase.from("actividades").select("id, unidad_id"),
       supabase.from("entregas").select("estudiantes(grupo_id)").eq("estado", "pendiente_revision"),
     ]);
 
@@ -40,6 +42,47 @@ export default async function DashboardDocente() {
     porRevisarPorGrupo.set(est.grupo_id, (porRevisarPorGrupo.get(est.grupo_id) ?? 0) + 1);
   }
 
+  const totalEstudiantes = (grupos ?? []).reduce((total, grupo) => {
+    const relacion = Array.isArray(grupo.estudiantes) ? grupo.estudiantes[0] : grupo.estudiantes;
+    return total + (relacion?.count ?? 0);
+  }, 0);
+  const actividadesPorUnidad = new Map<string, number>();
+  for (const actividad of actividades ?? []) {
+    actividadesPorUnidad.set(actividad.unidad_id, (actividadesPorUnidad.get(actividad.unidad_id) ?? 0) + 1);
+  }
+  const grupoSinEstudiantes = (grupos ?? []).find((grupo) => {
+    const relacion = Array.isArray(grupo.estudiantes) ? grupo.estudiantes[0] : grupo.estudiantes;
+    return (relacion?.count ?? 0) === 0;
+  });
+  const primeraUnidad = unidades?.[0];
+  const siguientePaso = !grupos?.length
+    ? {
+        titulo: "Crea tu primer grupo",
+        descripcion: "Después podrás compartir un código de acceso y comenzar a trabajar.",
+        href: "/docente/grupos/nuevo",
+        accion: "Crear grupo",
+      }
+    : grupoSinEstudiantes
+      ? {
+          titulo: `Agrega estudiantes a ${grupoSinEstudiantes.nombre}`,
+          descripcion: "Puedes capturarlos uno por uno o cargar una lista para ahorrar tiempo.",
+          href: `/docente/grupos/${grupoSinEstudiantes.id}`,
+          accion: "Abrir grupo",
+        }
+      : !actividades?.length && primeraUnidad
+        ? {
+            titulo: "Prepara la primera actividad",
+            descripcion: `Empieza con ${primeraUnidad.nombre} y usa una dinámica lista para configurar.`,
+            href: `/docente/unidades/${primeraUnidad.id}/actividades/nueva`,
+            accion: "Crear actividad",
+          }
+        : {
+            titulo: "Revisa el avance de tus grupos",
+            descripcion: "Consulta quién ya practicó, qué necesita atención y qué contenido sigue.",
+            href: `/docente/grupos/${grupos[0].id}`,
+            accion: "Ver grupo",
+          };
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
       <div className="flex items-center justify-between">
@@ -51,6 +94,36 @@ export default async function DashboardDocente() {
         </div>
         <CerrarSesion />
       </div>
+
+      <section aria-labelledby="ruta-docente">
+        <Card className="flex flex-col gap-4 border-indigo-100 bg-indigo-50/60 p-5 dark:border-indigo-900 dark:bg-indigo-950/30">
+          <div className="flex items-start gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+              <Sparkles className="size-4" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Siguiente paso</p>
+              <h2 id="ruta-docente" className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-50">
+                {siguientePaso.titulo}
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{siguientePaso.descripcion}</p>
+            </div>
+          </div>
+          <Link
+            href={siguientePaso.href}
+            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+          >
+            {siguientePaso.accion}
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </Card>
+      </section>
+
+      <section aria-label="Resumen de tu trabajo" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <MetricCard etiqueta="Grupos activos" valor={grupos?.length ?? 0} icon={Users} tono="indigo" />
+        <MetricCard etiqueta="Estudiantes" valor={totalEstudiantes} icon={Users} tono="emerald" />
+        <MetricCard etiqueta="Actividades creadas" valor={actividades?.length ?? 0} icon={CheckCircle2} tono="slate" />
+      </section>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
@@ -82,6 +155,9 @@ export default async function DashboardDocente() {
                       Código {g.codigo_acceso} ·{" "}
                       {Array.isArray(g.estudiantes) ? g.estudiantes[0]?.count ?? 0 : 0} estudiantes
                     </p>
+                    <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                      {porRevisarPorGrupo.get(g.id) ?? 0} pendientes · abre para ver el avance
+                    </p>
                   </div>
                   {(porRevisarPorGrupo.get(g.id) ?? 0) > 0 && (
                     <Badge tono="warning">
@@ -112,7 +188,9 @@ export default async function DashboardDocente() {
                     <p className="font-medium text-slate-900 dark:text-slate-50">
                       Unidad {u.orden}. {u.nombre}
                     </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-500">{u.reto_comunicativo}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-500">
+                      {actividadesPorUnidad.get(u.id) ?? 0} actividades · {u.reto_comunicativo}
+                    </p>
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                 </CardLink>

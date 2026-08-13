@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, MessageSquareText, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
-import { ICONO_TIPO } from "@/lib/tipo-actividad-icono";
+import { DESCRIPCION_TIPO, etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import { compararPalabras, tokenizar } from "@/lib/comparar-ortografia";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -62,6 +62,15 @@ function claveBorrador(unidadId: string) {
   return `voz-y-palabra:borrador-actividad:${unidadId}`;
 }
 
+function barajarIndices(total: number) {
+  const indices = Array.from({ length: total }, (_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  return indices;
+}
+
 /**
  * Un salto de línea de más (pegar desde Word, un Enter por accidente) parte
  * un elemento en dos sin avisar. Mostrar cada línea detectada como chip
@@ -93,6 +102,8 @@ export default function ActividadForm({
 }) {
   const router = useRouter();
   const modoEdicion = !!actividadInicial;
+  // El contenido se conserva como JSON porque cada tipo tiene una forma distinta.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = (actividadInicial?.contenido ?? {}) as Record<string, any>;
 
   const [tipos, setTipos] = useState<TipoActividad[]>([]);
@@ -214,6 +225,7 @@ export default function ActividadForm({
   const [error, setError] = useState<string | null>(null);
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const supabase = createClient();
     supabase
@@ -288,10 +300,10 @@ export default function ActividadForm({
       if (datos.textoCorrecto) setTextoCorrecto(datos.textoCorrecto);
       if (datos.temasOrtografia) setTemasOrtografia(datos.temasOrtografia);
       setBorradorRestaurado(true);
-      // eslint-disable-next-line no-empty
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (modoEdicion) return;
@@ -636,11 +648,7 @@ export default function ActividadForm({
       // estudiante) para que la bolsa mezclada quede fija en el contenido
       // guardado — así todos los estudiantes ven el mismo orden revuelto.
       const combinados = [...correctos, ...distractoresLista];
-      const indices = combinados.map((_, i) => i);
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-      }
+      const indices = barajarIndices(combinados.length);
       const fragmentosMezclados = indices.map((i) => combinados[i]);
       const ordenCorrecto = correctos.map((_, origIdx) => indices.indexOf(origIdx));
       contenido = {
@@ -858,6 +866,15 @@ export default function ActividadForm({
         titulo={modoEdicion ? actividadInicial!.titulo : "Crear actividad"}
       />
 
+      <Card className="border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Ruta rápida para crearla</p>
+        <ol className="mt-2 grid gap-2 text-sm text-slate-600 dark:text-slate-400 sm:grid-cols-3">
+          <li><span className="font-semibold text-indigo-700 dark:text-indigo-300">1.</span> Elige la dinámica.</li>
+          <li><span className="font-semibold text-indigo-700 dark:text-indigo-300">2.</span> Escribe una instrucción clara.</li>
+          <li><span className="font-semibold text-indigo-700 dark:text-indigo-300">3.</span> Revisa el contenido antes de guardar.</li>
+        </ol>
+      </Card>
+
       {borradorRestaurado && (
         <Alert tono="info">Recuperamos el borrador que estabas escribiendo.</Alert>
       )}
@@ -869,20 +886,17 @@ export default function ActividadForm({
             <Select id="tipo" value={tipoId} onChange={(e) => setTipoId(e.target.value)} disabled={modoEdicion}>
               {tipos.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.nombre}
+                  {etiquetaTipo(t.nombre)}
                 </option>
               ))}
             </Select>
+            {nombreTipo && <HelpText>{DESCRIPCION_TIPO[nombreTipo] ?? "Configura esta dinámica paso a paso."}</HelpText>}
             {modoEdicion && (
               <HelpText>El tipo no se puede cambiar una vez creada la actividad.</HelpText>
             )}
             {!disponible && tipoId && (
               <HelpText>
-                Este tipo estará disponible en una fase próxima. Por ahora puedes crear
-                &quot;opcion_justificacion&quot;, &quot;clasificacion&quot;, &quot;encontrar_corregir&quot;,
-                &quot;comparador&quot;, &quot;redaccion_checklist&quot;, &quot;etiquetado_texto&quot;,
-                &quot;constructor_ramificado&quot;, &quot;grabacion_rubrica&quot;, &quot;ordenar_fragmentos&quot;,
-                &quot;evaluar_videos&quot; o &quot;corregir_ortografia&quot;.
+                Este tipo estará disponible en una fase próxima. Por ahora puedes crear: {TIPOS_DISPONIBLES.map(etiquetaTipo).join(", ")}.
               </HelpText>
             )}
           </Field>
@@ -928,7 +942,7 @@ export default function ActividadForm({
             />
             <HelpText>
               Un link de YouTube se muestra embebido arriba de las instrucciones; cualquier otro link se
-              muestra como "Ver video".
+              muestra como &quot;Ver video&quot;.
             </HelpText>
           </Field>
         </Card>
@@ -940,7 +954,7 @@ export default function ActividadForm({
                 <IconoTipo className="size-4" aria-hidden="true" />
               </div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                Contenido — {nombreTipo?.replaceAll("_", " ")}
+                Contenido — {etiquetaTipo(nombreTipo)}
               </h2>
             </div>
 
@@ -1139,7 +1153,7 @@ export default function ActividadForm({
                     placeholder="ej. aiga"
                   />
                   <HelpText>
-                    Le avisamos al estudiante si "qué encontraste" menciona este fragmento — no bloquea el
+                    Le avisamos al estudiante si &quot;qué encontraste&quot; menciona este fragmento — no bloquea el
                     envío, solo confirma que va por buen camino.
                   </HelpText>
                 </Field>
@@ -1277,7 +1291,7 @@ export default function ActividadForm({
                     <option value="leer_reflexionar">Leer y reflexionar (sin redactar)</option>
                   </Select>
                   <HelpText>
-                    En "Leer y reflexionar" el estudiante no escribe nada — solo compara 3 ejemplos ya
+                    En &quot;Leer y reflexionar&quot; el estudiante no escribe nada — solo compara 3 ejemplos ya
                     resueltos (resumen, síntesis y paráfrasis) y responde una reflexión sobre las
                     diferencias.
                   </HelpText>
@@ -1346,7 +1360,7 @@ export default function ActividadForm({
                         rows={8}
                       />
                       <HelpText>
-                        El estudiante lo ve detrás de un botón "Ver ejemplos ya resueltos", no de entrada.
+                        El estudiante lo ve detrás de un botón &quot;Ver ejemplos ya resueltos&quot;, no de entrada.
                       </HelpText>
                     </Field>
                     <Field>

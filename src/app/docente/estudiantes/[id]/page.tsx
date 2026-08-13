@@ -186,7 +186,7 @@ export default async function FichaEstudiante({
                   <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
                     <NotebookPen className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
                     <span>
-                      Meta: "{bitacora.meta}"{" "}
+                      Meta: &quot;{bitacora.meta}&quot;{" "}
                       {bitacora.cumplida ? (
                         <span className="text-emerald-600 dark:text-emerald-400">(cumplida)</span>
                       ) : (
@@ -308,7 +308,7 @@ export default async function FichaEstudiante({
                           <ol className="mt-1 flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-400">
                             {rondas.map((rd, i) => (
                               <li key={i}>
-                                Ronda {i + 1}: eligió "{rd.opcion}" — {rd.justificacion}
+                                Ronda {i + 1}: eligió &quot;{rd.opcion}&quot; — {rd.justificacion}
                               </li>
                             ))}
                           </ol>
