@@ -29,6 +29,7 @@ import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
 import EmptyState from "@/components/ui/empty-state";
 import CelebracionInsignia from "@/app/estudiante/celebracion-insignia";
+import GuiaBienvenida from "../guia-bienvenida";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
@@ -291,6 +292,15 @@ export default async function InicioEstudiante({
             </span>
           </div>
         </Link>
+      )}
+
+      {unidadActiva && (
+        <GuiaBienvenida
+          estudianteId={estudiante.id}
+          unidadHref={`/estudiante/unidad/${unidadActiva.id}`}
+          actividadHref={primeraActividadAccesible ? `/estudiante/actividad/${primeraActividadAccesible.id}` : `/estudiante/unidad/${unidadActiva.id}`}
+          actividadDisponible={Boolean(primeraActividadAccesible)}
+        />
       )}
 
       {recordatorios.length > 0 && (
