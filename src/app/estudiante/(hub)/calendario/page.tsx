@@ -71,7 +71,7 @@ export default async function CalendarioEstudiante() {
   const timeline = [...itemsEventos, ...itemsRepaso].sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/estudiante/inicio"
         titulo="Calendario"
@@ -81,6 +81,14 @@ export default async function CalendarioEstudiante() {
       {timeline.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
+          accion={
+            <Link
+              href="/estudiante/inicio"
+              className="text-sm font-medium text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400"
+            >
+              Volver a mi ruta
+            </Link>
+          }
           titulo="Todavía no hay nada que mostrar aquí"
           descripcion="Cuando tu profesora suba una fecha o tengas actividades por repasar, van a aparecer."
         />

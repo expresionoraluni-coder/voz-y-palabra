@@ -31,8 +31,9 @@ const Boton = forwardRef<HTMLButtonElement, BotonProps>(
     return (
       <button
         ref={ref}
+        aria-busy={cargando || undefined}
         disabled={disabled || cargando}
-        className={`inline-flex items-center justify-center rounded-lg font-medium transition-[color,background-color,border-color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.97] dark:focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:active:scale-100 ${VARIANTES[variant]} ${TAMANOS[size]} ${className}`}
+        className={`inline-flex touch-manipulation items-center justify-center rounded-lg font-medium transition-[color,background-color,border-color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.97] dark:focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:active:scale-100 ${VARIANTES[variant]} ${TAMANOS[size]} ${className}`}
         {...props}
       >
         {cargando && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}

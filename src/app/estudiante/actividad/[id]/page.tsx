@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import ProgressBar from "@/components/ui/progress-bar";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 import {
   type ContenidoOpcionJustificacion,
@@ -26,6 +27,7 @@ import GrabacionRubrica from "./grabacion-rubrica";
 import OrdenarFragmentos from "./ordenar-fragmentos";
 import EvaluarVideos from "./evaluar-videos";
 import CorregirOrtografia from "./corregir-ortografia";
+import ActividadOrientacion from "./actividad-orientacion";
 import { sanitizarContenidoEvaluarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
 import { sanitizarContenidoOrdenarFragmentos, type ContenidoOrdenarFragmentos } from "@/lib/calificacion-ordenar-fragmentos";
 import { sanitizarContenidoComparador, type ContenidoComparador } from "@/lib/calificacion-comparador";
@@ -109,7 +111,7 @@ export default async function ActividadEstudiante({
   ] = await Promise.all([
     supabase
       .from("entregas")
-      .select("respuesta, puntaje_auto")
+      .select("respuesta, puntaje_auto, estado")
       .eq("actividad_id", id)
       .eq("estudiante_id", estudiante.id)
       .maybeSingle(),
@@ -191,6 +193,7 @@ export default async function ActividadEstudiante({
   // inicio de esta misma página ya se encarga de redirigir con su mensaje.
   const indiceActual = hermanas?.findIndex((h) => h.id === actividad.id) ?? -1;
   const actividadAnterior = indiceActual > 0 ? hermanas![indiceActual - 1] : null;
+  const porcentajeUnidad = hermanas && indiceActual >= 0 ? Math.round(((indiceActual + 1) / hermanas.length) * 100) : 0;
 
   // Si esta entrega fue justo la que le faltaba a la unidad, se abre la
   // celebración con la reflexión de cierre aquí mismo — la usuaria pidió
@@ -433,7 +436,7 @@ export default async function ActividadEstudiante({
   );
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref={`/estudiante/unidad/${actividad.unidad_id}`}
         titulo={actividad.titulo}
@@ -473,6 +476,33 @@ export default async function ActividadEstudiante({
             </div>
           ) : undefined
         }
+      />
+
+      {hermanas && indiceActual >= 0 && (
+        <section
+          aria-labelledby="progreso-actividad"
+          className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900"
+        >
+          <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <h2 id="progreso-actividad" className="font-medium">
+              Avance en la unidad
+            </h2>
+            <span>
+              Actividad {indiceActual + 1} de {hermanas.length}
+              {entregaExistente ? " · Completada" : " · En progreso"}
+            </span>
+          </div>
+          <ProgressBar
+            porcentaje={porcentajeUnidad}
+            etiqueta={`Actividad ${indiceActual + 1} de ${hermanas.length} de la unidad`}
+          />
+        </section>
+      )}
+
+      <ActividadOrientacion
+        nombreTipo={nombreTipo}
+        tieneVideo={Boolean(actividad.video_url)}
+        completada={Boolean(entregaExistente)}
       />
 
       {bloqueAeUc}

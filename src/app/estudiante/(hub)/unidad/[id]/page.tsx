@@ -80,7 +80,7 @@ export default async function UnidadEstudiante({
 
       if (!unidadEstaCompleta(totalAnterior, hechasAnterior) || !reflexionAnterior) {
         return (
-          <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+          <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
             <PageHeader volverHref="/estudiante/inicio" eyebrow={`Unidad ${unidad.orden}`} titulo={unidad.nombre} />
             <EmptyState
               icon={Lock}
@@ -145,7 +145,7 @@ export default async function UnidadEstudiante({
       : null;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/estudiante/inicio"
         eyebrow={`Unidad ${unidad.orden}`}
@@ -170,7 +170,11 @@ export default async function UnidadEstudiante({
         <>
           {totalActividades > 0 && (
             <div className="flex items-center gap-3">
-              <ProgressBar porcentaje={pct} gradiente={tema.barra} />
+              <ProgressBar
+                porcentaje={pct}
+                gradiente={tema.barra}
+                etiqueta={`Unidad: ${completadas} de ${totalActividades} actividades`}
+              />
               <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-500">
                 {completadas}/{totalActividades}
               </span>

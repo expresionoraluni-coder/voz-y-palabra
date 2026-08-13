@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FolderHeart, Quote, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -54,7 +55,7 @@ export default async function Portafolio() {
   );
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10 print:px-0">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10 print:px-0">
       <div className="flex items-center justify-between print:hidden">
         <PageHeader
           volverHref="/estudiante/inicio"
@@ -67,6 +68,14 @@ export default async function Portafolio() {
       {!hayContenido && (
         <EmptyState
           icon={FolderHeart}
+          accion={
+            <Link
+              href="/estudiante/inicio"
+              className="text-sm font-medium text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400"
+            >
+              Comenzar una actividad
+            </Link>
+          }
           titulo="Tu portafolio está vacío por ahora"
           descripcion="Tus reflexiones de actividades y unidades aparecerán aquí automáticamente."
         />

@@ -61,7 +61,7 @@ export default function CambiarNipObligatorio() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
+    <div className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
       <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
         <ShieldAlert className="size-6" aria-hidden="true" />
       </div>

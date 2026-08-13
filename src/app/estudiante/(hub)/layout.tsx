@@ -23,7 +23,15 @@ export default async function HubLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      <div className="pb-20">{children}</div>
+      <a
+        href="#contenido-principal"
+        className="sr-only fixed left-3 top-3 z-50 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-indigo-300"
+      >
+        Saltar al contenido
+      </a>
+      <main id="contenido-principal" className="pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        {children}
+      </main>
       <BottomNav />
     </>
   );

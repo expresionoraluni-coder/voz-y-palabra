@@ -37,7 +37,11 @@ export default function Alert({
 }) {
   const { icon: Icon, className, iconClassName } = CONFIG[tono];
   return (
-    <div className={`flex gap-3 rounded-xl border px-4 py-3 ${className}`}>
+    <div
+      role={tono === "error" ? "alert" : "status"}
+      aria-live={tono === "error" ? "assertive" : "polite"}
+      className={`flex gap-3 rounded-xl border px-4 py-3 ${className}`}
+    >
       <Icon className={`mt-0.5 size-4 shrink-0 ${iconClassName}`} aria-hidden="true" />
       <div className="flex flex-col gap-1 text-sm">
         {titulo && <p className="font-medium text-slate-900 dark:text-slate-50">{titulo}</p>}

@@ -13,6 +13,17 @@ import Alert from "@/components/ui/alert";
 const NIP_INCORRECTO = "Tu NIP no es correcto.";
 const INTENTOS_PARA_AYUDA = 3;
 
+function mensajeErrorIngreso(mensaje: string): string {
+  const texto = mensaje.toLowerCase();
+  if (texto.includes("grupo") || texto.includes("código")) {
+    return "No encontramos ese grupo. Revisa el código y vuelve a intentar.";
+  }
+  if (texto.includes("nip") || texto.includes("nombre")) {
+    return "No pudimos validar tus datos. Revisa tu nombre y NIP.";
+  }
+  return "No pudimos iniciar tu sesión. Intenta de nuevo en un momento.";
+}
+
 export default function IngresoEstudiante() {
   const router = useRouter();
   const [codigo, setCodigo] = useState("");
@@ -72,7 +83,7 @@ export default function IngresoEstudiante() {
     }
 
     if (rpcError) {
-      setError(rpcError.message);
+      setError(mensajeErrorIngreso(rpcError.message));
       setCargando(false);
       return;
     }
@@ -93,7 +104,7 @@ export default function IngresoEstudiante() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6">
+    <div className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
       <Link
         href="/ingreso"
         className="fixed left-6 top-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"

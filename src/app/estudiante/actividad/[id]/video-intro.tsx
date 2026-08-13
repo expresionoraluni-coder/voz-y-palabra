@@ -32,6 +32,8 @@ export default function VideoIntro({
           <iframe
             src={embed}
             title={titulo}
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             className="size-full"

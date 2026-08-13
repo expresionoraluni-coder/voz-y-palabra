@@ -27,7 +27,7 @@ export default async function InsigniasEstudiante() {
   const ganadas = idsObtenidas.size;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10">
       <PageHeader
         volverHref="/estudiante/inicio"
         eyebrow={`${ganadas} de ${total} insignias`}

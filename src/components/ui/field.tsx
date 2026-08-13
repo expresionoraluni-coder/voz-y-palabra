@@ -22,11 +22,15 @@ export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: st
 }
 
 export function HelpText({ children }: { children: ReactNode }) {
-  return <p className="text-xs text-slate-500 dark:text-slate-500">{children}</p>;
+  return <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{children}</p>;
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-red-600 dark:text-red-400">{children}</p>;
+  return (
+    <p role="alert" aria-live="assertive" className="text-sm text-red-600 dark:text-red-400">
+      {children}
+    </p>
+  );
 }
 
 export function Field({ children }: { children: ReactNode }) {

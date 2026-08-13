@@ -22,7 +22,7 @@ export default function ProgressBar({
       aria-valuenow={clamped}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label={etiqueta}
+      aria-label={etiqueta ?? "Progreso"}
       className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
     >
       <div

@@ -47,8 +47,16 @@ export default function GrabacionRubrica({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  const mimeType =
+    typeof MediaRecorder !== "undefined"
+      ? ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"].find((tipo) =>
+          typeof MediaRecorder.isTypeSupported !== "function" || MediaRecorder.isTypeSupported(tipo),
+        )
+      : undefined;
+
   const soportado =
     typeof window !== "undefined" &&
+    (window.isSecureContext || window.location.hostname === "localhost") &&
     !!navigator.mediaDevices?.getUserMedia &&
     typeof MediaRecorder !== "undefined";
 
@@ -62,6 +70,12 @@ export default function GrabacionRubrica({
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    };
+  }, [audioUrl]);
+
   async function iniciarGrabacion() {
     setErrorMic(null);
     setAnalisis(null);
@@ -73,7 +87,7 @@ export default function GrabacionRubrica({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       chunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
       recorder.onstop = () => {
         // El contenedor real varía por navegador (webm en Chrome/Firefox,

@@ -1,17 +1,20 @@
 import Link from "next/link";
 import {
   Award,
+  ArrowRight,
   Bell,
-  CalendarDays,
+  BookOpen,
+  BarChart3,
   Check,
   ChevronRight,
   Flame,
-  FolderHeart,
   KeyRound,
-  LineChart,
   Map,
+  MessageCircle,
+  PlayCircle,
   RotateCcw,
   Sparkles,
+  Target,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -77,7 +80,7 @@ export default async function InicioEstudiante({
   ] = await Promise.all([
     admin
       .from("unidades")
-      .select("id, nombre, orden, reto_comunicativo, actividades(id)")
+      .select("id, nombre, orden, reto_comunicativo, actividades(id, titulo, orden, requiere_actividad_id)")
       .order("orden"),
     // Revisa y otorga insignias nuevas cada vez que el estudiante visita su inicio.
     supabase.rpc("verificar_insignias"),
@@ -85,7 +88,7 @@ export default async function InicioEstudiante({
     // filtro por estudiante_id sigue siendo explícito, no depende de RLS.
     admin
       .from("entregas")
-      .select("actividad_id, puntaje_auto, created_at, actividades(titulo)")
+      .select("id, actividad_id, puntaje_auto, created_at, estado, actividades(titulo, orden, requiere_actividad_id)")
       .eq("estudiante_id", estudiante.id),
     supabase
       .from("reflexiones")
@@ -106,6 +109,14 @@ export default async function InicioEstudiante({
       .order("fecha")
       .limit(3),
   ]);
+
+  const idsEntregas = (entregas ?? []).map((e) => e.id);
+  const { count: totalRetroalimentaciones } = idsEntregas.length
+    ? await admin
+        .from("retroalimentacion_docente")
+        .select("id", { count: "exact", head: true })
+        .in("entrega_id", idsEntregas)
+    : { count: 0 };
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
   const puntos = idsCompletadas.size * 10 + (totalReflexiones ?? 0) * 5;
@@ -136,14 +147,33 @@ export default async function InicioEstudiante({
   const indiceActiva = unidadesConProgreso.findIndex((u) => !unidadEstaCompleta(u.total, u.hechas));
   const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
-  const { data: bitacoraActiva } = unidadActiva
-    ? await supabase
-        .from("bitacora")
-        .select("id")
-        .eq("estudiante_id", estudiante.id)
-        .eq("unidad_id", unidadActiva.id)
-        .maybeSingle()
-    : { data: null };
+  const [{ data: bitacoraActiva }, { data: confianzaActiva }] = unidadActiva
+    ? await Promise.all([
+        supabase
+          .from("bitacora")
+          .select("id")
+          .eq("estudiante_id", estudiante.id)
+          .eq("unidad_id", unidadActiva.id)
+          .maybeSingle(),
+        supabase
+          .from("autoevaluaciones_confianza")
+          .select("id")
+          .eq("estudiante_id", estudiante.id)
+          .eq("unidad_id", unidadActiva.id)
+          .eq("momento", "inicio")
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }];
+
+  const actividadesActiva = (unidadActiva?.actividades ?? []).slice().sort((a, b) => a.orden - b.orden);
+  const primeraActividadAccesible = actividadesActiva.find((actividad) => {
+    if (idsCompletadas.has(actividad.id)) return false;
+    if (!actividad.requiere_actividad_id) return true;
+    const entregaPrerequisito = (entregas ?? []).find(
+      (entrega) => entrega.actividad_id === actividad.requiere_actividad_id,
+    );
+    return (entregaPrerequisito?.puntaje_auto ?? 0) >= 70;
+  });
 
   const recordatorios: { texto: string; href: string }[] = [];
   for (const ev of eventosProximos ?? []) {
@@ -157,8 +187,46 @@ export default async function InicioEstudiante({
     });
   }
 
+  const siguientePaso = unidadActiva
+    ? !bitacoraActiva
+      ? {
+          etiqueta: "Primer paso",
+          titulo: `Define tu meta para la Unidad ${unidadActiva.orden}`,
+          descripcion: "Escribe qué quieres aprender y cómo vas a lograrlo.",
+          href: `/estudiante/unidad/${unidadActiva.id}`,
+          cta: "Definir meta",
+          icon: Target,
+        }
+      : !confianzaActiva
+        ? {
+            etiqueta: "Antes de empezar",
+            titulo: `Indica qué tan seguro estás de la Unidad ${unidadActiva.orden}`,
+            descripcion: "Tu respuesta inicial te ayudará a comparar cómo avanzaste.",
+            href: `/estudiante/unidad/${unidadActiva.id}`,
+            cta: "Continuar",
+            icon: Target,
+          }
+        : primeraActividadAccesible
+          ? {
+              etiqueta: `Unidad ${unidadActiva.orden}`,
+              titulo: primeraActividadAccesible.titulo,
+              descripcion: "Continúa con la siguiente actividad de tu ruta.",
+              href: `/estudiante/actividad/${primeraActividadAccesible.id}`,
+              cta: "Continuar actividad",
+              icon: PlayCircle,
+            }
+          : {
+              etiqueta: "Ruta completa",
+              titulo: "Revisa cómo has avanzado",
+              descripcion: "Observa tus resultados y reconoce lo que ya dominas.",
+              href: "/estudiante/progreso",
+              cta: "Ver mi progreso",
+              icon: BarChart3,
+            }
+    : null;
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10">
       <CelebracionInsignia insignias={insignias ?? []} estudianteId={estudiante.id} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -205,32 +273,25 @@ export default async function InicioEstudiante({
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
+      {siguientePaso && (
         <Link
-          href="/estudiante/portafolio"
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+          href={siguientePaso.href}
+          className="group flex items-start gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-lg shadow-indigo-600/15 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.99] dark:border-indigo-500/50 dark:focus-visible:ring-offset-slate-950"
         >
-          <FolderHeart className="size-4" aria-hidden="true" />
-          Ver mi portafolio
-          <ChevronRight className="size-3.5" aria-hidden="true" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+            <siguientePaso.icon className="size-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-100">{siguientePaso.etiqueta}</p>
+            <p className="mt-0.5 text-base font-semibold leading-snug">{siguientePaso.titulo}</p>
+            <p className="mt-1 text-sm leading-relaxed text-indigo-100">{siguientePaso.descripcion}</p>
+            <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+              {siguientePaso.cta}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </span>
+          </div>
         </Link>
-        <Link
-          href="/estudiante/calendario"
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-        >
-          <CalendarDays className="size-4" aria-hidden="true" />
-          Ver mi calendario
-          <ChevronRight className="size-3.5" aria-hidden="true" />
-        </Link>
-        <Link
-          href="/estudiante/progreso"
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-        >
-          <LineChart className="size-4" aria-hidden="true" />
-          Mi progreso
-          <ChevronRight className="size-3.5" aria-hidden="true" />
-        </Link>
-      </div>
+      )}
 
       {recordatorios.length > 0 && (
         <div className="flex flex-col gap-2 rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3.5 dark:border-amber-900 dark:bg-amber-950/40">
@@ -376,8 +437,12 @@ export default async function InicioEstudiante({
                       />
                     </div>
                     {u.total > 0 && (
-                      <div className="mt-3 flex items-center gap-3">
-                        <ProgressBar porcentaje={u.pct} gradiente={tema.barra} />
+                    <div className="mt-3 flex items-center gap-3">
+                        <ProgressBar
+                          porcentaje={u.pct}
+                          gradiente={tema.barra}
+                          etiqueta={`Unidad ${u.orden}: ${u.hechas} de ${u.total} actividades`}
+                        />
                         <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-500">
                           {u.hechas}/{u.total}
                         </span>
@@ -391,6 +456,46 @@ export default async function InicioEstudiante({
         </div>
         )}
       </div>
+
+      <section aria-labelledby="recursos-estudiante" className="flex flex-col gap-3">
+        <h2 id="recursos-estudiante" className="text-sm font-medium text-slate-900 dark:text-slate-50">
+          También puedes consultar
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/estudiante/recursos"
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+          >
+            <CardLink className="flex h-full items-center gap-3 p-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                <BookOpen className="size-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Recursos para aprender</p>
+                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Guías y ejemplos para estudiar mejor.</p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+            </CardLink>
+          </Link>
+          <Link
+            href="/estudiante/retroalimentacion"
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+          >
+            <CardLink className="flex h-full items-center gap-3 p-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+                <MessageCircle className="size-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Retroalimentación</p>
+                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                  {totalRetroalimentaciones ? `${totalRetroalimentaciones} comentario${totalRetroalimentaciones === 1 ? "" : "s"} de tu profesora.` : "Revisa los comentarios de tus actividades."}
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+            </CardLink>
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

@@ -28,9 +28,9 @@ export default function BottomNav() {
               key={href}
               href={href}
               aria-current={activo ? "page" : undefined}
-              className={`flex min-w-[64px] flex-1 flex-col items-center gap-1 px-2 py-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 ${
+              className={`mx-0.5 flex min-h-11 min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl whitespace-nowrap px-1 py-2 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 sm:text-[11px] ${
                 activo
-                  ? "text-indigo-600 dark:text-indigo-400"
+                  ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >

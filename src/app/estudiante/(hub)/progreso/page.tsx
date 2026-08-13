@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CheckCircle2, Flame, NotebookPen, Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -64,7 +65,7 @@ export default async function ProgresoEstudiante() {
   const sinDatos = idsCompletadas.size === 0;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/estudiante/inicio"
         titulo="Mi progreso"
@@ -74,6 +75,16 @@ export default async function ProgresoEstudiante() {
       {sinDatos ? (
         <EmptyState
           icon={Target}
+          accion={
+            unidadesConProgreso[0] ? (
+              <Link
+                href={`/estudiante/unidad/${unidadesConProgreso[0].id}`}
+                className="text-sm font-medium text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400"
+              >
+                Empezar la primera unidad
+              </Link>
+            ) : undefined
+          }
           titulo="Todavía no hay avance que mostrar"
           descripcion="Cuando completes tu primera actividad, vas a ver aquí cómo vas."
         />
@@ -104,7 +115,11 @@ export default async function ProgresoEstudiante() {
                         {u.hechas}/{u.total}
                       </span>
                     </div>
-                    <ProgressBar porcentaje={u.pct} gradiente={tema.barra} />
+                    <ProgressBar
+                      porcentaje={u.pct}
+                      gradiente={tema.barra}
+                      etiqueta={`Unidad ${u.orden}: ${u.hechas} de ${u.total} actividades`}
+                    />
                   </div>
                 );
               })}
