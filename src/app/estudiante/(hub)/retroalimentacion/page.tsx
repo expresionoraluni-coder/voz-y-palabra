@@ -44,16 +44,16 @@ export default async function RetroalimentacionEstudiante() {
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/estudiante/inicio"
-        eyebrow={`${comentarios?.length ?? 0} orientación${comentarios?.length === 1 ? "" : "es"}`}
+        eyebrow={`${comentarios?.length ?? 0} ${comentarios?.length === 1 ? "orientación" : "orientaciones"}`}
         titulo="Apoyo para seguir avanzando"
-        descripcion="Aquí encontrarás sugerencias de tu profesora para retomar una actividad y continuar practicando."
+        descripcion="Aquí encontrarás sugerencias de tu docente para retomar una actividad y continuar practicando."
       />
 
       {!comentarios || comentarios.length === 0 ? (
         <EmptyState
           icon={MessageCircle}
           titulo="Todavía no hay orientaciones"
-          descripcion="Si tu profesora detecta que una sugerencia puede ayudarte, aparecerá aquí. No necesitas esperar una orientación para continuar con tu ruta."
+          descripcion="Si tu docente detecta que una sugerencia puede ayudarte, aparecerá aquí. No necesitas esperar una orientación para continuar con tu ruta."
           accion={
             <Link
               href="/estudiante/inicio"
@@ -98,7 +98,7 @@ export default async function RetroalimentacionEstudiante() {
                   {comentario.comentario}
                 </blockquote>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span>Orientación de tu profesora</span>
+                  <span>Orientación de tu docente</span>
                   <time dateTime={comentario.created_at}>{fechaComentario(comentario.created_at)}</time>
                 </div>
               </Card>

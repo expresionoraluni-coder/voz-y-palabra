@@ -498,7 +498,7 @@ export default async function InicioEstudiante({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Apoyo para avanzar</p>
                 <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                  {totalRetroalimentaciones ? `${totalRetroalimentaciones} orientación${totalRetroalimentaciones === 1 ? "" : "es"} de tu profesora.` : "Aquí aparecerán sugerencias si necesitas apoyo."}
+                  {totalRetroalimentaciones ? `${totalRetroalimentaciones} ${totalRetroalimentaciones === 1 ? "orientación" : "orientaciones"} de tu docente.` : "Aquí aparecerán sugerencias si necesitas apoyo."}
                 </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
