@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
@@ -436,7 +437,9 @@ export default async function ActividadEstudiante({
   );
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <>
+      <AvisoSinConexion />
+      <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref={`/estudiante/unidad/${actividad.unidad_id}`}
         titulo={actividad.titulo}
@@ -489,7 +492,7 @@ export default async function ActividadEstudiante({
             </h2>
             <span>
               Actividad {indiceActual + 1} de {hermanas.length}
-              {entregaExistente ? " · Completada" : " · En progreso"}
+              {entregaExistente ? " · Completada" : " · Lista para trabajar"}
             </span>
           </div>
           <ProgressBar
@@ -503,6 +506,7 @@ export default async function ActividadEstudiante({
         nombreTipo={nombreTipo}
         tieneVideo={Boolean(actividad.video_url)}
         completada={Boolean(entregaExistente)}
+        aprendizajeEsperado={actividad.aprendizaje_esperado}
       />
 
       {bloqueAeUc}
@@ -525,6 +529,7 @@ export default async function ActividadEstudiante({
           contenidoTrasVideo
         )}
       </EntregaRecienteProvider>
-    </div>
+      </div>
+    </>
   );
 }

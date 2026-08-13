@@ -4,10 +4,12 @@ export default function ActividadOrientacion({
   nombreTipo,
   tieneVideo,
   completada,
+  aprendizajeEsperado,
 }: {
   nombreTipo?: string;
   tieneVideo: boolean;
   completada: boolean;
+  aprendizajeEsperado?: string | null;
 }) {
   const esRedaccion = nombreTipo === "redaccion_checklist" || nombreTipo === "redaccion_lectura";
   const esGrabacion = nombreTipo === "grabacion_rubrica";
@@ -15,7 +17,7 @@ export default function ActividadOrientacion({
     ? ["Revisa el tema y la rúbrica", "Graba tu participación con calma", "Escúchate y guarda tu autoevaluación"]
     : esRedaccion
       ? ["Lee el texto o ejemplo de referencia", "Escribe con tus propias palabras", "Revisa tu respuesta antes de guardarla"]
-      : ["Lee la instrucción completa", "Responde paso a paso", "Revisa y guarda tu actividad"];
+      : ["Lee la instrucción completa", "Responde paso a paso", "Revisa tu respuesta antes de guardarla"];
 
   return (
     <section
@@ -29,7 +31,7 @@ export default function ActividadOrientacion({
           <ListChecks className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         )}
         <h2 id="orientacion-actividad" className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-          Para realizarla
+          Cómo trabajarla
         </h2>
         {completada && (
           <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -48,6 +50,12 @@ export default function ActividadOrientacion({
           </li>
         ))}
       </ol>
+      {aprendizajeEsperado && (
+        <div className="rounded-xl bg-white/70 px-3 py-2.5 dark:bg-slate-900/60">
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Al terminar podrás</p>
+          <p className="mt-0.5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{aprendizajeEsperado}</p>
+        </div>
+      )}
     </section>
   );
 }

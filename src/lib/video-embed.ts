@@ -6,14 +6,14 @@ export function urlEmbedYoutube(url: string): string | null {
     const u = new URL(url);
     if (u.hostname === "youtu.be") {
       const id = u.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}` : null;
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
     }
     if (u.hostname.includes("youtube.com")) {
       if (u.pathname === "/watch") {
         const id = u.searchParams.get("v");
-        return id ? `https://www.youtube.com/embed/${id}` : null;
+        return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
       }
-      if (u.pathname.startsWith("/embed/")) return url;
+      if (u.pathname.startsWith("/embed/")) return `https://www.youtube-nocookie.com${u.pathname}${u.search}`;
     }
     return null;
   } catch {

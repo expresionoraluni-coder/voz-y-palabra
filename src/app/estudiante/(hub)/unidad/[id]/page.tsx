@@ -155,6 +155,12 @@ export default async function UnidadEstudiante({
 
       {!confianzaInicio ? (
         <>
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3.5 dark:border-indigo-900 dark:bg-indigo-950/30">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tu ruta para aprender</p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              Primero define qué quieres lograr y qué tan preparado te sientes. Después podrás avanzar por las actividades a tu propio ritmo.
+            </p>
+          </div>
           {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}
           <Bitacora
             estudianteId={estudiante.id}
@@ -185,7 +191,7 @@ export default async function UnidadEstudiante({
             <EmptyState
               icon={TrendingUp}
               titulo="Todavía no hay actividades publicadas"
-              descripcion="Tu profesora las agregará pronto."
+              descripcion="Las actividades aparecerán aquí cuando estén disponibles."
             />
           ) : (
             <div className="flex flex-col gap-2">
@@ -208,7 +214,7 @@ export default async function UnidadEstudiante({
                       <Lock className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
                       <span className="flex-1 font-medium text-slate-500 dark:text-slate-500">{a.titulo}</span>
                       <span className="text-xs text-slate-400 dark:text-slate-600">
-                        Completa primero: {prerequisito!.titulo}
+                        Primero completa: {prerequisito!.titulo}
                       </span>
                     </div>
                   );
@@ -232,7 +238,7 @@ export default async function UnidadEstudiante({
                             : "text-xs text-slate-500 dark:text-slate-400"
                         }
                       >
-                        {completada ? "Completada" : "Sin empezar"}
+                        {completada ? "Completada" : "Lista para comenzar"}
                       </span>
                     </CardLink>
                   </Link>

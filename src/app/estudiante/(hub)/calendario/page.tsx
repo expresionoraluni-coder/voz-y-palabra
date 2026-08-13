@@ -75,7 +75,7 @@ export default async function CalendarioEstudiante() {
       <PageHeader
         volverHref="/estudiante/inicio"
         titulo="Calendario"
-        descripcion="Las fechas que puso tu profesora y cuándo te conviene repasar."
+        descripcion="Las fechas del curso y cuándo te conviene repasar."
       />
 
       {timeline.length === 0 ? (
@@ -90,7 +90,7 @@ export default async function CalendarioEstudiante() {
             </Link>
           }
           titulo="Todavía no hay nada que mostrar aquí"
-          descripcion="Cuando tu profesora suba una fecha o tengas actividades por repasar, van a aparecer."
+          descripcion="Cuando haya una fecha o tengas actividades por repasar, van a aparecer aquí."
         />
       ) : (
         <div className="flex flex-col gap-3">

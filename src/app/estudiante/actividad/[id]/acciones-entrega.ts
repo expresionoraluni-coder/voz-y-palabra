@@ -1,40 +1,46 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { mensajeError } from "@/lib/mensaje-error";
-import { contextoCalificacion, guardarEntregaCalificada, type ResultadoCalificacion } from "./acciones-calificacion";
+import { guardarEntregaInterna, obtenerContextoCalificacion, reiniciarEntregaInterna } from "@/lib/estudiante-entregas-server";
+import { esRegistroPlano, esUuid, validarEstadoEntrega, validarJsonDeEntrega } from "@/lib/validar-entrega";
+import type { ResultadoCalificacion } from "@/lib/estudiante-entregas-server";
 
-// Para los tipos sin clave que proteger (revisión 100% humana de la
-// docente): no hay nada que calificar aquí, pero igual se guarda con el
-// cliente admin — la escritura directa del estudiante sobre `entregas` ya
-// no existe vía RLS (ver sub-fase 5), así que este es el único camino.
-// `contextoCalificacion` de paso cierra el mismo "endpoint alcanzable
-// directo sin pasar por la UI" para estos tipos también.
+export type { ResultadoCalificacion } from "@/lib/estudiante-entregas-server";
+
+const TIPOS_ENTREGA_ABIERTA = new Set([
+  "comparador",
+  "constructor_ramificado",
+  "encontrar_corregir",
+  "grabacion_rubrica",
+  "redaccion_checklist",
+]);
+
 export async function guardarEntregaAbiertaAccion(
   actividadId: string,
   tipoEsperado: string,
   respuesta: Record<string, unknown>,
   estado: "completada" | "pendiente_revision",
 ): Promise<ResultadoCalificacion> {
-  const ctx = await contextoCalificacion(actividadId, tipoEsperado);
-  if (!ctx.ok) return ctx;
-  return guardarEntregaCalificada(ctx.supabase, ctx.estudianteId, actividadId, respuesta, null, estado);
-}
+  if (!esUuid(actividadId) || !TIPOS_ENTREGA_ABIERTA.has(tipoEsperado)) {
+    return { ok: false, error: "La actividad no es válida." };
+  }
+  if (!esRegistroPlano(respuesta)) return { ok: false, error: "La respuesta no es válida." };
+  const respuestaError = validarJsonDeEntrega(respuesta);
+  if (respuestaError || !validarEstadoEntrega(estado)) {
+    return { ok: false, error: respuestaError ?? "El estado de la entrega no es válido." };
+  }
 
+  const ctx = await obtenerContextoCalificacion(actividadId, tipoEsperado);
+  if (!ctx.ok) return ctx;
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, respuesta, null, estado);
+}
 export async function reiniciarEntregaAccion(
   actividadId: string,
   tipoEsperado: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const ctx = await contextoCalificacion(actividadId, tipoEsperado);
+  if (!esUuid(actividadId) || !TIPOS_ENTREGA_ABIERTA.has(tipoEsperado) && !["clasificacion", "opcion_justificacion"].includes(tipoEsperado)) {
+    return { ok: false, error: "La actividad no es válida." };
+  }
+  const ctx = await obtenerContextoCalificacion(actividadId, tipoEsperado);
   if (!ctx.ok) return ctx;
-
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("entregas")
-    .delete()
-    .eq("estudiante_id", ctx.estudianteId)
-    .eq("actividad_id", actividadId);
-  if (error) return { ok: false, error: mensajeError(error) };
-
-  return { ok: true };
+  return reiniciarEntregaInterna(ctx.contexto.supabase, actividadId);
 }

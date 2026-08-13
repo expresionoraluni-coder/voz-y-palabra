@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CambiarNipObligatorio from "@/components/cambiar-nip-obligatorio";
+import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import BottomNav from "./bottom-nav";
 
 export default async function HubLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +31,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
         Saltar al contenido
       </a>
       <main id="contenido-principal" className="pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        <AvisoSinConexion />
         {children}
       </main>
       <BottomNav />

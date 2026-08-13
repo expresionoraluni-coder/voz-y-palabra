@@ -39,7 +39,7 @@ function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion
           Ver video
         </a>
       ) : (
-        <EmptyState icon={Video} titulo="Video próximamente" descripcion="Tu profesora lo agregará pronto." />
+        <EmptyState icon={Video} titulo="Video próximamente" descripcion="Aparecerá cuando el curso lo tenga disponible." />
       )}
     </div>
   );

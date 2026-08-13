@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCheck, HelpCircle, Lightbulb, Mic2, PenLine } from "lucide-react";
+import { ArrowLeft, CheckCheck, HelpCircle, Lightbulb, Mic2, PenLine, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
@@ -33,7 +33,14 @@ const RECURSOS = [
     descripcion: "Pedir apoyo también forma parte de aprender.",
     icon: HelpCircle,
     color: "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
-    puntos: ["Vuelve a leer la instrucción y el ejemplo", "Usa la pista si la actividad la tiene", "Anota tu duda para preguntarle a tu profesora"],
+    puntos: ["Vuelve a leer la instrucción y el ejemplo", "Usa la pista si la actividad la tiene", "Escribe en tu bitácora qué parte te costó y vuelve a intentarlo"],
+  },
+  {
+    titulo: "Cuida tus datos",
+    descripcion: "Pequeños hábitos para estudiar con seguridad.",
+    icon: ShieldCheck,
+    color: "bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400",
+    puntos: ["No compartas tu código de grupo ni tu NIP", "Cierra sesión si usas un equipo compartido", "Las grabaciones se analizan en tu navegador y no se guardan"],
   },
 ];
 
@@ -76,7 +83,7 @@ export default async function RecursosEstudiante() {
 
       <Link
         href="/estudiante/inicio"
-        className="inline-flex w-fit items-center gap-1.5 rounded-lg text-sm font-medium text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400"
+        className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-lg text-sm font-medium text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Volver a mi inicio

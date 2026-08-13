@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/card";
 import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
-import { bloquearPegado } from "@/lib/anti-copiar";
 
 export default function Bitacora({
   estudianteId,
@@ -86,7 +85,6 @@ export default function Bitacora({
               required
               value={verbo}
               onChange={(e) => setVerbo(e.target.value)}
-              onPaste={bloquearPegado}
               placeholder='Ej. "Identificar"'
             />
             <HelpText>En infinitivo (termina en -ar, -er o -ir).</HelpText>
@@ -98,7 +96,6 @@ export default function Bitacora({
               required
               value={que}
               onChange={(e) => setQue(e.target.value)}
-              onPaste={bloquearPegado}
               placeholder='Ej. "los elementos del circuito de la comunicación"'
             />
           </Field>
@@ -109,10 +106,9 @@ export default function Bitacora({
               required
               value={como}
               onChange={(e) => setComo(e.target.value)}
-              onPaste={bloquearPegado}
               placeholder='Ej. "analizando conversaciones reales"'
             />
-            <HelpText>Verbo + qué + cómo (algo concreto, no "esforzarme más").</HelpText>
+            <HelpText>Verbo + qué + cómo (algo concreto, no &quot;esforzarme más&quot;).</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" size="sm" cargando={cargando} disabled={!listoParaGuardar} className="self-start">
@@ -129,7 +125,7 @@ export default function Bitacora({
         <NotebookPen className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Lo que esperas aprender</p>
       </div>
-      <p className="text-sm italic text-slate-700 dark:text-slate-300">"{metaPrevia}"</p>
+      <p className="text-sm italic text-slate-700 dark:text-slate-300">&quot;{metaPrevia}&quot;</p>
       <p className="text-xs text-slate-500 dark:text-slate-500">Progreso de la unidad: {avancePct}%</p>
       <Boton
         type="button"

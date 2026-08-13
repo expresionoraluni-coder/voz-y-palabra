@@ -1,5 +1,8 @@
 -- Voz y Palabra · esquema inicial de base de datos (Fase 1)
--- Copia y pega este archivo completo en Supabase → SQL Editor → New query → Run
+-- Ejecuta este archivo primero y después supabase/functions.sql. No contiene datos privados.
+
+create extension if not exists pgcrypto with schema extensions;
+create extension if not exists unaccent with schema extensions;
 
 -- ============================================================
 -- 1. QUIÉN ES QUIÉN
@@ -28,6 +31,11 @@ create table estudiantes (
   nombre text not null,
   grupo_id uuid not null references grupos(id) on delete cascade,
   nip_hash text,
+  activo boolean not null default true,
+  boleta text,
+  intentos_fallidos int not null default 0,
+  bloqueado_hasta timestamptz,
+  debe_cambiar_nip boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -40,7 +48,8 @@ create table unidades (
   nombre text not null,
   orden int not null,
   descripcion text,
-  reto_comunicativo text
+  reto_comunicativo text,
+  unidad_competencia text
 );
 
 create table tipos_actividad (
@@ -57,6 +66,9 @@ create table actividades (
   instrucciones text,
   contenido jsonb not null default '{}'::jsonb,
   orden int not null default 0,
+  aprendizaje_esperado text,
+  video_url text,
+  requiere_actividad_id uuid references actividades(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -71,7 +83,10 @@ create table entregas (
   respuesta jsonb,
   archivo_url text,
   estado text not null default 'completada' check (estado in ('completada', 'pendiente_revision', 'revisada')),
+  puntaje_auto int check (puntaje_auto is null or puntaje_auto between 0 and 100),
+  evaluacion_docente text check (evaluacion_docente is null or evaluacion_docente in ('logrado', 'en_proceso', 'necesita_apoyo')),
   created_at timestamptz not null default now(),
+  check (length(respuesta::text) <= 20000),
   unique (estudiante_id, actividad_id)
 );
 
@@ -80,7 +95,9 @@ create table reflexiones (
   estudiante_id uuid not null references estudiantes(id) on delete cascade,
   actividad_id uuid references actividades(id) on delete cascade,
   unidad_id uuid references unidades(id) on delete cascade,
-  texto text not null,
+  texto text check (texto is null or length(texto) <= 5000),
+  momento text not null default 'cierre' check (momento in ('prediccion', 'cierre')),
+  confianza int check (confianza between 1 and 5),
   created_at timestamptz not null default now()
 );
 
@@ -135,6 +152,56 @@ create table avisos (
   created_at timestamptz not null default now()
 );
 
+-- Tablas de seguimiento y protección de acceso incorporadas después de la
+-- primera versión. Mantenerlas aquí evita que una reconstrucción pierda la
+-- bitácora, el calendario o los límites de intentos.
+create table configuracion_plataforma (
+  clave text primary key,
+  valor text not null,
+  actualizado_en timestamptz not null default now()
+);
+
+create table eventos (
+  id uuid primary key default gen_random_uuid(),
+  docente_id uuid not null references docentes(id) on delete cascade,
+  grupo_id uuid not null references grupos(id) on delete cascade,
+  unidad_id uuid not null references unidades(id) on delete cascade,
+  titulo text not null,
+  tipo text not null check (tipo in ('examen', 'proyecto', 'entrega', 'otro')),
+  fecha date not null,
+  created_at timestamptz not null default now()
+);
+
+create table bitacora (
+  id uuid primary key default gen_random_uuid(),
+  estudiante_id uuid not null references estudiantes(id) on delete cascade,
+  unidad_id uuid not null references unidades(id) on delete cascade,
+  meta text check (meta is null or length(meta) <= 2000),
+  cumplida boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (estudiante_id, unidad_id)
+);
+
+create table intentos_codigo_invitacion (
+  usuario_id uuid primary key references auth.users(id) on delete cascade,
+  intentos int not null default 0,
+  bloqueado_hasta timestamptz
+);
+
+create table intentos_nombre_estudiante (
+  usuario_id uuid primary key references auth.users(id) on delete cascade,
+  intentos int not null default 0,
+  bloqueado_hasta timestamptz
+);
+
+create table intentos_nombre_grupo (
+  grupo_id uuid primary key references grupos(id) on delete cascade,
+  intentos int not null default 0,
+  ventana_inicio timestamptz not null default now()
+);
+
+create index actividades_requiere_actividad_id_idx on actividades(requiere_actividad_id);
+
 -- ============================================================
 -- 6. SEGURIDAD (RLS) — cada tabla protegida a nivel de base de datos
 -- ============================================================
@@ -152,114 +219,148 @@ alter table insignias enable row level security;
 alter table insignias_otorgadas enable row level security;
 alter table retroalimentacion_docente enable row level security;
 alter table avisos enable row level security;
+alter table configuracion_plataforma enable row level security;
+alter table eventos enable row level security;
+alter table bitacora enable row level security;
+alter table intentos_codigo_invitacion enable row level security;
+alter table intentos_nombre_estudiante enable row level security;
+alter table intentos_nombre_grupo enable row level security;
 
 -- función auxiliar: ¿el usuario que hace la consulta es un estudiante, y cuál es su fila?
 create or replace function estudiante_actual()
 returns uuid
 language sql stable
+security definer
+set search_path = public
 as $$
   select id from estudiantes where auth_user_id = auth.uid()
 $$;
 
 -- docentes: solo ve y edita su propio perfil
 create policy "docente ve su propio perfil" on docentes
-  for select using (id = auth.uid());
+  for select to authenticated using (id = (select auth.uid()));
 create policy "docente edita su propio perfil" on docentes
-  for update using (id = auth.uid());
+  for update to authenticated using (id = (select auth.uid()))
+  with check (id = (select auth.uid()));
 
 -- grupos: el docente administra los suyos; el estudiante solo lee el suyo
 create policy "docente administra sus grupos" on grupos
-  for all using (docente_id = auth.uid());
+  for all to authenticated using (docente_id = (select auth.uid()))
+  with check (docente_id = (select auth.uid()));
 create policy "estudiante lee su grupo" on grupos
-  for select using (id = (select grupo_id from estudiantes where id = estudiante_actual()));
+  for select to authenticated using (id = (select grupo_id from estudiantes where id = estudiante_actual()));
 
 -- estudiantes: el docente administra los de sus grupos; el estudiante lee/edita su propia fila
 create policy "docente administra estudiantes de sus grupos" on estudiantes
-  for all using (grupo_id in (select id from grupos where docente_id = auth.uid()));
+  for all to authenticated
+  using (grupo_id in (select id from grupos where docente_id = (select auth.uid())))
+  with check (grupo_id in (select id from grupos where docente_id = (select auth.uid())));
 create policy "estudiante lee su propia fila" on estudiantes
-  for select using (auth_user_id = auth.uid());
+  for select to authenticated using (auth_user_id = (select auth.uid()));
 create policy "estudiante edita su propia fila" on estudiantes
-  for update using (auth_user_id = auth.uid());
+  for update to authenticated using (auth_user_id = (select auth.uid()))
+  with check (auth_user_id = (select auth.uid()));
 
 -- unidades: los estudiantes las reciben solo desde Server Components que ya
 -- validaron su sesión; no se expone lectura directa por el Data API.
 drop policy if exists "cualquiera con sesión lee unidades" on unidades;
 create policy "docente administra unidades" on unidades
-  for all using (auth.jwt()->>'role' = 'authenticated' and exists (select 1 from docentes where id = auth.uid()));
-create policy "cualquiera con sesión lee tipos de actividad" on tipos_actividad
-  for select using (auth.role() = 'authenticated');
+  for all to authenticated using (exists (select 1 from docentes where id = (select auth.uid())))
+  with check (exists (select 1 from docentes where id = (select auth.uid())));
+create policy "sesión lee tipos de actividad" on tipos_actividad
+  for select to authenticated using ((select auth.uid()) is not null);
 
 -- actividades: el contenido, incluida la clave de calificación, tampoco se
 -- expone por el Data API; la lectura del estudiante ocurre exclusivamente en
 -- el servidor después de validar su identidad.
 drop policy if exists "cualquiera con sesión lee actividades" on actividades;
 create policy "docente administra actividades" on actividades
-  for all using (exists (select 1 from docentes where id = auth.uid()));
+  for all to authenticated using (exists (select 1 from docentes where id = (select auth.uid())))
+  with check (exists (select 1 from docentes where id = (select auth.uid())));
 
 -- entregas: el estudiante ve y crea las suyas; el docente ve las de sus grupos
-create policy "estudiante administra sus entregas" on entregas
-  for all using (estudiante_id = estudiante_actual());
+create policy "estudiante lee sus entregas" on entregas
+  for select to authenticated using (estudiante_id = estudiante_actual());
 create policy "docente ve entregas de sus grupos" on entregas
-  for select using (
+  for select to authenticated using (
     estudiante_id in (
       select e.id from estudiantes e join grupos g on g.id = e.grupo_id
-      where g.docente_id = auth.uid()
+      where g.docente_id = (select auth.uid())
     )
   );
 
 -- reflexiones: mismo patrón que entregas
 create policy "estudiante administra sus reflexiones" on reflexiones
-  for all using (estudiante_id = estudiante_actual());
+  for all to authenticated using (estudiante_id = estudiante_actual())
+  with check (estudiante_id = estudiante_actual());
 create policy "docente ve reflexiones de sus grupos" on reflexiones
-  for select using (
+  for select to authenticated using (
     estudiante_id in (
       select e.id from estudiantes e join grupos g on g.id = e.grupo_id
-      where g.docente_id = auth.uid()
+      where g.docente_id = (select auth.uid())
     )
   );
 
 -- autoevaluaciones_confianza: mismo patrón
 create policy "estudiante administra su confianza" on autoevaluaciones_confianza
-  for all using (estudiante_id = estudiante_actual());
+  for all to authenticated using (estudiante_id = estudiante_actual())
+  with check (estudiante_id = estudiante_actual());
 create policy "docente ve confianza de sus grupos" on autoevaluaciones_confianza
-  for select using (
+  for select to authenticated using (
     estudiante_id in (
       select e.id from estudiantes e join grupos g on g.id = e.grupo_id
-      where g.docente_id = auth.uid()
+      where g.docente_id = (select auth.uid())
     )
   );
 
 -- insignias: catálogo de lectura abierta
-create policy "cualquiera con sesión lee insignias" on insignias
-  for select using (auth.role() = 'authenticated');
+create policy "sesión lee insignias" on insignias
+  for select to authenticated using ((select auth.uid()) is not null);
 
 -- insignias_otorgadas: el estudiante solo lee las suyas (se otorgan desde el servidor, no desde el navegador del estudiante)
 create policy "estudiante lee sus insignias" on insignias_otorgadas
-  for select using (estudiante_id = estudiante_actual());
+  for select to authenticated using (estudiante_id = estudiante_actual());
 create policy "docente ve insignias de sus grupos" on insignias_otorgadas
-  for select using (
+  for select to authenticated using (
     estudiante_id in (
       select e.id from estudiantes e join grupos g on g.id = e.grupo_id
-      where g.docente_id = auth.uid()
+      where g.docente_id = (select auth.uid())
     )
   );
 
 -- retroalimentacion_docente: el docente escribe; el estudiante dueño de la entrega la lee
 create policy "docente administra su retroalimentación" on retroalimentacion_docente
-  for all using (docente_id = auth.uid());
+  for all to authenticated using (docente_id = (select auth.uid()))
+  with check (docente_id = (select auth.uid()));
 create policy "estudiante lee retroalimentación de sus entregas" on retroalimentacion_docente
-  for select using (
+  for select to authenticated using (
     entrega_id in (select id from entregas where estudiante_id = estudiante_actual())
   );
 
 -- avisos: el docente administra; el estudiante lee los de su grupo o los globales
 create policy "docente administra sus avisos" on avisos
-  for all using (docente_id = auth.uid());
+  for all to authenticated using (docente_id = (select auth.uid()))
+  with check (docente_id = (select auth.uid()));
 create policy "estudiante lee avisos de su grupo" on avisos
-  for select using (
+  for select to authenticated using (
     grupo_id is null
     or grupo_id = (select grupo_id from estudiantes where id = estudiante_actual())
   );
+
+-- eventos: la docente administra sus fechas; cada estudiante solo ve las de
+-- su grupo. Las tablas de configuración e intentos no tienen policies a
+-- propósito: solo las consultan las funciones SECURITY DEFINER validadas.
+create policy "docente administra sus eventos" on eventos
+  for all to authenticated using (docente_id = (select auth.uid()))
+  with check (docente_id = (select auth.uid()));
+create policy "estudiante lee eventos de su grupo" on eventos
+  for select to authenticated using (
+    grupo_id = (select grupo_id from estudiantes where id = estudiante_actual())
+  );
+
+create policy "estudiante administra su bitácora" on bitacora
+  for all to authenticated using (estudiante_id = estudiante_actual())
+  with check (estudiante_id = estudiante_actual());
 
 -- ============================================================
 -- 7. DATOS INICIALES: los 9 tipos de actividad y las 3 unidades
@@ -968,7 +1069,7 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 -- 25. El pendiente del punto 24 (auth.uid() sin envolver en las políticas
 --     RLS) se resolvió: el usuario autorizó explícitamente aplicarlo. Las
 --     20 políticas que el advisor señaló se reescribieron con
---     ALTER POLICY ... USING (...), envolviendo cada auth.uid()/auth.role()/
+--     ALTER POLICY ... USING (...), envolviendo cada auth.uid() de forma
 --     auth.jwt() en (select ...) — mismo resultado, evaluado una vez por
 --     consulta en vez de una vez por fila. Incluyó una política que existía
 --     en la base real pero nunca se documentó aquí ("docente actualiza

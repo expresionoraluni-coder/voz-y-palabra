@@ -6,7 +6,6 @@ import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { analizarAudio, AnalisisAudio } from "@/lib/analisis-audio";
-import { bloquearPegado } from "@/lib/anti-copiar";
 import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 export default function GrabacionRubrica({
@@ -298,7 +297,6 @@ export default function GrabacionRubrica({
             setReflexion(e.target.value);
             marcarSinGuardar();
           }}
-          onPaste={bloquearPegado}
           rows={3}
         />
       </div>

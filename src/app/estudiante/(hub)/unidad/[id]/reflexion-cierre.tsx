@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/card";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { mensajeCalibracionUnidad, placeholderReflexionUnidad } from "@/lib/calibracion-confianza";
-import { bloquearPegado } from "@/lib/anti-copiar";
 
 export default function ReflexionCierre({
   estudianteId,
@@ -108,7 +107,6 @@ export default function ReflexionCierre({
         <Textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          onPaste={bloquearPegado}
           rows={3}
           placeholder={placeholderReflexionUnidad(confianzaInicioPct, promedioUnidad)}
         />

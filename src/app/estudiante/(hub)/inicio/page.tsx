@@ -391,7 +391,7 @@ export default async function InicioEstudiante({
           <EmptyState
             icon={Map}
             titulo="Todavía no hay unidades"
-            descripcion="Cuando tu profesora publique el curso, tu ruta va a aparecer aquí."
+            descripcion="Cuando el curso esté disponible, tu ruta va a aparecer aquí."
           />
         ) : (
         <div className="relative flex flex-col gap-6">

@@ -39,7 +39,7 @@ export default async function InsigniasEstudiante() {
         <EmptyState
           icon={Award}
           titulo="Todavía no hay insignias configuradas"
-          descripcion="Cuando tu profesora active el catálogo, van a aparecer aquí."
+          descripcion="Cuando el catálogo esté listo, tus logros van a aparecer aquí."
         />
       )}
 
