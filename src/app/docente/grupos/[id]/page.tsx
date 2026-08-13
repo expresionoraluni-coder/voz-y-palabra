@@ -4,6 +4,7 @@ import { ClipboardCheck, LifeBuoy, ThumbsUp, TrendingDown, TrendingUp, Users } f
 import { createClient } from "@/lib/supabase/server";
 import Avisos from "./avisos";
 import Eventos from "./eventos";
+import AccesoGrupo from "./acceso-grupo";
 import EditarGrupo from "./editar-grupo";
 import EliminarGrupo from "./eliminar-grupo";
 import GrupoEstudiantesPanel from "./grupo-estudiantes-panel";
@@ -234,6 +235,7 @@ export default async function DetalleGrupo({
     });
   }
   const confusionesTop = [...confusionMap.values()].sort((a, b) => b.veces - a.veces).slice(0, 5);
+  const totalConfusiones = [...confusionMap.values()].reduce((total, confusion) => total + confusion.veces, 0);
 
   // Evaluación cualitativa: lo que la docente ya juzgó en entregas abiertas
   // (opción-justificación, encontrar-corregir, comparador, etc.).
@@ -299,6 +301,7 @@ export default async function DetalleGrupo({
         {[
           { href: "#resumen", etiqueta: "Resumen" },
           { href: "#estudiantes", etiqueta: "Estudiantes" },
+          { href: "#detalle", etiqueta: "Análisis" },
           { href: "#contenido", etiqueta: "Contenido" },
         ].map((t) => (
           <a
@@ -328,6 +331,8 @@ export default async function DetalleGrupo({
         <MetricCard etiqueta="Estudiantes" valor={estudiantes?.length ?? 0} icon={Users} tono="slate" />
       </div>
 
+      <AccesoGrupo codigo={grupo.codigo_acceso} />
+
       <Card className="flex items-start gap-3 border-sky-100 bg-sky-50/60 p-4 dark:border-sky-900 dark:bg-sky-950/30">
         <LifeBuoy className="mt-0.5 size-5 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden="true" />
         <div>
@@ -356,7 +361,7 @@ export default async function DetalleGrupo({
         </Alert>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section id="detalle" className="scroll-mt-16 flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h2>
         <Card className="flex flex-col gap-4 p-5">
           {avancePorUnidad.map((u) => (
@@ -430,21 +435,38 @@ export default async function DetalleGrupo({
       {confusionesTop.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Dónde se equivoca el grupo
+            Errores más frecuentes
           </h2>
-          <Card className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {totalConfusiones} respuestas incorrectas identificadas; ordenadas de mayor a menor frecuencia.
+          </p>
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                  <tr>
+                    <th className="w-12 px-4 py-3 text-center">#</th>
+                    <th className="px-4 py-3">Elemento</th>
+                    <th className="px-4 py-3">Respuesta elegida</th>
+                    <th className="px-4 py-3 text-right">Veces</th>
+                    <th className="px-4 py-3 text-right">%</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {confusionesTop.map((c, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                <span className="text-slate-700 dark:text-slate-300">
-                  <strong className="font-medium text-slate-900 dark:text-slate-50">&quot;{c.elemento}&quot;</strong> se
-                  confunde con <strong className="font-medium text-amber-600 dark:text-amber-400">{c.elegida}</strong>{" "}
-                  <span className="text-slate-500 dark:text-slate-400">(era {c.correcta})</span>
-                </span>
-                <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  {c.veces} {c.veces === 1 ? "vez" : "veces"}
-                </span>
-              </div>
+              <tr key={i}>
+                <td className="px-4 py-3 text-center font-semibold text-slate-400 dark:text-slate-500">{i + 1}</td>
+                <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-50">{c.elemento}</td>
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                  {c.elegida} <span className="text-xs text-slate-400 dark:text-slate-500">(correcta: {c.correcta})</span>
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-amber-700 dark:text-amber-300">{c.veces}</td>
+                <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400">{Math.round((c.veces / totalConfusiones) * 100)}%</td>
+              </tr>
             ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         </section>
       )}

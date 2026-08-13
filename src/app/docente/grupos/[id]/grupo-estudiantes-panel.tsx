@@ -180,7 +180,7 @@ export default function GrupoEstudiantesPanel({
                         {estudiante.totalEntregas} entregas{estudiante.diasInactivo !== null ? ` · ${estudiante.diasInactivo} días sin actividad` : ""}
                       </span>
                     </Link>
-                    <div className="hidden w-32 items-center gap-2 sm:flex">
+                    <div className="flex w-24 shrink-0 items-center gap-2 sm:w-32">
                       <ProgressBar porcentaje={estudiante.avance} etiqueta={`Avance de ${estudiante.nombre}: ${estudiante.avance}%`} />
                       <span className="w-9 shrink-0 text-right text-xs text-slate-500 dark:text-slate-400">{estudiante.avance}%</span>
                     </div>

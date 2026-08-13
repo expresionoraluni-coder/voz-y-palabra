@@ -11,13 +11,12 @@ type FilaEstudiante = {
   diasInactivo: number | null;
 };
 
-function celdaCSV(valor: string | number): string {
-  // Si la celda empieza con =, +, - o @, Excel/Sheets puede interpretarla
-  // como fórmula al abrir el CSV — se antepone un apóstrofo para que se
-  // trate siempre como texto literal (inyección de fórmulas en CSV).
+function celdaExcel(valor: string | number): string {
+  // Si la celda empieza con =, +, - o @, Excel puede interpretarla como
+  // fórmula; se antepone un apóstrofo para tratarla como texto literal.
   let texto = String(valor);
   if (/^[=+\-@]/.test(texto)) texto = `'${texto}`;
-  return /[",\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+  return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export default function ExportarGrupo({
@@ -36,16 +35,18 @@ export default function ExportarGrupo({
       e.ultima ? new Date(e.ultima).toLocaleDateString("es-MX") : "Sin actividad",
       e.diasInactivo ?? "—",
     ]);
-    // ﻿: BOM para que Excel detecte UTF-8 y no rompa los acentos.
-    const csv =
+    // El BOM ayuda a que Excel detecte correctamente los acentos.
+    const excel =
       "﻿" +
-      [encabezados, ...filas].map((fila) => fila.map(celdaCSV).join(",")).join("\r\n");
+      `<table><thead><tr>${encabezados.map((encabezado) => `<th>${celdaExcel(encabezado)}</th>`).join("")}</tr></thead><tbody>${filas
+        .map((fila) => `<tr>${fila.map((valor) => `<td>${celdaExcel(valor)}</td>`).join("")}</tr>`)
+        .join("")}</tbody></table>`;
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([excel], { type: "application/vnd.ms-excel;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${nombreGrupo.replace(/[^\w-]+/g, "_")}_estudiantes.csv`;
+    a.download = `${nombreGrupo.replace(/[^\w-]+/g, "_")}_estudiantes.xls`;
     a.click();
     URL.revokeObjectURL(url);
   }

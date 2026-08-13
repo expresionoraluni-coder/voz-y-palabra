@@ -41,6 +41,9 @@ const cabecerasSeguridad = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // La demostración local puede abrirse desde 127.0.0.1 en el navegador
+  // integrado; Next necesita permitir ese origen para sus recursos dev/HMR.
+  allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return [{ source: "/:path*", headers: cabecerasSeguridad }];
   },

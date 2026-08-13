@@ -15,7 +15,7 @@ Esta lista valida que la docente pueda preparar y monitorear el curso con pocas 
 9. Cerrar o recuperar la conexión y comprobar que se avisa antes de guardar cambios.
 10. En la lista de estudiantes, buscar por nombre, filtrar por estado y seleccionar varias filas.
 11. Dar de baja varias filas y comprobar que solo cambia ese grupo; reactivar una fila desde la lista de bajas.
-12. Cargar un CSV/TSV con columnas `Nombre` y `Boleta`, revisar la vista previa, corregir filas incompletas y guardar.
+12. Copiar desde Excel las columnas `Nombre` y `Boleta`, pegarlas en la tabla, revisar las filas incompletas y guardar.
 13. Crear una actividad y escribir una pista breve en “Ayuda si te atoras”; abrirla como estudiante y comprobar que aparece cerrada hasta solicitarla.
 
 ## Compatibilidad y accesibilidad

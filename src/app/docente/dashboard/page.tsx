@@ -67,7 +67,7 @@ export default async function DashboardDocente() {
     : grupoSinEstudiantes
       ? {
           titulo: `Agrega estudiantes a ${grupoSinEstudiantes.nombre}`,
-          descripcion: "Puedes capturarlos uno por uno o cargar una lista para ahorrar tiempo.",
+          descripcion: "Puedes capturarlos uno por uno o pegar una lista copiada de Excel para ahorrar tiempo.",
           href: `/docente/grupos/${grupoSinEstudiantes.id}`,
           accion: "Abrir grupo",
         }
@@ -83,7 +83,23 @@ export default async function DashboardDocente() {
             descripcion: "Consulta quién ya practicó, qué necesita atención y qué contenido sigue.",
             href: `/docente/grupos/${grupos[0].id}`,
             accion: "Ver grupo",
-          };
+        };
+  const grupoPrincipal = gruposConAtencion[0] ?? grupos?.[0];
+  const accionGrupo = !grupos?.length
+    ? { titulo: "Crear un grupo", descripcion: "Genera el código para que puedan entrar.", href: "/docente/grupos/nuevo" }
+    : grupoSinEstudiantes
+      ? { titulo: "Agregar estudiantes", descripcion: `Completa ${grupoSinEstudiantes.nombre}.`, href: `/docente/grupos/${grupoSinEstudiantes.id}` }
+      : { titulo: "Abrir un grupo", descripcion: "Consulta el avance y los accesos.", href: `/docente/grupos/${grupoPrincipal?.id ?? ""}` };
+  const accionContenido = primeraUnidad
+    ? !actividades?.length
+      ? { titulo: "Preparar contenido", descripcion: `Empieza por ${primeraUnidad.nombre}.`, href: `/docente/unidades/${primeraUnidad.id}/actividades/nueva` }
+      : { titulo: "Ver unidades", descripcion: "Consulta el material disponible.", href: `/docente/unidades/${primeraUnidad.id}` }
+    : { titulo: "Ver unidades", descripcion: "Consulta el material del curso.", href: "/docente/dashboard#unidades" };
+  const accionSeguimiento = grupoPrincipal
+    ? gruposConAtencion.length > 0
+      ? { titulo: "Revisar apoyo", descripcion: "Mira los casos que esperan orientación.", href: `/docente/grupos/${grupoPrincipal.id}#apoyo` }
+      : { titulo: "Ver avance", descripcion: "Identifica quién ya comenzó.", href: `/docente/grupos/${grupoPrincipal.id}#resumen` }
+    : { titulo: "Conocer el flujo", descripcion: "Crea un grupo para comenzar.", href: "/docente/grupos/nuevo" };
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -119,6 +135,26 @@ export default async function DashboardDocente() {
             <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
         </Card>
+      </section>
+
+      <section aria-labelledby="acciones-rapidas" className="flex flex-col gap-3">
+        <div>
+          <h2 id="acciones-rapidas" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Acciones rápidas</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Tres caminos para avanzar sin buscar entre menús.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[accionGrupo, accionContenido, accionSeguimiento].map((accion) => (
+            <Link key={accion.titulo} href={accion.href}>
+              <CardLink className="flex h-full flex-col gap-2 px-4 py-3.5">
+                <span className="font-medium text-slate-900 dark:text-slate-50">{accion.titulo}</span>
+                <span className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{accion.descripcion}</span>
+                <span className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                  Abrir <ArrowRight className="size-3.5" aria-hidden="true" />
+                </span>
+              </CardLink>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section aria-label="Resumen de tu trabajo" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -207,7 +243,7 @@ export default async function DashboardDocente() {
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section id="unidades" className="scroll-mt-4 flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Unidades del curso</h2>
         <div className="flex flex-col gap-2">
           {unidades?.map((u) => {

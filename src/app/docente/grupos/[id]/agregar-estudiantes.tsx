@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, CheckCircle2, AlertCircle, MinusCircle, Trash2, Upload } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertCircle, MinusCircle, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { normalizarNombre } from "@/lib/normalizar-nombre";
 import { Card } from "@/components/ui/card";
@@ -30,48 +30,6 @@ function conFilaVaciaAlFinal(filas: Fila[]): Fila[] {
   return ultima && conContenido(ultima) ? [...filas, filaVacia()] : filas;
 }
 
-function parsearCSV(texto: string): Fila[] {
-  const delimitador = texto.includes("\t") ? "\t" : texto.includes(";") ? ";" : ",";
-  const filas: string[][] = [];
-  let fila: string[] = [];
-  let celda = "";
-  let entreComillas = false;
-
-  for (let i = 0; i < texto.length; i += 1) {
-    const caracter = texto[i];
-    const siguiente = texto[i + 1];
-    if (caracter === '"' && entreComillas && siguiente === '"') {
-      celda += '"';
-      i += 1;
-    } else if (caracter === '"') {
-      entreComillas = !entreComillas;
-    } else if (caracter === delimitador && !entreComillas) {
-      fila.push(celda.trim());
-      celda = "";
-    } else if ((caracter === "\n" || caracter === "\r") && !entreComillas) {
-      if (caracter === "\r" && siguiente === "\n") i += 1;
-      fila.push(celda.trim());
-      if (fila.some(Boolean)) filas.push(fila);
-      fila = [];
-      celda = "";
-    } else {
-      celda += caracter;
-    }
-  }
-  if (celda || fila.length > 0) {
-    fila.push(celda.trim());
-    if (fila.some(Boolean)) filas.push(fila);
-  }
-
-  if (filas.length === 0) return [];
-  const primera = filas[0].map((valor) => valor.toLocaleLowerCase("es-MX"));
-  const tieneEncabezado = primera.some((valor) => valor.includes("nombre")) && primera.some((valor) => valor.includes("boleta"));
-  const datos = tieneEncabezado ? filas.slice(1) : filas;
-  return datos
-    .map((valores) => ({ nombre: normalizarNombre(valores[0] ?? ""), boleta: (valores[1] ?? "").trim() }))
-    .filter(conContenido);
-}
-
 export default function AgregarEstudiantes({
   grupoId,
   nombresExistentes,
@@ -84,7 +42,6 @@ export default function AgregarEstudiantes({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agregados, setAgregados] = useState<number | null>(null);
-  const [archivoCargado, setArchivoCargado] = useState<string | null>(null);
 
   const yaEnGrupo = new Set(nombresExistentes.map(normalizarNombre));
 
@@ -112,11 +69,10 @@ export default function AgregarEstudiantes({
     });
   }
 
-  // Pegar en cualquier celda reparte el bloque (como Excel): columnas por
-  // tabulador —o coma, si viene de un CSV exportado— y renglones hacia
-  // abajo desde la celda donde se pegó, creando filas nuevas si hacen
-  // falta. Un valor suelto sin separadores se deja pasar como pegado normal
-  // del navegador.
+  // Pegar en cualquier celda reparte el bloque como en Excel: columnas por
+  // tabulador y renglones hacia abajo desde la celda donde se pegó, creando
+  // filas nuevas si hacen falta. Un valor suelto sin separadores se deja
+  // pasar como pegado normal del navegador.
   function manejarPegado(e: React.ClipboardEvent<HTMLInputElement>, filaInicio: number, columna: "nombre" | "boleta") {
     const texto = e.clipboardData.getData("text");
     if (!/[\t\n,]/.test(texto)) return;
@@ -146,31 +102,6 @@ export default function AgregarEstudiantes({
     });
     setAgregados(null);
     setError(null);
-  }
-
-  async function cargarArchivo(e: React.ChangeEvent<HTMLInputElement>) {
-    const archivo = e.target.files?.[0];
-    e.target.value = "";
-    if (!archivo) return;
-    setError(null);
-    setAgregados(null);
-    let importadas: Fila[];
-    try {
-      importadas = parsearCSV(await archivo.text());
-    } catch {
-      setError("No pudimos leer ese archivo. Prueba con un CSV o TSV guardado en UTF-8.");
-      return;
-    }
-    if (importadas.length === 0) {
-      setError("No encontramos filas en el archivo. Usa columnas Nombre y Boleta, separadas por coma o tabulador.");
-      return;
-    }
-    if (importadas.length > 100) {
-      setError("El archivo tiene más de 100 filas. Divide la lista en grupos más pequeños antes de importarla.");
-      return;
-    }
-    setFilas((prev) => conFilaVaciaAlFinal([...prev.filter(conContenido), ...importadas]));
-    setArchivoCargado(archivo.name);
   }
 
   // Repetida dentro de la misma tabla (p. ej. pegó un rango con renglones
@@ -238,23 +169,10 @@ export default function AgregarEstudiantes({
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <Label>Nombre y boleta</Label>
         <HelpText>
-          Escribe directamente en la tabla, o pega ahí una columna (o toda la tabla) copiada de
-          Excel — se reparte solo en las filas y se normaliza a mayúsculas sin acentos. El NIP
-          inicial de cada quien son los últimos 4 dígitos de su boleta.
+          Escribe directamente en la tabla o pega celdas copiadas de Excel — se reparten solas en
+          las filas y se normalizan a mayúsculas sin acentos. El NIP inicial de cada estudiante
+          son los últimos 4 dígitos de su boleta.
         </HelpText>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
-            <Upload className="size-4" aria-hidden="true" />
-            Cargar CSV o TSV
-            <input
-              type="file"
-              accept=".csv,.tsv,text/csv,text/tab-separated-values"
-              onChange={cargarArchivo}
-              className="sr-only"
-            />
-          </label>
-          {archivoCargado && <span className="text-xs text-slate-500 dark:text-slate-400">Vista previa: {archivoCargado}</span>}
-        </div>
 
         <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
           {conAlgunContenido ? (

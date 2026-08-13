@@ -1,5 +1,5 @@
 import { redirect, notFound } from "next/navigation";
-import { Award, FileText, MessageSquareText, NotebookPen, Quote } from "lucide-react";
+import { Award, ClipboardCheck, Clock3, FileText, MessageSquareText, NotebookPen, Quote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resumenRespuesta } from "@/lib/resumen-respuesta";
 import { rondasDeRespuesta } from "@/lib/opcion-justificacion";
@@ -98,6 +98,13 @@ export default async function FichaEstudiante({
 
   const totalActividades = unidades?.reduce((s, u) => s + u.actividades.length, 0) ?? 0;
   const avanceGeneral = totalActividades > 0 ? Math.round(((entregas?.length ?? 0) / totalActividades) * 100) : 0;
+  const ultimaEntrega = entregas?.[0];
+  const ultimaActividad = ultimaEntrega
+    ? Array.isArray(ultimaEntrega.actividades)
+      ? ultimaEntrega.actividades[0]
+      : ultimaEntrega.actividades
+    : null;
+  const casosPendientes = entregas?.filter((entrega) => entrega.estado === "pendiente_revision").length ?? 0;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -134,6 +141,30 @@ export default async function FichaEstudiante({
           grupoId={estudiante.grupo_id}
         />
       </div>
+
+      <Card className="grid gap-4 p-5 sm:grid-cols-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Avance</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">{avanceGeneral}%</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">{entregas?.length ?? 0} de {totalActividades} actividades</p>
+        </div>
+        <div className="flex gap-2">
+          <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Última actividad</p>
+            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{ultimaActividad?.titulo ?? "Aún no comienza"}</p>
+            {ultimaEntrega && <p className="text-xs text-slate-500 dark:text-slate-500">{new Date(ultimaEntrega.created_at).toLocaleDateString("es-MX")}</p>}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Seguimiento</p>
+            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{casosPendientes ? `${casosPendientes} por revisar` : "Sin pendientes"}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-500">Orientación opcional</p>
+          </div>
+        </div>
+      </Card>
 
       {insignias && insignias.length > 0 && (
         <div className="flex flex-wrap gap-2">
