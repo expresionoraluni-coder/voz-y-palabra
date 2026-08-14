@@ -16,6 +16,8 @@ import { CheckCircle2, GripVertical, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { similitudTexto } from "@/lib/similitud-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
@@ -123,17 +125,24 @@ export default function Comparador({
   estudianteId,
   contenido,
   respuestaPrevia,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoComparadorPublico;
   respuestaPrevia?: { celdas: string[][]; resultadoCeldas?: boolean[][] };
+  puntajeAuto?: number | null;
 }) {
   const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
     actividadId,
     estudianteId,
   );
   const modoChips = esModoChips(contenido);
+  const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
+    respuestaPrevia,
+    puntajeAuto ?? null,
+    modoChips && Boolean(respuestaPrevia),
+  );
 
   const vacio = () => contenido.criterios.map(() => contenido.conceptos.map(() => ""));
   const [celdas, setCeldas] = useState<string[][]>(respuestaPrevia?.celdas ?? vacio());
@@ -204,7 +213,10 @@ export default function Comparador({
         return;
       }
       const guardada = await guardarConAccion(() => calificarComparadorChipsAccion(actividadId, celdas));
-      if (guardada) setResultado(guardada.resultadoCeldas as boolean[][]);
+      if (guardada) {
+        setResultado(guardada.resultadoCeldas as boolean[][]);
+        registrarEntrega(guardada);
+      }
       return;
     }
 
@@ -231,6 +243,13 @@ export default function Comparador({
     }
 
     await guardarConAccion(() => guardarEntregaAbiertaAccion(actividadId, "comparador", { celdas }, "pendiente_revision"));
+  }
+
+  function iniciarReintento() {
+    setError(null);
+    setResultado(null);
+    setSeleccionado(null);
+    setCeldas(vacio());
   }
 
   const tabla = (
@@ -326,6 +345,14 @@ export default function Comparador({
         <Boton type="submit" cargando={cargando} className="self-start">
           {cargando ? "Guardando..." : "Guardar mi comparación"}
         </Boton>
+      )}
+      {bloqueado && (
+        <AvisoReintento
+          puntaje={mejorPuntaje}
+          intentos={intentos}
+          onReintentar={iniciarReintento}
+          cargando={cargando}
+        />
       )}
     </form>
   );

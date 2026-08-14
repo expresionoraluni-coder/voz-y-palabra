@@ -233,7 +233,7 @@ language sql stable
 security definer
 set search_path = public
 as $$
-  select id from estudiantes where auth_user_id = auth.uid()
+  select id from estudiantes where auth_user_id = auth.uid() and activo = true
 $$;
 
 -- docentes: solo ve y edita su propio perfil
@@ -250,16 +250,13 @@ create policy "docente administra sus grupos" on grupos
 create policy "estudiante lee su grupo" on grupos
   for select to authenticated using (id = (select grupo_id from estudiantes where id = estudiante_actual()));
 
--- estudiantes: el docente administra los de sus grupos; el estudiante lee/edita su propia fila
+-- estudiantes: el docente administra los de sus grupos; el estudiante solo lee su fila activa
 create policy "docente administra estudiantes de sus grupos" on estudiantes
   for all to authenticated
   using (grupo_id in (select id from grupos where docente_id = (select auth.uid())))
   with check (grupo_id in (select id from grupos where docente_id = (select auth.uid())));
 create policy "estudiante lee su propia fila" on estudiantes
-  for select to authenticated using (auth_user_id = (select auth.uid()));
-create policy "estudiante edita su propia fila" on estudiantes
-  for update to authenticated using (auth_user_id = (select auth.uid()))
-  with check (auth_user_id = (select auth.uid()));
+  for select to authenticated using (auth_user_id = (select auth.uid()) and activo = true);
 
 -- unidades: los estudiantes las reciben solo desde Server Components que ya
 -- validaron su sesión; no se expone lectura directa por el Data API.
@@ -372,8 +369,28 @@ create policy "estudiante lee retroalimentación de sus entregas" on retroalimen
 
 -- avisos: el docente administra; el estudiante lee los de su grupo o los globales
 create policy "docente administra sus avisos" on avisos
-  for all to authenticated using (docente_id = (select auth.uid()))
-  with check (docente_id = (select auth.uid()));
+  for all to authenticated using (
+    docente_id = (select auth.uid())
+    and (
+      grupo_id is null
+      or exists (
+        select 1 from grupos
+        where grupos.id = avisos.grupo_id
+          and grupos.docente_id = (select auth.uid())
+      )
+    )
+  )
+  with check (
+    docente_id = (select auth.uid())
+    and (
+      grupo_id is null
+      or exists (
+        select 1 from grupos
+        where grupos.id = avisos.grupo_id
+          and grupos.docente_id = (select auth.uid())
+      )
+    )
+  );
 create policy "estudiante lee avisos de su grupo" on avisos
   for select to authenticated using (
     grupo_id is null
@@ -384,8 +401,22 @@ create policy "estudiante lee avisos de su grupo" on avisos
 -- su grupo. Las tablas de configuración e intentos no tienen policies a
 -- propósito: solo las consultan las funciones SECURITY DEFINER validadas.
 create policy "docente administra sus eventos" on eventos
-  for all to authenticated using (docente_id = (select auth.uid()))
-  with check (docente_id = (select auth.uid()));
+  for all to authenticated using (
+    docente_id = (select auth.uid())
+    and exists (
+      select 1 from grupos
+      where grupos.id = eventos.grupo_id
+        and grupos.docente_id = (select auth.uid())
+    )
+  )
+  with check (
+    docente_id = (select auth.uid())
+    and exists (
+      select 1 from grupos
+      where grupos.id = eventos.grupo_id
+        and grupos.docente_id = (select auth.uid())
+    )
+  );
 create policy "estudiante lee eventos de su grupo" on eventos
   for select to authenticated using (
     grupo_id = (select grupo_id from estudiantes where id = estudiante_actual())
@@ -707,15 +738,15 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       grupos limpia todo sin dejar filas huérfanas. Verificado en vivo
 --       con un grupo y estudiante de prueba: ambos desaparecieron tras
 --       confirmar.
---     - Exportar a Excel: exportar-grupo.tsx genera un CSV en el navegador
+--     - Exportar a Excel: exportar-grupo.tsx genera un libro .xlsx mínimo en el navegador
 --       (Blob + descarga), sin librería nueva ni round-trip al servidor —
---       Excel abre CSV de forma nativa. Se eligió CSV sobre .xlsx real
---       para no agregar una dependencia por un caso de uso que no
+--       Excel abre el libro .xlsx directamente; se mantiene una sola hoja
+--       y no se agrega una dependencia para un caso de uso que no
 --       necesita múltiples hojas ni formato. Columnas: nombre, avance %,
 --       entregas, última actividad, días sin actividad — el mismo dato
 --       que ya se calcula para la lista de estudiantes de la página,
 --       reutilizado tal cual. Incluye BOM UTF-8 para que los acentos no
---       se rompan al abrir en Excel. Verificado en vivo: el CSV generado
+--       se rompan al abrir en Excel. Verificado en vivo: el libro generado
 --       tiene el encabezado y la fila esperados.
 --     - Vista previa de conteo en campos "una por línea": la docente
 --       reportó que un salto de línea accidental (pegar desde Word, un
@@ -2981,8 +3012,8 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     - useEliminarFila.ts (avisos/eventos): el error de delete() se
 --       ignoraba por completo -- ahora se captura y se muestra con
 --       ErrorText, mismo patron que el resto de los formularios.
---     - exportar-grupo.tsx: proteccion contra inyeccion de formulas CSV
---       (una celda que empiece con =+-@ se antepone con un apostrofo).
+--     - exportar-grupo.tsx: protección de celdas como texto en el libro
+--       .xlsx para que los nombres no se interpreten como fórmulas.
 --     - calificacion-evaluar-videos.ts: guardia para no dividir entre
 --       cero si cualidades.length es 0 (antes daba NaN, no 100% como
 --       decía uno de los informes — se revisó el código real).

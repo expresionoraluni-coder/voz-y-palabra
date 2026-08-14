@@ -27,7 +27,7 @@ Esta lista valida que la docente pueda preparar y monitorear el curso con pocas 
 
 ## Seguridad funcional
 
-- Una docente solo puede ver y administrar sus grupos, actividades y estudiantes.
+- Una docente solo puede ver y administrar sus grupos y estudiantes; las unidades y actividades forman parte del currículo común del curso y se editan desde el panel docente.
 - Un estudiante no puede entrar a `/docente/**` ni consultar claves de actividades.
 - No incluir `.env.local` en Git ni copiar claves en capturas o reportes.
 

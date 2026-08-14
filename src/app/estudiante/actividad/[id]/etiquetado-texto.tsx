@@ -5,6 +5,8 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import type { ContenidoEtiquetadoTextoPublico } from "@/lib/calificacion-etiquetado-texto";
 import { calificarEtiquetadoTextoAccion } from "./acciones-calificacion";
 
@@ -15,13 +17,20 @@ export default function EtiquetadoTexto({
   estudianteId,
   contenido,
   respuestaPrevia,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoEtiquetadoTextoPublico;
   respuestaPrevia?: { elegidas: string[]; itemsSnapshot?: ItemSnapshot[] };
+  puntajeAuto?: number | null;
 }) {
   const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
+    respuestaPrevia,
+    puntajeAuto ?? null,
+    Boolean(respuestaPrevia),
+  );
   const [elegidas, setElegidas] = useState<string[]>(
     respuestaPrevia?.elegidas ?? contenido.fragmentos.map(() => ""),
   );
@@ -30,9 +39,6 @@ export default function EtiquetadoTexto({
   // (itemsSnapshot) — aquí solo se lee, nunca se recalcula. Entregas de
   // antes de este cambio sin itemsSnapshot se tratan como si no hubiera
   // entrega todavía, en vez de tronar.
-  const [itemsSnapshot, setItemsSnapshot] = useState<ItemSnapshot[] | null>(
-    respuestaPrevia?.itemsSnapshot ?? null,
-  );
   const [resultado, setResultado] = useState<boolean[] | null>(
     respuestaPrevia?.itemsSnapshot
       ? respuestaPrevia.itemsSnapshot.map((item, i) => item.correcta === respuestaPrevia.elegidas[i])
@@ -58,9 +64,15 @@ export default function EtiquetadoTexto({
     const guardada = await guardarConAccion(() => calificarEtiquetadoTextoAccion(actividadId, elegidas));
     if (guardada) {
       const snapshot = guardada.itemsSnapshot as ItemSnapshot[];
-      setItemsSnapshot(snapshot);
       setResultado(snapshot.map((item, i) => item.correcta === elegidas[i]));
+      registrarEntrega(guardada);
     }
+  }
+
+  function iniciarReintento() {
+    setError(null);
+    setResultado(null);
+    setElegidas(contenido.fragmentos.map(() => ""));
   }
 
   return (
@@ -100,7 +112,7 @@ export default function EtiquetadoTexto({
               </select>
               {resultado && !resultado[i] && (
                 <span className="ml-1 text-xs text-red-600 dark:text-red-400">
-                  (era: {itemsSnapshot?.[i]?.correcta ?? ""})
+                  Revisa este fragmento
                 </span>
               )}{" "}
             </span>
@@ -134,7 +146,7 @@ export default function EtiquetadoTexto({
                 ) : (
                   <XCircle className="size-4 shrink-0" aria-hidden="true" />
                 )}
-                {resultado[i] ? "Correcto" : `Era: ${itemsSnapshot?.[i]?.correcta ?? ""}`}
+                {resultado[i] ? "Correcto" : "Incorrecto; revisa tu elección"}
               </p>
             )}
           </div>
@@ -145,6 +157,14 @@ export default function EtiquetadoTexto({
         <Boton type="submit" cargando={cargando}>
           {cargando ? "Guardando..." : "Guardar y revisar"}
         </Boton>
+      )}
+      {bloqueado && (
+        <AvisoReintento
+          puntaje={mejorPuntaje}
+          intentos={intentos}
+          onReintentar={iniciarReintento}
+          cargando={cargando}
+        />
       )}
     </form>
   );

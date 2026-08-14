@@ -139,7 +139,7 @@ export default function AgregarEstudiantes({
     // repiten en la misma tabla se omiten en silencio — así la docente
     // puede volver a pegar el roster completo actualizado de Excel sin que
     // todo el lote falle por los nombres que ya existían.
-    const { data, error: rpcError } = await supabase.rpc("agregar_estudiantes_con_boleta", {
+    const { data: totalAgregados, error: rpcError } = await supabase.rpc("agregar_estudiantes_con_boleta", {
       p_grupo_id: grupoId,
       p_estudiantes: nuevas,
     });
@@ -154,7 +154,7 @@ export default function AgregarEstudiantes({
       return;
     }
 
-    setAgregados(data?.length ?? 0);
+    setAgregados(typeof totalAgregados === "number" ? totalAgregados : 0);
     setFilas([filaVacia()]);
     setCargando(false);
     router.refresh();

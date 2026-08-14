@@ -39,6 +39,18 @@ if (!lote.includes('.eq("grupo_id", grupoId)')) failures.push("acciones-estudian
 
 const schema = await texto("supabase/schema.sql");
 const functions = await texto("supabase/functions.sql");
+if (schema.includes('create policy "estudiante edita su propia fila"')) {
+  failures.push("schema: el estudiante no debe tener una policy de UPDATE sobre su fila.");
+}
+if (!schema.includes("auth_user_id = (select auth.uid()) and activo = true")) {
+  failures.push("schema: la lectura de la fila del estudiante debe exigir activo = true.");
+}
+if (!functions.includes("revoke execute on function public.estudiante_tiene_nip(text, text) from public, anon, authenticated")) {
+  failures.push("functions: estudiante_tiene_nip no debe quedar expuesta como RPC pública.");
+}
+if (!functions.includes("returns integer language plpgsql security definer")) {
+  failures.push("functions: el alta de estudiantes no debe devolver filas completas con datos sensibles.");
+}
 if (/create\s+policy\s+"cualquiera con sesi[oó]n lee (actividades|unidades)"/i.test(schema)) {
   failures.push("supabase/schema.sql: no debe restaurar las policies de lectura abierta.");
 }

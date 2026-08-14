@@ -22,6 +22,8 @@ import { CheckCircle2, GripVertical, Plus, X, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import type { ContenidoOrdenarFragmentosPublico } from "@/lib/calificacion-ordenar-fragmentos";
 import { calificarOrdenarFragmentos } from "./acciones-calificacion";
 
@@ -105,13 +107,20 @@ export default function OrdenarFragmentos({
   estudianteId,
   contenido,
   respuestaPrevia,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoOrdenarFragmentosPublico;
   respuestaPrevia?: { orden: number[]; resultadoPorPosicion?: boolean[] };
+  puntajeAuto?: number | null;
 }) {
   const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
+    respuestaPrevia,
+    puntajeAuto ?? null,
+    Boolean(respuestaPrevia),
+  );
 
   const [secuencia, setSecuencia] = useState<number[]>(respuestaPrevia?.orden ?? []);
   // El detalle por posición ya se calificó en el servidor al entregar (ver
@@ -167,7 +176,16 @@ export default function OrdenarFragmentos({
     }
 
     const guardada = await guardarConAccion(() => calificarOrdenarFragmentos(actividadId, secuencia));
-    if (guardada) setResultado(guardada.resultadoPorPosicion as boolean[]);
+    if (guardada) {
+      setResultado(guardada.resultadoPorPosicion as boolean[]);
+      registrarEntrega(guardada);
+    }
+  }
+
+  function iniciarReintento() {
+    setError(null);
+    setResultado(null);
+    setSecuencia([]);
   }
 
   return (
@@ -243,6 +261,14 @@ export default function OrdenarFragmentos({
         <Boton type="submit" cargando={cargando}>
           {cargando ? "Guardando..." : "Guardar mi secuencia"}
         </Boton>
+      )}
+      {bloqueado && (
+        <AvisoReintento
+          puntaje={mejorPuntaje}
+          intentos={intentos}
+          onReintentar={iniciarReintento}
+          cargando={cargando}
+        />
       )}
     </form>
   );

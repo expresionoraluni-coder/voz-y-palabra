@@ -5,6 +5,8 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, HelpText, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
 import { contarPalabras } from "@/lib/contar-palabras";
 import type { ComparacionPalabra, ContenidoOrtografiaPublico } from "@/lib/comparar-ortografia";
@@ -17,6 +19,7 @@ export default function CorregirOrtografia({
   estudianteId,
   contenido,
   respuestaPrevia,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
@@ -28,8 +31,14 @@ export default function CorregirOrtografia({
     errores?: number;
     aprobado?: boolean;
   };
+  puntajeAuto?: number | null;
 }) {
   const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
+    respuestaPrevia,
+    puntajeAuto ?? null,
+    Boolean(respuestaPrevia),
+  );
   const [textoReescrito, setTextoReescrito] = useState(respuestaPrevia?.texto_reescrito ?? "");
   // El detalle de la comparación ya se calificó en el servidor al entregar
   // (ver acciones-calificacion.ts) y se guardó junto a la respuesta — aquí
@@ -72,7 +81,14 @@ export default function CorregirOrtografia({
         errores: guardada.errores as number,
         aprobado: guardada.aprobado as boolean,
       });
+      registrarEntrega(guardada);
     }
+  }
+
+  function iniciarReintento() {
+    setError(null);
+    setResultado(null);
+    setTextoReescrito("");
   }
 
   return (
@@ -143,9 +159,7 @@ export default function CorregirOrtografia({
                 <span className={c.correcto ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}>
                   {c.escrita || "(faltó)"}
                 </span>
-                {!c.correcto && c.correcta && (
-                  <span className="text-xs text-slate-500 dark:text-slate-500"> (era: {c.correcta})</span>
-                )}{" "}
+                {!c.correcto && <span className="text-xs text-slate-500 dark:text-slate-500"> (revisa esta palabra)</span>}{" "}
               </span>
             ))}
           </p>
@@ -157,6 +171,14 @@ export default function CorregirOrtografia({
         <Boton type="submit" cargando={cargando}>
           {cargando ? "Guardando..." : "Guardar y revisar"}
         </Boton>
+      )}
+      {bloqueado && (
+        <AvisoReintento
+          puntaje={mejorPuntaje}
+          intentos={intentos}
+          onReintentar={iniciarReintento}
+          cargando={cargando}
+        />
       )}
     </form>
   );

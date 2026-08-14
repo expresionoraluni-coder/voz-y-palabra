@@ -7,7 +7,7 @@ as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, ''
 
 create or replace function public.grupo_del_estudiante_actual()
 returns uuid language sql stable security definer set search_path = public
-as $$ select grupo_id from public.estudiantes where auth_user_id = auth.uid() $$;
+as $$ select grupo_id from public.estudiantes where auth_user_id = auth.uid() and activo = true $$;
 
 create or replace function public.estudiante_tiene_nip(p_codigo text, p_nombre text)
 returns boolean language sql security definer set search_path = public
@@ -21,12 +21,13 @@ returns table(id uuid, nombre text, grupo_id uuid, grupo_nombre text, nip_nuevo 
 language plpgsql security definer set search_path = public, extensions
 as $$
 declare v_grupo record; v_estudiante record; v_intentos_nombre record; v_intentos_grupo_actual int;
+  v_error_datos constant text := 'No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.';
   v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo'; end if;
   if p_nip !~ '^[0-9]{4}$' then raise exception 'Tu NIP debe ser de 4 dígitos.'; end if;
   select g.id, g.nombre into v_grupo from public.grupos g where g.codigo_acceso = trim(p_codigo) and g.activo = true;
-  if v_grupo.id is null then perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, 'No encontramos ese código de grupo'::text; return; end if;
+  if v_grupo.id is null then perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
   select * into v_intentos_nombre from public.intentos_nombre_estudiante where usuario_id = auth.uid();
   if v_intentos_nombre.bloqueado_hasta is not null and v_intentos_nombre.bloqueado_hasta > now() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_intentos_nombre.bloqueado_hasta - now())) / 60)))::text; return;
@@ -41,9 +42,9 @@ begin
       on conflict (grupo_id) do update set intentos = case when now() - ing.ventana_inicio > interval '5 minutes' then 1 else ing.intentos + 1 end,
       ventana_inicio = case when now() - ing.ventana_inicio > interval '5 minutes' then now() else ing.ventana_inicio end returning ing.intentos into v_intentos_grupo_actual;
     perform pg_sleep(least(0.3 + v_intentos_grupo_actual * 0.15, 2.5));
-    return query select null::uuid, null::text, null::uuid, null::text, null::boolean, 'No encontramos tu nombre en este grupo, revisa cómo está escrito'::text; return;
+    return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
   end if;
-  if not v_estudiante.activo then perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, 'Tu cuenta fue dada de baja. Si crees que es un error, habla con tu profesora.'::text; return; end if;
+  if not v_estudiante.activo then perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
   if v_estudiante.bloqueado_hasta is not null and v_estudiante.bloqueado_hasta > now() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_estudiante.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
@@ -55,7 +56,7 @@ begin
   end if;
   if extensions.crypt(p_nip, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
     update public.estudiantes set intentos_fallidos = v_estudiante.intentos_fallidos + 1, bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end where id = v_estudiante.id;
-    perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, 'Tu NIP no es correcto.'::text; return;
+    perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
   end if;
   update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and id <> v_estudiante.id;
   update public.estudiantes set auth_user_id = auth.uid(), intentos_fallidos = 0, bloqueado_hasta = null where id = v_estudiante.id;
@@ -64,9 +65,9 @@ end;
 $$;
 
 create or replace function public.agregar_estudiantes_con_boleta(p_grupo_id uuid, p_estudiantes jsonb)
-returns setof public.estudiantes language plpgsql security definer set search_path = public, extensions
+returns integer language plpgsql security definer set search_path = public, extensions
 as $$
-declare v_item jsonb; v_nombre text; v_boleta text;
+declare v_item jsonb; v_nombre text; v_boleta text; v_creados integer := 0;
 begin
   if not exists (select 1 from public.grupos where id = p_grupo_id and docente_id = auth.uid()) then raise exception 'No tienes permiso sobre este grupo.'; end if;
   if jsonb_typeof(p_estudiantes) <> 'array' or jsonb_array_length(p_estudiantes) > 100 then raise exception 'La lista de estudiantes no es válida.'; end if;
@@ -74,8 +75,10 @@ begin
     v_nombre := public.normalizar_nombre(coalesce(v_item->>'nombre', '')); v_boleta := regexp_replace(coalesce(v_item->>'boleta', ''), '\D', '', 'g');
     if v_nombre = '' then raise exception 'Falta el nombre de un estudiante.'; end if;
     if length(v_boleta) < 4 or length(v_boleta) > 20 then raise exception 'La boleta de "%" no es válida.', v_nombre; end if;
-    return query insert into public.estudiantes (nombre, grupo_id, boleta, nip_hash, debe_cambiar_nip) values (v_nombre, p_grupo_id, v_boleta, extensions.crypt(right(v_boleta, 4), extensions.gen_salt('bf')), true) returning *;
+    insert into public.estudiantes (nombre, grupo_id, boleta, nip_hash, debe_cambiar_nip) values (v_nombre, p_grupo_id, v_boleta, extensions.crypt(right(v_boleta, 4), extensions.gen_salt('bf')), true);
+    v_creados := v_creados + 1;
   end loop;
+  return v_creados;
 end;
 $$;
 
@@ -207,5 +210,20 @@ for each row execute function public.proteger_columnas_entrega();
 -- Los triggers internos no son endpoints RPC.
 revoke execute on function public.proteger_columnas_entrega() from public, anon, authenticated;
 revoke execute on function public.proteger_correo_docente() from public, anon, authenticated;
-revoke execute on function public.agregar_estudiantes_con_boleta(uuid, jsonb) from anon;
-revoke execute on function public.reiniciar_nip_estudiante(uuid) from anon;
+revoke execute on function public.estudiante_tiene_nip(text, text) from public, anon, authenticated;
+revoke execute on function public.agregar_estudiantes_con_boleta(uuid, jsonb) from public, anon;
+grant execute on function public.agregar_estudiantes_con_boleta(uuid, jsonb) to authenticated;
+revoke execute on function public.reiniciar_nip_estudiante(uuid) from public, anon;
+grant execute on function public.reiniciar_nip_estudiante(uuid) to authenticated;
+revoke execute on function public.ingresar_estudiante(text, text, text) from public, anon;
+grant execute on function public.ingresar_estudiante(text, text, text) to authenticated;
+revoke execute on function public.cambiar_nip_estudiante(text, text) from public, anon;
+grant execute on function public.cambiar_nip_estudiante(text, text) to authenticated;
+revoke execute on function public.crear_perfil_docente(text, text) from public, anon;
+grant execute on function public.crear_perfil_docente(text, text) to authenticated;
+revoke execute on function public.verificar_insignias() from public, anon;
+grant execute on function public.verificar_insignias() to authenticated;
+revoke execute on function public.estudiante_actual() from public, anon;
+grant execute on function public.estudiante_actual() to authenticated;
+revoke execute on function public.grupo_del_estudiante_actual() from public, anon;
+grant execute on function public.grupo_del_estudiante_actual() to authenticated;

@@ -7,6 +7,25 @@ import Boton from "@/components/ui/button";
 
 export default function AccesoGrupo({ codigo }: { codigo: string }) {
   const [copiado, setCopiado] = useState<"codigo" | "instrucciones" | null>(null);
+  const [error, setError] = useState(false);
+
+  async function copiarTexto(texto: string) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(texto);
+      return;
+    }
+
+    const area = document.createElement("textarea");
+    area.value = texto;
+    area.setAttribute("readonly", "true");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const copio = document.execCommand("copy");
+    area.remove();
+    if (!copio) throw new Error("El navegador no permitió copiar.");
+  }
 
   async function copiar(tipo: "codigo" | "instrucciones") {
     const texto =
@@ -14,12 +33,14 @@ export default function AccesoGrupo({ codigo }: { codigo: string }) {
         ? codigo
         : `Para entrar a Voz y Palabra:\n1. Abre ${window.location.origin}/ingreso/estudiante\n2. Escribe el código de grupo: ${codigo}\n3. Escribe tu nombre y los últimos 4 dígitos de tu boleta como NIP inicial.`;
 
+    setError(false);
     try {
-      await navigator.clipboard.writeText(texto);
+      await copiarTexto(texto);
       setCopiado(tipo);
       window.setTimeout(() => setCopiado(null), 1800);
     } catch {
       setCopiado(null);
+      setError(true);
     }
   }
 
@@ -48,6 +69,11 @@ export default function AccesoGrupo({ codigo }: { codigo: string }) {
         {copiado === "instrucciones" ? <Check className="size-4" aria-hidden="true" /> : <Clipboard className="size-4" aria-hidden="true" />}
         {copiado === "instrucciones" ? "Instrucciones copiadas" : "Copiar instrucciones para el grupo"}
       </Boton>
+      {error && (
+        <p role="status" className="text-sm text-amber-800 dark:text-amber-200">
+          No se pudo copiar automáticamente. Selecciona el código o las instrucciones y cópialos manualmente.
+        </p>
+      )}
     </Card>
   );
 }

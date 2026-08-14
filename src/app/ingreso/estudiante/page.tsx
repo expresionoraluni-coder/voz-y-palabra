@@ -10,18 +10,12 @@ import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field"
 import Boton from "@/components/ui/button";
 import Alert from "@/components/ui/alert";
 
-const NIP_INCORRECTO = "Tu NIP no es correcto.";
 const INTENTOS_PARA_AYUDA = 3;
 
 function mensajeErrorIngreso(mensaje: string): string {
   const texto = mensaje.toLowerCase();
-  if (texto.includes("grupo") || texto.includes("código")) {
-    return "No encontramos ese grupo. Revisa el código y vuelve a intentar.";
-  }
-  if (texto.includes("nip") || texto.includes("nombre")) {
-    return "No pudimos validar tus datos. Revisa tu nombre y NIP.";
-  }
-  return "No pudimos iniciar tu sesión. Intenta de nuevo en un momento.";
+  if (texto.includes("demasiados intentos")) return mensaje;
+  return "No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.";
 }
 
 export default function IngresoEstudiante() {
@@ -93,8 +87,10 @@ export default function IngresoEstudiante() {
     // quede guardado (una excepción deshace todo lo hecho en esa llamada).
     const fila = resultado?.[0];
     if (fila?.error) {
-      setError(fila.error);
-      setIntentosNipFallidos((n) => (fila.error === NIP_INCORRECTO ? n + 1 : n));
+      setError(mensajeErrorIngreso(fila.error));
+      if (!fila.error.toLowerCase().includes("demasiados intentos")) {
+        setIntentosNipFallidos((n) => n + 1);
+      }
       setCargando(false);
       return;
     }

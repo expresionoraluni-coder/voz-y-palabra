@@ -12,7 +12,7 @@ import ProgressBar from "@/components/ui/progress-bar";
 import EmptyState from "@/components/ui/empty-state";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 import { temaUnidad } from "@/lib/unidad-tema";
-import { unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { intentosDeEntregaAuto, puedeAbrirDependiente, unidadEstaCompleta } from "@/lib/progreso-unidad";
 
 export default async function UnidadEstudiante({
   params,
@@ -47,7 +47,7 @@ export default async function UnidadEstudiante({
       .select("id, titulo, instrucciones, requiere_actividad_id")
       .eq("unidad_id", id)
       .order("orden"),
-    supabase.from("entregas").select("actividad_id, puntaje_auto").eq("estudiante_id", estudiante.id),
+    supabase.from("entregas").select("actividad_id, puntaje_auto, respuesta").eq("estudiante_id", estudiante.id),
   ]);
   if (!unidad) notFound();
 
@@ -55,7 +55,7 @@ export default async function UnidadEstudiante({
     ...a,
     entregas: (entregasEstudiante ?? [])
       .filter((e) => e.actividad_id === a.id)
-      .map((e) => ({ puntaje_auto: e.puntaje_auto })),
+      .map((e) => ({ puntaje_auto: e.puntaje_auto, respuesta: e.respuesta })),
   }));
 
   if (unidad.orden > 1) {
@@ -202,7 +202,14 @@ export default async function UnidadEstudiante({
                   : null;
                 const entregaPrerequisito = prerequisito?.entregas?.[0];
                 const bloqueada = Boolean(
-                  prerequisito && (!entregaPrerequisito || (entregaPrerequisito.puntaje_auto ?? 0) < 70),
+                  prerequisito &&
+                    (!entregaPrerequisito ||
+                      !puedeAbrirDependiente(entregaPrerequisito.puntaje_auto, entregaPrerequisito.respuesta)),
+                );
+                const puntajeActual = completada ? (a.entregas?.[0]?.puntaje_auto ?? null) : null;
+                const intentosActuales = intentosDeEntregaAuto(a.entregas?.[0]?.respuesta, completada);
+                const puedeRepasar = Boolean(
+                  completada && puntajeActual !== null && puntajeActual < 70 && intentosActuales < 3,
                 );
 
                 if (bloqueada) {
@@ -238,7 +245,7 @@ export default async function UnidadEstudiante({
                             : "text-xs text-slate-500 dark:text-slate-400"
                         }
                       >
-                        {completada ? "Completada" : "Lista para comenzar"}
+                        {puedeRepasar ? "Puedes mejorarla" : completada ? "Completada" : "Lista para comenzar"}
                       </span>
                     </CardLink>
                   </Link>

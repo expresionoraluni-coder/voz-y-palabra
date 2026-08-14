@@ -58,7 +58,11 @@ function parsearSecciones(texto: string): SeccionParseada[] {
   });
 }
 
-function claveBorrador(unidadId: string) {
+function claveBorrador(unidadId: string, usuarioId: string) {
+  return `voz-y-palabra:borrador-actividad:${usuarioId}:${unidadId}`;
+}
+
+function claveBorradorLegacy(unidadId: string) {
   return `voz-y-palabra:borrador-actividad:${unidadId}`;
 }
 
@@ -225,10 +229,12 @@ export default function ActividadForm({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUsuarioId(data.user?.id ?? null));
     supabase
       .from("tipos_actividad")
       .select("id, nombre, descripcion")
@@ -248,9 +254,15 @@ export default function ActividadForm({
   // Borrador: solo en modo creación — se restaura una vez al montar y se
   // guarda en cada cambio; se limpia al guardar con éxito.
   useEffect(() => {
-    if (modoEdicion) return;
-    const guardado = localStorage.getItem(claveBorrador(unidadId));
-    if (!guardado) return;
+    if (modoEdicion || !usuarioId) return;
+    // El borrador anterior no estaba ligado a una cuenta. Elimínalo para que
+    // no quede disponible si otra docente usa el mismo navegador.
+    localStorage.removeItem(claveBorradorLegacy(unidadId));
+    const guardado = localStorage.getItem(claveBorrador(unidadId, usuarioId));
+    if (!guardado) {
+      setBorradorRestaurado(true);
+      return;
+    }
     try {
       const datos = JSON.parse(guardado);
       if (datos.titulo) setTitulo(datos.titulo);
@@ -303,12 +315,11 @@ export default function ActividadForm({
       if (datos.temasOrtografia) setTemasOrtografia(datos.temasOrtografia);
       setBorradorRestaurado(true);
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [modoEdicion, unidadId, usuarioId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (modoEdicion) return;
+    if (modoEdicion || !usuarioId || !borradorRestaurado) return;
     const datos = {
       titulo,
       instrucciones,
@@ -360,13 +371,15 @@ export default function ActividadForm({
       temasOrtografia,
     };
     try {
-      localStorage.setItem(claveBorrador(unidadId), JSON.stringify(datos));
+      localStorage.setItem(claveBorrador(unidadId, usuarioId), JSON.stringify(datos));
     } catch {
       // Safari privado o cuota llena: el borrador simplemente no se guarda.
     }
   }, [
     modoEdicion,
     unidadId,
+    usuarioId,
+    borradorRestaurado,
     titulo,
     instrucciones,
     aprendizajeEsperado,
@@ -757,7 +770,8 @@ export default function ActividadForm({
         setCargando(false);
         return;
       }
-      localStorage.removeItem(claveBorrador(unidadId));
+      if (usuarioId) localStorage.removeItem(claveBorrador(unidadId, usuarioId));
+      localStorage.removeItem(claveBorradorLegacy(unidadId));
     }
 
     router.push(`/docente/unidades/${unidadId}`);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { PartyPopper, ChevronRight } from "lucide-react";
 import Boton from "@/components/ui/button";
@@ -30,6 +31,8 @@ export default function CelebracionUnidad({
   siguienteHref: string;
   textoSiguiente: string;
 }) {
+  const [reflexionGuardada, setReflexionGuardada] = useState(Boolean(textoReflexionCierrePrevio));
+
   return (
     <div className="flex flex-col gap-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
       <div className="flex items-center gap-2">
@@ -43,13 +46,25 @@ export default function CelebracionUnidad({
         textoPrevio={textoReflexionCierrePrevio}
         confianzaInicioPct={confianzaInicioPct}
         promedioUnidad={promedioUnidad}
+        onGuardado={() => setReflexionGuardada(true)}
       />
-      <Link href={siguienteHref}>
-        <Boton type="button" className="w-full">
-          {textoSiguiente}
-          <ChevronRight className="size-4" aria-hidden="true" />
+      {!reflexionGuardada && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          Antes de continuar, escribe y guarda tu reflexión de cierre. Este paso abre la siguiente unidad.
+        </p>
+      )}
+      {reflexionGuardada ? (
+        <Link href={siguienteHref}>
+          <Boton type="button" className="w-full">
+            {textoSiguiente}
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Boton>
+        </Link>
+      ) : (
+        <Boton type="button" disabled className="w-full">
+          Guarda la reflexión para continuar
         </Boton>
-      </Link>
+      )}
     </div>
   );
 }

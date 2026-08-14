@@ -5,6 +5,8 @@ import { CheckCircle2, Video, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import EmptyState from "@/components/ui/empty-state";
 import { urlEmbedYoutube } from "@/lib/video-embed";
 import type { ContenidoEvaluarVideosPublico } from "@/lib/calificacion-evaluar-videos";
@@ -50,13 +52,20 @@ export default function EvaluarVideos({
   estudianteId,
   contenido,
   respuestaPrevia,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoEvaluarVideosPublico;
   respuestaPrevia?: { marcadas_bien: string[]; marcadas_mal: string[]; resultado?: { bien: boolean[]; mal: boolean[] } };
+  puntajeAuto?: number | null;
 }) {
   const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
+    respuestaPrevia,
+    puntajeAuto ?? null,
+    Boolean(respuestaPrevia),
+  );
   const [marcadasBien, setMarcadasBien] = useState<string[]>(respuestaPrevia?.marcadas_bien ?? []);
   const [marcadasMal, setMarcadasMal] = useState<string[]>(respuestaPrevia?.marcadas_mal ?? []);
   // El detalle de aciertos/fallos ya se calificó en el servidor al entregar
@@ -81,7 +90,17 @@ export default function EvaluarVideos({
     setError(null);
 
     const guardada = await guardarConAccion(() => calificarEvaluarVideos(actividadId, marcadasBien, marcadasMal));
-    if (guardada) setResultado(guardada.resultado as { bien: boolean[]; mal: boolean[] });
+    if (guardada) {
+      setResultado(guardada.resultado as { bien: boolean[]; mal: boolean[] });
+      registrarEntrega(guardada);
+    }
+  }
+
+  function iniciarReintento() {
+    setError(null);
+    setResultado(null);
+    setMarcadasBien([]);
+    setMarcadasMal([]);
   }
 
   function checklist(lista: "bien" | "mal", marcadas: string[], resultadoLista?: boolean[]) {
@@ -138,6 +157,14 @@ export default function EvaluarVideos({
         <Boton type="submit" cargando={cargando}>
           {cargando ? "Guardando..." : "Guardar y revisar"}
         </Boton>
+      )}
+      {bloqueado && (
+        <AvisoReintento
+          puntaje={mejorPuntaje}
+          intentos={intentos}
+          onReintentar={iniciarReintento}
+          cargando={cargando}
+        />
       )}
     </form>
   );

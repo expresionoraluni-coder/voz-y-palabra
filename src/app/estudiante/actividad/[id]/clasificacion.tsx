@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, RotateCcw, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
-import { createClient } from "@/lib/supabase/client";
-import { reiniciarEntregaAccion } from "./acciones-entrega";
 import { Select, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { bloquearCopiar } from "@/lib/anti-copiar";
 import type { ContenidoClasificacionPublico } from "@/lib/calificacion-clasificacion";
 import { calificarClasificacionAccion } from "./acciones-calificacion";
@@ -28,15 +28,21 @@ export default function Clasificacion({
   contenido,
   respuestaPrevia,
   dosNiveles,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoClasificacionPublico;
   respuestaPrevia?: { elegidas: string[]; itemsSnapshot?: ItemSnapshot[] };
   dosNiveles?: boolean;
+  puntajeAuto?: number | null;
 }) {
   const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
-  const [reiniciando, setReiniciando] = useState(false);
+  const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
+    respuestaPrevia,
+    puntajeAuto ?? null,
+    Boolean(respuestaPrevia),
+  );
   const [elegidas, setElegidas] = useState<string[]>(
     respuestaPrevia?.elegidas ?? contenido.elementos.map(() => ""),
   );
@@ -46,9 +52,6 @@ export default function Clasificacion({
   // docente) — aquí solo se lee, nunca se recalcula. Entregas de antes de
   // este cambio sin itemsSnapshot se tratan como si no hubiera entrega
   // todavía, en vez de tronar.
-  const [itemsSnapshot, setItemsSnapshot] = useState<ItemSnapshot[] | null>(
-    respuestaPrevia?.itemsSnapshot ?? null,
-  );
   const [resultado, setResultado] = useState<boolean[] | null>(
     respuestaPrevia?.itemsSnapshot
       ? respuestaPrevia.itemsSnapshot.map((item, i) => item.correcta === respuestaPrevia.elegidas[i])
@@ -91,28 +94,15 @@ export default function Clasificacion({
     const guardada = await guardarConAccion(() => calificarClasificacionAccion(actividadId, elegidas));
     if (guardada) {
       const snapshot = guardada.itemsSnapshot as ItemSnapshot[];
-      setItemsSnapshot(snapshot);
       setResultado(snapshot.map((item, i) => item.correcta === elegidas[i]));
+      registrarEntrega(guardada);
     }
   }
 
-  async function reiniciarPrueba() {
-    if (!window.confirm("¿Reiniciar esta prueba? Se borra tu intento actual y la vuelves a resolver desde cero."))
-      return;
-    setReiniciando(true);
-    const supabase = createClient();
-    await reiniciarEntregaAccion(actividadId, "clasificacion");
-    await supabase
-      .from("reflexiones")
-      .delete()
-      .eq("actividad_id", actividadId)
-      .eq("estudiante_id", estudianteId)
-      .in("momento", ["prediccion", "cierre"]);
-    // Recarga dura (no router.refresh): el contexto de "entrega reciente"
-    // guarda su valor inicial una sola vez y no se resincroniza solo con un
-    // refresh de Server Components — así se garantiza que la página vuelva
-    // a mostrar la predicción desde cero.
-    window.location.reload();
+  function iniciarReintento() {
+    setError(null);
+    setResultado(null);
+    setElegidas(contenido.elementos.map(() => ""));
   }
 
   return (
@@ -155,7 +145,7 @@ export default function Clasificacion({
                 ) : (
                   <XCircle className="size-4 shrink-0" aria-hidden="true" />
                 )}
-                {resultado[i] ? "Correcto" : dosNiveles ? "Incorrecto" : `Era: ${itemsSnapshot?.[i]?.correcta ?? ""}`}
+                {resultado[i] ? "Correcto" : "Incorrecto; revisa tu elección"}
               </p>
             )}
           </div>
@@ -167,11 +157,13 @@ export default function Clasificacion({
           {cargando ? "Guardando..." : "Guardar y revisar"}
         </Boton>
       )}
-      {dosNiveles && bloqueado && (
-        <Boton type="button" variant="secondary" cargando={reiniciando} onClick={reiniciarPrueba}>
-          <RotateCcw className="size-4" aria-hidden="true" />
-          {reiniciando ? "Reiniciando..." : "Reiniciar prueba"}
-        </Boton>
+      {bloqueado && (
+        <AvisoReintento
+          puntaje={mejorPuntaje}
+          intentos={intentos}
+          onReintentar={iniciarReintento}
+          cargando={cargando}
+        />
       )}
     </form>
   );

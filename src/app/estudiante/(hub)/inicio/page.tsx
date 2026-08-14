@@ -34,7 +34,7 @@ import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
 import { proximoRepaso } from "@/lib/calendario-repaso";
-import { unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { intentosDeEntregaAuto, puedeAbrirDependiente, unidadEstaCompleta } from "@/lib/progreso-unidad";
 
 type Grupo = { nombre: string } | { nombre: string }[] | null;
 
@@ -75,7 +75,7 @@ export default async function InicioEstudiante({
     { data: unidades },
     { data: insignias },
     { data: entregas },
-    { count: totalReflexiones },
+    { data: reflexionesCierre },
     { data: avisos },
     { data: eventosProximos },
   ] = await Promise.all([
@@ -89,13 +89,14 @@ export default async function InicioEstudiante({
     // filtro por estudiante_id sigue siendo explícito, no depende de RLS.
     admin
       .from("entregas")
-      .select("id, actividad_id, puntaje_auto, created_at, estado, actividades(titulo, orden, requiere_actividad_id)")
+      .select("id, actividad_id, puntaje_auto, created_at, estado, respuesta, actividades(titulo, orden, requiere_actividad_id)")
       .eq("estudiante_id", estudiante.id),
     supabase
       .from("reflexiones")
-      .select("id", { count: "exact", head: true })
+      .select("unidad_id")
       .eq("estudiante_id", estudiante.id)
-      .eq("momento", "cierre"),
+      .eq("momento", "cierre")
+      .not("unidad_id", "is", null),
     supabase
       .from("avisos")
       .select("id, titulo, mensaje, created_at")
@@ -120,7 +121,8 @@ export default async function InicioEstudiante({
     : { count: 0 };
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
-  const puntos = idsCompletadas.size * 10 + (totalReflexiones ?? 0) * 5;
+  const unidadesConReflexion = new Set((reflexionesCierre ?? []).map((r) => r.unidad_id));
+  const puntos = idsCompletadas.size * 10 + unidadesConReflexion.size * 5;
   const racha = calcularRacha((entregas ?? []).map((e) => e.created_at));
 
   // Prioriza vencidos y, entre los vigentes, el repaso más próximo — antes
@@ -145,7 +147,9 @@ export default async function InicioEstudiante({
     const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
     return { ...u, total, hechas, pct };
   });
-  const indiceActiva = unidadesConProgreso.findIndex((u) => !unidadEstaCompleta(u.total, u.hechas));
+  const indiceActiva = unidadesConProgreso.findIndex(
+    (u) => !unidadEstaCompleta(u.total, u.hechas) || !unidadesConReflexion.has(u.id),
+  );
   const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
   const [{ data: bitacoraActiva }, { data: confianzaActiva }] = unidadActiva
@@ -173,8 +177,18 @@ export default async function InicioEstudiante({
     const entregaPrerequisito = (entregas ?? []).find(
       (entrega) => entrega.actividad_id === actividad.requiere_actividad_id,
     );
-    return (entregaPrerequisito?.puntaje_auto ?? 0) >= 70;
+    return puedeAbrirDependiente(entregaPrerequisito?.puntaje_auto ?? null, entregaPrerequisito?.respuesta);
   });
+
+  const reintentoPendiente = (entregas ?? []).find(
+    (entrega) =>
+      entrega.puntaje_auto !== null &&
+      entrega.puntaje_auto < 70 &&
+      intentosDeEntregaAuto(entrega.respuesta, true) < 3,
+  );
+  const faltaCerrarUnidad = Boolean(
+    unidadActiva && unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) && !unidadesConReflexion.has(unidadActiva.id),
+  );
 
   const recordatorios: { texto: string; href: string }[] = [];
   for (const ev of eventosProximos ?? []) {
@@ -207,7 +221,16 @@ export default async function InicioEstudiante({
             cta: "Continuar",
             icon: Target,
           }
-        : primeraActividadAccesible
+        : faltaCerrarUnidad
+          ? {
+              etiqueta: "Cierre de unidad",
+              titulo: `Guarda tu reflexion de la Unidad ${unidadActiva.orden}`,
+              descripcion: "Es el ultimo paso antes de continuar con la siguiente unidad.",
+              href: `/estudiante/unidad/${unidadActiva.id}`,
+              cta: "Cerrar unidad",
+              icon: Target,
+            }
+          : primeraActividadAccesible
           ? {
               etiqueta: `Unidad ${unidadActiva.orden}`,
               titulo: primeraActividadAccesible.titulo,
@@ -216,7 +239,16 @@ export default async function InicioEstudiante({
               cta: "Continuar actividad",
               icon: PlayCircle,
             }
-          : {
+          : reintentoPendiente
+            ? {
+                etiqueta: "Una oportunidad mas",
+                titulo: "Vuelve a practicar una actividad",
+                descripcion: "Puedes mejorar tu mejor resultado antes de seguir.",
+                href: `/estudiante/actividad/${reintentoPendiente.actividad_id}`,
+                cta: "Intentar de nuevo",
+                icon: RotateCcw,
+              }
+            : {
               etiqueta: "Ruta completa",
               titulo: "Revisa cómo has avanzado",
               descripcion: "Observa tus resultados y reconoce lo que ya dominas.",

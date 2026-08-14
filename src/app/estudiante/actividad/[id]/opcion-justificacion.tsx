@@ -5,6 +5,8 @@ import { Check, CheckCircle2, ChevronLeft, Lightbulb, XCircle } from "lucide-rea
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import ProgressBar from "@/components/ui/progress-bar";
 import { ideasClaveMencionadas } from "@/lib/ideas-clave";
 import { contarPalabras } from "@/lib/contar-palabras";
@@ -206,11 +208,13 @@ export default function OpcionJustificacion({
   estudianteId,
   contenido,
   respuestaPrevia,
+  puntajeAuto,
 }: {
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoOpcionJustificacionPublico;
   respuestaPrevia?: Record<string, unknown>;
+  puntajeAuto?: number | null;
 }) {
   const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
 
@@ -219,6 +223,11 @@ export default function OpcionJustificacion({
   const presentacion = useMemo(() => presentacionDeContenido(contenido), [contenido]);
   const mensajes = useMemo(() => mensajesDeContenido(contenido), [contenido]);
   const rondasPrevias = useMemo(() => rondasDeRespuesta(respuestaPrevia), [respuestaPrevia]);
+  const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
+    respuestaPrevia,
+    puntajeAuto ?? null,
+    Boolean(respuestaPrevia?.resultado),
+  );
 
   const [indiceActual, setIndiceActual] = useState(0);
   const [respuestas, setRespuestas] = useState<RondaRespuesta[]>(() =>
@@ -277,7 +286,17 @@ export default function OpcionJustificacion({
     if (presentacion === "todas_juntas" ? !validarTodas() : !validarActual()) return;
 
     const guardada = await guardarConAccion(() => calificarOpcionJustificacionAccion(actividadId, respuestas));
-    if (guardada) setResultado(guardada.resultado as ItemResultado[]);
+    if (guardada) {
+      setResultado(guardada.resultado as ItemResultado[]);
+      registrarEntrega(guardada);
+    }
+  }
+
+  function iniciarReintento() {
+    setError(null);
+    setResultado(null);
+    setIndiceActual(0);
+    setRespuestas(rondas.map(() => ({ opcion: "", justificacion: "" })));
   }
 
   return (
@@ -312,7 +331,6 @@ export default function OpcionJustificacion({
                 indice={i}
                 onCambiar={(cambios) => actualizarRespuestaEn(i, cambios)}
                 bloqueado={bloqueado}
-                opcionCorrecta={resultado?.[i]?.opcionCorrecta}
               />
             </div>
           ))}
@@ -345,7 +363,6 @@ export default function OpcionJustificacion({
             indice={indiceActual}
             onCambiar={(cambios) => actualizarRespuestaEn(indiceActual, cambios)}
             bloqueado={bloqueado}
-            opcionCorrecta={resultado?.[indiceActual]?.opcionCorrecta}
           />
 
           {error && <ErrorText>{error}</ErrorText>}
@@ -370,6 +387,14 @@ export default function OpcionJustificacion({
             )}
           </div>
         </>
+      )}
+      {bloqueado && (
+        <AvisoReintento
+          puntaje={mejorPuntaje}
+          intentos={intentos}
+          onReintentar={iniciarReintento}
+          cargando={cargando}
+        />
       )}
     </form>
   );

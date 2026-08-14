@@ -4,6 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { mensajeError } from "@/lib/mensaje-error";
 import {
+  MAX_INTENTOS_AUTO,
+  agregarMetaEntregaAuto,
+  metaDeEntregaAuto,
+  quitarMetaEntregaAuto,
+} from "@/lib/intentos-auto";
+import {
   esRegistroPlano,
   esUuid,
   validarEstadoEntrega,
@@ -14,7 +20,13 @@ import {
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type ResultadoCalificacion =
-  | { ok: true; puntajeAuto: number | null; respuesta: Record<string, unknown> }
+  | {
+      ok: true;
+      puntajeAuto: number | null;
+      respuesta: Record<string, unknown>;
+      intentos?: number;
+      mejorPuntaje?: number | null;
+    }
   | { ok: false; error: string };
 
 export type ContextoCalificacion = {
@@ -101,13 +113,53 @@ export async function guardarEntregaInterna(
   if (!estudianteId) return { ok: false, error: SESION_INVALIDA };
 
   const admin = createAdminClient();
+  const esAutocalificable = puntajeAuto !== null;
+  const respuestaLimpia = esAutocalificable ? quitarMetaEntregaAuto(respuesta) : respuesta;
+  let respuestaParaGuardar = respuestaLimpia;
+  let respuestaParaCliente = respuestaLimpia;
+  let puntajeParaGuardar = puntajeAuto;
+  let intentos: number | undefined;
+  let mejorPuntaje: number | null = puntajeAuto;
+
+  if (esAutocalificable) {
+    const { data: entregaAnterior, error: entregaAnteriorError } = await admin
+      .from("entregas")
+      .select("respuesta, puntaje_auto")
+      .eq("estudiante_id", estudianteId)
+      .eq("actividad_id", actividadId)
+      .maybeSingle();
+    if (entregaAnteriorError) return { ok: false, error: mensajeError(entregaAnteriorError) };
+
+    const intentosAnteriores = entregaAnterior
+      ? metaDeEntregaAuto(entregaAnterior.respuesta)?.intentos ?? 1
+      : 0;
+    if (intentosAnteriores >= MAX_INTENTOS_AUTO) {
+      return { ok: false, error: `Ya usaste los ${MAX_INTENTOS_AUTO} intentos de esta actividad.` };
+    }
+
+    intentos = intentosAnteriores + 1;
+    mejorPuntaje = Math.max(entregaAnterior?.puntaje_auto ?? 0, puntajeAuto);
+    const meta = { intentos, mejorPuntaje };
+    respuestaParaCliente = agregarMetaEntregaAuto(respuestaLimpia, meta);
+
+    // Conserva la respuesta asociada al mejor resultado. La respuesta del
+    // intento actual se devuelve aparte para que el estudiante vea su
+    // retroalimentación inmediatamente, aunque no haya superado su marca.
+    respuestaParaGuardar =
+      entregaAnterior && (entregaAnterior.puntaje_auto ?? -1) > puntajeAuto &&
+      entregaAnterior.respuesta && typeof entregaAnterior.respuesta === "object"
+        ? agregarMetaEntregaAuto(entregaAnterior.respuesta as Record<string, unknown>, meta)
+        : respuestaParaCliente;
+    puntajeParaGuardar = mejorPuntaje;
+  }
+
   const { error } = await admin.from("entregas").upsert(
     {
       estudiante_id: estudianteId,
       actividad_id: actividadId,
-      respuesta,
+      respuesta: respuestaParaGuardar,
       estado,
-      puntaje_auto: puntajeAuto,
+      puntaje_auto: puntajeParaGuardar,
     },
     { onConflict: "estudiante_id,actividad_id" },
   );
@@ -119,7 +171,7 @@ export async function guardarEntregaInterna(
     // La entrega ya quedó guardada; una insignia puede calcularse en la siguiente visita.
   }
 
-  return { ok: true, puntajeAuto, respuesta };
+  return { ok: true, puntajeAuto: puntajeParaGuardar, respuesta: respuestaParaCliente, intentos, mejorPuntaje };
 }
 
 export async function reiniciarEntregaInterna(

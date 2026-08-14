@@ -17,6 +17,7 @@ export default function ReflexionCierre({
   textoPrevio,
   confianzaInicioPct,
   promedioUnidad,
+  onGuardado,
 }: {
   estudianteId: string;
   unidadId: string;
@@ -24,6 +25,7 @@ export default function ReflexionCierre({
   textoPrevio?: string | null;
   confianzaInicioPct: number | null;
   promedioUnidad: number | null;
+  onGuardado?: () => void;
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(!textoPrevio);
@@ -60,6 +62,7 @@ export default function ReflexionCierre({
 
     setCargando(false);
     setEditando(false);
+    onGuardado?.();
     router.refresh();
   }
 

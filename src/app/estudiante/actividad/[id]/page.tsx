@@ -35,6 +35,7 @@ import { sanitizarContenidoComparador, type ContenidoComparador } from "@/lib/ca
 import { sanitizarContenidoClasificacion, type ContenidoClasificacion } from "@/lib/calificacion-clasificacion";
 import { sanitizarContenidoEtiquetadoTexto, type ContenidoEtiquetadoTexto } from "@/lib/calificacion-etiquetado-texto";
 import { sanitizarContenidoOrtografia, type ContenidoOrtografia } from "@/lib/comparar-ortografia";
+import { puedeAbrirDependiente } from "@/lib/progreso-unidad";
 
 const TIPOS_CONSTRUIDOS = [
   "opcion_justificacion",
@@ -83,11 +84,11 @@ export default async function ActividadEstudiante({
   if (actividad.requiere_actividad_id) {
     const { data: entregaPrerequisito } = await supabase
       .from("entregas")
-      .select("puntaje_auto")
+      .select("puntaje_auto, respuesta")
       .eq("actividad_id", actividad.requiere_actividad_id)
       .eq("estudiante_id", estudiante.id)
       .maybeSingle();
-    if (!entregaPrerequisito || (entregaPrerequisito.puntaje_auto ?? 0) < 70) {
+    if (!entregaPrerequisito || !puedeAbrirDependiente(entregaPrerequisito.puntaje_auto, entregaPrerequisito.respuesta)) {
       redirect(`/estudiante/unidad/${actividad.unidad_id}`);
     }
   }
@@ -143,7 +144,7 @@ export default async function ActividadEstudiante({
     // las propias.
     supabase
       .from("entregas")
-      .select("actividad_id, puntaje_auto")
+      .select("actividad_id, puntaje_auto, respuesta")
       .eq("estudiante_id", estudiante.id),
     // Traídos siempre (son consultas ligeras) para poder armar, sin una
     // segunda vuelta al servidor, la celebración de "unidad completada" si
@@ -177,11 +178,24 @@ export default async function ActividadEstudiante({
     ...a,
     entregas: (entregasDeUnidad ?? [])
       .filter((e) => e.actividad_id === a.id)
-      .map((e) => ({ puntaje_auto: e.puntaje_auto })),
+      .map((e) => ({ puntaje_auto: e.puntaje_auto, respuesta: e.respuesta })),
   }));
 
   const respuesta = entregaExistente?.respuesta;
   const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
+  const siguientePrerequisito = siguiente?.requiere_actividad_id
+    ? hermanas?.find((a) => a.id === siguiente.requiere_actividad_id)
+    : null;
+  const entregaSiguientePrerequisito = siguientePrerequisito?.entregas?.[0];
+  const siguienteDisponible = Boolean(
+    siguiente &&
+      (!siguiente.requiere_actividad_id ||
+        (entregaSiguientePrerequisito &&
+          puedeAbrirDependiente(
+            entregaSiguientePrerequisito.puntaje_auto,
+            entregaSiguientePrerequisito.respuesta,
+          ))),
+  );
   // "Dos niveles": esta actividad requiere a otra (es el nivel 2) o alguna
   // otra la requiere a ella (es el nivel 1 que la desbloquea) — en ambos
   // casos se oculta la respuesta correcta y se permite reiniciar, para que
@@ -262,6 +276,7 @@ export default async function ActividadEstudiante({
           estudianteId={estudiante.id}
           contenido={sanitizarContenidoOpcionJustificacion(actividad.contenido as ContenidoOpcionJustificacion)}
           respuestaPrevia={respuesta as Record<string, unknown> | undefined}
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
       {nombreTipo === "clasificacion" && (
@@ -272,6 +287,7 @@ export default async function ActividadEstudiante({
           respuestaPrevia={
             respuesta as { elegidas: string[]; itemsSnapshot?: { texto: string; correcta: string }[] } | undefined
           }
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
           dosNiveles={esDosNiveles}
         />
       )}
@@ -300,6 +316,7 @@ export default async function ActividadEstudiante({
           respuestaPrevia={
             respuesta as { celdas: string[][]; resultadoCeldas?: boolean[][] } | undefined
           }
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
       {nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar" && (
@@ -344,6 +361,7 @@ export default async function ActividadEstudiante({
           respuestaPrevia={
             respuesta as { elegidas: string[]; itemsSnapshot?: { texto: string; correcta: string }[] } | undefined
           }
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
       {nombreTipo === "constructor_ramificado" && (
@@ -365,6 +383,7 @@ export default async function ActividadEstudiante({
           estudianteId={estudiante.id}
           contenido={sanitizarContenidoOrdenarFragmentos(actividad.contenido as ContenidoOrdenarFragmentos)}
           respuestaPrevia={respuesta as { orden: number[]; resultadoPorPosicion?: boolean[] } | undefined}
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
       {nombreTipo === "evaluar_videos" && (
@@ -377,6 +396,7 @@ export default async function ActividadEstudiante({
               | { marcadas_bien: string[]; marcadas_mal: string[]; resultado?: { bien: boolean[]; mal: boolean[] } }
               | undefined
           }
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
       {nombreTipo === "corregir_ortografia" && (
@@ -395,6 +415,7 @@ export default async function ActividadEstudiante({
                 }
               | undefined
           }
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
       {nombreTipo === "grabacion_rubrica" && (
@@ -425,8 +446,20 @@ export default async function ActividadEstudiante({
         estudianteId={estudiante.id}
         confianza={prediccionExistente?.confianza ?? null}
         textoReflexionPrevio={reflexionExistente?.texto ?? null}
-        siguienteHref={siguiente ? `/estudiante/actividad/${siguiente.id}` : `/estudiante/unidad/${actividad.unidad_id}`}
-        textoSiguiente={siguiente ? "Siguiente actividad" : "Volver a la unidad"}
+        siguienteHref={
+          siguienteDisponible
+            ? `/estudiante/actividad/${siguiente!.id}`
+            : siguiente
+              ? `/estudiante/actividad/${actividad.id}`
+              : `/estudiante/unidad/${actividad.unidad_id}`
+        }
+        textoSiguiente={
+          siguienteDisponible
+            ? "Siguiente actividad"
+            : siguiente
+              ? "Intentar de nuevo antes de continuar"
+              : "Volver a la unidad"
+        }
         placeholderReflexionPersonalizado={
           nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
             ? "¿Qué cambia entre el resumen y la síntesis? ¿Y entre la síntesis y la paráfrasis?"
@@ -464,16 +497,20 @@ export default async function ActividadEstudiante({
               <span className="text-xs font-medium text-slate-500 dark:text-slate-500">
                 {indiceActual + 1} de {hermanas.length}
               </span>
-              {siguiente ? (
+              {siguienteDisponible ? (
                 <Link
-                  href={`/estudiante/actividad/${siguiente.id}`}
+                  href={`/estudiante/actividad/${siguiente!.id}`}
                   aria-label="Actividad siguiente"
                   className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50"
                 >
                   <ChevronRight className="size-4" aria-hidden="true" />
                 </Link>
               ) : (
-                <span className="flex size-8 items-center justify-center text-slate-300 dark:text-slate-700">
+                <span
+                  title={siguiente ? "Completa o mejora la actividad anterior para continuar" : undefined}
+                  aria-label={siguiente ? "Actividad siguiente bloqueada" : "No hay actividad siguiente"}
+                  className="flex size-8 items-center justify-center text-slate-300 dark:text-slate-700"
+                >
                   <ChevronRight className="size-4" aria-hidden="true" />
                 </span>
               )}

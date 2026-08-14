@@ -138,10 +138,11 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 
 select ok(
-  (select bool_and(debe_cambiar_nip) from agregar_estudiantes_con_boleta(
+  (select agregar_estudiantes_con_boleta(
     '44444444-4444-4444-4444-444444444444',
     '[{"nombre":"__test__ Estudiante Boleta","boleta":"20260099"}]'::jsonb
-  )),
+  )) = 1
+  and (select debe_cambiar_nip from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Boleta')),
   'agregar_estudiantes_con_boleta: marca debe_cambiar_nip = true'
 );
 

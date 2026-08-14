@@ -300,9 +300,9 @@ export default async function DetalleGrupo({
       <nav className="sticky top-0 z-10 -mx-6 flex gap-1 border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         {[
           { href: "#resumen", etiqueta: "Resumen" },
-          { href: "#estudiantes", etiqueta: "Estudiantes" },
           { href: "#detalle", etiqueta: "Análisis" },
           { href: "#contenido", etiqueta: "Contenido" },
+          { href: "#estudiantes", etiqueta: "Estudiantes" },
         ].map((t) => (
           <a
             key={t.href}
@@ -449,7 +449,7 @@ export default async function DetalleGrupo({
                     <th className="px-4 py-3">Elemento</th>
                     <th className="px-4 py-3">Respuesta elegida</th>
                     <th className="px-4 py-3 text-right">Veces</th>
-                    <th className="px-4 py-3 text-right">%</th>
+                    <th className="px-4 py-3 text-right">% del total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
