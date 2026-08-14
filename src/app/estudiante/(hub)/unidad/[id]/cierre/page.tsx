@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import PageHeader from "@/components/ui/page-header";
 import ProgressBar from "@/components/ui/progress-bar";
-import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 import UnidadCierre from "./unidad-cierre";
 import { unidadEstaCompleta } from "@/lib/progreso-unidad";
 
@@ -122,6 +121,7 @@ export default async function CierreUnidadEstudiante({
   }
 
   const confianzaInicio = confianzas?.find((confianza) => confianza.momento === "inicio");
+  const confianzaCierre = confianzas?.find((confianza) => confianza.momento === "cierre");
   const puntajesAuto = entregasUnidad
     .map((entrega) => entrega.puntaje_auto)
     .filter((puntaje): puntaje is number => puntaje != null);
@@ -175,14 +175,13 @@ export default async function CierreUnidadEstudiante({
         <ProgressBar porcentaje={100} etiqueta={`Unidad ${unidad.orden}: actividades completadas`} />
       </div>
 
-      {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}
-
       <UnidadCierre
         estudianteId={estudiante.id}
         unidadId={id}
         metaPrevia={bitacora?.meta ?? null}
         textoPrevio={reflexionCierre?.texto ?? null}
         confianzaInicioPct={confianzaInicio?.valor ?? null}
+        confianzaCierrePct={confianzaCierre?.valor ?? null}
         promedioUnidad={promedioUnidad}
         siguienteHref={unidadSiguiente ? `/estudiante/unidad/${unidadSiguiente.id}` : "/estudiante/inicio"}
         textoSiguiente={unidadSiguiente ? `Continuar a Unidad ${unidadSiguiente.orden}: ${unidadSiguiente.nombre}` : "Volver al inicio"}

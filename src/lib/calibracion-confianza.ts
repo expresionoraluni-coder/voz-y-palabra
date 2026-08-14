@@ -21,9 +21,9 @@ export function casoCalibracion(confianza: number | null, puntajeAuto: number | 
 export function mensajeCalibracion(confianza: number, puntajeAuto: number): string | null {
   switch (casoCalibracion(confianza, puntajeAuto)) {
     case "sobreconfianza":
-      return `Te sentías muy seguro (${confianza}/5) pero acertaste ${puntajeAuto}% (repasa este tema antes de seguir, para no confiar de más la próxima vez).`;
+      return `Tu nivel de seguridad era alto (${confianza}/5), pero acertaste ${puntajeAuto}% (repasa este tema antes de seguir para no confiarte de más la próxima vez).`;
     case "subconfianza":
-      return `Te sentías poco seguro (${confianza}/5) y acertaste ${puntajeAuto}% (sabes más de lo que crees, confía un poco más en ti).`;
+      return `Tu nivel de seguridad era bajo (${confianza}/5), pero acertaste ${puntajeAuto}% (sabes más de lo que crees; confía un poco más en tus capacidades).`;
     case "bien_calibrado_alto":
     case "bien_calibrado_bajo":
       return `Tu confianza (${confianza}/5) estuvo bien calibrada con tu resultado (${puntajeAuto}%).`;
@@ -54,9 +54,9 @@ export function placeholderReflexion(confianza: number | null, puntajeAuto: numb
 export function mensajeCalibracionUnidad(confianzaPct: number | null, promedioUnidad: number | null): string | null {
   switch (casoCalibracionPct(confianzaPct, promedioUnidad)) {
     case "sobreconfianza":
-      return `Al empezar dijiste sentirte ${confianzaPct}% seguro, pero tu resultado promedio en la unidad fue ${promedioUnidad}% (te confiaste de más).`;
+      return `Al empezar registraste un nivel de seguridad de ${confianzaPct}%, pero tu resultado promedio en la unidad fue ${promedioUnidad}% (te confiaste de más).`;
     case "subconfianza":
-      return `Al empezar dijiste sentirte solo ${confianzaPct}% seguro, pero tu resultado promedio fue ${promedioUnidad}% (sabes más de lo que creías).`;
+      return `Al empezar registraste un nivel de seguridad de solo ${confianzaPct}%, pero tu resultado promedio fue ${promedioUnidad}% (sabes más de lo que creías).`;
     case "bien_calibrado_alto":
     case "bien_calibrado_bajo":
       return `Tu confianza inicial (${confianzaPct}%) estuvo bien calibrada con tu resultado promedio en la unidad (${promedioUnidad}%).`;

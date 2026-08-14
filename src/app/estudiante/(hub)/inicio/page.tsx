@@ -71,9 +71,12 @@ export default async function InicioEstudiante({
   // mismo Promise.all en vez de esperar a un segundo lote — el único que
   // sigue aparte es bitacoraActiva, porque necesita unidadActiva, que se
   // calcula a partir de unidades y entregas de aquí abajo.
+  // Actualiza los logros antes de leerlos para que una insignia recién
+  // conseguida aparezca en esta misma visita.
+  const { data: insignias } = await supabase.rpc("verificar_insignias");
+
   const [
     { data: unidades },
-    { data: insignias },
     { data: entregas },
     { data: reflexionesCierre },
     { data: reflexionesActividades },
@@ -85,7 +88,6 @@ export default async function InicioEstudiante({
       .select("id, nombre, orden, reto_comunicativo, actividades(id, titulo, orden, requiere_actividad_id)")
       .order("orden"),
     // Revisa y otorga insignias nuevas cada vez que el estudiante visita su inicio.
-    supabase.rpc("verificar_insignias"),
     // Vía admin porque embebe `actividades` (ya sin lectura abierta); el
     // filtro por estudiante_id sigue siendo explícito, no depende de RLS.
     admin
@@ -233,7 +235,7 @@ export default async function InicioEstudiante({
       : !confianzaActiva
         ? {
             etiqueta: "Antes de empezar",
-            titulo: `Indica qué tan seguro estás de la Unidad ${unidadActiva.orden}`,
+            titulo: `Indica qué tanta seguridad tienes de la Unidad ${unidadActiva.orden}`,
             descripcion: "Tu respuesta inicial te ayudará a comparar cómo avanzaste.",
             href: `/estudiante/unidad/${unidadActiva.id}`,
             cta: "Continuar",

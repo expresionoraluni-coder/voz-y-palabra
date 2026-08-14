@@ -43,13 +43,15 @@ export default async function InsigniasEstudiante() {
         />
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3" role="list">
         {catalogo?.map((insignia) => {
           const Icono = ICONO_INSIGNIA[insignia.icono ?? ""] ?? Award;
           const obtenida = idsObtenidas.has(insignia.id);
           return (
             <div
               key={insignia.id}
+              role="listitem"
+              aria-label={`${insignia.nombre}: ${obtenida ? "obtenida" : "pendiente"}`}
               className={`flex flex-col items-center gap-3 rounded-2xl border p-5 text-center transition-shadow ${
                 obtenida
                   ? "border-amber-200 bg-gradient-to-b from-amber-50 to-white shadow-sm dark:border-amber-900 dark:from-amber-950/40 dark:to-slate-900"
@@ -77,6 +79,11 @@ export default async function InsigniasEstudiante() {
                   }`}
                 >
                   {insignia.nombre}
+                </p>
+                <p className={`mt-1 text-[11px] font-medium uppercase tracking-wide ${
+                  obtenida ? "text-amber-700 dark:text-amber-300" : "text-slate-400 dark:text-slate-500"
+                }`}>
+                  {obtenida ? "Obtenida" : "Pendiente"}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
                   {insignia.descripcion}

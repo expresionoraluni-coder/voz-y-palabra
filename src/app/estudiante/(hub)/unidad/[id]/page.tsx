@@ -165,7 +165,7 @@ export default async function UnidadEstudiante({
           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3.5 dark:border-indigo-900 dark:bg-indigo-950/30">
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tu ruta para aprender</p>
             <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Primero define qué quieres lograr y qué tan preparado te sientes. Después podrás avanzar por las actividades a tu propio ritmo.
+              Primero define qué quieres lograr y reconoce con qué conocimientos comienzas. Después podrás avanzar por las actividades a tu propio ritmo.
             </p>
           </div>
           {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}

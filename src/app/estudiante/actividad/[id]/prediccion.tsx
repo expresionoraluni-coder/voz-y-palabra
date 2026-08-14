@@ -54,7 +54,7 @@ export default function Prediccion({
       <div className="flex items-center gap-2">
         <Target className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-          ¿Qué tan seguro estás de que vas a resolver bien esta actividad?
+          ¿Qué tanta seguridad tienes para resolver bien esta actividad?
         </p>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -77,8 +77,8 @@ export default function Prediccion({
           ))}
         </div>
         <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span>Poco seguro</span>
-          <span>Muy seguro</span>
+          <span>Menos seguridad</span>
+          <span>Más seguridad</span>
         </div>
       </div>
       {error && <ErrorText>{error}</ErrorText>}

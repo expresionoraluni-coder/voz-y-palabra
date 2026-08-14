@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Heart } from "lucide-react";
 import Boton from "@/components/ui/button";
 import ReflexionCierre from "../reflexion-cierre";
+import Confianza from "../confianza";
 
 export default function UnidadCierre({
   estudianteId,
@@ -12,6 +13,7 @@ export default function UnidadCierre({
   metaPrevia,
   textoPrevio,
   confianzaInicioPct,
+  confianzaCierrePct,
   promedioUnidad,
   siguienteHref,
   textoSiguiente,
@@ -21,11 +23,13 @@ export default function UnidadCierre({
   metaPrevia: string | null;
   textoPrevio: string | null;
   confianzaInicioPct: number | null;
+  confianzaCierrePct: number | null;
   promedioUnidad: number | null;
   siguienteHref: string;
   textoSiguiente: string;
 }) {
   const [guardada, setGuardada] = useState(Boolean(textoPrevio));
+  const [confianzaGuardada, setConfianzaGuardada] = useState(confianzaCierrePct !== null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,12 +64,20 @@ export default function UnidadCierre({
         onGuardado={() => setGuardada(true)}
       />
 
-      {guardada ? (
+      <Confianza
+        estudianteId={estudianteId}
+        unidadId={unidadId}
+        momento="cierre"
+        valorPrevio={confianzaCierrePct}
+        onGuardado={() => setConfianzaGuardada(true)}
+      />
+
+      {guardada && confianzaGuardada ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
           <div className="flex items-start gap-2.5">
             <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              ¡Muy bien! Tu reflexión quedó guardada. Ya cerraste esta unidad y puedes avanzar cuando te sientas listo.
+              ¡Muy bien! Tu reflexión quedó guardada. Ya cerraste esta unidad y puedes continuar cuando quieras.
             </p>
           </div>
           <Link href={siguienteHref}>
@@ -77,7 +89,7 @@ export default function UnidadCierre({
         </div>
       ) : (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-          Guarda tu reflexión para cerrar la unidad y desbloquear la siguiente.
+          Guarda tu reflexión y tu nivel de seguridad para cerrar la unidad y desbloquear la siguiente.
         </p>
       )}
     </div>
