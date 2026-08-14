@@ -386,6 +386,11 @@ export default async function ActividadEstudiante({
               ? "Intentar de nuevo antes de continuar"
               : "Volver a la unidad"
         }
+        placeholderReflexionPersonalizado={
+          nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
+            ? "Reflexiona sobre cómo cambió tu seguridad inicial después de comparar los tres textos."
+            : undefined
+        }
       />
     </>
   );
