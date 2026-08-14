@@ -245,19 +245,9 @@ export default async function ActividadEstudiante({
     };
   }
 
-  const bloqueAeUc = (actividad.aprendizaje_esperado || unidadDeActividad?.unidad_competencia) && (
+  const bloqueAeUc = unidadDeActividad?.unidad_competencia && (
     <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
-      {unidadDeActividad?.unidad_competencia && (
-        <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} compacto />
-      )}
-      {actividad.aprendizaje_esperado && (
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
-            Aprendizaje esperado (lo que esta actividad busca que logres)
-          </p>
-          <p className="mt-0.5 text-sm text-slate-700 dark:text-slate-300">{actividad.aprendizaje_esperado}</p>
-        </div>
-      )}
+      <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} compacto />
     </div>
   );
 
