@@ -627,7 +627,7 @@ export default function ActividadForm({
       // la vista previa de abajo mientras escribe).
       const invalida = seccionesParseadas.find((s) => !s.valida);
       if (invalida) {
-        setError(`Falta el separador "||" en "${invalida.linea}" — usa el formato: nombre || guía.`);
+        setError(`Falta el separador "||" en "${invalida.linea}". Usa el formato: nombre || guía.`);
         return;
       }
       if (seccionesParseadas.length < 2) {
@@ -705,7 +705,7 @@ export default function ActividadForm({
       const numPalabrasCorrecto = tokenizar(textoCorrecto).length;
       if (numPalabrasIncorrecto !== numPalabrasCorrecto) {
         setError(
-          `El texto con errores tiene ${numPalabrasIncorrecto} palabra(s) y la versión correcta tiene ${numPalabrasCorrecto} — deben tener exactamente las mismas palabras, en el mismo orden (solo cambia ortografía, no se agregan ni quitan palabras).`,
+          `El texto con errores tiene ${numPalabrasIncorrecto} palabra(s) y la versión correcta tiene ${numPalabrasCorrecto}. Deben tener exactamente las mismas palabras, en el mismo orden. Solo cambia la ortografía; no agregues ni quites palabras.`,
         );
         return;
       }
@@ -714,7 +714,7 @@ export default function ActividadForm({
       // error (nada que corregir).
       const diferencias = compararPalabras(textoCorrecto, textoIncorrecto).filter((c) => !c.correcto).length;
       if (diferencias === 0) {
-        setError("El texto incorrecto y el correcto son idénticos — no hay nada que corregir.");
+        setError("El texto incorrecto y el correcto son idénticos. No hay nada que corregir.");
         return;
       }
       contenido = {
@@ -988,7 +988,7 @@ export default function ActividadForm({
                 <IconoTipo className="size-4" aria-hidden="true" />
               </div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                Contenido — {etiquetaTipo(nombreTipo)}
+                Contenido: {etiquetaTipo(nombreTipo)}
               </h2>
             </div>
 
@@ -1004,7 +1004,7 @@ export default function ActividadForm({
                     placeholder="Ej. Es viernes por la tarde. Ana le escribe a Luis..."
                   />
                   <HelpText>
-                    Se muestra una sola vez, antes de la primera pregunta — útil para un simulador o
+                    Se muestra una sola vez, antes de la primera pregunta. Es útil para un simulador o
                     escenario narrado en varios pasos.
                   </HelpText>
                 </Field>
@@ -1094,7 +1094,7 @@ export default function ActividadForm({
                           ))}
                         </Select>
                         <HelpText>
-                          El estudiante ve correcto/incorrecto al enviar — escribe primero las opciones de
+                          El estudiante ve correcto o incorrecto al enviar. Escribe primero las opciones de
                           arriba.
                         </HelpText>
                       </Field>
@@ -1125,7 +1125,7 @@ export default function ActividadForm({
               <>
                 <Field>
                   <Label htmlFor="contextoClasificacion">
-                    Párrafo o contexto (opcional — el estudiante lo ve arriba de la lista)
+                    Párrafo o contexto (opcional). El estudiante lo ve arriba de la lista.
                   </Label>
                   <Textarea
                     id="contextoClasificacion"
@@ -1150,7 +1150,7 @@ export default function ActividadForm({
                 <Field>
                   <Label>Elementos a clasificar</Label>
                   <HelpText>
-                    Escribe primero las categorías de arriba — aquí eliges la correcta para cada elemento
+                    Escribe primero las categorías de arriba. Aquí eliges la correcta para cada elemento
                     de una lista, sin escribirla a mano.
                   </HelpText>
                   {filaEditor(elementosFilas, setElementosFilas, listaCategorias, "Elige categoría")}
@@ -1177,8 +1177,8 @@ export default function ActividadForm({
                 </Field>
                 <Field>
                   <Label htmlFor="fragmentoErroneo">
-                    Fragmento exacto con el error (opcional — solo si el error es puntual, ej. una palabra
-                    mal escrita)
+                    Fragmento exacto con el error (opcional). Úsalo solo si el error es puntual, por ejemplo,
+                    una palabra mal escrita.
                   </Label>
                   <Input
                     id="fragmentoErroneo"
@@ -1187,14 +1187,14 @@ export default function ActividadForm({
                     placeholder="ej. aiga"
                   />
                   <HelpText>
-                    Le avisamos al estudiante si &quot;qué encontraste&quot; menciona este fragmento — no bloquea el
-                    envío, solo confirma que va por buen camino.
+                    Le avisamos al estudiante si &quot;qué encontraste&quot; menciona este fragmento. No bloquea el
+                    envío; solo confirma que va por buen camino.
                   </HelpText>
                 </Field>
                 <Field>
                   <Label htmlFor="ideasClaveError">
-                    Ideas clave esperadas (opcional — úsalo en vez del fragmento si el error es de
-                    estructura/coherencia, no una palabra puntual)
+                    Ideas clave esperadas (opcional). Úsalo en vez del fragmento si el error es de
+                    estructura o coherencia, no una palabra puntual.
                   </Label>
                   <Textarea
                     id="ideasClaveError"
@@ -1254,8 +1254,8 @@ export default function ActividadForm({
                   <HelpText>
                     Si dejas esto vacío, el estudiante escribe libremente en cada celda (sin
                     calificación automática, como antes). Si lo llenas, cada celda se vuelve un
-                    espacio para arrastrar la respuesta correcta y la actividad se autocalifica —
-                    puedes agregar más respuestas de las que caben en la cuadrícula, como señuelo.
+                    espacio para arrastrar la respuesta correcta y la actividad se autocalifica.
+                    Puedes agregar más respuestas de las que caben en la cuadrícula, como señuelo.
                   </HelpText>
                 </Field>
                 {listaBancoComp.length > 0 && listaConceptosComp.length > 0 && listaCriteriosComp.length > 0 && (
@@ -1325,7 +1325,7 @@ export default function ActividadForm({
                     <option value="leer_reflexionar">Leer y reflexionar (sin redactar)</option>
                   </Select>
                   <HelpText>
-                    En &quot;Leer y reflexionar&quot; el estudiante no escribe nada — solo compara 3 ejemplos ya
+                    En &quot;Leer y reflexionar&quot; el estudiante no escribe nada. Solo compara 3 ejemplos ya
                     resueltos (resumen, síntesis y paráfrasis) y responde una reflexión sobre las
                     diferencias.
                   </HelpText>
@@ -1336,7 +1336,7 @@ export default function ActividadForm({
                 </Field>
                 <Field>
                   <Label htmlFor="textoFuente">
-                    Texto fuente (opcional — el estudiante lo leerá antes{" "}
+                    Texto fuente (opcional). El estudiante lo leerá antes{" "}
                     {modoRedaccion === "escribir" ? "de escribir" : "de comparar los ejemplos"})
                   </Label>
                   <Textarea
@@ -1384,8 +1384,8 @@ export default function ActividadForm({
                   <>
                     <Field>
                       <Label htmlFor="ejemplosResueltos">
-                        Ejemplos ya resueltos (opcional — resumen, síntesis y paráfrasis del mismo texto,
-                        como referencia antes de escribir)
+                        Ejemplos ya resueltos (opcional). Incluye resumen, síntesis y paráfrasis del mismo texto,
+                        como referencia antes de escribir.
                       </Label>
                       <Textarea
                         id="ejemplosResueltos"
@@ -1429,7 +1429,7 @@ export default function ActividadForm({
             {nombreTipo === "etiquetado_texto" && (
               <>
                 <Field>
-                  <Label htmlFor="contexto">Contexto (opcional — introduce la fuente, ej. &quot;canción&quot;, &quot;diálogo&quot;)</Label>
+                  <Label htmlFor="contexto">Contexto (opcional). Introduce la fuente, por ejemplo, &quot;canción&quot; o &quot;diálogo&quot;.</Label>
                   <Input id="contexto" value={contexto} onChange={(e) => setContexto(e.target.value)} />
                 </Field>
                 <Field>
@@ -1448,7 +1448,7 @@ export default function ActividadForm({
                 <Field>
                   <Label>Fragmentos a etiquetar</Label>
                   <HelpText>
-                    Escribe primero las etiquetas de arriba — aquí eliges la correcta para cada fragmento
+                    Escribe primero las etiquetas de arriba. Aquí eliges la correcta para cada fragmento
                     de una lista, sin escribirla a mano.
                   </HelpText>
                   {filaEditor(fragmentosFilas, setFragmentosFilas, listaEtiquetas, "Elige etiqueta")}
@@ -1469,7 +1469,7 @@ export default function ActividadForm({
                   />
                 </Field>
                 <Field>
-                  <Label htmlFor="secciones">Secciones del esqueleto — formato: nombre || guía para el estudiante</Label>
+                  <Label htmlFor="secciones">Secciones del esqueleto. Formato: nombre || guía para el estudiante.</Label>
                   <Textarea
                     id="secciones"
                     required
@@ -1528,7 +1528,7 @@ export default function ActividadForm({
             {nombreTipo === "ordenar_fragmentos" && (
               <>
                 <Field>
-                  <Label htmlFor="contextoOF">Contexto (opcional — instrucción general antes de la lista)</Label>
+                  <Label htmlFor="contextoOF">Contexto (opcional). Es la instrucción general antes de la lista.</Label>
                   <Textarea
                     id="contextoOF"
                     value={contextoOF}
@@ -1553,7 +1553,7 @@ export default function ActividadForm({
                   />
                   <ContadorLineas texto={fragmentosCorrectosOF} singular="fragmento" plural="fragmentos" />
                   <HelpText>
-                    El estudiante los va a ver revueltos junto con los distractores — aquí escríbelos ya en
+                    El estudiante los va a ver revueltos junto con los distractores. Escríbelos aquí en
                     el orden en que sí tienen coherencia.
                   </HelpText>
                 </Field>
@@ -1569,7 +1569,7 @@ export default function ActividadForm({
                   />
                   <ContadorLineas texto={distractoresOF} singular="distractor" plural="distractores" />
                   <HelpText>
-                    Fragmentos que NO pertenecen a la secuencia — el estudiante debe dejarlos fuera.
+                    Fragmentos que NO pertenecen a la secuencia. El estudiante debe dejarlos fuera.
                   </HelpText>
                 </Field>
               </>
@@ -1600,7 +1600,7 @@ export default function ActividadForm({
                   <ContadorLineas texto={cualidadesEV} singular="cualidad" plural="cualidades" />
                 </Field>
                 <Field>
-                  <Label htmlFor="videoBienUrl">Video A — URL (respeta las cualidades)</Label>
+                  <Label htmlFor="videoBienUrl">Video A: URL (respeta las cualidades)</Label>
                   <Input
                     id="videoBienUrl"
                     type="url"
@@ -1609,7 +1609,7 @@ export default function ActividadForm({
                     placeholder="https://youtube.com/..."
                   />
                   <HelpText>
-                    Si todavía no tienes el video, déjalo vacío — el estudiante ve &quot;Video
+                    Si todavía no tienes el video, déjalo vacío. El estudiante ve &quot;Video
                     próximamente&quot; hasta que lo agregues.
                   </HelpText>
                 </Field>
@@ -1632,7 +1632,7 @@ export default function ActividadForm({
                   </Field>
                 )}
                 <Field>
-                  <Label htmlFor="videoMalUrl">Video B — URL (no respeta las cualidades)</Label>
+                  <Label htmlFor="videoMalUrl">Video B: URL (no respeta las cualidades)</Label>
                   <Input
                     id="videoMalUrl"
                     type="url"
@@ -1684,7 +1684,7 @@ export default function ActividadForm({
                   />
                 </Field>
                 <Field>
-                  <Label htmlFor="textoCorrecto">Versión correcta (clave de calificación — no la ve el estudiante)</Label>
+                  <Label htmlFor="textoCorrecto">Versión correcta (clave de calificación). No la ve el estudiante.</Label>
                   <Textarea
                     id="textoCorrecto"
                     required
@@ -1693,7 +1693,7 @@ export default function ActividadForm({
                     rows={6}
                   />
                   <HelpText>
-                    Debe tener las mismas palabras, en el mismo orden, que el texto con errores — solo cambia
+                    Debe tener las mismas palabras, en el mismo orden, que el texto con errores. Solo cambia
                     mayúsculas, tildes o letras. Se compara palabra por palabra.
                   </HelpText>
                 </Field>

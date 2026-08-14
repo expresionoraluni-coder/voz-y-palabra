@@ -127,7 +127,7 @@ export default function AgregarEstudiantes({
     setAgregados(null);
 
     if (invalidas > 0) {
-      setError(`Falta el nombre o la boleta (mínimo 4 dígitos) en ${invalidas} fila(s) marcada(s) — corrígelas o quítalas antes de continuar.`);
+      setError(`Falta el nombre o la boleta (mínimo 4 dígitos) en ${invalidas} fila(s) marcada(s). Corrígelas o quítalas antes de continuar.`);
       return;
     }
     if (nuevas.length === 0) return;
@@ -169,7 +169,7 @@ export default function AgregarEstudiantes({
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <Label>Nombre y boleta</Label>
         <HelpText>
-          Escribe directamente en la tabla o pega celdas copiadas de Excel — se reparten solas en
+          Escribe directamente en la tabla o pega celdas copiadas de Excel. Se reparten solas en
           las filas y se normalizan a mayúsculas sin acentos. El NIP inicial de cada estudiante
           son los últimos 4 dígitos de su boleta.
         </HelpText>

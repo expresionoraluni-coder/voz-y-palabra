@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Voz y Palabra · Expresión Oral y Escrita I",
-  description: "Plataforma de práctica para Expresión Oral y Escrita I — CECyT 1, IPN",
+  description: "Plataforma de práctica para Expresión Oral y Escrita I. CECyT 1, IPN",
 };
 
 export default function RootLayout({

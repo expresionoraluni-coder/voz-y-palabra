@@ -37,10 +37,17 @@ export default function UnidadCierre({
           <div className="flex flex-col gap-1">
             <p className="text-base font-semibold text-slate-900 dark:text-slate-50">Lo que te llevas de esta unidad</p>
             <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              No busques una respuesta perfecta. Escribe con honestidad qué comprendiste, qué te costó y qué quieres recordar.
+              ¡Buen trabajo por llegar hasta aquí! No busques una respuesta perfecta. Escribe con honestidad qué comprendiste, qué te costó y qué quieres recordar.
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3.5 dark:border-emerald-900 dark:bg-emerald-950/30">
+        <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Tu esfuerzo cuenta</p>
+        <p className="mt-1 text-sm leading-relaxed text-emerald-800 dark:text-emerald-300">
+          Cada intento te ayudó a practicar. Reconocer lo que ya puedes hacer también forma parte de aprender.
+        </p>
       </div>
 
       <ReflexionCierre
@@ -58,7 +65,7 @@ export default function UnidadCierre({
           <div className="flex items-start gap-2.5">
             <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              Reflexión guardada. Ya cerraste esta unidad y puedes avanzar cuando te sientas listo.
+              ¡Muy bien! Tu reflexión quedó guardada. Ya cerraste esta unidad y puedes avanzar cuando te sientas listo.
             </p>
           </div>
           <Link href={siguienteHref}>

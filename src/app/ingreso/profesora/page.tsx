@@ -26,7 +26,7 @@ export default function IngresoProfesora() {
     setAvisoConfirmacion(false);
 
     if (modo === "crear" && contrasena !== contrasenaConfirmar) {
-      setError("Las dos contraseñas no coinciden — revísalas.");
+      setError("Las dos contraseñas no coinciden. Revísalas.");
       return;
     }
 

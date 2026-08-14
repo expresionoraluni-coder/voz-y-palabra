@@ -339,7 +339,7 @@ export default async function FichaEstudiante({
                           <ol className="mt-1 flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-400">
                             {rondas.map((rd, i) => (
                               <li key={i}>
-                                Ronda {i + 1}: eligió &quot;{rd.opcion}&quot; — {rd.justificacion}
+                                Ronda {i + 1}: eligió &quot;{rd.opcion}&quot;. Justificación: {rd.justificacion}
                               </li>
                             ))}
                           </ol>

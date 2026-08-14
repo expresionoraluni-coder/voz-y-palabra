@@ -69,7 +69,7 @@ export default function CorregirOrtografia({
       return;
     }
     if (textoReescrito.trim() === contenido.texto_incorrecto.trim()) {
-      setError("Tu texto es idéntico al original — no hiciste ninguna corrección.");
+      setError("Tu texto es idéntico al original. No hiciste ninguna corrección.");
       return;
     }
 
@@ -122,7 +122,7 @@ export default function CorregirOrtografia({
         <Field>
           <Label htmlFor="texto-reescrito">Tu versión corregida</Label>
           <HelpText>
-            Reescribe el texto completo corrigiendo solo mayúsculas, tildes y letras (b/v, s/c/z, g/j, h) — no
+            Reescribe el texto completo. Corrige solo mayúsculas, tildes y letras (b/v, s/c/z, g/j, h). No
             cambies el orden ni la cantidad de palabras, y no toques los signos de puntuación. Se aceptan hasta
             5 errores.
           </HelpText>
@@ -151,7 +151,7 @@ export default function CorregirOrtografia({
               <XCircle className="size-4 shrink-0" aria-hidden="true" />
             )}
             {resultado!.errores} error{resultado!.errores === 1 ? "" : "es"} de {resultado!.totalPalabras} palabras
-            {resultado!.aprobado ? " — dentro del máximo aceptable (5)." : " — más de los 5 aceptables."}
+            {resultado!.aprobado ? " Está dentro del máximo aceptable (5)." : " Tiene más de los 5 errores aceptables."}
           </p>
           <p className="rounded-xl border border-slate-200 px-4 py-3.5 text-sm leading-[2.2] dark:border-slate-800">
             {resultado!.comparacion.map((c: ComparacionPalabra, i: number) => (

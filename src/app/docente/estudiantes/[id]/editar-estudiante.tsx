@@ -84,7 +84,7 @@ export default function EditarEstudiante({
           value={nombre}
           onChange={(e) => setNombre(normalizarNombre(e.target.value))}
         />
-        <HelpText>Se guarda en mayúsculas y sin acentos — es el nombre con el que entra.</HelpText>
+        <HelpText>Se guarda en mayúsculas y sin acentos. Es el nombre con el que entra.</HelpText>
       </Field>
       <Field>
         <Label htmlFor="edit-boleta">Boleta</Label>

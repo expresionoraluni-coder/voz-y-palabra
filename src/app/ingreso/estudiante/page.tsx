@@ -118,7 +118,7 @@ export default function IngresoEstudiante() {
           Entrar como estudiante
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
-          Sin correo, sin contraseña — solo tu nombre, el código de tu grupo y tu NIP
+          No necesitas correo ni contraseña. Solo tu nombre, el código de tu grupo y tu NIP.
         </p>
       </div>
 
@@ -188,7 +188,7 @@ export default function IngresoEstudiante() {
           <Alert tono="info" titulo="¿Ya no te acuerdas de tu NIP?">
             <span className="flex items-start gap-1.5">
               <LifeBuoy className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-              Pídele a tu profesora que lo reinicie desde tu ficha — ella puede hacerlo en un momento, y
+              Pídele a tu profesora que lo reinicie desde tu ficha. Ella puede hacerlo en un momento y
               luego podrás crear uno nuevo la próxima vez que entres.
             </span>
           </Alert>

@@ -91,7 +91,7 @@ export default function EditarGrupo({
         />
         <HelpText>
           Si lo cambias, tus estudiantes van a necesitar el código nuevo para entrar por primera vez
-          desde un dispositivo nuevo — los que ya iniciaron sesión no se ven afectados.
+          desde un dispositivo nuevo. Quienes ya iniciaron sesión no se ven afectados.
         </HelpText>
       </Field>
       {error && <ErrorText>{error}</ErrorText>}

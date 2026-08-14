@@ -147,7 +147,7 @@ export default async function CierreUnidadEstudiante({
             <p className="text-sm font-semibold uppercase tracking-wide text-indigo-200">Unidad terminada</p>
             <h2 className="text-xl font-semibold">Tu avance también cuenta como aprendizaje</h2>
             <p className="text-sm leading-relaxed text-indigo-100">
-              Terminaste {listaActividades.length} actividades. Esta pantalla es solo para reconocer tu proceso y elegir qué quieres llevar contigo.
+              Terminaste {listaActividades.length} actividades. Aquí escribirás la reflexión final de la unidad para reconocer tu proceso y elegir qué quieres llevar contigo.
             </p>
           </div>
         </div>
