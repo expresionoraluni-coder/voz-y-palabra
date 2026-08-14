@@ -94,7 +94,7 @@ export default async function UnidadEstudiante({
             <EmptyState
               icon={Lock}
               titulo={`Termina primero la Unidad ${unidad.orden - 1}`}
-              descripcion="Completa todas sus actividades y guarda tu reflexión de cierre antes de empezar esta."
+              descripcion="Completa todas sus actividades, guarda la reflexión de la última actividad y después tu reflexión de cierre antes de empezar esta."
               accion={
                 <Link
                   href={`/estudiante/unidad/${unidadAnterior.id}`}
