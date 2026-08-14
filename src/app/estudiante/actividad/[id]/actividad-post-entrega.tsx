@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import Boton from "@/components/ui/button";
 import ReflexionActividad from "./reflexion-actividad";
@@ -8,12 +9,7 @@ import CelebracionUnidad from "./celebracion-unidad";
 import { useEntregaReciente } from "@/lib/entrega-reciente-context";
 
 type UnidadCompletada = {
-  unidadId: string;
   mensajeCelebracion: string;
-  metaPrevia: string | null;
-  textoReflexionCierrePrevio: string | null;
-  confianzaInicioPct: number | null;
-  promedioUnidad: number | null;
   siguienteHref: string;
   textoSiguiente: string;
 };
@@ -41,6 +37,7 @@ export default function ActividadPostEntrega({
   unidadCompletada?: UnidadCompletada | null;
 }) {
   const { entregaReciente } = useEntregaReciente();
+  const [reflexionGuardada, setReflexionGuardada] = useState(Boolean(textoReflexionPrevio));
   if (!entregaReciente) return null;
 
   return (
@@ -52,16 +49,12 @@ export default function ActividadPostEntrega({
         puntajeAuto={entregaReciente.puntajeAuto}
         textoPrevio={textoReflexionPrevio}
         placeholderPersonalizado={placeholderReflexionPersonalizado}
+        onGuardada={() => setReflexionGuardada(true)}
       />
       {unidadCompletada ? (
         <CelebracionUnidad
-          estudianteId={estudianteId}
-          unidadId={unidadCompletada.unidadId}
           mensajeCelebracion={unidadCompletada.mensajeCelebracion}
-          metaPrevia={unidadCompletada.metaPrevia}
-          textoReflexionCierrePrevio={unidadCompletada.textoReflexionCierrePrevio}
-          confianzaInicioPct={unidadCompletada.confianzaInicioPct}
-          promedioUnidad={unidadCompletada.promedioUnidad}
+          reflexionGuardada={reflexionGuardada}
           siguienteHref={unidadCompletada.siguienteHref}
           textoSiguiente={unidadCompletada.textoSiguiente}
         />

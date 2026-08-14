@@ -15,7 +15,6 @@ type RondaBase = {
   contexto?: string;
   pregunta: string;
   opciones: string[];
-  ideas_clave?: string[];
   mensajesVisibles?: number;
 };
 
@@ -77,8 +76,12 @@ export function rondasDeRespuesta(r?: Record<string, unknown> | null): RondaResp
 }
 
 function quitarClave(r: RondaContenido): RondaContenidoPublica {
-  const resto = { ...r } as RondaContenidoPublica & { respuesta_correcta?: string };
+  const resto = { ...r } as RondaContenidoPublica & {
+    respuesta_correcta?: string;
+    ideas_clave?: string[];
+  };
   delete resto.respuesta_correcta;
+  delete resto.ideas_clave;
   return resto;
 }
 

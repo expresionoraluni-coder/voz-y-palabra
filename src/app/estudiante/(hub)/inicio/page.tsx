@@ -76,6 +76,7 @@ export default async function InicioEstudiante({
     { data: insignias },
     { data: entregas },
     { data: reflexionesCierre },
+    { data: reflexionesActividades },
     { data: avisos },
     { data: eventosProximos },
   ] = await Promise.all([
@@ -97,6 +98,12 @@ export default async function InicioEstudiante({
       .eq("estudiante_id", estudiante.id)
       .eq("momento", "cierre")
       .not("unidad_id", "is", null),
+    supabase
+      .from("reflexiones")
+      .select("actividad_id")
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "cierre")
+      .not("actividad_id", "is", null),
     supabase
       .from("avisos")
       .select("id, titulo, mensaje, created_at")
@@ -122,6 +129,7 @@ export default async function InicioEstudiante({
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
   const unidadesConReflexion = new Set((reflexionesCierre ?? []).map((r) => r.unidad_id));
+  const actividadesConReflexion = new Set((reflexionesActividades ?? []).map((r) => r.actividad_id));
   const puntos = idsCompletadas.size * 10 + unidadesConReflexion.size * 5;
   const racha = calcularRacha((entregas ?? []).map((e) => e.created_at));
 
@@ -145,10 +153,15 @@ export default async function InicioEstudiante({
     const total = u.actividades.length;
     const hechas = u.actividades.filter((a) => idsCompletadas.has(a.id)).length;
     const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
-    return { ...u, total, hechas, pct };
+    const ultimaActividad = u.actividades.slice().sort((a, b) => b.orden - a.orden)[0];
+    const tieneReflexionUltimaActividad = Boolean(ultimaActividad && actividadesConReflexion.has(ultimaActividad.id));
+    return { ...u, total, hechas, pct, tieneReflexionUltimaActividad };
   });
   const indiceActiva = unidadesConProgreso.findIndex(
-    (u) => !unidadEstaCompleta(u.total, u.hechas) || !unidadesConReflexion.has(u.id),
+    (u) =>
+      !unidadEstaCompleta(u.total, u.hechas) ||
+      !u.tieneReflexionUltimaActividad ||
+      !unidadesConReflexion.has(u.id),
   );
   const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
@@ -187,7 +200,12 @@ export default async function InicioEstudiante({
       intentosDeEntregaAuto(entrega.respuesta, true) < 3,
   );
   const faltaCerrarUnidad = Boolean(
-    unidadActiva && unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) && !unidadesConReflexion.has(unidadActiva.id),
+    unidadActiva &&
+      unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) &&
+      (!unidadActiva.tieneReflexionUltimaActividad || !unidadesConReflexion.has(unidadActiva.id)),
+  );
+  const faltaReflexionUltimaActividad = Boolean(
+    unidadActiva && unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) && !unidadActiva.tieneReflexionUltimaActividad,
   );
 
   const recordatorios: { texto: string; href: string }[] = [];
@@ -224,10 +242,16 @@ export default async function InicioEstudiante({
         : faltaCerrarUnidad
           ? {
               etiqueta: "Cierre de unidad",
-              titulo: `Guarda tu reflexion de la Unidad ${unidadActiva.orden}`,
-              descripcion: "Es el ultimo paso antes de continuar con la siguiente unidad.",
-              href: `/estudiante/unidad/${unidadActiva.id}`,
-              cta: "Cerrar unidad",
+              titulo: faltaReflexionUltimaActividad
+                ? "Reflexiona sobre la última actividad"
+                : `Guarda tu reflexión de la Unidad ${unidadActiva.orden}`,
+              descripcion: faltaReflexionUltimaActividad
+                ? "Es el paso que prepara tu cierre de unidad."
+                : "Es el último paso antes de continuar con la siguiente unidad.",
+              href: faltaReflexionUltimaActividad
+                ? `/estudiante/actividad/${unidadActiva.actividades.slice().sort((a, b) => b.orden - a.orden)[0]?.id}`
+                : `/estudiante/unidad/${unidadActiva.id}/cierre`,
+              cta: faltaReflexionUltimaActividad ? "Ir a la última actividad" : "Cerrar unidad",
               icon: Target,
             }
           : primeraActividadAccesible

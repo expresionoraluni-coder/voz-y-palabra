@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import Boton from "@/components/ui/button";
+import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import { bloquearCopiar } from "@/lib/anti-copiar";
+import { validarRespuestaComprension } from "@/lib/validar-respuesta-comprension";
 import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
 export default function RedaccionLectura({
@@ -24,7 +26,11 @@ export default function RedaccionLectura({
   respuestaPrevia?: Record<string, unknown>;
 }) {
   const { cargando, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
-  const [entregado, setEntregado] = useState(!!respuestaPrevia);
+  const respuestaPreviaTexto =
+    typeof respuestaPrevia?.respuesta_comprension === "string" ? respuestaPrevia.respuesta_comprension : "";
+  const [respuestaComprension, setRespuestaComprension] = useState(respuestaPreviaTexto);
+  const [error, setError] = useState<string | null>(null);
+  const [entregado, setEntregado] = useState(Boolean(respuestaPreviaTexto.trim()));
 
   const columnas = [
     { etiqueta: "Resumen", texto: contenido.ejemplo_resumen },
@@ -35,8 +41,19 @@ export default function RedaccionLectura({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (entregado) return;
+    const errorValidacion = validarRespuestaComprension(respuestaComprension);
+    if (errorValidacion) {
+      setError(errorValidacion);
+      return;
+    }
+    setError(null);
     const guardada = await guardarConAccion(() =>
-      guardarEntregaAbiertaAccion(actividadId, "redaccion_checklist", {}, "completada"),
+      guardarEntregaAbiertaAccion(
+        actividadId,
+        "redaccion_checklist",
+        { respuesta_comprension: respuestaComprension.trim() },
+        "completada",
+      ),
     );
     if (guardada) setEntregado(true);
   }
@@ -72,9 +89,26 @@ export default function RedaccionLectura({
         ))}
       </div>
 
+      <Field>
+        <Label htmlFor="respuesta-comprension">Pregunta para comprobar tu comprensión</Label>
+        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          ¿Qué diferencia principal encuentras entre el resumen, la síntesis y la paráfrasis?
+        </p>
+        <Textarea
+          id="respuesta-comprension"
+          value={respuestaComprension}
+          onChange={(e) => setRespuestaComprension(e.target.value)}
+          onPaste={bloquearCopiar}
+          disabled={entregado}
+          rows={3}
+          placeholder="Explica la diferencia con tus propias palabras."
+        />
+        {error && <ErrorText>{error}</ErrorText>}
+      </Field>
+
       {!entregado && (
         <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Ya leí y comparé los tres"}
+          {cargando ? "Guardando..." : "Guardar respuesta y continuar"}
         </Boton>
       )}
     </form>

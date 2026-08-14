@@ -2,6 +2,7 @@
 
 import { guardarEntregaInterna, obtenerContextoCalificacion, reiniciarEntregaInterna } from "@/lib/estudiante-entregas-server";
 import { esRegistroPlano, esUuid, validarEstadoEntrega, validarJsonDeEntrega } from "@/lib/validar-entrega";
+import { validarRespuestaComprension } from "@/lib/validar-respuesta-comprension";
 import type { ResultadoCalificacion } from "@/lib/estudiante-entregas-server";
 
 export type { ResultadoCalificacion } from "@/lib/estudiante-entregas-server";
@@ -31,6 +32,15 @@ export async function guardarEntregaAbiertaAccion(
 
   const ctx = await obtenerContextoCalificacion(actividadId, tipoEsperado);
   if (!ctx.ok) return ctx;
+  const modo = (ctx.contexto.contenido as { modo?: string }).modo;
+  if (tipoEsperado === "redaccion_checklist" && modo === "leer_reflexionar") {
+    const respuestaComprension = respuesta.respuesta_comprension;
+    if (typeof respuestaComprension !== "string") {
+      return { ok: false, error: "Responde la pregunta de comprensión antes de continuar." };
+    }
+    const errorComprension = validarRespuestaComprension(respuestaComprension);
+    if (errorComprension) return { ok: false, error: errorComprension };
+  }
   return guardarEntregaInterna(ctx.contexto.supabase, actividadId, respuesta, null, estado);
 }
 export async function reiniciarEntregaAccion(

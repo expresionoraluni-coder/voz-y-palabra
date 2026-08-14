@@ -1,63 +1,57 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { PartyPopper, ChevronRight } from "lucide-react";
+import { ArrowRight, CheckCircle2, LockKeyhole, PartyPopper } from "lucide-react";
 import Boton from "@/components/ui/button";
-import ReflexionCierre from "@/app/estudiante/(hub)/unidad/[id]/reflexion-cierre";
 
-// Se muestra en el post-entrega de la actividad que completó la unidad, en
-// vez de mandar al estudiante a buscar la reflexión de cierre por su cuenta
-// en la página de la unidad — aparece de inmediato, en el mismo lugar donde
-// acaba de terminar.
 export default function CelebracionUnidad({
-  estudianteId,
-  unidadId,
   mensajeCelebracion,
-  metaPrevia,
-  textoReflexionCierrePrevio,
-  confianzaInicioPct,
-  promedioUnidad,
+  reflexionGuardada,
   siguienteHref,
   textoSiguiente,
 }: {
-  estudianteId: string;
-  unidadId: string;
   mensajeCelebracion: string;
-  metaPrevia: string | null;
-  textoReflexionCierrePrevio: string | null;
-  confianzaInicioPct: number | null;
-  promedioUnidad: number | null;
+  reflexionGuardada: boolean;
   siguienteHref: string;
   textoSiguiente: string;
 }) {
-  const [reflexionGuardada, setReflexionGuardada] = useState(Boolean(textoReflexionCierrePrevio));
-
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
-      <div className="flex items-center gap-2">
-        <PartyPopper className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-        <p className="text-base font-semibold text-slate-900 dark:text-slate-50">{mensajeCelebracion}</p>
+    <section
+      aria-labelledby="fin-de-unidad"
+      className="flex flex-col gap-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 p-5 dark:border-emerald-900 dark:bg-emerald-950/30"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/60">
+          <PartyPopper className="size-5 text-emerald-600 dark:text-emerald-300" aria-hidden="true" />
+        </span>
+        <div className="flex flex-col gap-1">
+          <h2 id="fin-de-unidad" className="text-base font-semibold text-slate-900 dark:text-slate-50">
+            {mensajeCelebracion}
+          </h2>
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+            Terminaste todas las actividades. Antes de abrir el cierre de la unidad, revisa cómo te fue en esta última.
+          </p>
+        </div>
       </div>
-      <ReflexionCierre
-        estudianteId={estudianteId}
-        unidadId={unidadId}
-        metaPrevia={metaPrevia}
-        textoPrevio={textoReflexionCierrePrevio}
-        confianzaInicioPct={confianzaInicioPct}
-        promedioUnidad={promedioUnidad}
-        onGuardado={() => setReflexionGuardada(true)}
-      />
-      {!reflexionGuardada && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-          Antes de continuar, escribe y guarda tu reflexión de cierre. Este paso abre la siguiente unidad.
+
+      <div className="flex items-start gap-2.5 rounded-xl bg-white/70 px-3.5 py-3 dark:bg-slate-900/50">
+        {reflexionGuardada ? (
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+        ) : (
+          <LockKeyhole className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        )}
+        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          {reflexionGuardada
+            ? "La reflexión de esta actividad está guardada. Ya puedes pasar a la reflexión final de la unidad."
+            : "Guarda primero la reflexión de esta actividad. Después podrás escribir la reflexión final de la unidad en una pantalla aparte."}
         </p>
-      )}
+      </div>
+
       {reflexionGuardada ? (
         <Link href={siguienteHref}>
           <Boton type="button" className="w-full">
             {textoSiguiente}
-            <ChevronRight className="size-4" aria-hidden="true" />
+            <ArrowRight className="size-4" aria-hidden="true" />
           </Boton>
         </Link>
       ) : (
@@ -65,6 +59,6 @@ export default function CelebracionUnidad({
           Guarda la reflexión para continuar
         </Boton>
       )}
-    </div>
+    </section>
   );
 }

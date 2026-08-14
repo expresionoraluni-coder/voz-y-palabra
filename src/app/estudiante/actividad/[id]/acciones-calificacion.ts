@@ -18,6 +18,7 @@ import {
   type ResultadoCalificacion,
 } from "@/lib/estudiante-entregas-server";
 import { esUuid, validarLista, validarTexto } from "@/lib/validar-entrega";
+import { validarJustificacion } from "@/lib/validar-justificacion";
 
 export type { ResultadoCalificacion } from "@/lib/estudiante-entregas-server";
 
@@ -111,7 +112,13 @@ export async function calificarOpcionJustificacionAccion(
     maximo: 50,
     validarElemento: (respuesta) => {
       if (!respuesta || typeof respuesta !== "object" || Array.isArray(respuesta)) return false;
-      return JSON.stringify(respuesta).length <= 2_000;
+      const respuestaRegistro = respuesta as Record<string, unknown>;
+      return (
+        typeof respuestaRegistro.opcion === "string" &&
+        typeof respuestaRegistro.justificacion === "string" &&
+        respuestaRegistro.opcion.length <= 500 &&
+        respuestaRegistro.justificacion.length <= 2_000
+      );
     },
   })
     ? null
@@ -122,6 +129,17 @@ export async function calificarOpcionJustificacionAccion(
   if (!ctx.ok) return ctx;
   const rondas = rondasDeContenido(ctx.contexto.contenido as ContenidoOpcionJustificacion);
   if (rondas.length === 0) return { ok: false, error: "Esta actividad no tiene preguntas configuradas." };
+  if (respuestas.length !== rondas.length) {
+    return { ok: false, error: "Faltan respuestas por completar en esta actividad." };
+  }
+  const respuestaInvalida = respuestas.findIndex(
+    (respuesta, indice) =>
+      !rondas[indice].opciones.includes(respuesta.opcion) ||
+      validarJustificacion(respuesta.justificacion, respuesta.opcion) !== null,
+  );
+  if (respuestaInvalida !== -1) {
+    return { ok: false, error: `Completa la explicación de la pregunta ${respuestaInvalida + 1} antes de guardar.` };
+  }
   const resultado = calificarRondas(rondas, respuestas);
   const puntajeAuto = Math.round((resultado.filter((r) => r.correcta).length / resultado.length) * 100);
   return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { rondas: respuestas, resultado }, puntajeAuto);

@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { CheckCircle2, Circle, Lock, TrendingUp } from "lucide-react";
+import { ArrowRight, CheckCircle2, Circle, Lock, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Confianza from "./confianza";
 import Bitacora from "./bitacora";
-import ReflexionCierre from "./reflexion-cierre";
 import PageHeader from "@/components/ui/page-header";
-import { CardLink } from "@/components/ui/card";
+import { Card, CardLink } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
 import EmptyState from "@/components/ui/empty-state";
 import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
@@ -61,7 +60,7 @@ export default async function UnidadEstudiante({
   if (unidad.orden > 1) {
     const { data: unidadAnterior } = await admin
       .from("unidades")
-      .select("id, nombre, actividades(id)")
+      .select("id, nombre, actividades(id, orden)")
       .eq("orden", unidad.orden - 1)
       .single();
 
@@ -77,8 +76,18 @@ export default async function UnidadEstudiante({
         .eq("unidad_id", unidadAnterior.id)
         .eq("momento", "cierre")
         .maybeSingle();
+      const ultimaActividadAnterior = unidadAnterior.actividades.slice().sort((a, b) => b.orden - a.orden)[0];
+      const { data: reflexionUltimaActividadAnterior } = ultimaActividadAnterior
+        ? await supabase
+            .from("reflexiones")
+            .select("id")
+            .eq("estudiante_id", estudiante.id)
+            .eq("actividad_id", ultimaActividadAnterior.id)
+            .eq("momento", "cierre")
+            .maybeSingle()
+        : { data: null };
 
-      if (!unidadEstaCompleta(totalAnterior, hechasAnterior) || !reflexionAnterior) {
+      if (!unidadEstaCompleta(totalAnterior, hechasAnterior) || !reflexionAnterior || !reflexionUltimaActividadAnterior) {
         return (
           <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
             <PageHeader volverHref="/estudiante/inicio" eyebrow={`Unidad ${unidad.orden}`} titulo={unidad.nombre} />
@@ -101,7 +110,7 @@ export default async function UnidadEstudiante({
     }
   }
 
-  const [{ data: confianzas }, { data: bitacora }, { data: reflexionCierre }] = await Promise.all([
+  const [{ data: confianzas }, { data: bitacora }, { data: reflexionCierre }, { data: reflexionesActividades }] = await Promise.all([
     supabase
       .from("autoevaluaciones_confianza")
       .select("momento, valor")
@@ -120,6 +129,12 @@ export default async function UnidadEstudiante({
       .eq("unidad_id", id)
       .eq("momento", "cierre")
       .maybeSingle(),
+    supabase
+      .from("reflexiones")
+      .select("actividad_id")
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "cierre")
+      .not("actividad_id", "is", null),
   ]);
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
@@ -129,20 +144,12 @@ export default async function UnidadEstudiante({
     actividades?.filter((a) => Array.isArray(a.entregas) && a.entregas.length > 0)
       .length ?? 0;
   const unidadCompleta = totalActividades > 0 && completadas === totalActividades;
+  const ultimaActividad = actividades?.[actividades.length - 1];
+  const tieneReflexionUltimaActividad = Boolean(
+    ultimaActividad && (reflexionesActividades ?? []).some((reflexion) => reflexion.actividad_id === ultimaActividad.id),
+  );
   const pct = totalActividades > 0 ? Math.round((completadas / totalActividades) * 100) : 0;
   const tema = temaUnidad(unidad.orden);
-
-  // Desempeño real de la unidad, para comparar contra la confianza inicial
-  // en la reflexión de cierre — se deriva de las mismas entregas ya traídas
-  // arriba, sin consulta nueva (solo cuentan las que sí se autocalifican).
-  const puntajesAuto = (actividades ?? [])
-    .flatMap((a) => (Array.isArray(a.entregas) ? a.entregas : []))
-    .map((e) => e.puntaje_auto)
-    .filter((p): p is number => p != null);
-  const promedioUnidad =
-    puntajesAuto.length > 0
-      ? Math.round(puntajesAuto.reduce((suma, p) => suma + p, 0) / puntajesAuto.length)
-      : null;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
@@ -255,14 +262,38 @@ export default async function UnidadEstudiante({
           )}
 
           {unidadCompleta && (
-            <ReflexionCierre
-              estudianteId={estudiante.id}
-              unidadId={id}
-              metaPrevia={bitacora?.meta ?? null}
-              textoPrevio={reflexionCierre?.texto ?? null}
-              confianzaInicioPct={confianzaInicio?.valor ?? null}
-              promedioUnidad={promedioUnidad}
-            />
+            <Card className="flex flex-col gap-3 border-indigo-100 bg-indigo-50/60 p-5 dark:border-indigo-900 dark:bg-indigo-950/30">
+              <div className="flex items-start gap-2.5">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Actividades terminadas</p>
+                  <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                    {tieneReflexionUltimaActividad
+                      ? reflexionCierre
+                        ? "Tu cierre está guardado. Puedes volver a leerlo o continuar con la siguiente unidad."
+                        : "La última reflexión está lista. Ahora puedes cerrar la unidad con una pausa final."
+                      : "Antes del cierre, guarda la reflexión de tu última actividad para completar tu recorrido."}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={
+                  tieneReflexionUltimaActividad
+                    ? `/estudiante/unidad/${id}/cierre`
+                    : ultimaActividad
+                      ? `/estudiante/actividad/${ultimaActividad.id}`
+                      : `/estudiante/unidad/${id}`
+                }
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+              >
+                {tieneReflexionUltimaActividad
+                  ? reflexionCierre
+                    ? "Ver cierre de la unidad"
+                    : "Escribir reflexión de cierre"
+                  : "Volver a la última actividad"}
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </Card>
           )}
         </>
       )}

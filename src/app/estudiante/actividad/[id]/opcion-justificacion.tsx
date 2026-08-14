@@ -1,16 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, CheckCircle2, ChevronLeft, Lightbulb, XCircle } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import AvisoReintento from "@/components/estudiante/aviso-reintento";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import ProgressBar from "@/components/ui/progress-bar";
-import { ideasClaveMencionadas } from "@/lib/ideas-clave";
-import { contarPalabras } from "@/lib/contar-palabras";
 import { bloquearPegado } from "@/lib/anti-copiar";
+import { validarJustificacion } from "@/lib/validar-justificacion";
 import {
   type ContenidoOpcionJustificacionPublico,
   type MensajeChat,
@@ -90,11 +89,6 @@ function PreguntaRonda({
   bloqueado: boolean;
   opcionCorrecta?: string;
 }) {
-  const ideasMencionadas = useMemo(
-    () => ideasClaveMencionadas(respuesta.justificacion, ronda.ideas_clave ?? []),
-    [respuesta.justificacion, ronda.ideas_clave],
-  );
-
   return (
     <div className="flex flex-col gap-4">
       {ronda.contexto && (
@@ -171,34 +165,10 @@ function PreguntaRonda({
           onPaste={bloquearPegado}
           rows={3}
         />
+        <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          Explica con tus palabras qué detalle de la situación te llevó a elegirla. No repitas solo la opción.
+        </p>
       </Field>
-
-      {ronda.ideas_clave && ronda.ideas_clave.length > 0 && (
-        <div className="flex flex-col gap-1 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">
-            <Lightbulb className="size-3.5 shrink-0 text-indigo-500" aria-hidden="true" />
-            Ideas que esperamos en tu justificación:
-          </p>
-          <ul className="flex flex-col gap-0.5">
-            {ronda.ideas_clave.map((idea) => {
-              const mencionada = ideasMencionadas.includes(idea);
-              return (
-                <li
-                  key={idea}
-                  className={`flex items-center gap-1.5 text-xs ${
-                    mencionada
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-slate-500 dark:text-slate-500"
-                  }`}
-                >
-                  {mencionada && <Check className="size-3 shrink-0" aria-hidden="true" />}
-                  {idea}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
@@ -252,8 +222,9 @@ export default function OpcionJustificacion({
   }
 
   function validarActual(): boolean {
-    if (contarPalabras(respuesta.justificacion) < 6) {
-      setError("Explica un poco más tu razonamiento antes de continuar.");
+    const errorValidacion = validarJustificacion(respuesta.justificacion, respuesta.opcion);
+    if (errorValidacion) {
+      setError(errorValidacion);
       return false;
     }
     setError(null);
@@ -261,9 +232,9 @@ export default function OpcionJustificacion({
   }
 
   function validarTodas(): boolean {
-    const faltante = respuestas.findIndex((r) => contarPalabras(r.justificacion) < 6);
+    const faltante = respuestas.findIndex((r) => validarJustificacion(r.justificacion, r.opcion));
     if (faltante !== -1) {
-      setError(`Explica un poco más tu razonamiento en la pregunta ${faltante + 1} antes de guardar.`);
+      setError(`Completa la explicación de la pregunta ${faltante + 1} antes de guardar.`);
       return false;
     }
     setError(null);

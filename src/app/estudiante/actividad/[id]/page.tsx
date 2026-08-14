@@ -108,9 +108,6 @@ export default async function ActividadEstudiante({
     { data: actividadesDeUnidad },
     { data: entregasDeUnidad },
     { data: unidades },
-    { data: confianzaInicioUnidad },
-    { data: bitacoraUnidad },
-    { data: reflexionCierreUnidad },
   ] = await Promise.all([
     supabase
       .from("entregas")
@@ -150,26 +147,6 @@ export default async function ActividadEstudiante({
     // segunda vuelta al servidor, la celebración de "unidad completada" si
     // esta entrega resultó ser la que faltaba.
     admin.from("unidades").select("id, nombre, orden").order("orden"),
-    supabase
-      .from("autoevaluaciones_confianza")
-      .select("valor")
-      .eq("estudiante_id", estudiante.id)
-      .eq("unidad_id", actividad.unidad_id)
-      .eq("momento", "inicio")
-      .maybeSingle(),
-    supabase
-      .from("bitacora")
-      .select("meta")
-      .eq("estudiante_id", estudiante.id)
-      .eq("unidad_id", actividad.unidad_id)
-      .maybeSingle(),
-    supabase
-      .from("reflexiones")
-      .select("texto")
-      .eq("estudiante_id", estudiante.id)
-      .eq("unidad_id", actividad.unidad_id)
-      .eq("momento", "cierre")
-      .maybeSingle(),
   ]);
 
   // Misma forma que antes (`entregas(puntaje_auto)` embebido), reconstruida
@@ -211,44 +188,25 @@ export default async function ActividadEstudiante({
   const actividadAnterior = indiceActual > 0 ? hermanas![indiceActual - 1] : null;
   const porcentajeUnidad = hermanas && indiceActual >= 0 ? Math.round(((indiceActual + 1) / hermanas.length) * 100) : 0;
 
-  // Si esta entrega fue justo la que le faltaba a la unidad, se abre la
-  // celebración con la reflexión de cierre aquí mismo — la usuaria pidió
-  // que no dependiera de que el estudiante navegue de vuelta a la unidad
-  // por su cuenta para encontrarla.
+  // Si esta entrega fue justo la que le faltaba a la unidad, se muestra el
+  // paso hacia la pantalla exclusiva de cierre. La reflexión de la unidad
+  // ya no vive dentro de la última actividad.
   const unidadRecienCompletada =
     !!entregaExistente && !!hermanas && hermanas.every((h) => Array.isArray(h.entregas) && h.entregas.length > 0);
   let unidadCompletadaProps = null;
   if (unidadRecienCompletada) {
     const unidadActual = unidades?.find((u) => u.id === actividad.unidad_id);
-    const unidadSiguiente = unidadActual ? unidades?.find((u) => u.orden === unidadActual.orden + 1) : undefined;
-    const puntajesAuto = (hermanas ?? [])
-      .flatMap((h) => (Array.isArray(h.entregas) ? h.entregas : []))
-      .map((e) => e.puntaje_auto)
-      .filter((p): p is number => p != null);
-    const promedioUnidad =
-      puntajesAuto.length > 0
-        ? Math.round(puntajesAuto.reduce((suma, p) => suma + p, 0) / puntajesAuto.length)
-        : null;
     unidadCompletadaProps = {
-      unidadId: actividad.unidad_id,
       mensajeCelebracion: unidadActual
         ? `¡Completaste la Unidad ${unidadActual.orden}: ${unidadActual.nombre}!`
         : "¡Completaste la unidad!",
-      metaPrevia: bitacoraUnidad?.meta ?? null,
-      textoReflexionCierrePrevio: reflexionCierreUnidad?.texto ?? null,
-      confianzaInicioPct: confianzaInicioUnidad?.valor ?? null,
-      promedioUnidad,
-      siguienteHref: unidadSiguiente ? `/estudiante/unidad/${unidadSiguiente.id}` : "/estudiante/inicio",
-      textoSiguiente: unidadSiguiente
-        ? `Continuar a Unidad ${unidadSiguiente.orden}: ${unidadSiguiente.nombre}`
-        : "Volver al inicio",
+      siguienteHref: `/estudiante/unidad/${actividad.unidad_id}/cierre`,
+      textoSiguiente: "Continuar al cierre de la unidad",
     };
   }
 
   const bloqueAeUc = unidadDeActividad?.unidad_competencia && (
-    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
-      <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} compacto />
-    </div>
+    <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} />
   );
 
   // La pregunta de confianza va ANTES del video (y solo se muestra una vez,
@@ -452,7 +410,7 @@ export default async function ActividadEstudiante({
         }
         placeholderReflexionPersonalizado={
           nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
-            ? "¿Qué cambia entre el resumen y la síntesis? ¿Y entre la síntesis y la paráfrasis?"
+            ? "Escribe una idea que quieras recordar sobre cómo resumir y explicar un texto."
             : undefined
         }
         unidadCompletada={unidadCompletadaProps}
@@ -509,6 +467,8 @@ export default async function ActividadEstudiante({
         }
       />
 
+      {bloqueAeUc}
+
       {hermanas && indiceActual >= 0 && (
         <section
           aria-labelledby="progreso-actividad"
@@ -537,8 +497,6 @@ export default async function ActividadEstudiante({
         aprendizajeEsperado={actividad.aprendizaje_esperado}
         ayuda={ayudaActividad}
       />
-
-      {bloqueAeUc}
 
       <EntregaRecienteProvider
         key={actividad.id}
