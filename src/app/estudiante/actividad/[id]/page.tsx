@@ -107,7 +107,6 @@ export default async function ActividadEstudiante({
     { data: reflexionExistente },
     { data: actividadesDeUnidad },
     { data: entregasDeUnidad },
-    { data: unidades },
   ] = await Promise.all([
     supabase
       .from("entregas")
@@ -143,10 +142,6 @@ export default async function ActividadEstudiante({
       .from("entregas")
       .select("actividad_id, puntaje_auto, respuesta")
       .eq("estudiante_id", estudiante.id),
-    // Traídos siempre (son consultas ligeras) para poder armar, sin una
-    // segunda vuelta al servidor, la celebración de "unidad completada" si
-    // esta entrega resultó ser la que faltaba.
-    admin.from("unidades").select("id, nombre, orden").order("orden"),
   ]);
 
   // Misma forma que antes (`entregas(puntaje_auto)` embebido), reconstruida
@@ -187,23 +182,6 @@ export default async function ActividadEstudiante({
   const indiceActual = hermanas?.findIndex((h) => h.id === actividad.id) ?? -1;
   const actividadAnterior = indiceActual > 0 ? hermanas![indiceActual - 1] : null;
   const porcentajeUnidad = hermanas && indiceActual >= 0 ? Math.round(((indiceActual + 1) / hermanas.length) * 100) : 0;
-
-  // Si esta entrega fue justo la que le faltaba a la unidad, se muestra el
-  // paso hacia la pantalla exclusiva de cierre. La reflexión de la unidad
-  // ya no vive dentro de la última actividad.
-  const unidadRecienCompletada =
-    !!entregaExistente && !!hermanas && hermanas.every((h) => Array.isArray(h.entregas) && h.entregas.length > 0);
-  let unidadCompletadaProps = null;
-  if (unidadRecienCompletada) {
-    const unidadActual = unidades?.find((u) => u.id === actividad.unidad_id);
-    unidadCompletadaProps = {
-      mensajeCelebracion: unidadActual
-        ? `¡Completaste la Unidad ${unidadActual.orden}: ${unidadActual.nombre}!`
-        : "¡Completaste la unidad!",
-      siguienteHref: `/estudiante/unidad/${actividad.unidad_id}/cierre`,
-      textoSiguiente: "Continuar al cierre de la unidad",
-    };
-  }
 
   const bloqueAeUc = unidadDeActividad?.unidad_competencia && (
     <UnidadCompetenciaTag texto={unidadDeActividad.unidad_competencia} />
@@ -408,12 +386,6 @@ export default async function ActividadEstudiante({
               ? "Intentar de nuevo antes de continuar"
               : "Volver a la unidad"
         }
-        placeholderReflexionPersonalizado={
-          nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
-            ? "Escribe una idea que quieras recordar sobre cómo resumir y explicar un texto."
-            : undefined
-        }
-        unidadCompletada={unidadCompletadaProps}
       />
     </>
   );
