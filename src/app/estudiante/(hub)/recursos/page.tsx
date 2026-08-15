@@ -40,7 +40,7 @@ const RECURSOS = [
     descripcion: "Pequeños hábitos para estudiar con seguridad.",
     icon: ShieldCheck,
     color: "bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400",
-    puntos: ["No compartas tu código de grupo ni tu NIP", "Cierra sesión si usas un equipo compartido", "Las grabaciones se analizan en tu navegador y no se guardan"],
+    puntos: ["No compartas tu código de grupo ni tu NIP", "Cierra sesión si usas un equipo compartido", "No escribas datos personales que no necesite la actividad"],
   },
 ];
 

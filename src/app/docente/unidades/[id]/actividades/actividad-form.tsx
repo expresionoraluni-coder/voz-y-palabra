@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, MessageSquareText, Plus, Trash2 } from "lucide-
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/mensaje-error";
 import { DESCRIPCION_TIPO, etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
+import { esTipoActividadActual, TIPOS_ACTIVIDAD_ACTUALES } from "@/lib/tipos-actividad-actuales";
 import { compararPalabras, tokenizar } from "@/lib/comparar-ortografia";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -28,34 +29,11 @@ type ActividadInicial = {
   contenido: Record<string, unknown>;
 };
 
-const TIPOS_DISPONIBLES = [
-  "opcion_justificacion",
-  "clasificacion",
-  "encontrar_corregir",
-  "comparador",
-  "redaccion_checklist",
-  "etiquetado_texto",
-  "constructor_ramificado",
-  "grabacion_rubrica",
-  "ordenar_fragmentos",
-  "evaluar_videos",
-  "corregir_ortografia",
-];
-
 function lineas(texto: string): string[] {
   return texto
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
-}
-
-type SeccionParseada = { linea: string; nombre: string; guia: string; valida: boolean };
-
-function parsearSecciones(texto: string): SeccionParseada[] {
-  return lineas(texto).map((linea) => {
-    const [nombre, guia] = linea.split("||").map((p) => p.trim());
-    return { linea, nombre: nombre ?? "", guia: guia ?? "", valida: linea.includes("||") };
-  });
 }
 
 function claveBorrador(unidadId: string, usuarioId: string) {
@@ -123,19 +101,17 @@ export default function ActividadForm({
     pregunta: string;
     opciones: string;
     respuestaCorrecta: string;
-    ideasClave: string;
   };
   const [introOJ, setIntroOJ] = useState(c.intro ?? "");
   const [rondasOJ, setRondasOJ] = useState<RondaEditor[]>(() => {
     const rondasCrudas = Array.isArray(c.rondas) && c.rondas.length > 0 ? c.rondas : c.pregunta ? [c] : [];
     if (rondasCrudas.length === 0)
-      return [{ contexto: "", pregunta: "", opciones: "", respuestaCorrecta: "", ideasClave: "" }];
+      return [{ contexto: "", pregunta: "", opciones: "", respuestaCorrecta: "" }];
     return rondasCrudas.map((r: Record<string, unknown>) => ({
       contexto: (r.contexto as string) ?? "",
       pregunta: (r.pregunta as string) ?? "",
       opciones: ((r.opciones as string[]) ?? []).join("\n"),
       respuestaCorrecta: (r.respuesta_correcta as string) ?? "",
-      ideasClave: ((r.ideas_clave as string[]) ?? []).join("\n"),
     }));
   });
 
@@ -149,11 +125,6 @@ export default function ActividadForm({
         }))
       : [{ texto: "", categoria: "" }],
   );
-
-  const [textoOriginal, setTextoOriginal] = useState(c.texto_original ?? "");
-  const [pista, setPista] = useState(c.pista ?? "");
-  const [fragmentoErroneo, setFragmentoErroneo] = useState(c.fragmento_erroneo ?? "");
-  const [ideasClaveError, setIdeasClaveError] = useState((c.ideas_clave ?? []).join("\n"));
 
   const [conceptos, setConceptos] = useState((c.conceptos ?? []).join("\n"));
   const [criterios, setCriterios] = useState((c.criterios ?? []).join("\n"));
@@ -193,15 +164,6 @@ export default function ActividadForm({
       : [{ texto: "", categoria: "" }],
   );
 
-  const [temaSugerido, setTemaSugerido] = useState(c.tema_sugerido ?? "");
-  const [secciones, setSecciones] = useState(
-    (c.secciones ?? []).map((s: { nombre: string; guia: string }) => `${s.nombre} || ${s.guia}`).join("\n"),
-  );
-
-  const [temaGrabacion, setTemaGrabacion] = useState(c.tema_sugerido ?? "");
-  const [duracionSugerida, setDuracionSugerida] = useState(String(c.duracion_sugerida_segundos ?? "90"));
-  const [rubrica, setRubrica] = useState((c.rubrica ?? []).join("\n"));
-
   const [contextoOF, setContextoOF] = useState(c.contexto ?? "");
   const [fragmentosCorrectosOF, setFragmentosCorrectosOF] = useState(
     Array.isArray(c.orden_correcto) && Array.isArray(c.fragmentos)
@@ -238,6 +200,7 @@ export default function ActividadForm({
     supabase
       .from("tipos_actividad")
       .select("id, nombre, descripcion")
+      .in("nombre", TIPOS_ACTIVIDAD_ACTUALES)
       .order("nombre")
       .then(({ data }) => {
         setTipos(data ?? []);
@@ -245,7 +208,7 @@ export default function ActividadForm({
           const actual = data?.find((t) => t.nombre === actividadInicial.tipoNombre);
           if (actual) setTipoId(actual.id);
         } else {
-          const primero = data?.find((t) => t.nombre === "opcion_justificacion");
+          const primero = data?.find((t) => t.nombre === TIPOS_ACTIVIDAD_ACTUALES[0]);
           if (primero) setTipoId(primero.id);
         }
       });
@@ -275,10 +238,6 @@ export default function ActividadForm({
       if (datos.categorias) setCategorias(datos.categorias);
       if (datos.contextoClasificacion) setContextoClasificacion(datos.contextoClasificacion);
       if (datos.elementosFilas) setElementosFilas(datos.elementosFilas);
-      if (datos.textoOriginal) setTextoOriginal(datos.textoOriginal);
-      if (datos.pista) setPista(datos.pista);
-      if (datos.fragmentoErroneo) setFragmentoErroneo(datos.fragmentoErroneo);
-      if (datos.ideasClaveError) setIdeasClaveError(datos.ideasClaveError);
       if (datos.conceptos) setConceptos(datos.conceptos);
       if (datos.criterios) setCriterios(datos.criterios);
       if (datos.tituloFuente) setTituloFuente(datos.tituloFuente);
@@ -293,11 +252,6 @@ export default function ActividadForm({
       if (datos.contexto) setContexto(datos.contexto);
       if (datos.etiquetas) setEtiquetas(datos.etiquetas);
       if (datos.fragmentosFilas) setFragmentosFilas(datos.fragmentosFilas);
-      if (datos.temaSugerido) setTemaSugerido(datos.temaSugerido);
-      if (datos.secciones) setSecciones(datos.secciones);
-      if (datos.temaGrabacion) setTemaGrabacion(datos.temaGrabacion);
-      if (datos.duracionSugerida) setDuracionSugerida(datos.duracionSugerida);
-      if (datos.rubrica) setRubrica(datos.rubrica);
       if (datos.contextoOF) setContextoOF(datos.contextoOF);
       if (datos.fragmentosCorrectosOF) setFragmentosCorrectosOF(datos.fragmentosCorrectosOF);
       if (datos.distractoresOF) setDistractoresOF(datos.distractoresOF);
@@ -331,10 +285,6 @@ export default function ActividadForm({
       categorias,
       contextoClasificacion,
       elementosFilas,
-      textoOriginal,
-      pista,
-      fragmentoErroneo,
-      ideasClaveError,
       conceptos,
       criterios,
       tituloFuente,
@@ -349,11 +299,6 @@ export default function ActividadForm({
       contexto,
       etiquetas,
       fragmentosFilas,
-      temaSugerido,
-      secciones,
-      temaGrabacion,
-      duracionSugerida,
-      rubrica,
       contextoOF,
       fragmentosCorrectosOF,
       distractoresOF,
@@ -390,10 +335,6 @@ export default function ActividadForm({
     categorias,
     contextoClasificacion,
     elementosFilas,
-    textoOriginal,
-    pista,
-    fragmentoErroneo,
-    ideasClaveError,
     conceptos,
     criterios,
     tituloFuente,
@@ -408,11 +349,6 @@ export default function ActividadForm({
     contexto,
     etiquetas,
     fragmentosFilas,
-    temaSugerido,
-    secciones,
-    temaGrabacion,
-    duracionSugerida,
-    rubrica,
     contextoOF,
     fragmentosCorrectosOF,
     distractoresOF,
@@ -432,7 +368,7 @@ export default function ActividadForm({
 
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
   const nombreTipo = tipoSeleccionado?.nombre;
-  const disponible = TIPOS_DISPONIBLES.includes(nombreTipo ?? "");
+  const disponible = esTipoActividadActual(nombreTipo);
   const IconoTipo = ICONO_TIPO[nombreTipo ?? ""] ?? MessageSquareText;
   const listaCategorias = lineas(categorias);
   const listaEtiquetas = lineas(etiquetas);
@@ -462,7 +398,7 @@ export default function ActividadForm({
   function agregarRonda() {
     setRondasOJ((prev) => [
       ...prev,
-      { contexto: "", pregunta: "", opciones: "", respuestaCorrecta: "", ideasClave: "" },
+      { contexto: "", pregunta: "", opciones: "", respuestaCorrecta: "" },
     ]);
   }
 
@@ -482,6 +418,7 @@ export default function ActividadForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
 
     let contenido: Record<string, unknown> | null = null;
@@ -492,7 +429,6 @@ export default function ActividadForm({
         pregunta: string;
         opciones: string[];
         respuesta_correcta: string;
-        ideas_clave?: string[];
       }[] = [];
       for (let i = 0; i < rondasOJ.length; i++) {
         const listaOpciones = lineas(rondasOJ[i].opciones);
@@ -504,13 +440,11 @@ export default function ActividadForm({
           setError(`Elige la respuesta correcta de la pregunta ${i + 1} (debe ser una de sus opciones).`);
           return;
         }
-        const listaIdeasClave = lineas(rondasOJ[i].ideasClave);
         rondasValidas.push({
           contexto: rondasOJ[i].contexto.trim() || undefined,
           pregunta: rondasOJ[i].pregunta,
           opciones: listaOpciones,
           respuesta_correcta: rondasOJ[i].respuestaCorrecta,
-          ideas_clave: listaIdeasClave.length > 0 ? listaIdeasClave : undefined,
         });
       }
       contenido = { intro: introOJ.trim() || undefined, rondas: rondasValidas };
@@ -529,18 +463,6 @@ export default function ActividadForm({
         categorias: listaCategorias,
         elementos: listaElementos.map((f) => ({ texto: f.texto.trim(), categoria_correcta: f.categoria })),
         contexto: contextoClasificacion.trim() || null,
-      };
-    } else if (nombreTipo === "encontrar_corregir") {
-      if (!textoOriginal.trim()) {
-        setError("Escribe el texto que contiene el error.");
-        return;
-      }
-      const listaIdeasClaveError = lineas(ideasClaveError);
-      contenido = {
-        texto_original: textoOriginal,
-        pista: pista || null,
-        fragmento_erroneo: fragmentoErroneo.trim() || undefined,
-        ideas_clave: listaIdeasClaveError.length > 0 ? listaIdeasClaveError : undefined,
       };
     } else if (nombreTipo === "comparador") {
       const listaConceptos = lineas(conceptos);
@@ -618,41 +540,6 @@ export default function ActividadForm({
         contexto: contexto || null,
         etiquetas: listaEtiquetas,
         fragmentos: listaFragmentos.map((f) => ({ texto: f.texto.trim(), etiqueta_correcta: f.categoria })),
-      };
-    } else if (nombreTipo === "constructor_ramificado") {
-      const seccionesParseadas = parsearSecciones(secciones);
-      // Si falta el "||", antes se guardaba la sección con guia: "" en
-      // silencio y el estudiante recibía un paso sin instrucciones, sin que
-      // nadie se enterara — ahora se detecta antes de guardar (y se ve en
-      // la vista previa de abajo mientras escribe).
-      const invalida = seccionesParseadas.find((s) => !s.valida);
-      if (invalida) {
-        setError(`Falta el separador "||" en "${invalida.linea}". Usa el formato: nombre || guía.`);
-        return;
-      }
-      if (seccionesParseadas.length < 2) {
-        setError('Escribe al menos 2 secciones, formato: "nombre || guía", una por línea.');
-        return;
-      }
-      contenido = {
-        tema_sugerido: temaSugerido || null,
-        secciones: seccionesParseadas.map((s) => ({ nombre: s.nombre, guia: s.guia })),
-      };
-    } else if (nombreTipo === "grabacion_rubrica") {
-      const listaRubrica = lineas(rubrica);
-      const duracion = parseInt(duracionSugerida, 10);
-      if (!temaGrabacion.trim()) {
-        setError("Escribe el tema o instrucción para la grabación.");
-        return;
-      }
-      if (listaRubrica.length < 2) {
-        setError("Escribe al menos 2 criterios de la rúbrica, uno por línea.");
-        return;
-      }
-      contenido = {
-        tema_sugerido: temaGrabacion,
-        duracion_sugerida_segundos: duracion || 90,
-        rubrica: listaRubrica,
       };
     } else if (nombreTipo === "ordenar_fragmentos") {
       const correctos = lineas(fragmentosCorrectosOF);
@@ -775,7 +662,6 @@ export default function ActividadForm({
     }
 
     router.push(`/docente/unidades/${unidadId}`);
-    router.refresh();
   }
 
   function filaEditor(
@@ -852,32 +738,6 @@ export default function ActividadForm({
     );
   }
 
-  function vistaPreviaSecciones(texto: string) {
-    const parseadas = parsearSecciones(texto);
-    if (parseadas.length === 0) return null;
-    return (
-      <div className="flex flex-col gap-1.5 rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/60">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {parseadas.length} sección(es) detectada(s)
-        </p>
-        <div className="flex flex-col gap-1.5">
-          {parseadas.map((s, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm">
-              {s.valida ? (
-                <Badge tono="indigo">{s.nombre || "(sin nombre)"}</Badge>
-              ) : (
-                <Badge tono="warning">falta &quot;||&quot;</Badge>
-              )}
-              <span className="flex-1 text-xs text-slate-500 dark:text-slate-400">
-                {s.valida ? s.guia || "(sin guía)" : s.linea}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
@@ -916,7 +776,7 @@ export default function ActividadForm({
             )}
             {!disponible && tipoId && (
               <HelpText>
-                Este tipo estará disponible en una fase próxima. Por ahora puedes crear: {TIPOS_DISPONIBLES.map(etiquetaTipo).join(", ")}.
+                Este tipo histórico ya no está disponible para nuevas actividades. Los tipos vigentes son: {TIPOS_ACTIVIDAD_ACTUALES.map(etiquetaTipo).join(", ")}.
               </HelpText>
             )}
           </Field>
@@ -1098,19 +958,6 @@ export default function ActividadForm({
                           arriba.
                         </HelpText>
                       </Field>
-                      <Field>
-                        <Label htmlFor={`ideasClave-oj-${i}`}>
-                          Ideas clave esperadas en la justificación (opcional, una por línea)
-                        </Label>
-                        <Textarea
-                          id={`ideasClave-oj-${i}`}
-                          value={ronda.ideasClave}
-                          onChange={(e) => actualizarRonda(i, { ideasClave: e.target.value })}
-                          rows={2}
-                          placeholder={"terminología\nespecializado\nformal"}
-                          className="font-mono text-sm"
-                        />
-                      </Field>
                     </div>
                   ))}
                 </div>
@@ -1156,55 +1003,6 @@ export default function ActividadForm({
                   {filaEditor(elementosFilas, setElementosFilas, listaCategorias, "Elige categoría")}
                 </Field>
                 {vistaPrevia(elementosFilas)}
-              </>
-            )}
-
-            {nombreTipo === "encontrar_corregir" && (
-              <>
-                <Field>
-                  <Label htmlFor="textoOriginal">Texto con el error (el estudiante lo verá tal cual)</Label>
-                  <Textarea
-                    id="textoOriginal"
-                    required
-                    value={textoOriginal}
-                    onChange={(e) => setTextoOriginal(e.target.value)}
-                    rows={5}
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="pista">Pista (opcional, se muestra si el estudiante la pide)</Label>
-                  <Input id="pista" value={pista} onChange={(e) => setPista(e.target.value)} />
-                </Field>
-                <Field>
-                  <Label htmlFor="fragmentoErroneo">
-                    Fragmento exacto con el error (opcional). Úsalo solo si el error es puntual, por ejemplo,
-                    una palabra mal escrita.
-                  </Label>
-                  <Input
-                    id="fragmentoErroneo"
-                    value={fragmentoErroneo}
-                    onChange={(e) => setFragmentoErroneo(e.target.value)}
-                    placeholder="ej. aiga"
-                  />
-                  <HelpText>
-                    Le avisamos al estudiante si &quot;qué encontraste&quot; menciona este fragmento. No bloquea el
-                    envío; solo confirma que va por buen camino.
-                  </HelpText>
-                </Field>
-                <Field>
-                  <Label htmlFor="ideasClaveError">
-                    Ideas clave esperadas (opcional). Úsalo en vez del fragmento si el error es de
-                    estructura o coherencia, no una palabra puntual.
-                  </Label>
-                  <Textarea
-                    id="ideasClaveError"
-                    value={ideasClaveError}
-                    onChange={(e) => setIdeasClaveError(e.target.value)}
-                    rows={2}
-                    placeholder={"tema\nrelación\ndistintos"}
-                    className="font-mono text-sm"
-                  />
-                </Field>
               </>
             )}
 
@@ -1454,74 +1252,6 @@ export default function ActividadForm({
                   {filaEditor(fragmentosFilas, setFragmentosFilas, listaEtiquetas, "Elige etiqueta")}
                 </Field>
                 {vistaPrevia(fragmentosFilas)}
-              </>
-            )}
-
-            {nombreTipo === "constructor_ramificado" && (
-              <>
-                <Field>
-                  <Label htmlFor="temaSugerido">Tema sugerido (opcional)</Label>
-                  <Textarea
-                    id="temaSugerido"
-                    value={temaSugerido}
-                    onChange={(e) => setTemaSugerido(e.target.value)}
-                    rows={2}
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="secciones">Secciones del esqueleto. Formato: nombre || guía para el estudiante.</Label>
-                  <Textarea
-                    id="secciones"
-                    required
-                    value={secciones}
-                    onChange={(e) => setSecciones(e.target.value)}
-                    rows={5}
-                    placeholder={
-                      "Tesis || Plantea una postura objetiva a favor de una idea\nAntítesis || Plantea la idea opuesta, también fundamentada\nSíntesis || Integra lo mejor de ambas y concluye"
-                    }
-                    className="font-mono text-sm"
-                  />
-                </Field>
-                {vistaPreviaSecciones(secciones)}
-              </>
-            )}
-
-            {nombreTipo === "grabacion_rubrica" && (
-              <>
-                <Field>
-                  <Label htmlFor="temaGrabacion">Tema o instrucción para la grabación</Label>
-                  <Textarea
-                    id="temaGrabacion"
-                    required
-                    value={temaGrabacion}
-                    onChange={(e) => setTemaGrabacion(e.target.value)}
-                    rows={3}
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="duracionSugerida">Duración sugerida (segundos)</Label>
-                  <Input
-                    id="duracionSugerida"
-                    required
-                    type="number"
-                    min={10}
-                    value={duracionSugerida}
-                    onChange={(e) => setDuracionSugerida(e.target.value)}
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="rubrica">Criterios de la rúbrica (uno por línea)</Label>
-                  <Textarea
-                    id="rubrica"
-                    required
-                    value={rubrica}
-                    onChange={(e) => setRubrica(e.target.value)}
-                    rows={4}
-                    placeholder={"Claridad\nRitmo\nMuletillas\nVolumen"}
-                    className="font-mono text-sm"
-                  />
-                  <ContadorLineas texto={rubrica} singular="criterio" plural="criterios" />
-                </Field>
               </>
             )}
 

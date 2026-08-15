@@ -9,9 +9,6 @@ export type { ResultadoCalificacion } from "@/lib/estudiante-entregas-server";
 
 const TIPOS_ENTREGA_ABIERTA = new Set([
   "comparador",
-  "constructor_ramificado",
-  "encontrar_corregir",
-  "grabacion_rubrica",
   "redaccion_checklist",
 ]);
 
@@ -41,7 +38,7 @@ export async function guardarEntregaAbiertaAccion(
     const errorComprension = validarRespuestaComprension(respuestaComprension);
     if (errorComprension) return { ok: false, error: errorComprension };
   }
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, respuesta, null, estado);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, respuesta, null, estado, ctx.contexto.estudianteId);
 }
 export async function reiniciarEntregaAccion(
   actividadId: string,
@@ -52,5 +49,5 @@ export async function reiniciarEntregaAccion(
   }
   const ctx = await obtenerContextoCalificacion(actividadId, tipoEsperado);
   if (!ctx.ok) return ctx;
-  return reiniciarEntregaInterna(ctx.contexto.supabase, actividadId);
+  return reiniciarEntregaInterna(ctx.contexto.supabase, actividadId, ctx.contexto.estudianteId);
 }

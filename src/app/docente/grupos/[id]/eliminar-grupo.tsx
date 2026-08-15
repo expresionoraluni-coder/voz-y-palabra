@@ -25,6 +25,7 @@ export default function EliminarGrupo({
   const [error, setError] = useState<string | null>(null);
 
   async function eliminar() {
+    if (cargando) return;
     setCargando(true);
     setError(null);
     const supabase = createClient();

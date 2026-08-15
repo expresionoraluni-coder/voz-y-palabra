@@ -16,19 +16,17 @@ import { EntregaRecienteProvider } from "@/lib/entrega-reciente-context";
 import VideoIntro from "./video-intro";
 import OpcionJustificacion from "./opcion-justificacion";
 import Clasificacion from "./clasificacion";
-import EncontrarCorregir from "./encontrar-corregir";
 import Comparador from "./comparador";
 import RedaccionChecklist from "./redaccion-checklist";
 import RedaccionLectura from "./redaccion-lectura";
 import EtiquetadoTexto from "./etiquetado-texto";
-import ConstructorRamificado from "./constructor-ramificado";
 import ActividadPostEntrega from "./actividad-post-entrega";
 import Prediccion from "./prediccion";
-import GrabacionRubrica from "./grabacion-rubrica";
 import OrdenarFragmentos from "./ordenar-fragmentos";
 import EvaluarVideos from "./evaluar-videos";
 import CorregirOrtografia from "./corregir-ortografia";
 import ActividadOrientacion from "./actividad-orientacion";
+import { esTipoActividadActual } from "@/lib/tipos-actividad-actuales";
 import { sanitizarContenidoEvaluarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
 import { sanitizarContenidoOrdenarFragmentos, type ContenidoOrdenarFragmentos } from "@/lib/calificacion-ordenar-fragmentos";
 import { sanitizarContenidoComparador, type ContenidoComparador } from "@/lib/calificacion-comparador";
@@ -36,20 +34,6 @@ import { sanitizarContenidoClasificacion, type ContenidoClasificacion } from "@/
 import { sanitizarContenidoEtiquetadoTexto, type ContenidoEtiquetadoTexto } from "@/lib/calificacion-etiquetado-texto";
 import { sanitizarContenidoOrtografia, type ContenidoOrtografia } from "@/lib/comparar-ortografia";
 import { puedeAbrirDependiente } from "@/lib/progreso-unidad";
-
-const TIPOS_CONSTRUIDOS = [
-  "opcion_justificacion",
-  "clasificacion",
-  "encontrar_corregir",
-  "comparador",
-  "redaccion_checklist",
-  "etiquetado_texto",
-  "constructor_ramificado",
-  "grabacion_rubrica",
-  "ordenar_fragmentos",
-  "evaluar_videos",
-  "corregir_ortografia",
-];
 
 export default async function ActividadEstudiante({
   params,
@@ -97,6 +81,7 @@ export default async function ActividadEstudiante({
     ? actividad.tipos_actividad[0]
     : actividad.tipos_actividad;
   const nombreTipo = tipo?.nombre;
+  if (!esTipoActividadActual(nombreTipo)) notFound();
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const modoRedaccion = (actividad.contenido as { modo?: string } | null)?.modo;
   const ayudaActividad = (actividad.contenido as { _ayuda?: string } | null)?._ayuda;
@@ -146,11 +131,15 @@ export default async function ActividadEstudiante({
 
   // Misma forma que antes (`entregas(puntaje_auto)` embebido), reconstruida
   // en JS a partir de las dos consultas separadas de arriba.
+  const entregasPorActividad = new Map((entregasDeUnidad ?? []).map((e) => [e.actividad_id, e]));
   const hermanas = actividadesDeUnidad?.map((a) => ({
     ...a,
-    entregas: (entregasDeUnidad ?? [])
-      .filter((e) => e.actividad_id === a.id)
-      .map((e) => ({ puntaje_auto: e.puntaje_auto, respuesta: e.respuesta })),
+    entregas: entregasPorActividad.has(a.id)
+      ? [{
+          puntaje_auto: entregasPorActividad.get(a.id)!.puntaje_auto,
+          respuesta: entregasPorActividad.get(a.id)!.respuesta,
+        }]
+      : [],
   }));
 
   const respuesta = entregaExistente?.respuesta;
@@ -217,23 +206,6 @@ export default async function ActividadEstudiante({
           dosNiveles={esDosNiveles}
         />
       )}
-      {nombreTipo === "encontrar_corregir" && (
-        <EncontrarCorregir
-          actividadId={actividad.id}
-          estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              texto_original: string;
-              pista: string | null;
-              fragmento_erroneo?: string;
-              ideas_clave?: string[];
-            }
-          }
-          respuestaPrevia={
-            respuesta as { que_encontraste: string; version_corregida: string } | undefined
-          }
-        />
-      )}
       {nombreTipo === "comparador" && (
         <Comparador
           actividadId={actividad.id}
@@ -290,19 +262,6 @@ export default async function ActividadEstudiante({
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
-      {nombreTipo === "constructor_ramificado" && (
-        <ConstructorRamificado
-          actividadId={actividad.id}
-          estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              tema_sugerido: string | null;
-              secciones: { nombre: string; guia: string }[];
-            }
-          }
-          respuestaPrevia={respuesta as { tema: string; textos: string[] } | undefined}
-        />
-      )}
       {nombreTipo === "ordenar_fragmentos" && (
         <OrdenarFragmentos
           actividadId={actividad.id}
@@ -343,27 +302,6 @@ export default async function ActividadEstudiante({
           }
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
-      )}
-      {nombreTipo === "grabacion_rubrica" && (
-        <GrabacionRubrica
-          actividadId={actividad.id}
-          estudianteId={estudiante.id}
-          contenido={
-            actividad.contenido as {
-              tema_sugerido: string;
-              duracion_sugerida_segundos: number;
-              rubrica: string[];
-            }
-          }
-          respuestaPrevia={
-            respuesta as { autoevaluacion: Record<string, boolean>; reflexion: string } | undefined
-          }
-        />
-      )}
-      {!TIPOS_CONSTRUIDOS.includes(nombreTipo ?? "") && (
-        <p className="text-sm text-slate-500 dark:text-slate-500">
-          Este tipo de actividad estará disponible en una fase próxima.
-        </p>
       )}
       </Card>
 

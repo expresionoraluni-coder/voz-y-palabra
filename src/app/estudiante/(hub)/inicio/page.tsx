@@ -71,15 +71,14 @@ export default async function InicioEstudiante({
   // mismo Promise.all en vez de esperar a un segundo lote — el único que
   // sigue aparte es bitacoraActiva, porque necesita unidadActiva, que se
   // calcula a partir de unidades y entregas de aquí abajo.
-  // Actualiza los logros antes de leerlos para que una insignia recién
-  // conseguida aparezca en esta misma visita.
-  const { data: insignias } = await supabase.rpc("verificar_insignias");
+  // Se lanza en paralelo para que recalcular logros no agregue un viaje
+  // secuencial antes de cargar el inicio.
+  const insigniasPromise = supabase.rpc("verificar_insignias");
 
   const [
     { data: unidades },
     { data: entregas },
     { data: reflexionesCierre },
-    { data: reflexionesActividades },
     { data: avisos },
     { data: eventosProximos },
   ] = await Promise.all([
@@ -96,16 +95,9 @@ export default async function InicioEstudiante({
       .eq("estudiante_id", estudiante.id),
     supabase
       .from("reflexiones")
-      .select("unidad_id")
+      .select("unidad_id, actividad_id")
       .eq("estudiante_id", estudiante.id)
-      .eq("momento", "cierre")
-      .not("unidad_id", "is", null),
-    supabase
-      .from("reflexiones")
-      .select("actividad_id")
-      .eq("estudiante_id", estudiante.id)
-      .eq("momento", "cierre")
-      .not("actividad_id", "is", null),
+      .eq("momento", "cierre"),
     supabase
       .from("avisos")
       .select("id, titulo, mensaje, created_at")
@@ -120,6 +112,7 @@ export default async function InicioEstudiante({
       .order("fecha")
       .limit(3),
   ]);
+  const { data: insignias } = await insigniasPromise;
 
   const idsEntregas = (entregas ?? []).map((e) => e.id);
   const { count: totalRetroalimentaciones } = idsEntregas.length
@@ -130,8 +123,12 @@ export default async function InicioEstudiante({
     : { count: 0 };
 
   const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
-  const unidadesConReflexion = new Set((reflexionesCierre ?? []).map((r) => r.unidad_id));
-  const actividadesConReflexion = new Set((reflexionesActividades ?? []).map((r) => r.actividad_id));
+  const unidadesConReflexion = new Set(
+    (reflexionesCierre ?? []).filter((r) => r.unidad_id !== null).map((r) => r.unidad_id),
+  );
+  const actividadesConReflexion = new Set(
+    (reflexionesCierre ?? []).filter((r) => r.actividad_id !== null).map((r) => r.actividad_id),
+  );
   const puntos = idsCompletadas.size * 10 + unidadesConReflexion.size * 5;
   const racha = calcularRacha((entregas ?? []).map((e) => e.created_at));
 

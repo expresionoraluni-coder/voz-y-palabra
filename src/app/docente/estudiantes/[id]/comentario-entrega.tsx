@@ -50,6 +50,7 @@ export default function ComentarioEntrega({
 
   async function enviar() {
     if (!comentario.trim() && !evaluacion) return;
+    if (cargando) return;
     setError(null);
     setCargando(true);
 

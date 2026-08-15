@@ -37,34 +37,50 @@ export default function Bitacora({
 
   async function guardarMeta(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
     setCargando(true);
     const meta = `${verbo.trim()} ${que.trim()}, ${como.trim()}.`;
     const supabase = createClient();
-    const { error: upsertError } = await supabase.from("bitacora").upsert(
-      { estudiante_id: estudianteId, unidad_id: unidadId, meta, cumplida: false },
-      { onConflict: "estudiante_id,unidad_id" },
-    );
-    if (upsertError) {
-      setError(mensajeError(upsertError));
+    try {
+      const { error: upsertError } = await supabase.from("bitacora").upsert(
+        { estudiante_id: estudianteId, unidad_id: unidadId, meta, cumplida: false },
+        { onConflict: "estudiante_id,unidad_id" },
+      );
+      if (upsertError) {
+        setError(mensajeError(upsertError));
+        return;
+      }
+      setEditando(false);
+      router.refresh();
+    } catch {
+      setError("No pudimos guardar tu meta. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
       setCargando(false);
-      return;
     }
-    setCargando(false);
-    setEditando(false);
-    router.refresh();
   }
 
   async function alternarCumplida() {
+    if (cargando) return;
+    setError(null);
     setCargando(true);
     const supabase = createClient();
-    await supabase
-      .from("bitacora")
-      .update({ cumplida: !cumplidaPrevia })
-      .eq("estudiante_id", estudianteId)
-      .eq("unidad_id", unidadId);
-    setCargando(false);
-    router.refresh();
+    try {
+      const { error: updateError } = await supabase
+        .from("bitacora")
+        .update({ cumplida: !cumplidaPrevia })
+        .eq("estudiante_id", estudianteId)
+        .eq("unidad_id", unidadId);
+      if (updateError) {
+        setError(mensajeError(updateError));
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("No pudimos actualizar tu meta. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
+    }
   }
 
   if (editando) {
@@ -127,6 +143,7 @@ export default function Bitacora({
       </div>
       <p className="text-sm italic text-slate-700 dark:text-slate-300">&quot;{metaPrevia}&quot;</p>
       <p className="text-xs text-slate-500 dark:text-slate-500">Progreso de la unidad: {avancePct}%</p>
+      {error && <ErrorText>{error}</ErrorText>}
       <Boton
         type="button"
         variant={cumplidaPrevia ? "secondary" : "primary"}

@@ -25,6 +25,7 @@ export default function GestionEstudiante({
   const [error, setError] = useState<string | null>(null);
 
   async function darDeBaja() {
+    if (cargando) return;
     setCargando(true);
     setError(null);
     const supabase = createClient();
@@ -43,6 +44,7 @@ export default function GestionEstudiante({
   }
 
   async function reactivar() {
+    if (cargando) return;
     setCargando(true);
     setError(null);
     const supabase = createClient();
@@ -60,6 +62,7 @@ export default function GestionEstudiante({
   }
 
   async function eliminar() {
+    if (cargando) return;
     setCargando(true);
     setError(null);
     const supabase = createClient();

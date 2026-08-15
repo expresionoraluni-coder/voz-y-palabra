@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { useEntregaReciente } from "@/lib/entrega-reciente-context";
 import type { ResultadoCalificacion } from "@/app/estudiante/actividad/[id]/acciones-calificacion";
 
 /**
- * Maneja el guardado de una entrega (carga/error compartido por los 11
+ * Maneja el guardado de una entrega (carga/error compartido por los tipos
  * tipos de actividad) delegando siempre a una Server Action —
  * `guardarConAccion` es el único camino de escritura: el estudiante ya no
  * tiene permiso de escritura directa sobre `entregas` vía RLS (ver
@@ -16,11 +15,11 @@ import type { ResultadoCalificacion } from "@/app/estudiante/actividad/[id]/acci
 export function useEntregaActividad(actividadId: string, estudianteId: string) {
   void actividadId;
   void estudianteId;
-  const router = useRouter();
   const { marcarGuardada } = useEntregaReciente();
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const envioEnCurso = useRef(false);
 
   // Si el estudiante sigue editando después de guardar, "Guardado" se queda
   // pegado en pantalla mintiendo que el cambio nuevo ya se guardó — los
@@ -37,23 +36,29 @@ export function useEntregaActividad(actividadId: string, estudianteId: string) {
   async function guardarConAccion(
     accion: () => Promise<ResultadoCalificacion>,
   ): Promise<Record<string, unknown> | null> {
+    if (envioEnCurso.current) return null;
+    envioEnCurso.current = true;
     setError(null);
     setGuardado(false);
     setCargando(true);
 
-    const resultado = await accion();
+    try {
+      const resultado = await accion();
+      if (!resultado.ok) {
+        setError(resultado.error);
+        return null;
+      }
 
-    if (!resultado.ok) {
-      setError(resultado.error);
-      setCargando(false);
+      marcarGuardada({ puntajeAuto: resultado.puntajeAuto, respuesta: resultado.respuesta });
+      setGuardado(true);
+      return resultado.respuesta;
+    } catch {
+      setError("No pudimos guardar tu respuesta. Revisa tu conexión e inténtalo de nuevo.");
       return null;
+    } finally {
+      envioEnCurso.current = false;
+      setCargando(false);
     }
-
-    marcarGuardada({ puntajeAuto: resultado.puntajeAuto, respuesta: resultado.respuesta });
-    setGuardado(true);
-    setCargando(false);
-    router.refresh();
-    return resultado.respuesta;
   }
 
   return { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar };

@@ -15,9 +15,9 @@ const EntregaRecienteContext = createContext<EntregaRecienteContextValue>({
 });
 
 // Permite que la retroalimentación/reflexión de la actividad aparezca al
-// instante tras guardar, sin esperar el viaje completo de router.refresh()
-// al servidor — useEntregaActividad llama marcarGuardada() justo después
-// del upsert exitoso, antes de refrescar.
+// instante tras guardar, sin una recarga completa de la página —
+// useEntregaActividad llama marcarGuardada() justo después del guardado
+// exitoso y la pantalla puede continuar de inmediato.
 export function EntregaRecienteProvider({
   inicial,
   children,

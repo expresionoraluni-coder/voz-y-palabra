@@ -303,36 +303,9 @@ export default async function FichaEstudiante({
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     {resumenRespuesta(tipo?.nombre, en.respuesta ?? {})}
                   </p>
-                  {(() => {
-                    const r = (en.respuesta ?? {}) as {
-                      analisisAudio?: {
-                        duracionSegundos: number;
-                        numPausas: number;
-                        tiempoPausadoSegundos: number;
-                        consistenciaVolumen?: number | null;
-                      };
-                      analisisTexto?: { variedadLexica: number; muletillas: number; conectores: number };
-                    };
-                    if (r.analisisAudio) {
-                      return (
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {r.analisisAudio.duracionSegundos}s de grabación · {r.analisisAudio.numPausas} pausa(s)
-                          detectada(s) ({r.analisisAudio.tiempoPausadoSegundos}s en silencio)
-                          {r.analisisAudio.consistenciaVolumen != null &&
-                            ` · volumen ${r.analisisAudio.consistenciaVolumen >= 60 ? "estable" : "irregular"}`}
-                        </p>
-                      );
-                    }
-                    if (r.analisisTexto) {
-                      return (
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          Variedad léxica: {r.analisisTexto.variedadLexica}%
-                          {r.analisisTexto.muletillas > 0 && ` · ${r.analisisTexto.muletillas} muletilla(s)`}
-                          {r.analisisTexto.conectores > 0 && ` · ${r.analisisTexto.conectores} conector(es)`}
-                        </p>
-                      );
-                    }
-                    if (tipo?.nombre === "opcion_justificacion") {
+                    {(() => {
+                      const r = (en.respuesta ?? {}) as Record<string, unknown>;
+                      if (tipo?.nombre === "opcion_justificacion") {
                       const rondas = rondasDeRespuesta(r);
                       if (rondas.length > 1) {
                         return (

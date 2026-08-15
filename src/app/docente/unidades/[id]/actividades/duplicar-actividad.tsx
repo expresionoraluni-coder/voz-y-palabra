@@ -18,6 +18,7 @@ export default function DuplicarActividad({
   const [cargando, setCargando] = useState(false);
 
   async function duplicar() {
+    if (cargando) return;
     setCargando(true);
     const supabase = createClient();
 
@@ -62,7 +63,6 @@ export default function DuplicarActividad({
     }
 
     router.push(`/docente/unidades/${unidadId}/actividades/${nueva.id}/editar`);
-    router.refresh();
   }
 
   return (

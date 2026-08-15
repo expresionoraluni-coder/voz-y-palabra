@@ -20,6 +20,7 @@ export default function NuevoGrupo() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
     setCargando(true);
 

@@ -37,33 +37,38 @@ export default function ReflexionCierre({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
     setCargando(true);
 
     const supabase = createClient();
-    const { error: upsertError } = await supabase.from("reflexiones").upsert(
-      { estudiante_id: estudianteId, unidad_id: unidadId, momento: "cierre", texto },
-      { onConflict: "estudiante_id,unidad_id,momento" },
-    );
+    try {
+      const { error: upsertError } = await supabase.from("reflexiones").upsert(
+        { estudiante_id: estudianteId, unidad_id: unidadId, momento: "cierre", texto },
+        { onConflict: "estudiante_id,unidad_id,momento" },
+      );
 
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
+      if (upsertError) {
+        setError(mensajeError(upsertError));
+        return;
+      }
 
     // Igual que en bitácora/confianza: las reflexiones de cierre cuentan
     // para "Primera reflexión"/"Mente reflexiva".
-    try {
-      await supabase.rpc("verificar_insignias");
-    } catch {
+      try {
+        await supabase.rpc("verificar_insignias");
+      } catch {
       // silencioso a propósito
-    }
+      }
 
-    setCargando(false);
-    setEditando(false);
-    onGuardado?.();
-    router.refresh();
+      setEditando(false);
+      onGuardado?.();
+      router.refresh();
+    } catch {
+      setError("No pudimos guardar tu reflexión. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
+    }
   }
 
   if (!editando) {

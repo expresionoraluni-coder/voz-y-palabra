@@ -22,28 +22,34 @@ export default function Prediccion({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
     setCargando(true);
 
     const supabase = createClient();
-    const { error: upsertError } = await supabase.from("reflexiones").upsert(
-      {
-        estudiante_id: estudianteId,
-        actividad_id: actividadId,
-        momento: "prediccion",
-        texto: null,
-        confianza,
-      },
-      { onConflict: "estudiante_id,actividad_id,momento" },
-    );
+    try {
+      const { error: upsertError } = await supabase.from("reflexiones").upsert(
+        {
+          estudiante_id: estudianteId,
+          actividad_id: actividadId,
+          momento: "prediccion",
+          texto: null,
+          confianza,
+        },
+        { onConflict: "estudiante_id,actividad_id,momento" },
+      );
 
-    if (upsertError) {
-      setError(mensajeError(upsertError));
+      if (upsertError) {
+        setError(mensajeError(upsertError));
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError("No pudimos guardar tu nivel de seguridad. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
       setCargando(false);
-      return;
     }
-
-    router.refresh();
   }
 
   return (

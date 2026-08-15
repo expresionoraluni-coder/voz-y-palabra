@@ -12,12 +12,9 @@ export default function ActividadOrientacion({
   completada: boolean;
   aprendizajeEsperado?: string | null;
   ayuda?: string | null;
-}) {
+  }) {
   const esRedaccion = nombreTipo === "redaccion_checklist" || nombreTipo === "redaccion_lectura";
-  const esGrabacion = nombreTipo === "grabacion_rubrica";
-  const pasos = esGrabacion
-    ? ["Revisa el tema y la rúbrica", "Graba tu participación con calma", "Escúchate y guarda tu autoevaluación"]
-    : esRedaccion
+  const pasos = esRedaccion
       ? ["Lee el texto o ejemplo de referencia", "Escribe con tus propias palabras", "Revisa tu respuesta antes de guardarla"]
       : ["Lee la instrucción completa", "Responde paso a paso", "Revisa tu respuesta antes de guardarla"];
 

@@ -427,19 +427,18 @@ create policy "estudiante administra su bitácora" on bitacora
   with check (estudiante_id = estudiante_actual());
 
 -- ============================================================
--- 7. DATOS INICIALES: los 9 tipos de actividad y las 3 unidades
+-- 7. DATOS INICIALES: los 8 tipos de actividad vigentes y las 3 unidades
 -- ============================================================
 
 insert into tipos_actividad (nombre, descripcion) values
   ('clasificacion', 'Arrastra elementos a la categoría correcta'),
   ('opcion_justificacion', 'Elige una opción y justifica en 1-2 líneas'),
   ('redaccion_checklist', 'Redacta con un límite y autorrevisa con checklist'),
-  ('encontrar_corregir', 'Detecta errores marcados en un texto y los reescribe'),
-  ('constructor_ramificado', 'Elige una estructura y llena un esqueleto de párrafos'),
   ('comparador', 'Analiza dos textos u opciones lado a lado'),
-  ('grabacion_rubrica', 'Graba su voz y se autoevalúa con una rúbrica'),
-  ('reflexion_confianza', 'Responde una reflexión o mueve un control de confianza'),
-  ('etiquetado_texto', 'Selecciona un fragmento de texto y le asigna una etiqueta');
+  ('etiquetado_texto', 'Selecciona un fragmento de texto y le asigna una etiqueta'),
+  ('ordenar_fragmentos', 'Reconstruye un texto colocando sus fragmentos en orden'),
+  ('evaluar_videos', 'Compara dos videos y reconoce cualidades presentes o ausentes'),
+  ('corregir_ortografia', 'Reescribe un texto y observa las diferencias con la versión correcta');
 
 insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
   ('De la lengua al texto', 1, 'Comunicación, lenguaje, lengua, habla, norma, niveles y funciones de la lengua, el texto y sus propiedades.', 'Entregar la idea central de un texto largo en 5 líneas.'),

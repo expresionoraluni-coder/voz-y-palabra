@@ -5,6 +5,7 @@ function Linea({ className = "" }: { className?: string }) {
 export default function LoadingCierreUnidad() {
   return (
     <main aria-busy="true" aria-live="polite" aria-label="Preparando el cierre de la unidad" className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
+      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Preparando tu cierre…</p>
       <Linea className="h-4 w-28" />
       <div className="flex flex-col gap-3">
         <Linea className="h-4 w-20" />

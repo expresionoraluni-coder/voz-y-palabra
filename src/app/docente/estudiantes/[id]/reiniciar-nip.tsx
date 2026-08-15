@@ -15,6 +15,7 @@ export default function ReiniciarNip({ estudianteId, nombre }: { estudianteId: s
   const [hecho, setHecho] = useState(false);
 
   async function reiniciar() {
+    if (cargando) return;
     setCargando(true);
     setError(null);
 

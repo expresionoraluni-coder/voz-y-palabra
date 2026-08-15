@@ -35,28 +35,33 @@ export default function Confianza({
     : "Qué tanta seguridad tienes de dominar esta unidad";
 
   async function guardar() {
+    if (cargando) return;
     setError(null);
     setCargando(true);
     const supabase = createClient();
-    const { error: upsertError } = await supabase.from("autoevaluaciones_confianza").upsert(
-      { estudiante_id: estudianteId, unidad_id: unidadId, momento, valor },
-      { onConflict: "estudiante_id,unidad_id,momento" },
-    );
-    if (upsertError) {
-      setError(mensajeError(upsertError));
-      setCargando(false);
-      return;
-    }
-    if (esCierre) {
-      try {
-        await supabase.rpc("verificar_insignias");
-      } catch {
-        // El guardado no depende de actualizar la insignia en este instante.
+    try {
+      const { error: upsertError } = await supabase.from("autoevaluaciones_confianza").upsert(
+        { estudiante_id: estudianteId, unidad_id: unidadId, momento, valor },
+        { onConflict: "estudiante_id,unidad_id,momento" },
+      );
+      if (upsertError) {
+        setError(mensajeError(upsertError));
+        return;
       }
+      if (esCierre) {
+        try {
+          await supabase.rpc("verificar_insignias");
+        } catch {
+          // El guardado no depende de actualizar la insignia en este instante.
+        }
+      }
+      onGuardado?.();
+      router.refresh();
+    } catch {
+      setError("No pudimos guardar tu nivel de seguridad. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
     }
-    setCargando(false);
-    onGuardado?.();
-    router.refresh();
   }
 
   if (esCierre && valorPrevio !== null) {

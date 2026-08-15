@@ -50,12 +50,14 @@ export default async function UnidadEstudiante({
   ]);
   if (!unidad) notFound();
 
-  const actividades = actividadesRaw?.map((a) => ({
-    ...a,
-    entregas: (entregasEstudiante ?? [])
-      .filter((e) => e.actividad_id === a.id)
-      .map((e) => ({ puntaje_auto: e.puntaje_auto, respuesta: e.respuesta })),
-  }));
+  const entregasPorActividad = new Map((entregasEstudiante ?? []).map((e) => [e.actividad_id, e]));
+  const actividades = actividadesRaw?.map((a) => {
+    const entrega = entregasPorActividad.get(a.id);
+    return {
+      ...a,
+      entregas: entrega ? [{ puntaje_auto: entrega.puntaje_auto, respuesta: entrega.respuesta }] : [],
+    };
+  });
 
   if (unidad.orden > 1) {
     const { data: unidadAnterior } = await admin
@@ -134,7 +136,7 @@ export default async function UnidadEstudiante({
       .select("actividad_id")
       .eq("estudiante_id", estudiante.id)
       .eq("momento", "cierre")
-      .not("actividad_id", "is", null),
+        .in("actividad_id", (actividadesRaw ?? []).map((a) => a.id)),
   ]);
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");

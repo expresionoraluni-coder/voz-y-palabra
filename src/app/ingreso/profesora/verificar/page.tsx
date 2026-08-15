@@ -41,6 +41,7 @@ export default function VerificarDocente() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
     setCargando(true);
 

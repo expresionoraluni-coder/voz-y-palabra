@@ -10,6 +10,7 @@ export default function LoadingDocente() {
       aria-label="Cargando tu espacio docente"
       className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10"
     >
+      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Cargando tu panel…</p>
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Linea className="size-11 rounded-full" />
@@ -36,4 +37,3 @@ export default function LoadingDocente() {
     </main>
   );
 }
-

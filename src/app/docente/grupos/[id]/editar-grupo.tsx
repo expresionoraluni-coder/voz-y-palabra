@@ -33,6 +33,7 @@ export default function EditarGrupo({
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
 
     if (!nombre.trim() || !codigo.trim()) {

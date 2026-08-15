@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ClipboardCheck, LifeBuoy, ThumbsUp, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { ClipboardCheck, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import Avisos from "./avisos";
 import Eventos from "./eventos";
@@ -44,8 +44,7 @@ export default async function DetalleGrupo({
       data: { user },
     },
     { data: grupo },
-    { data: estudiantes },
-    { data: estudiantesBaja },
+    { data: estudiantesTodos },
     { data: unidades },
     { data: actividades },
     { data: confianzas },
@@ -59,18 +58,7 @@ export default async function DetalleGrupo({
       .select("id, nombre, codigo_acceso, ciclo_escolar")
       .eq("id", id)
       .single(),
-    supabase
-      .from("estudiantes")
-      .select("id, nombre, created_at")
-      .eq("grupo_id", id)
-      .eq("activo", true)
-      .order("nombre"),
-    supabase
-      .from("estudiantes")
-      .select("id, nombre")
-      .eq("grupo_id", id)
-      .eq("activo", false)
-      .order("nombre"),
+    supabase.from("estudiantes").select("id, nombre, created_at, activo").eq("grupo_id", id).order("nombre"),
     supabase.from("unidades").select("id, nombre, orden").order("orden"),
     supabase.from("actividades").select("id, unidad_id"),
     supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor"),
@@ -83,7 +71,7 @@ export default async function DetalleGrupo({
     supabase
       .from("entregas")
       .select(
-        "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta, actividades(titulo, unidad_id, contenido, tipos_actividad(nombre)), estudiantes!inner(grupo_id)",
+        "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta, actividades(titulo, unidad_id, tipos_actividad(nombre)), estudiantes!inner(grupo_id)",
       )
       .eq("estudiantes.grupo_id", id),
   ]);
@@ -91,19 +79,33 @@ export default async function DetalleGrupo({
   if (!user) redirect("/ingreso/profesora");
   if (!grupo) notFound();
 
+  const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);
+  const estudiantesBaja = (estudiantesTodos ?? []).filter((e) => !e.activo);
   const totalActividades = actividades?.length ?? 0;
+  const entregasSeguras = entregas ?? [];
+  const entregasPorEstudiante = new Map<string, typeof entregasSeguras>();
+  const entregasPorActividad = new Map<string, typeof entregasSeguras>();
+  for (const entrega of entregasSeguras) {
+    const delEstudiante = entregasPorEstudiante.get(entrega.estudiante_id) ?? [];
+    delEstudiante.push(entrega);
+    entregasPorEstudiante.set(entrega.estudiante_id, delEstudiante);
+    const deLaActividad = entregasPorActividad.get(entrega.actividad_id) ?? [];
+    deLaActividad.push(entrega);
+    entregasPorActividad.set(entrega.actividad_id, deLaActividad);
+  }
   // La actividad se mide respecto al momento en que se solicita el panel.
   // eslint-disable-next-line react-hooks/purity
   const hoy = Date.now();
 
   const porEstudiante = (estudiantes ?? []).map((e) => {
-    const misEntregas = (entregas ?? []).filter((en) => en.estudiante_id === e.id);
+    const misEntregas = entregasPorEstudiante.get(e.id) ?? [];
     const avance = totalActividades > 0 ? Math.round((misEntregas.length / totalActividades) * 100) : 0;
     const fechas = misEntregas.map((en) => new Date(en.created_at).getTime());
     const ultima = fechas.length ? Math.max(...fechas) : null;
     const diasInactivo = ultima ? Math.floor((hoy - ultima) / (1000 * 60 * 60 * 24)) : null;
     return { ...e, avance, ultima, diasInactivo, totalEntregas: misEntregas.length };
   });
+  const porEstudianteMap = new Map(porEstudiante.map((e) => [e.id, e]));
 
   const avancePromedio =
     porEstudiante.length > 0
@@ -119,9 +121,7 @@ export default async function DetalleGrupo({
   const avancePorUnidad = (unidades ?? []).map((u) => {
     const actsUnidad = (actividades ?? []).filter((a) => a.unidad_id === u.id);
     const totalPosible = actsUnidad.length * (estudiantes?.length ?? 0);
-    const hechas = (entregas ?? []).filter((en) =>
-      actsUnidad.some((a) => a.id === en.actividad_id),
-    ).length;
+    const hechas = actsUnidad.reduce((total, a) => total + (entregasPorActividad.get(a.id)?.length ?? 0), 0);
     return {
       ...u,
       porcentaje: totalPosible > 0 ? Math.round((hechas / totalPosible) * 100) : 0,
@@ -207,23 +207,10 @@ export default async function DetalleGrupo({
     } | null;
     const elegidas = respuesta?.elegidas ?? [];
 
-    // itemsSnapshot se guarda desde la entrega al momento de entregar, así
-    // que no se desalinea si la docente edita la actividad después. Las
-    // entregas de antes de este cambio no lo tienen — para esas, mejor
-    // esfuerzo contra el contenido actual (puede desalinearse si cambió).
-    let items: { texto: string; correcta: string }[];
-    if (respuesta?.itemsSnapshot?.length) {
-      items = respuesta.itemsSnapshot;
-    } else {
-      const contenido = act.contenido as {
-        elementos?: { texto: string; categoria_correcta: string }[];
-        fragmentos?: { texto: string; etiqueta_correcta: string }[];
-      };
-      items = (contenido.elementos ?? contenido.fragmentos ?? []).map((it) => ({
-        texto: it.texto,
-        correcta: "categoria_correcta" in it ? it.categoria_correcta : it.etiqueta_correcta,
-      }));
-    }
+    // Las entregas actuales guardan un snapshot de los elementos evaluados.
+    // Si una entrega histórica no lo tiene, se omite de esta métrica para no
+    // traer el JSON completo de cada actividad solo como respaldo.
+    const items = respuesta?.itemsSnapshot ?? [];
 
     items.forEach((item, i) => {
       const elegida = elegidas[i];
@@ -237,17 +224,6 @@ export default async function DetalleGrupo({
   const confusionesTop = [...confusionMap.values()].sort((a, b) => b.veces - a.veces).slice(0, 5);
   const totalConfusiones = [...confusionMap.values()].reduce((total, confusion) => total + confusion.veces, 0);
 
-  // Evaluación cualitativa: lo que la docente ya juzgó en entregas abiertas
-  // (opción-justificación, encontrar-corregir, comparador, etc.).
-  const evaluacionDistribucion = { logrado: 0, en_proceso: 0, necesita_apoyo: 0 };
-  for (const en of entregas ?? []) {
-    if (en.evaluacion_docente) {
-      evaluacionDistribucion[en.evaluacion_docente as keyof typeof evaluacionDistribucion] += 1;
-    }
-  }
-  const totalEvaluadas =
-    evaluacionDistribucion.logrado + evaluacionDistribucion.en_proceso + evaluacionDistribucion.necesita_apoyo;
-
   const alertas: AlertaDocente[] = [];
   for (const e of porEstudiante) {
     if (e.totalEntregas === 0) {
@@ -259,16 +235,14 @@ export default async function DetalleGrupo({
   }
   for (const c of confianzas ?? []) {
     if (c.momento !== "inicio") continue;
-    const est = porEstudiante.find((e) => e.id === c.estudiante_id);
+    const est = porEstudianteMap.get(c.estudiante_id);
     if (!est) continue;
     if (c.valor >= 70 && est.totalEntregas === 0) {
       alertas.push({ estudianteId: est.id, texto: `${est.nombre} dice sentirse seguro pero no ha completado actividades.` });
       continue;
     }
     if (c.valor >= 70 && est.totalEntregas > 0) {
-      const misPuntajes = (entregas ?? []).filter(
-        (en) => en.estudiante_id === est.id && en.puntaje_auto !== null,
-      );
+      const misPuntajes = (entregasPorEstudiante.get(est.id) ?? []).filter((en) => en.puntaje_auto !== null);
       if (misPuntajes.length > 0) {
         const promedio = misPuntajes.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / misPuntajes.length;
         if (promedio < 50) {
@@ -332,16 +306,6 @@ export default async function DetalleGrupo({
       </div>
 
       <AccesoGrupo codigo={grupo.codigo_acceso} />
-
-      <Card className="flex items-start gap-3 border-sky-100 bg-sky-50/60 p-4 dark:border-sky-900 dark:bg-sky-950/30">
-        <LifeBuoy className="mt-0.5 size-5 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden="true" />
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Panel de apoyo, no de calificación</h2>
-          <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            Estas señales ayudan a decidir cuándo acercarte a un estudiante. El grupo puede seguir avanzando aunque no registres una orientación.
-          </p>
-        </div>
-      </Card>
 
       {alertas.length > 0 && (
         <Alert tono="warning" titulo="Alertas">
@@ -471,29 +435,6 @@ export default async function DetalleGrupo({
         </section>
       )}
 
-      {totalEvaluadas > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Señales de apoyo
-          </h2>
-          <div className="grid grid-cols-3 gap-3">
-            <MetricCard etiqueta="Puede continuar" valor={evaluacionDistribucion.logrado} icon={ThumbsUp} tono="emerald" />
-            <MetricCard
-              etiqueta="Conviene practicar"
-              valor={evaluacionDistribucion.en_proceso}
-              icon={TrendingUp}
-              tono="amber"
-            />
-            <MetricCard
-              etiqueta="Requiere acompañamiento"
-              valor={evaluacionDistribucion.necesita_apoyo}
-              icon={ClipboardCheck}
-              tono="slate"
-            />
-          </div>
-        </section>
-      )}
-
       {entregasPorRevisar.length > 0 && (
         <section id="apoyo" className="scroll-mt-16 flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
@@ -501,7 +442,7 @@ export default async function DetalleGrupo({
           </h2>
           <div className="flex flex-col gap-2">
             {entregasPorRevisar.map((en) => {
-              const est = porEstudiante.find((e) => e.id === en.estudiante_id);
+              const est = porEstudianteMap.get(en.estudiante_id);
               const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
               return (
                 <Link key={en.id} href={`/docente/estudiantes/${en.estudiante_id}#entrega-${en.id}`}>

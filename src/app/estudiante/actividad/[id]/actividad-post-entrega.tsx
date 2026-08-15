@@ -7,8 +7,8 @@ import ReflexionActividad from "./reflexion-actividad";
 import { useEntregaReciente } from "@/lib/entrega-reciente-context";
 
 // Su visibilidad depende del contexto (cliente), no de props del servidor,
-// a propósito: así aparece al instante justo tras guardar, sin esperar el
-// viaje completo de router.refresh().
+// a propósito: así aparece al instante justo tras guardar, sin una recarga
+// completa de la página.
 export default function ActividadPostEntrega({
   actividadId,
   estudianteId,

@@ -60,7 +60,7 @@ export async function calificarEvaluarVideos(
   const ctx = await obtenerContextoCalificacion(actividadId, "evaluar_videos");
   if (!ctx.ok) return ctx;
   const { puntajeAuto, resultado } = calificarVideos(ctx.contexto.contenido as ContenidoEvaluarVideos, marcadasBien, marcadasMal);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { marcadas_bien: marcadasBien, marcadas_mal: marcadasMal, resultado }, puntajeAuto);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { marcadas_bien: marcadasBien, marcadas_mal: marcadasMal, resultado }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 
 export async function calificarOrdenarFragmentos(actividadId: string, secuencia: number[]): Promise<ResultadoCalificacion> {
@@ -71,7 +71,7 @@ export async function calificarOrdenarFragmentos(actividadId: string, secuencia:
   const ctx = await obtenerContextoCalificacion(actividadId, "ordenar_fragmentos");
   if (!ctx.ok) return ctx;
   const { puntajeAuto, resultadoPorPosicion } = calificarOrden(ctx.contexto.contenido as ContenidoOrdenarFragmentos, secuencia);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { orden: secuencia, resultadoPorPosicion }, puntajeAuto);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { orden: secuencia, resultadoPorPosicion }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 
 export async function calificarComparadorChipsAccion(actividadId: string, celdas: string[][]): Promise<ResultadoCalificacion> {
@@ -88,7 +88,7 @@ export async function calificarComparadorChipsAccion(actividadId: string, celdas
   const ctx = await obtenerContextoCalificacion(actividadId, "comparador");
   if (!ctx.ok) return ctx;
   const { puntajeAuto, resultadoCeldas } = calificarComparadorChips(ctx.contexto.contenido as ContenidoComparador, celdas);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { celdas, resultadoCeldas }, puntajeAuto);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { celdas, resultadoCeldas }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 
 export async function calificarClasificacionAccion(actividadId: string, elegidas: string[]): Promise<ResultadoCalificacion> {
@@ -99,7 +99,7 @@ export async function calificarClasificacionAccion(actividadId: string, elegidas
   const ctx = await obtenerContextoCalificacion(actividadId, "clasificacion");
   if (!ctx.ok) return ctx;
   const { puntajeAuto, itemsSnapshot } = calificarClasificacion(ctx.contexto.contenido as ContenidoClasificacion, elegidas);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, itemsSnapshot }, puntajeAuto);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, itemsSnapshot }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 
 export async function calificarOpcionJustificacionAccion(
@@ -142,7 +142,7 @@ export async function calificarOpcionJustificacionAccion(
   }
   const resultado = calificarRondas(rondas, respuestas);
   const puntajeAuto = Math.round((resultado.filter((r) => r.correcta).length / resultado.length) * 100);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { rondas: respuestas, resultado }, puntajeAuto);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { rondas: respuestas, resultado }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 
 export async function calificarCorregirOrtografia(actividadId: string, textoReescrito: string): Promise<ResultadoCalificacion> {
@@ -159,6 +159,8 @@ export async function calificarCorregirOrtografia(actividadId: string, textoRees
     actividadId,
     { texto_reescrito: textoReescrito, comparacion: calificacion.comparacion, errores: calificacion.errores, aprobado: calificacion.aprobado, totalPalabras: calificacion.totalPalabras },
     calificacion.puntajeAuto,
+    "completada",
+    ctx.contexto.estudianteId,
   );
 }
 
@@ -170,5 +172,5 @@ export async function calificarEtiquetadoTextoAccion(actividadId: string, elegid
   const ctx = await obtenerContextoCalificacion(actividadId, "etiquetado_texto");
   if (!ctx.ok) return ctx;
   const { puntajeAuto, itemsSnapshot } = calificarEtiquetado(ctx.contexto.contenido as ContenidoEtiquetadoTexto, elegidas);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, itemsSnapshot }, puntajeAuto);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, itemsSnapshot }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }

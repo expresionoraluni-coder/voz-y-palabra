@@ -17,18 +17,12 @@ export function resumenRespuesta(tipo: string | undefined, respuesta: Respuesta)
       const elegidas = (respuesta.elegidas as string[]) ?? [];
       return `Clasificó ${elegidas.length} elemento(s).`;
     }
-    case "encontrar_corregir":
-      return `${respuesta.que_encontraste ?? ""} → ${respuesta.version_corregida ?? ""}`;
     case "corregir_ortografia":
       return (respuesta.texto_reescrito as string) ?? "";
     case "comparador":
       return "Completó la tabla de comparación.";
     case "redaccion_checklist":
       return (respuesta.texto as string) ?? "";
-    case "constructor_ramificado": {
-      const textos = (respuesta.textos as string[]) ?? [];
-      return `Tema: ${respuesta.tema ?? ""}. ${textos.join(" ")}`.slice(0, 300);
-    }
     case "ordenar_fragmentos": {
       const resultado = respuesta.resultadoPorPosicion as boolean[] | undefined;
       if (resultado?.length) {

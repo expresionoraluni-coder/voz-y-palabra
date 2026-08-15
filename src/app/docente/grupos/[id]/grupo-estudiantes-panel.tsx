@@ -78,6 +78,7 @@ export default function GrupoEstudiantesPanel({
   }
 
   async function ejecutarAccion(accion: "dar_de_baja" | "reactivar") {
+    if (cargando) return;
     const etiqueta = accion === "dar_de_baja" ? "dar de baja" : "reactivar";
     if (!window.confirm(`¿Quieres ${etiqueta} a ${seleccionados.length} estudiante(s)?`)) return;
     setCargando(true);

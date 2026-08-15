@@ -22,6 +22,7 @@ export default function IngresoProfesora() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
     setAvisoConfirmacion(false);
 

@@ -5,8 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { mensajeError } from "@/lib/mensaje-error";
 import {
   MAX_INTENTOS_AUTO,
-  agregarMetaEntregaAuto,
-  metaDeEntregaAuto,
   quitarMetaEntregaAuto,
 } from "@/lib/intentos-auto";
 import {
@@ -31,6 +29,7 @@ export type ResultadoCalificacion =
 
 export type ContextoCalificacion = {
   supabase: SupabaseServerClient;
+  estudianteId: string;
   contenido: Record<string, unknown>;
 };
 
@@ -71,7 +70,7 @@ export async function obtenerContextoCalificacion(
 
   return {
     ok: true,
-    contexto: { supabase, contenido: actividad.contenido },
+      contexto: { supabase, estudianteId: estudiante.id, contenido: actividad.contenido },
   };
 }
 
@@ -101,6 +100,7 @@ export async function guardarEntregaInterna(
   respuesta: Record<string, unknown>,
   puntajeAuto: number | null,
   estado: "completada" | "pendiente_revision" = "completada",
+  estudianteIdValidado?: string,
 ): Promise<ResultadoCalificacion> {
   if (!esUuid(actividadId)) return { ok: false, error: "La actividad no es válida." };
   const errorRespuesta = validarJsonDeEntrega(respuesta);
@@ -109,7 +109,7 @@ export async function guardarEntregaInterna(
     return { ok: false, error: "Los datos de la entrega no son válidos." };
   }
 
-  const estudianteId = await estudianteDeSesion(supabase);
+  const estudianteId = estudianteIdValidado ?? (await estudianteDeSesion(supabase));
   if (!estudianteId) return { ok: false, error: SESION_INVALIDA };
 
   const admin = createAdminClient();
@@ -122,35 +122,32 @@ export async function guardarEntregaInterna(
   let mejorPuntaje: number | null = puntajeAuto;
 
   if (esAutocalificable) {
-    const { data: entregaAnterior, error: entregaAnteriorError } = await admin
-      .from("entregas")
-      .select("respuesta, puntaje_auto")
-      .eq("estudiante_id", estudianteId)
-      .eq("actividad_id", actividadId)
-      .maybeSingle();
-    if (entregaAnteriorError) return { ok: false, error: mensajeError(entregaAnteriorError) };
-
-    const intentosAnteriores = entregaAnterior
-      ? metaDeEntregaAuto(entregaAnterior.respuesta)?.intentos ?? 1
-      : 0;
-    if (intentosAnteriores >= MAX_INTENTOS_AUTO) {
-      return { ok: false, error: `Ya usaste los ${MAX_INTENTOS_AUTO} intentos de esta actividad.` };
+    const { data: resultadoAuto, error: resultadoAutoError } = await admin.rpc("guardar_entrega_auto", {
+      p_estudiante_id: estudianteId,
+      p_actividad_id: actividadId,
+      p_respuesta: respuestaLimpia,
+      p_puntaje_auto: puntajeAuto,
+      p_estado: estado,
+    });
+    if (resultadoAutoError) {
+      const mensaje = resultadoAutoError.message?.includes("Ya usaste los 3 intentos")
+        ? `Ya usaste los ${MAX_INTENTOS_AUTO} intentos de esta actividad.`
+        : mensajeError(resultadoAutoError);
+      return { ok: false, error: mensaje };
     }
 
-    intentos = intentosAnteriores + 1;
-    mejorPuntaje = Math.max(entregaAnterior?.puntaje_auto ?? 0, puntajeAuto);
-    const meta = { intentos, mejorPuntaje };
-    respuestaParaCliente = agregarMetaEntregaAuto(respuestaLimpia, meta);
+    const filaAuto = Array.isArray(resultadoAuto) ? resultadoAuto[0] : resultadoAuto;
+    if (!filaAuto || typeof filaAuto !== "object") {
+      return { ok: false, error: "No pudimos guardar tu intento. Intenta de nuevo." };
+    }
 
-    // Conserva la respuesta asociada al mejor resultado. La respuesta del
-    // intento actual se devuelve aparte para que el estudiante vea su
-    // retroalimentación inmediatamente, aunque no haya superado su marca.
-    respuestaParaGuardar =
-      entregaAnterior && (entregaAnterior.puntaje_auto ?? -1) > puntajeAuto &&
-      entregaAnterior.respuesta && typeof entregaAnterior.respuesta === "object"
-        ? agregarMetaEntregaAuto(entregaAnterior.respuesta as Record<string, unknown>, meta)
-        : respuestaParaCliente;
-    puntajeParaGuardar = mejorPuntaje;
+    intentos = Number(filaAuto.intentos);
+    mejorPuntaje = Number(filaAuto.mejor_puntaje);
+    puntajeParaGuardar = Number(filaAuto.puntaje_guardado);
+    respuestaParaCliente = filaAuto.respuesta_cliente as Record<string, unknown>;
+    respuestaParaGuardar = filaAuto.respuesta_guardada as Record<string, unknown>;
+
+    return { ok: true, puntajeAuto: puntajeParaGuardar, respuesta: respuestaParaCliente, intentos, mejorPuntaje };
   }
 
   const { error } = await admin.from("entregas").upsert(
@@ -165,21 +162,16 @@ export async function guardarEntregaInterna(
   );
   if (error) return { ok: false, error: mensajeError(error) };
 
-  try {
-    await supabase.rpc("verificar_insignias");
-  } catch {
-    // La entrega ya quedó guardada; una insignia puede calcularse en la siguiente visita.
-  }
-
   return { ok: true, puntajeAuto: puntajeParaGuardar, respuesta: respuestaParaCliente, intentos, mejorPuntaje };
 }
 
 export async function reiniciarEntregaInterna(
   supabase: SupabaseServerClient,
   actividadId: string,
+  estudianteIdValidado?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!esUuid(actividadId)) return { ok: false, error: "La actividad no es válida." };
-  const estudianteId = await estudianteDeSesion(supabase);
+  const estudianteId = estudianteIdValidado ?? (await estudianteDeSesion(supabase));
   if (!estudianteId) return { ok: false, error: SESION_INVALIDA };
 
   const { error } = await createAdminClient()

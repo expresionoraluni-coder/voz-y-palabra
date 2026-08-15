@@ -28,6 +28,7 @@ export default function CambiarNip() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cargando) return;
     setError(null);
 
     if (nipNuevo !== nipNuevoConfirmar) {

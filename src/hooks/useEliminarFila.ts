@@ -12,6 +12,7 @@ export function useEliminarFila(tabla: string) {
   const [error, setError] = useState<string | null>(null);
 
   async function eliminar(id: string, mensajeConfirmacion: string) {
+    if (borrando) return;
     if (!window.confirm(mensajeConfirmacion)) return;
     setError(null);
     setBorrando(id);
