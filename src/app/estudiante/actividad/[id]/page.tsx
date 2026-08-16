@@ -59,7 +59,7 @@ export default async function ActividadEstudiante({
     { data: estudiante, error: estudianteError },
     { data: actividad, error: actividadError },
   ] = await Promise.all([
-    supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
+    supabase.from("estudiantes").select("id").single(),
     admin
       .from("actividades")
       .select(

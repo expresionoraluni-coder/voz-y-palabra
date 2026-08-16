@@ -20,6 +20,7 @@ import Alert from "@/components/ui/alert";
 function mensajeErrorIngreso(mensaje: string): string {
   const texto = mensaje.toLowerCase();
   if (texto.includes("demasiados intentos")) return mensaje;
+  if (texto.includes("demasiadas solicitudes")) return "Hay muchos intentos desde esta red. Espera unos minutos y vuelve a intentarlo.";
   if (texto.includes("nip debe ser de 4 dígitos")) return "Tu NIP debe tener exactamente 4 números.";
   if (texto.includes("sesión inválida")) return "Tu sesión caducó. Intenta entrar de nuevo.";
   return "No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.";

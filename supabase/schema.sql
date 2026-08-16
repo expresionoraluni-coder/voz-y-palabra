@@ -4,6 +4,10 @@
 create extension if not exists pgcrypto with schema extensions;
 create extension if not exists unaccent with schema extensions;
 
+-- El límite por IP del ingreso usa un esquema no expuesto por el Data API.
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
 -- ============================================================
 -- 1. QUIÉN ES QUIÉN
 -- ============================================================
@@ -38,6 +42,16 @@ create table estudiantes (
   debe_cambiar_nip boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+create table private.ingreso_rate_limits (
+  ip inet primary key,
+  ventana_inicio timestamptz not null default now(),
+  intentos int not null default 0 check (intentos >= 0),
+  actualizado_en timestamptz not null default now()
+);
+create index ingreso_rate_limits_actualizado_idx on private.ingreso_rate_limits(actualizado_en);
+revoke all on private.ingreso_rate_limits from public, anon, authenticated;
+grant all on private.ingreso_rate_limits to service_role;
 
 -- ============================================================
 -- 2. QUÉ SE ENSEÑA
@@ -303,6 +317,14 @@ create policy "docente administra estudiantes de sus grupos" on estudiantes
   with check (grupo_id in (select id from grupos where docente_id = (select auth.uid())));
 create policy "estudiante lee su propia fila" on estudiantes
   for select to authenticated using (auth_user_id = (select auth.uid()) and activo = true);
+
+-- El navegador solo necesita estas columnas. Los hashes, vínculos de sesión y
+-- contadores de bloqueo quedan disponibles únicamente para funciones internas
+-- y service_role; la docente no puede leerlos desde el Data API.
+revoke select on public.estudiantes from public, anon, authenticated;
+grant select (id, nombre, grupo_id, activo, boleta, debe_cambiar_nip, created_at)
+  on public.estudiantes to authenticated;
+grant all on public.estudiantes to service_role;
 
 -- unidades: los estudiantes las reciben solo desde Server Components que ya
 -- validaron su sesión; no se expone lectura directa por el Data API.

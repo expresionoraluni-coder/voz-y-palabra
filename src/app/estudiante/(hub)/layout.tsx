@@ -15,7 +15,6 @@ export default async function HubLayout({ children }: { children: React.ReactNod
   const { data: estudiante } = await supabase
     .from("estudiantes")
     .select("debe_cambiar_nip")
-    .eq("auth_user_id", user.id)
     .single();
   if (!estudiante) redirect("/ingreso/estudiante");
 

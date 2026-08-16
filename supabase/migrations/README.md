@@ -10,6 +10,8 @@ La migración `20260816011000_alinear_insignias_con_avance.sql` hace que las ins
 
 La migración `20260816212023_endurecer_sesion_y_insignias.sql` limita el RPC de ingreso a sesiones anónimas y evita otorgar insignias de reflexión o autoconocimiento antes de completar la unidad correspondiente. La corrección `20260816212205_corregir_sesion_insignias.sql` hace explícito el rechazo cuando falta el claim de anonimato y evita contar reflexiones duplicadas de la misma unidad.
 
+La migración `20260816222713_docente_y_limite_ingreso.sql` retira del Data API las columnas internas de autenticación de estudiantes y configura un límite por IP para el RPC de ingreso sin mantener conexiones de Postgres dormidas.
+
 Antes de desplegar una migración:
 
 1. Comparar el esquema remoto y las migraciones locales.

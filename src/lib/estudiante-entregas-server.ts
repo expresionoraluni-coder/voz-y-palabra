@@ -201,7 +201,6 @@ export async function obtenerContextoCalificacion(
   const { data: estudiante } = await supabase
     .from("estudiantes")
     .select("id")
-    .eq("auth_user_id", user.id)
     .single();
   if (!estudiante) return { ok: false, error: SESION_INVALIDA };
 
@@ -241,7 +240,6 @@ async function estudianteDeSesion(supabase: SupabaseServerClient) {
   const { data: estudiante } = await supabase
     .from("estudiantes")
     .select("id")
-    .eq("auth_user_id", user.id)
     .single();
   return estudiante?.id ?? null;
 }

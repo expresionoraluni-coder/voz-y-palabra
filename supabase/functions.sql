@@ -5,6 +5,72 @@ create or replace function public.normalizar_nombre(p_nombre text)
 returns text language sql immutable set search_path = public, extensions
 as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, '')), '\s+', ' ', 'g'))) $$;
 
+-- Rate limit ligero por IP para el RPC de ingreso. Corre antes de los RPC del
+-- Data API, usa una tabla privada y no duerme una conexión de Postgres.
+create or replace function private.controlar_rate_limit_ingreso()
+returns void
+language plpgsql
+security definer
+set search_path = private, pg_catalog
+as $$
+declare
+  v_path text := current_setting('request.path', true);
+  v_method text := current_setting('request.method', true);
+  v_headers jsonb := '{}'::jsonb;
+  v_ip_text text;
+  v_ip inet;
+  v_intentos int;
+begin
+  if v_method <> 'POST' or v_path is null or v_path not like '%/rpc/ingresar_estudiante' then
+    return;
+  end if;
+
+  begin
+    v_headers := coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb;
+  exception when others then
+    return;
+  end;
+
+  v_ip_text := split_part(coalesce(v_headers ->> 'x-forwarded-for', v_headers ->> 'cf-connecting-ip', ''), ',', 1);
+  if btrim(v_ip_text) = '' then return; end if;
+  begin
+    v_ip := btrim(v_ip_text)::inet;
+  exception when others then
+    return;
+  end;
+
+  delete from private.ingreso_rate_limits
+   where actualizado_en < now() - interval '1 day';
+
+  insert into private.ingreso_rate_limits (ip, ventana_inicio, intentos, actualizado_en)
+  values (v_ip, now(), 1, now())
+  on conflict (ip) do update
+    set intentos = case
+      when private.ingreso_rate_limits.actualizado_en < now() - interval '5 minutes' then 1
+      else private.ingreso_rate_limits.intentos + 1
+    end,
+    ventana_inicio = case
+      when private.ingreso_rate_limits.actualizado_en < now() - interval '5 minutes' then now()
+      else private.ingreso_rate_limits.ventana_inicio
+    end,
+    actualizado_en = now()
+  returning intentos into v_intentos;
+
+  if v_intentos > 120 then
+    raise sqlstate 'PGRST' using
+      message = json_build_object(
+        'code', 'INGRESO_RATE_LIMIT',
+        'message', 'Demasiadas solicitudes de ingreso desde esta red. Intenta de nuevo en unos minutos.')::text,
+      detail = json_build_object('status', 429, 'status_text', 'Too Many Requests')::text;
+  end if;
+end;
+$$;
+
+grant usage on schema private to authenticator;
+grant execute on function private.controlar_rate_limit_ingreso() to authenticator;
+alter role authenticator set pgrst.db_pre_request = 'private.controlar_rate_limit_ingreso';
+notify pgrst, 'reload config';
+
 create or replace function public.estudiante_actual()
 returns uuid language sql stable security definer set search_path = public
 as $$
@@ -22,7 +88,7 @@ create or replace function public.ingresar_estudiante(p_codigo text, p_nombre te
 returns table(id uuid, nombre text, grupo_id uuid, grupo_nombre text, nip_nuevo boolean, error text)
 language plpgsql security definer set search_path = public, extensions
 as $$
-declare v_grupo record; v_estudiante record; v_intentos_nombre record; v_intentos_grupo_actual int;
+declare v_grupo record; v_estudiante record; v_intentos_nombre record;
   v_error_datos constant text := 'No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.';
   v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
@@ -38,7 +104,7 @@ begin
   end if;
   if coalesce(p_nip, '') !~ '^[0-9]{4}$' then raise exception 'Tu NIP debe ser de 4 dígitos.'; end if;
   select g.id, g.nombre into v_grupo from public.grupos g where g.codigo_acceso = trim(p_codigo) and g.activo = true;
-  if v_grupo.id is null then perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
+  if v_grupo.id is null then return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
   select * into v_intentos_nombre from public.intentos_nombre_estudiante where usuario_id = auth.uid();
   if v_intentos_nombre.bloqueado_hasta is not null and v_intentos_nombre.bloqueado_hasta > now() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_intentos_nombre.bloqueado_hasta - now())) / 60)))::text; return;
@@ -50,13 +116,9 @@ begin
     insert into public.intentos_nombre_estudiante (usuario_id, intentos, bloqueado_hasta) values (auth.uid(), 1, null)
       on conflict (usuario_id) do update set intentos = public.intentos_nombre_estudiante.intentos + 1,
       bloqueado_hasta = case when public.intentos_nombre_estudiante.intentos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else public.intentos_nombre_estudiante.bloqueado_hasta end;
-    insert into public.intentos_nombre_grupo as ing (grupo_id, intentos, ventana_inicio) values (v_grupo.id, 1, now())
-      on conflict (grupo_id) do update set intentos = case when now() - ing.ventana_inicio > interval '5 minutes' then 1 else ing.intentos + 1 end,
-      ventana_inicio = case when now() - ing.ventana_inicio > interval '5 minutes' then now() else ing.ventana_inicio end returning ing.intentos into v_intentos_grupo_actual;
-    perform pg_sleep(least(0.3 + v_intentos_grupo_actual * 0.15, 2.5));
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
   end if;
-  if not v_estudiante.activo then perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
+  if not v_estudiante.activo then return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
   if v_estudiante.bloqueado_hasta is not null and v_estudiante.bloqueado_hasta > now() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_estudiante.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
@@ -68,7 +130,7 @@ begin
   end if;
   if extensions.crypt(p_nip, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
     update public.estudiantes set intentos_fallidos = v_estudiante.intentos_fallidos + 1, bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end where public.estudiantes.id = v_estudiante.id;
-    perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
+    return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
   end if;
   update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
   update public.estudiantes set auth_user_id = auth.uid(), intentos_fallidos = 0, bloqueado_hasta = null where public.estudiantes.id = v_estudiante.id;
@@ -285,6 +347,11 @@ for each row execute function public.proteger_columnas_entrega();
 revoke execute on function public.proteger_columnas_entrega() from public, anon, authenticated;
 revoke execute on function public.proteger_correo_docente() from public, anon, authenticated;
 revoke execute on function public.normalizar_nombre(text) from public, anon, authenticated;
+
+revoke select on public.estudiantes from public, anon, authenticated;
+grant select (id, nombre, grupo_id, activo, boleta, debe_cambiar_nip, created_at)
+  on public.estudiantes to authenticated;
+grant all on public.estudiantes to service_role;
 
 -- Tablas internas: las funciones SECURITY DEFINER las usan por dentro; el
 -- cliente nunca recibe privilegios directos sobre sus contadores o secretos.

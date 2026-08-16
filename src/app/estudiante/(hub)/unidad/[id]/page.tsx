@@ -39,7 +39,6 @@ export default async function UnidadEstudiante({
   const { data: estudiante, error: estudianteError } = await supabase
     .from("estudiantes")
     .select("id")
-    .eq("auth_user_id", user.id)
     .single();
   revisarErrorConsulta(estudianteError && estudianteError.code !== "PGRST116" ? estudianteError : null, "No pudimos cargar tu sesión de estudiante.");
   if (!estudiante) redirect("/ingreso/estudiante");

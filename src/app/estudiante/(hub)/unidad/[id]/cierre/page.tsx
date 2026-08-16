@@ -21,7 +21,7 @@ export default async function CierreUnidadEstudiante({
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
 
-  const { data: estudiante } = await supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single();
+  const { data: estudiante } = await supabase.from("estudiantes").select("id").single();
   if (!estudiante) redirect("/ingreso/estudiante");
 
   const [{ data: unidad }, { data: actividades }, { data: entregas }] = await Promise.all([
