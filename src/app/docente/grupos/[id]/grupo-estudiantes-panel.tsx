@@ -22,10 +22,13 @@ export type EstudianteResumen = {
   ultima: number | null;
   diasInactivo: number | null;
   totalEntregas: number;
+  unidadActual: number | null;
+  ultimaActividad: string | null;
 };
 
 type EstudianteBaja = { id: string; nombre: string };
 type FiltroEstudiantes = "todos" | "sin_empezar" | "en_ruta" | "completados" | "inactivos";
+type OrdenEstudiantes = "nombre" | "avance_desc" | "avance_asc" | "ultima_reciente";
 
 export default function GrupoEstudiantesPanel({
   grupoId,
@@ -43,13 +46,15 @@ export default function GrupoEstudiantesPanel({
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<FiltroEstudiantes>("todos");
+  const [orden, setOrden] = useState<OrdenEstudiantes>("nombre");
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accionPendiente, setAccionPendiente] = useState<"dar_de_baja" | null>(null);
 
   const visibles = useMemo(() => {
     const termino = busqueda.trim().toLocaleLowerCase("es-MX");
-    return estudiantes.filter((estudiante) => {
+    const filtrados = estudiantes.filter((estudiante) => {
       const coincideBusqueda = !termino || estudiante.nombre.toLocaleLowerCase("es-MX").includes(termino);
       const coincideFiltro =
         filtro === "todos" ||
@@ -59,7 +64,13 @@ export default function GrupoEstudiantesPanel({
         (filtro === "inactivos" && estudiante.diasInactivo !== null && estudiante.diasInactivo > 10);
       return coincideBusqueda && coincideFiltro;
     });
-  }, [busqueda, estudiantes, filtro]);
+    return filtrados.sort((a, b) => {
+      if (orden === "avance_desc") return b.avance - a.avance || a.nombre.localeCompare(b.nombre, "es");
+      if (orden === "avance_asc") return a.avance - b.avance || a.nombre.localeCompare(b.nombre, "es");
+      if (orden === "ultima_reciente") return (b.ultima ?? -1) - (a.ultima ?? -1) || a.nombre.localeCompare(b.nombre, "es");
+      return a.nombre.localeCompare(b.nombre, "es");
+    });
+  }, [busqueda, estudiantes, filtro, orden]);
 
   const visiblesIds = visibles.map((estudiante) => estudiante.id);
   const todasVisiblesSeleccionadas = visiblesIds.length > 0 && visiblesIds.every((id) => seleccionados.includes(id));
@@ -79,8 +90,6 @@ export default function GrupoEstudiantesPanel({
 
   async function ejecutarAccion(accion: "dar_de_baja" | "reactivar") {
     if (cargando) return;
-    const etiqueta = accion === "dar_de_baja" ? "dar de baja" : "reactivar";
-    if (!window.confirm(`¿Quieres ${etiqueta} a ${seleccionados.length} estudiante(s)?`)) return;
     setCargando(true);
     setError(null);
     const resultado = await actualizarEstudiantesLote(grupoId, seleccionados, accion);
@@ -90,6 +99,7 @@ export default function GrupoEstudiantesPanel({
       return;
     }
     setSeleccionados([]);
+    setAccionPendiente(null);
     setCargando(false);
     router.refresh();
   }
@@ -104,7 +114,7 @@ export default function GrupoEstudiantesPanel({
             <h2 id="estudiantes-activos" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
               Estudiantes ({estudiantes.length})
             </h2>
-            <HelpText>Busca, filtra y selecciona varias filas para actualizar su estado de una sola vez.</HelpText>
+            <HelpText>Busca, ordena y filtra para encontrar rápidamente a quien quieras consultar.</HelpText>
           </div>
           {estudiantes.length > 0 && <ExportarGrupo nombreGrupo={nombreGrupo} estudiantes={estudiantes} />}
         </div>
@@ -113,7 +123,7 @@ export default function GrupoEstudiantesPanel({
           <EmptyState icon={Users} titulo="Todavía no hay estudiantes en este grupo" />
         ) : (
           <Card className="flex flex-col gap-3 p-4 sm:p-5">
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_11rem_auto]">
               <label className="relative block">
                 <span className="sr-only">Buscar estudiante</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -134,6 +144,15 @@ export default function GrupoEstudiantesPanel({
                   <option value="inactivos">Sin actividad reciente</option>
                 </Select>
               </label>
+              <label>
+                <span className="sr-only">Ordenar estudiantes</span>
+                <Select value={orden} onChange={(e) => setOrden(e.target.value as OrdenEstudiantes)}>
+                  <option value="nombre">Ordenar: nombre</option>
+                  <option value="avance_desc">Ordenar: mayor avance</option>
+                  <option value="avance_asc">Ordenar: menor avance</option>
+                  <option value="ultima_reciente">Ordenar: actividad reciente</option>
+                </Select>
+              </label>
               <Boton type="button" variant="ghost" size="sm" onClick={alternarTodas} disabled={visibles.length === 0}>
                 <CheckSquare className="size-4" aria-hidden="true" />
                 {todasVisiblesSeleccionadas ? "Quitar selección" : "Seleccionar visibles"}
@@ -145,10 +164,22 @@ export default function GrupoEstudiantesPanel({
                 <span className="mr-auto text-sm font-medium text-indigo-900 dark:text-indigo-100">
                   {seleccionados.length} seleccionado(s)
                 </span>
-                <Boton type="button" variant="secondary" size="sm" onClick={() => ejecutarAccion("dar_de_baja")} cargando={cargando}>
-                  <UserMinus className="size-4" aria-hidden="true" />
-                  Dar de baja
-                </Boton>
+                {accionPendiente === "dar_de_baja" ? (
+                  <div className="flex flex-wrap items-center gap-2" role="alert">
+                    <span className="text-sm text-indigo-900 dark:text-indigo-100">¿Confirmas dar de baja a {seleccionados.length}?</span>
+                    <Boton type="button" variant="secondary" size="sm" onClick={() => ejecutarAccion("dar_de_baja")} cargando={cargando}>
+                      Confirmar
+                    </Boton>
+                    <Boton type="button" variant="ghost" size="sm" onClick={() => setAccionPendiente(null)} disabled={cargando}>
+                      Cancelar
+                    </Boton>
+                  </div>
+                ) : (
+                  <Boton type="button" variant="secondary" size="sm" onClick={() => setAccionPendiente("dar_de_baja")} disabled={cargando}>
+                    <UserMinus className="size-4" aria-hidden="true" />
+                    Dar de baja
+                  </Boton>
+                )}
                 <Boton type="button" variant="ghost" size="sm" onClick={() => setSeleccionados([])} disabled={cargando}>
                   <X className="size-4" aria-hidden="true" />
                   Limpiar
@@ -178,7 +209,9 @@ export default function GrupoEstudiantesPanel({
                     <Link href={`/docente/estudiantes/${estudiante.id}`} className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
                       <span className="block truncate text-sm font-medium text-slate-900 dark:text-slate-50">{estudiante.nombre}</span>
                       <span className="block text-xs text-slate-500 dark:text-slate-400">
-                        {estudiante.totalEntregas} entregas{estudiante.diasInactivo !== null ? ` · ${estudiante.diasInactivo} días sin actividad` : ""}
+                        {estudiante.unidadActual ? `Unidad ${estudiante.unidadActual}` : "Sin comenzar"}
+                        {estudiante.ultimaActividad ? ` · ${estudiante.ultimaActividad}` : ""}
+                        {estudiante.diasInactivo !== null ? ` · ${estudiante.diasInactivo} días sin actividad` : ""}
                       </span>
                     </Link>
                     <div className="flex w-24 shrink-0 items-center gap-2 sm:w-32">

@@ -1,13 +1,10 @@
-import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ListChecks, Pencil, Plus } from "lucide-react";
+import { ListChecks } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
-import { CardLink } from "@/components/ui/card";
-import Boton from "@/components/ui/button";
+import { Card, CardLink } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
 import { etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
-import DuplicarActividad from "./actividades/duplicar-actividad";
 
 export default async function DetalleUnidadDocente({
   params,
@@ -39,7 +36,7 @@ export default async function DetalleUnidadDocente({
   if (!unidad) notFound();
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/docente/dashboard"
         eyebrow={`Unidad ${unidad.orden}`}
@@ -54,24 +51,18 @@ export default async function DetalleUnidadDocente({
         </CardLink>
       )}
 
-      <div className="flex items-center justify-between">
+      <div>
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Actividades</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Contenido que verá y trabajará el estudiante.</p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Actividades del curso</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Contenido fijo de consulta que verá y trabajará el estudiante.</p>
         </div>
-        <Link href={`/docente/unidades/${id}/actividades/nueva`}>
-          <Boton size="sm">
-            <Plus className="size-4" aria-hidden="true" />
-            Crear actividad
-          </Boton>
-        </Link>
       </div>
 
       {!actividades || actividades.length === 0 ? (
         <EmptyState
           icon={ListChecks}
           titulo="Todavía no hay actividades en esta unidad"
-          descripcion="Crea una dinámica y configura su instrucción, objetivo y contenido paso a paso."
+          descripcion="Esta unidad todavía no tiene actividades configuradas."
         />
       ) : (
         <div className="flex flex-col gap-2">
@@ -79,21 +70,15 @@ export default async function DetalleUnidadDocente({
             const tipo = Array.isArray(a.tipos_actividad) ? a.tipos_actividad[0] : a.tipos_actividad;
             const Icono = ICONO_TIPO[tipo?.nombre ?? ""] ?? ListChecks;
             return (
-              <div key={a.id} className="flex items-center gap-2">
-                <Link href={`/docente/unidades/${id}/actividades/${a.id}/editar`} className="min-w-0 flex-1">
-                  <CardLink className="flex items-center gap-3 px-4 py-3.5">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
-                      <Icono className="size-4" aria-hidden="true" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-slate-900 dark:text-slate-50">{a.titulo}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-500">{etiquetaTipo(tipo?.nombre)}</p>
-                    </div>
-                    <Pencil className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-                  </CardLink>
-                </Link>
-                <DuplicarActividad actividadId={a.id} unidadId={id} titulo={a.titulo} />
-              </div>
+              <Card key={a.id} className="flex items-center gap-3 px-4 py-3.5">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                  <Icono className="size-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-900 dark:text-slate-50">{a.orden}. {a.titulo}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-500">{etiquetaTipo(tipo?.nombre)}</p>
+                </div>
+              </Card>
             );
           })}
         </div>

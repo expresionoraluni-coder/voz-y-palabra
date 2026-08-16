@@ -146,7 +146,8 @@ export default async function DetalleGrupo({
       const tipo = Array.isArray(actividad.tipos_actividad)
         ? actividad.tipos_actividad[0]
         : actividad.tipos_actividad;
-      return [actividad.id, { titulo: actividad.titulo, tipo: tipo?.nombre ?? "otro" }];
+      const unidad = (unidades ?? []).find((item) => item.id === actividad.unidad_id);
+      return [actividad.id, { titulo: actividad.titulo, tipo: tipo?.nombre ?? "otro", unidadOrden: unidad?.orden ?? null }];
     }),
   );
   const idsActividadesConConfusion = (actividades ?? [])
@@ -191,7 +192,20 @@ export default async function DetalleGrupo({
     const fechas = misEntregas.map((en) => new Date(en.created_at).getTime());
     const ultima = fechas.length ? Math.max(...fechas) : null;
     const diasInactivo = ultima ? Math.floor((hoy - ultima) / (1000 * 60 * 60 * 24)) : null;
-    return { ...e, avance, ultima, diasInactivo, totalEntregas: misEntregas.length };
+    const ultimaEntrega = misEntregas.reduce<typeof misEntregas[number] | null>(
+      (actual, entrega) => (!actual || entrega.created_at > actual.created_at ? entrega : actual),
+      null,
+    );
+    const actividadActual = ultimaEntrega ? actividadesMapa.get(ultimaEntrega.actividad_id) : null;
+    return {
+      ...e,
+      avance: Math.min(100, avance),
+      ultima,
+      diasInactivo,
+      totalEntregas: misEntregas.length,
+      unidadActual: actividadActual?.unidadOrden ?? null,
+      ultimaActividad: actividadActual?.titulo ?? null,
+    };
   });
   const porEstudianteMap = new Map(porEstudiante.map((e) => [e.id, e]));
 
@@ -200,6 +214,8 @@ export default async function DetalleGrupo({
       ? Math.round(porEstudiante.reduce((s, e) => s + e.avance, 0) / porEstudiante.length)
       : 0;
   const activosSemana = porEstudiante.filter((e) => e.diasInactivo !== null && e.diasInactivo <= 7).length;
+  const sinEmpezar = porEstudiante.filter((e) => e.totalEntregas === 0).length;
+  const sinActividadReciente = porEstudiante.filter((e) => e.diasInactivo !== null && e.diasInactivo > DIAS_INACTIVIDAD).length;
   // Más antigua primero: sin esto salían en el orden arbitrario en que las
   // devolvía Postgres, no en el orden en que conviene atenderlas.
   const entregasPorRevisar = (entregas ?? [])
@@ -333,26 +349,20 @@ export default async function DetalleGrupo({
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-6 py-10">
       <PageHeader
         volverHref="/docente/dashboard"
         titulo={grupo.nombre}
-        descripcion={
-          <>
-            Código de acceso:{" "}
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {grupo.codigo_acceso}
-            </span>
-          </>
-        }
+        descripcion={`${estudiantes?.length ?? 0} estudiantes activos · seguimiento del avance y señales de apoyo`}
         accion={<EditarGrupo grupoId={grupo.id} nombreActual={grupo.nombre} codigoActual={grupo.codigo_acceso} />}
       />
 
       <nav className="sticky top-0 z-10 -mx-6 flex gap-1 border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         {[
           { href: "#resumen", etiqueta: "Resumen" },
-          { href: "#detalle", etiqueta: "Análisis" },
-          { href: "#contenido", etiqueta: "Contenido" },
+          { href: "#atencion", etiqueta: "Atención" },
+          { href: "#detalle", etiqueta: "Avance" },
+          { href: "#avisos", etiqueta: "Avisos" },
           { href: "#estudiantes", etiqueta: "Estudiantes" },
         ].map((t) => (
           <a
@@ -381,6 +391,36 @@ export default async function DetalleGrupo({
         />
         <MetricCard etiqueta="Estudiantes" valor={estudiantes?.length ?? 0} icon={Users} tono="slate" />
       </div>
+
+      <section id="atencion" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="atencion-titulo">
+        <div>
+          <h2 id="atencion-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Qué necesita atención</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Señales para decidir dónde mirar primero; no son calificaciones.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link href="#estudiantes">
+            <CardLink className="flex h-full flex-col gap-2 border-amber-100 px-4 py-4 dark:border-amber-900/60">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Sin comenzar</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{sinEmpezar}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Abrir lista de estudiantes</p>
+            </CardLink>
+          </Link>
+          <Link href="#estudiantes">
+            <CardLink className="flex h-full flex-col gap-2 border-slate-200 px-4 py-4 dark:border-slate-800">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Sin actividad reciente</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{sinActividadReciente}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Más de {DIAS_INACTIVIDAD} días</p>
+            </CardLink>
+          </Link>
+          <Link href="#apoyo">
+            <CardLink className="flex h-full flex-col gap-2 border-indigo-100 px-4 py-4 dark:border-indigo-900/60">
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Casos de apoyo</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{entregasPorRevisar.length}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Orientación opcional</p>
+            </CardLink>
+          </Link>
+        </div>
+      </section>
 
       <AccesoGrupo codigo={grupo.codigo_acceso} />
 
@@ -512,11 +552,12 @@ export default async function DetalleGrupo({
         </section>
       )}
 
-      {entregasPorRevisar.length > 0 && (
-        <section id="apoyo" className="scroll-mt-16 flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Casos de apoyo para atender
-          </h2>
+      <section id="apoyo" className="scroll-mt-16 flex flex-col gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Casos de apoyo para atender</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Orientaciones opcionales, no calificaciones.</p>
+        </div>
+        {entregasPorRevisar.length > 0 ? (
           <div className="flex flex-col gap-2">
             {entregasPorRevisar.map((en) => {
               const est = porEstudianteMap.get(en.estudiante_id);
@@ -534,10 +575,12 @@ export default async function DetalleGrupo({
               );
             })}
           </div>
-        </section>
-      )}
+        ) : (
+          <Card className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">No hay casos pendientes en este momento.</Card>
+        )}
+      </section>
 
-      <div id="contenido" className="scroll-mt-16 flex flex-col gap-8">
+      <div id="avisos" className="scroll-mt-16 flex flex-col gap-8">
         <Eventos grupoId={grupo.id} unidades={unidades ?? []} eventos={eventos ?? []} />
         <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
       </div>

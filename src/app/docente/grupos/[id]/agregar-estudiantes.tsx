@@ -165,17 +165,17 @@ export default function AgregarEstudiantes({
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex items-center gap-2">
         <UserPlus className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Agregar estudiantes</p>
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Agregar estudiantes desde Excel</p>
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <Label>Nombre y boleta</Label>
+        <Label>Paso 1: pega nombre y boleta</Label>
         <HelpText>
           Escribe directamente en la tabla o pega celdas copiadas de Excel. Se reparten solas en
           las filas y se normalizan a mayúsculas sin acentos. El NIP inicial de cada estudiante
           son los últimos 4 dígitos de su boleta.
         </HelpText>
 
-        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400" aria-live="polite">
           {conAlgunContenido ? (
             <>
               {filas.filter(conContenido).length}{" "}
@@ -284,9 +284,9 @@ export default function AgregarEstudiantes({
 
         {error && <ErrorText>{error}</ErrorText>}
         {agregados !== null && (
-          <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+          <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400" role="status">
             <CheckCircle2 className="size-4" aria-hidden="true" />
-            {agregados} estudiante(s) agregado(s)
+            Paso 2 completo: {agregados} {agregados === 1 ? "estudiante agregado" : "estudiantes agregados"}. Ya puedes compartir las instrucciones de acceso.
           </p>
         )}
         <Boton

@@ -107,7 +107,7 @@ export default async function FichaEstudiante({
   const casosPendientes = entregas?.filter((entrega) => entrega.estado === "pendiente_revision").length ?? 0;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-8 px-6 py-10">
       <div className="flex items-start gap-4">
         <Avatar nombre={estudiante.nombre} size="lg" />
         <div className="flex-1">
@@ -255,7 +255,10 @@ export default async function FichaEstudiante({
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Entregas</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Actividades realizadas</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Consulta el recorrido y detecta dónde podría necesitar orientación.</p>
+        </div>
         {!entregas || entregas.length === 0 ? (
           <EmptyState icon={FileText} titulo="Todavía no hay entregas" />
         ) : (
