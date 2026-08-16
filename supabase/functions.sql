@@ -203,8 +203,8 @@ begin
    where estudiante_id = v_estudiante
      and (puntaje_auto is null or puntaje_auto >= 70 or respuesta -> '_meta' ->> 'intentos' = '3');
   select count(*) into v_unidades_con_ambas_confianzas from (select unidad_id from public.autoevaluaciones_confianza where estudiante_id = v_estudiante group by unidad_id having count(distinct momento) = 2) x;
-  if v_total_reflexiones >= 1 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, id from public.insignias where nombre = 'Primera reflexión' on conflict do nothing; end if;
-  if v_total_reflexiones >= 3 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, id from public.insignias where nombre = 'Mente reflexiva' on conflict do nothing; end if;
+  if v_total_reflexiones >= 1 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, i.id from public.insignias i where i.nombre = 'Primera reflexión' on conflict do nothing; end if;
+  if v_total_reflexiones >= 3 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, i.id from public.insignias i where i.nombre = 'Mente reflexiva' on conflict do nothing; end if;
   for v_orden, v_unidad_total, v_unidad_hechas in
     select u.orden,
            count(a.id),
@@ -219,9 +219,14 @@ begin
       select v_estudiante, i.id from public.insignias i where i.nombre = 'Unidad ' || v_orden || ' completa' on conflict do nothing;
     end if;
   end loop;
-  if v_total_actividades > 0 and v_total_hechas = v_total_actividades then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, id from public.insignias where nombre = 'Voz y Palabra completo' on conflict do nothing; end if;
-  if v_unidades_con_ambas_confianzas >= 1 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, id from public.insignias where nombre = 'Autoconocimiento' on conflict do nothing; end if;
-  return query select i.nombre, i.descripcion from public.insignias_otorgadas io join public.insignias i on i.id = io.insignia_id where io.estudiante_id = v_estudiante order by io.created_at;
+  if v_total_actividades > 0 and v_total_hechas = v_total_actividades then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, i.id from public.insignias i where i.nombre = 'Voz y Palabra completo' on conflict do nothing; end if;
+  if v_unidades_con_ambas_confianzas >= 1 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, i.id from public.insignias i where i.nombre = 'Autoconocimiento' on conflict do nothing; end if;
+return query
+select i.nombre as nombre, i.descripcion as descripcion
+  from public.insignias_otorgadas io
+  join public.insignias i on i.id = io.insignia_id
+ where io.estudiante_id = v_estudiante
+ order by io.created_at;
 end;
 $$;
 
