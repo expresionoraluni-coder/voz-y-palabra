@@ -303,6 +303,13 @@ create policy "docente edita su propio perfil" on docentes
   for update to authenticated using (id = (select auth.uid()))
   with check (id = (select auth.uid()));
 
+-- El correo es un dato de autenticación sensible. La aplicación solo necesita
+-- leer el identificador y el nombre de la docente; el correo queda disponible
+-- para las funciones internas y service_role, no para el Data API.
+revoke select on public.docentes from public, anon, authenticated;
+grant select (id, nombre, created_at) on public.docentes to authenticated;
+grant all on public.docentes to service_role;
+
 -- grupos: el docente administra los suyos; el estudiante solo lee el suyo
 create policy "docente administra sus grupos" on grupos
   for all to authenticated using (docente_id = (select auth.uid()))

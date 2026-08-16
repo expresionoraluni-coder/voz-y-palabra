@@ -14,7 +14,7 @@ export default async function LayoutDocente({ children }: { children: React.Reac
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/profesora");
+  if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
 
   const { data: docente } = await supabase.from("docentes").select("id").eq("id", user.id).maybeSingle();
   if (!docente) redirect("/ingreso/profesora/verificar");

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeErrorRpc } from "@/lib/mensaje-error";
 import Boton from "@/components/ui/button";
 import { ErrorText } from "@/components/ui/field";
 
@@ -26,7 +27,11 @@ export default function ReiniciarNip({ estudianteId, nombre }: { estudianteId: s
     });
 
     if (rpcError) {
-      setError(rpcError.message);
+      setError(mensajeErrorRpc(rpcError, [
+        { contiene: "No tienes permiso sobre este estudiante", mensaje: "No tienes permiso sobre este estudiante." },
+        { contiene: "No encontramos este estudiante", mensaje: "No encontramos este estudiante en el grupo." },
+        { contiene: "Sesión inválida", mensaje: "Tu sesión expiró. Entra de nuevo para continuar." },
+      ]));
       setCargando(false);
       return;
     }
@@ -72,7 +77,7 @@ export default function ReiniciarNip({ estudianteId, nombre }: { estudianteId: s
       {error && <ErrorText>{error}</ErrorText>}
       <div className="flex gap-2">
         <Boton size="sm" variant="destructive" onClick={reiniciar} cargando={cargando}>
-          {cargando ? "Reiniciando..." : "Sí, reiniciar"}
+          {cargando ? "Reiniciando…" : "Sí, reiniciar"}
         </Boton>
         <Boton size="sm" variant="ghost" onClick={() => setConfirmando(false)}>
           Cancelar

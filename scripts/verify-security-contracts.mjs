@@ -73,6 +73,9 @@ if (!functions.includes("debe_cambiar_nip = true") || !functions.includes("exten
 if (!schema.includes("actividades_video_url_https_check") || !videoEmbed.includes("esVideoUrlPermitida")) {
   failures.push("video: las URLs deben estar restringidas a HTTPS y hosts permitidos.");
 }
+if (!schema.includes("revoke select on public.docentes from public, anon, authenticated") || !functions.includes("grant select (id, nombre, created_at) on public.docentes to authenticated")) {
+  failures.push("docentes: el correo no debe quedar expuesto por el Data API.");
+}
 if (!workflow.includes("cp ../supabase/migrations/*.sql supabase/migrations/") || !workflow.includes("version: 2.101.0")) {
   failures.push("CI: debe aplicar las migraciones versionadas y fijar la versiÃ³n de Supabase CLI.");
 }

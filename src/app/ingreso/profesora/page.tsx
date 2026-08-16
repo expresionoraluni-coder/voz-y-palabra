@@ -6,6 +6,7 @@ import Link from "next/link";
 import { UserRound, ArrowLeft, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
+import { mensajeErrorAuth } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -41,7 +42,7 @@ export default function IngresoProfesora() {
         password: contrasena,
       });
       if (authError || !data.user) {
-        setError("Correo o contraseña incorrectos.");
+        setError(mensajeErrorAuth(authError, "entrar"));
         setCargando(false);
         return;
       }
@@ -57,7 +58,7 @@ export default function IngresoProfesora() {
       password: contrasena,
     });
     if (authError || !data.user) {
-      setError(authError?.message ?? "No pudimos crear tu cuenta.");
+      setError(mensajeErrorAuth(authError, "crear"));
       setCargando(false);
       return;
     }
@@ -102,10 +103,12 @@ export default function IngresoProfesora() {
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {modo === "crear" && (
-              <HelpText>
-                Después de crear tu cuenta te pediremos tu nombre y el código de invitación de
-                profesoras del piloto. Usa al menos 8 caracteres.
-              </HelpText>
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-3 text-sm text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
+                <p className="font-semibold text-slate-900 dark:text-slate-50">Antes de comenzar</p>
+                <p className="mt-1 leading-relaxed">
+                  Usa el correo con el que entrarás al panel. Después confirmarás tu correo y te pediremos tu nombre y el código de invitación del piloto.
+                </p>
+              </div>
             )}
             <Field>
               <Label htmlFor="correo">Correo</Label>
@@ -129,6 +132,7 @@ export default function IngresoProfesora() {
                 onChange={(e) => setContrasena(e.target.value)}
                 autoComplete={modo === "entrar" ? "current-password" : "new-password"}
               />
+              {modo === "crear" && <HelpText>Usa al menos 8 caracteres. No compartas esta contraseña.</HelpText>}
             </Field>
             {modo === "crear" && (
               <Field>
@@ -156,7 +160,7 @@ export default function IngresoProfesora() {
               }
               className="w-full"
             >
-              {cargando ? "Un momento..." : modo === "entrar" ? "Entrar" : "Crear cuenta"}
+              {cargando ? "Un momento…" : modo === "entrar" ? "Entrar" : "Crear cuenta"}
             </Boton>
             <button
               type="button"

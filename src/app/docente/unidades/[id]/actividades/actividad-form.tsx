@@ -422,6 +422,13 @@ export default function ActividadForm({
     });
   }
 
+  function descartarBorrador() {
+    if (!usuarioId) return;
+    localStorage.removeItem(claveBorrador(unidadId, usuarioId));
+    localStorage.removeItem(claveBorradorLegacy(unidadId));
+    window.location.reload();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (cargando) return;
@@ -809,13 +816,30 @@ export default function ActividadForm({
       </Card>
 
       {borradorRestaurado && (
-        <Alert tono="info">Recuperamos el borrador que estabas escribiendo.</Alert>
+        <Alert tono="info">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>Recuperamos el borrador que estabas escribiendo.</span>
+            <button
+              type="button"
+              onClick={descartarBorrador}
+              className="text-xs font-semibold underline underline-offset-2 hover:no-underline"
+            >
+              Descartar borrador
+            </button>
+          </div>
+        </Alert>
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <Card className="flex flex-col gap-4 p-5">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Datos que verá el estudiante</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Define el propósito y las instrucciones antes de preparar la dinámica.
+            </p>
+          </div>
           <Field>
-            <Label htmlFor="tipo">Tipo de actividad</Label>
+            <Label htmlFor="tipo">Dinámica de la actividad</Label>
             <Select id="tipo" value={tipoId} onChange={(e) => setTipoId(e.target.value)} disabled={modoEdicion || tipos.length === 0}>
               {!tipos.length && <option value="">Cargando tipos de actividad…</option>}
               {tipos.map((t) => (
@@ -838,6 +862,7 @@ export default function ActividadForm({
           <Field>
             <Label htmlFor="titulo">Título</Label>
             <Input id="titulo" required maxLength={160} value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+            <HelpText>Usa un título breve que indique qué hará el estudiante.</HelpText>
           </Field>
 
           <Field>
@@ -850,6 +875,7 @@ export default function ActividadForm({
               onChange={(e) => setInstrucciones(e.target.value)}
               rows={2}
             />
+            <HelpText>Escribe una acción concreta: qué debe leer, elegir, ordenar, comparar o redactar.</HelpText>
           </Field>
 
           <Field>
@@ -906,9 +932,12 @@ export default function ActividadForm({
                 <IconoTipo className="size-4" aria-hidden="true" />
               </div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                Contenido: {etiquetaTipo(nombreTipo)}
+                Contenido de la dinámica: {etiquetaTipo(nombreTipo)}
               </h2>
             </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Completa solo los campos de esta dinámica. La vista previa te ayuda a revisar lo que recibirá el estudiante.
+            </p>
 
             {nombreTipo === "opcion_justificacion" && (
               <>

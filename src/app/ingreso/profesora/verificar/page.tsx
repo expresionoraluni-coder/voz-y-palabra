@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
+import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -46,13 +47,16 @@ export default function VerificarDocente() {
     setCargando(true);
 
     const supabase = createClient();
-    const { data: mensajeError, error: rpcError } = await supabase.rpc("crear_perfil_docente", {
+    const { data: mensajeRpc, error: rpcError } = await supabase.rpc("crear_perfil_docente", {
       p_nombre: nombre,
       p_codigo_invitacion: codigoInvitacion,
     });
 
     if (rpcError) {
-      setError(rpcError.message);
+      setError(mensajeError(rpcError, {
+        "42501": "No pudimos comprobar tu invitación. Intenta de nuevo.",
+        "429": "Se intentó demasiadas veces. Espera un momento y vuelve a intentarlo.",
+      }));
       setCargando(false);
       return;
     }
@@ -61,8 +65,8 @@ export default function VerificarDocente() {
     // función los devuelve como texto para que el contador de intentos
     // fallidos sí quede guardado (una excepción deshace todo lo hecho en
     // esa llamada, incluido el conteo).
-    if (mensajeError) {
-      setError(mensajeError);
+    if (mensajeRpc) {
+      setError(mensajeRpc);
       setCargando(false);
       return;
     }
@@ -71,7 +75,13 @@ export default function VerificarDocente() {
     router.refresh();
   }
 
-  if (!listo) return null;
+  if (!listo) {
+    return (
+      <div className="flex min-h-screen flex-1 items-center justify-center px-6">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Cargando tu verificación…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6">
@@ -81,21 +91,22 @@ export default function VerificarDocente() {
 
       <div className="text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-          Verifica tu acceso
+          Confirma tu acceso docente
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
-          Tu correo ya quedó confirmado. Falta el código de invitación de profesoras.
+          Tu correo ya quedó confirmado. Para entrar al panel necesitamos validar que formas parte del piloto.
         </p>
       </div>
 
       <Card className="w-full max-w-sm p-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Field>
-            <Label htmlFor="nombre">Tu nombre</Label>
-            <Input id="nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            <Label htmlFor="nombre">Nombre para mostrar</Label>
+            <Input id="nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="name" />
+            <HelpText>Escribe el nombre con el que quieres identificar tu panel.</HelpText>
           </Field>
           <Field>
-            <Label htmlFor="codigoInvitacion">Código de invitación de profesoras</Label>
+            <Label htmlFor="codigoInvitacion">Código de invitación</Label>
             <Input
               id="codigoInvitacion"
               required
@@ -103,11 +114,11 @@ export default function VerificarDocente() {
               onChange={(e) => setCodigoInvitacion(e.target.value)}
               autoComplete="off"
             />
-            <HelpText>Te lo compartió quien coordina el piloto. No es tu contraseña de correo.</HelpText>
+            <HelpText>Te lo compartió quien coordina el piloto. Es obligatorio y no sustituye tu contraseña.</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">
-            {cargando ? "Verificando..." : "Entrar al panel"}
+            {cargando ? "Comprobando…" : "Entrar al panel"}
           </Boton>
         </form>
       </Card>

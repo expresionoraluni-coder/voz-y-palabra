@@ -352,6 +352,13 @@ revoke execute on function public.proteger_columnas_entrega() from public, anon,
 revoke execute on function public.proteger_correo_docente() from public, anon, authenticated;
 revoke execute on function public.normalizar_nombre(text) from public, anon, authenticated;
 
+-- El correo de la docente no se expone por el Data API. Solo se leen las
+-- columnas necesarias para pintar el panel; las funciones internas y
+-- service_role conservan acceso completo.
+revoke select on public.docentes from public, anon, authenticated;
+grant select (id, nombre, created_at) on public.docentes to authenticated;
+grant all on public.docentes to service_role;
+
 revoke select on public.estudiantes from public, anon, authenticated;
 grant select (id, nombre, grupo_id, activo, boleta, debe_cambiar_nip, created_at)
   on public.estudiantes to authenticated;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { UserPlus, CheckCircle2, AlertCircle, MinusCircle, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { normalizarNombre } from "@/lib/normalizar-nombre";
+import { mensajeErrorRpc } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Label, HelpText, ErrorText, Input } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -147,9 +148,16 @@ export default function AgregarEstudiantes({
 
     if (rpcError) {
       setError(
-        rpcError.message.includes("duplicate key")
-          ? "Uno o más nombres o boletas ya están en este grupo (no se permiten repetidos)."
-          : rpcError.message,
+        mensajeErrorRpc(rpcError, [
+          {
+            contiene: "duplicate key",
+            mensaje: "Uno o más nombres o boletas ya están en este grupo (no se permiten repetidos).",
+          },
+          { contiene: "No tienes permiso sobre este grupo", mensaje: "No tienes permiso sobre este grupo." },
+          { contiene: "La lista de estudiantes no es válida", mensaje: "La lista de estudiantes no es válida." },
+          { contiene: "Falta el nombre", mensaje: "Falta el nombre de un estudiante." },
+          { contiene: "no es válida", mensaje: "Una de las boletas no es válida. Revisa sus datos." },
+        ]),
       );
       setCargando(false);
       return;
