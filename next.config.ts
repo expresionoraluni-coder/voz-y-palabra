@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 // VP-M5: cabeceras de seguridad HTTP — no había ninguna configurada.
-// microphone=(self) porque grabacion-rubrica.tsx graba audio en el navegador;
 // connect-src incluye Supabase porque toda la app habla con su API REST/Auth.
 //
 // script-src necesita 'unsafe-eval' SOLO en desarrollo: "next dev --webpack"
@@ -18,7 +17,7 @@ const cabecerasSeguridad = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
+  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   {
     key: "Content-Security-Policy",

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ListChecks, Video } from "lucide-react";
+import { ListChecks, Pencil, Plus, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
+import Boton from "@/components/ui/button";
 import { etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import ActividadVideoEditor from "./actividad-video-editor";
 
@@ -53,9 +54,17 @@ export default async function DetalleUnidadDocente({
         </CardLink>
       )}
 
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Actividades del curso</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Contenido fijo de consulta que verá y trabajará el estudiante.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Actividades del curso</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Consulta las actividades actuales o crea una nueva cuando lo necesites.</p>
+        </div>
+        <Link href={`/docente/unidades/${id}/actividades/nueva`}>
+          <Boton size="sm">
+            <Plus className="size-4" aria-hidden="true" />
+            Crear actividad
+          </Boton>
+        </Link>
       </div>
 
       {!actividades || actividades.length === 0 ? (
@@ -79,9 +88,14 @@ export default async function DetalleUnidadDocente({
                     <p className="truncate font-medium text-slate-900 dark:text-slate-50">{a.orden}. {a.titulo}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-500">{etiquetaTipo(tipo?.nombre)}</p>
                   </div>
-                  <Link href={`/docente/unidades/${id}/actividades/${a.id}`} className="inline-flex min-h-9 items-center rounded-lg px-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-950/40">
-                    Ver instrucciones
-                  </Link>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Link href={`/docente/unidades/${id}/actividades/${a.id}`} className="inline-flex min-h-9 items-center rounded-lg px-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-950/40">
+                      Ver instrucciones
+                    </Link>
+                    <Link href={`/docente/unidades/${id}/actividades/${a.id}/editar`} aria-label={`Editar ${a.titulo}`} title="Editar actividad" className="inline-flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400">
+                      <Pencil className="size-4" aria-hidden="true" />
+                    </Link>
+                  </div>
                 </div>
                 <details className="border-t border-slate-100 pt-3 dark:border-slate-800">
                   <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400">

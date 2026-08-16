@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import ActividadForm from "../actividad-form";
 
 export default async function NuevaActividad({
   params,
@@ -6,5 +6,5 @@ export default async function NuevaActividad({
   params: Promise<{ id: string }>;
 }) {
   const { id: unidadId } = await params;
-  redirect(`/docente/unidades/${unidadId}`);
+  return <ActividadForm unidadId={unidadId} />;
 }

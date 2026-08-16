@@ -24,7 +24,6 @@ Esta lista acompaña el flujo autodirigido. La orientación de una docente es op
 - Lector de pantalla: encabezados, estados, progreso y mensajes de error.
 - Preferencia de movimiento reducido.
 - Cambio a modo sin conexión: mostrar el aviso y no prometer que una respuesta se guardó.
-- Actividad de audio: permiso concedido, permiso rechazado, pausa, detención y formato compatible.
 
 ## Datos y seguridad
 
