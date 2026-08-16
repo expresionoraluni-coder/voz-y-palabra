@@ -37,11 +37,13 @@ begin
 
   if v_total_reflexiones >= 1 then
     insert into public.insignias_otorgadas (estudiante_id, insignia_id)
-    select v_estudiante, i.id from public.insignias i where i.nombre = 'Primera reflexión' on conflict do nothing;
+    select v_estudiante, i.id from public.insignias i
+     where i.nombre = 'Primera reflexión' on conflict do nothing;
   end if;
   if v_total_reflexiones >= 3 then
     insert into public.insignias_otorgadas (estudiante_id, insignia_id)
-    select v_estudiante, i.id from public.insignias i where i.nombre = 'Mente reflexiva' on conflict do nothing;
+    select v_estudiante, i.id from public.insignias i
+     where i.nombre = 'Mente reflexiva' on conflict do nothing;
   end if;
 
   for v_orden, v_unidad_total, v_unidad_hechas in
@@ -55,17 +57,20 @@ begin
   loop
     if v_unidad_total > 0 and v_unidad_hechas = v_unidad_total then
       insert into public.insignias_otorgadas (estudiante_id, insignia_id)
-      select v_estudiante, i.id from public.insignias i where i.nombre = 'Unidad ' || v_orden || ' completa' on conflict do nothing;
+      select v_estudiante, i.id from public.insignias i
+       where i.nombre = 'Unidad ' || v_orden || ' completa' on conflict do nothing;
     end if;
   end loop;
 
   if v_total_actividades > 0 and v_total_hechas = v_total_actividades then
     insert into public.insignias_otorgadas (estudiante_id, insignia_id)
-    select v_estudiante, i.id from public.insignias i where i.nombre = 'Voz y Palabra completo' on conflict do nothing;
+    select v_estudiante, i.id from public.insignias i
+     where i.nombre = 'Voz y Palabra completo' on conflict do nothing;
   end if;
   if v_unidades_con_ambas_confianzas >= 1 then
     insert into public.insignias_otorgadas (estudiante_id, insignia_id)
-    select v_estudiante, i.id from public.insignias i where i.nombre = 'Autoconocimiento' on conflict do nothing;
+    select v_estudiante, i.id from public.insignias i
+     where i.nombre = 'Autoconocimiento' on conflict do nothing;
   end if;
 
   return query
