@@ -15,6 +15,7 @@ export default function ReflexionActividad({
   puntajeAuto,
   textoPrevio,
   placeholderPersonalizado,
+  onGuardada,
 }: {
   actividadId: string;
   estudianteId: string;
@@ -22,6 +23,7 @@ export default function ReflexionActividad({
   puntajeAuto: number | null;
   textoPrevio: string | null;
   placeholderPersonalizado?: string;
+  onGuardada?: () => void;
 }) {
   const [editando, setEditando] = useState(!textoPrevio);
   const [texto, setTexto] = useState(textoPrevio ?? "");
@@ -49,6 +51,7 @@ export default function ReflexionActividad({
       }
 
       setEditando(false);
+      onGuardada?.();
     } catch {
       setError("No pudimos guardar tu reflexión. Revisa tu conexión e inténtalo de nuevo.");
     } finally {

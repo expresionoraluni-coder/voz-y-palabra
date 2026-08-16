@@ -21,8 +21,12 @@ export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: st
   );
 }
 
-export function HelpText({ children }: { children: ReactNode }) {
-  return <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{children}</p>;
+export function HelpText({ children, id }: { children: ReactNode; id?: string }) {
+  return (
+    <p id={id} className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+      {children}
+    </p>
+  );
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {

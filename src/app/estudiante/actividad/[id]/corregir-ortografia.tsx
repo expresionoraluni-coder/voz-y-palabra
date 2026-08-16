@@ -58,6 +58,9 @@ export default function CorregirOrtografia({
       : null,
   );
   const bloqueado = resultado !== null;
+  const soloMayusculas = (contenido.temas ?? []).length > 0 && (contenido.temas ?? []).every((tema) =>
+    ["Mayúsculas al inicio de oración", "Nombres propios", "Días y materias van en minúscula"].includes(tema),
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -122,9 +125,9 @@ export default function CorregirOrtografia({
         <Field>
           <Label htmlFor="texto-reescrito">Tu versión corregida</Label>
           <HelpText>
-            Reescribe el texto completo. Corrige solo mayúsculas, tildes y letras (b/v, s/c/z, g/j, h). No
-            cambies el orden ni la cantidad de palabras, y no toques los signos de puntuación. Se aceptan hasta
-            5 errores.
+            {soloMayusculas
+              ? "Reescribe el texto completo y corrige únicamente las mayúsculas y minúsculas. No cambies tildes, letras, palabras ni signos de puntuación."
+              : "Reescribe el texto completo. Corrige solo mayúsculas, tildes y letras (b/v, s/c/z, g/j, h). No cambies el orden ni la cantidad de palabras, y no toques los signos de puntuación. Se aceptan hasta 5 errores."}
           </HelpText>
           <Textarea
             id="texto-reescrito"

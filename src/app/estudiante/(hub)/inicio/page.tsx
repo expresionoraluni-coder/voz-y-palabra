@@ -34,7 +34,8 @@ import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
 import { proximoRepaso } from "@/lib/calendario-repaso";
-import { intentosDeEntregaAuto, puedeAbrirDependiente, unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { entregaCuentaComoCompletada, intentosDeEntregaAuto, unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 type Grupo = { nombre: string } | { nombre: string }[] | null;
 
@@ -76,11 +77,11 @@ export default async function InicioEstudiante({
   const insigniasPromise = supabase.rpc("verificar_insignias");
 
   const [
-    { data: unidades },
-    { data: entregas },
-    { data: reflexionesCierre },
-    { data: avisos },
-    { data: eventosProximos },
+    { data: unidades, error: unidadesError },
+    { data: entregas, error: entregasError },
+    { data: reflexionesCierre, error: reflexionesError },
+    { data: avisos, error: avisosError },
+    { data: eventosProximos, error: eventosError },
   ] = await Promise.all([
     admin
       .from("unidades")
@@ -112,17 +113,29 @@ export default async function InicioEstudiante({
       .order("fecha")
       .limit(3),
   ]);
-  const { data: insignias } = await insigniasPromise;
+  const { data: insignias, error: insigniasError } = await insigniasPromise;
+
+  revisarErrorConsulta(unidadesError, "No pudimos cargar tu ruta de aprendizaje.");
+  revisarErrorConsulta(entregasError, "No pudimos cargar tus actividades.");
+  revisarErrorConsulta(reflexionesError, "No pudimos cargar tus reflexiones.");
+  revisarErrorConsulta(avisosError, "No pudimos cargar los avisos del grupo.");
+  revisarErrorConsulta(eventosError, "No pudimos cargar el calendario del grupo.");
+  revisarErrorConsulta(insigniasError, "No pudimos cargar tus insignias.");
 
   const idsEntregas = (entregas ?? []).map((e) => e.id);
-  const { count: totalRetroalimentaciones } = idsEntregas.length
-    ? await admin
+  let totalRetroalimentaciones = 0;
+  if (idsEntregas.length) {
+    const { count, error: retroalimentacionesError } = await supabase
         .from("retroalimentacion_docente")
         .select("id", { count: "exact", head: true })
-        .in("entrega_id", idsEntregas)
-    : { count: 0 };
+        .in("entrega_id", idsEntregas);
+    revisarErrorConsulta(retroalimentacionesError, "No pudimos cargar las orientaciones disponibles.");
+    totalRetroalimentaciones = count ?? 0;
+  }
 
-  const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
+  const idsCompletadas = new Set(
+    (entregas ?? []).filter((e) => entregaCuentaComoCompletada(e)).map((e) => e.actividad_id),
+  );
   const unidadesConReflexion = new Set(
     (reflexionesCierre ?? []).filter((r) => r.unidad_id !== null).map((r) => r.unidad_id),
   );
@@ -164,7 +177,7 @@ export default async function InicioEstudiante({
   );
   const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
-  const [{ data: bitacoraActiva }, { data: confianzaActiva }] = unidadActiva
+  const [{ data: bitacoraActiva, error: bitacoraError }, { data: confianzaActiva, error: confianzaError }] = unidadActiva
     ? await Promise.all([
         supabase
           .from("bitacora")
@@ -182,6 +195,9 @@ export default async function InicioEstudiante({
       ])
     : [{ data: null }, { data: null }];
 
+  revisarErrorConsulta(bitacoraError, "No pudimos cargar tu meta de unidad.");
+  revisarErrorConsulta(confianzaError, "No pudimos cargar tu nivel de seguridad.");
+
   const actividadesActiva = (unidadActiva?.actividades ?? []).slice().sort((a, b) => a.orden - b.orden);
   const primeraActividadAccesible = actividadesActiva.find((actividad) => {
     if (idsCompletadas.has(actividad.id)) return false;
@@ -189,7 +205,7 @@ export default async function InicioEstudiante({
     const entregaPrerequisito = (entregas ?? []).find(
       (entrega) => entrega.actividad_id === actividad.requiere_actividad_id,
     );
-    return puedeAbrirDependiente(entregaPrerequisito?.puntaje_auto ?? null, entregaPrerequisito?.respuesta);
+    return entregaCuentaComoCompletada(entregaPrerequisito);
   });
 
   const reintentoPendiente = (entregas ?? []).find(
@@ -264,7 +280,7 @@ export default async function InicioEstudiante({
             }
           : reintentoPendiente
             ? {
-                etiqueta: "Una oportunidad mas",
+              etiqueta: "Una oportunidad más",
                 titulo: "Vuelve a practicar una actividad",
                 descripcion: "Puedes mejorar tu mejor resultado antes de seguir.",
                 href: `/estudiante/actividad/${reintentoPendiente.actividad_id}`,
@@ -291,7 +307,7 @@ export default async function InicioEstudiante({
             <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
               Hola, {estudiante.nombre.split(" ")[0]}
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-500">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Grupo {grupo?.nombre ?? "—"}
             </p>
           </div>

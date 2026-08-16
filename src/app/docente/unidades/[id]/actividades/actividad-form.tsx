@@ -8,6 +8,7 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { DESCRIPCION_TIPO, etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import { esTipoActividadActual, TIPOS_ACTIVIDAD_ACTUALES } from "@/lib/tipos-actividad-actuales";
 import { compararPalabras, tokenizar } from "@/lib/comparar-ortografia";
+import { esVideoUrlPermitida } from "@/lib/video-embed";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui/field";
@@ -617,6 +618,12 @@ export default function ActividadForm({
 
     if (contenido && ayuda.trim()) contenido = { ...contenido, _ayuda: ayuda.trim() };
 
+    const videoUrlNormalizada = videoUrl.trim();
+    if (videoUrlNormalizada && !esVideoUrlPermitida(videoUrlNormalizada)) {
+      setError("El video debe ser un enlace HTTPS de YouTube.");
+      return;
+    }
+
     setCargando(true);
     const supabase = createClient();
 
@@ -627,7 +634,7 @@ export default function ActividadForm({
           titulo,
           instrucciones,
           aprendizaje_esperado: aprendizajeEsperado.trim() || null,
-          video_url: videoUrl.trim() || null,
+          video_url: videoUrlNormalizada || null,
           contenido,
         })
         .eq("id", actividadInicial!.id);
@@ -648,7 +655,7 @@ export default function ActividadForm({
         titulo,
         instrucciones,
         aprendizaje_esperado: aprendizajeEsperado.trim() || null,
-        video_url: videoUrl.trim() || null,
+        video_url: videoUrlNormalizada || null,
         contenido,
         orden: (count ?? 0) + 1,
       });

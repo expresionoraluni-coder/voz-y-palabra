@@ -1,6 +1,12 @@
 # Migraciones de Supabase
 
-Las migraciones son el registro ejecutable de la base de datos. `schema.sql` conserva las tablas, RLS y semillas para una base nueva; `functions.sql` contiene las funciones de Auth y negocio necesarias para completar la reconstrucción. Este directorio conserva los cambios incrementales que deben revisarse antes de aplicarse.
+Las migraciones son el registro ejecutable de los cambios aplicados a producción. `schema.sql` y `functions.sql` forman la reconstrucción canónica actual para una base nueva; no deben depender de que se repita toda la historia de migraciones remotas.
+
+La migración `20260816000219_cerrar_hallazgos_seguridad.sql` reconcilia la base existente con esa reconstrucción: cierra policies dirigidas a `public`, asegura índices y funciones/grants vigentes, y elimina el RPC de NIP que ya no tiene callers.
+
+La migración `20260816010000_corregir_contenido_y_privilegios.sql` corrige el contenido publicado de las actividades U1-A8, U1-A9, U2-A1 a U2-A4 y U3-A5; también revoca el acceso directo del Data API a las tablas internas de configuración y límites de intentos.
+
+La migración `20260816011000_alinear_insignias_con_avance.sql` hace que las insignias usen la misma regla de avance que la interfaz: 70 puntos o tres intentos para actividades automáticas.
 
 Antes de desplegar una migración:
 

@@ -12,7 +12,8 @@ export default function ReiniciarNip({ estudianteId, nombre }: { estudianteId: s
   const [confirmando, setConfirmando] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hecho, setHecho] = useState(false);
+  const [nipTemporal, setNipTemporal] = useState<string | null>(null);
+  const hecho = Boolean(nipTemporal);
 
   async function reiniciar() {
     if (cargando) return;
@@ -20,7 +21,7 @@ export default function ReiniciarNip({ estudianteId, nombre }: { estudianteId: s
     setError(null);
 
     const supabase = createClient();
-    const { error: rpcError } = await supabase.rpc("reiniciar_nip_estudiante", {
+    const { data: nipTemporal, error: rpcError } = await supabase.rpc("reiniciar_nip_estudiante", {
       p_estudiante_id: estudianteId,
     });
 
@@ -30,16 +31,22 @@ export default function ReiniciarNip({ estudianteId, nombre }: { estudianteId: s
       return;
     }
 
-    setHecho(true);
+    if (typeof nipTemporal !== "string" || !/^\d{4}$/.test(nipTemporal)) {
+      setError("No recibimos un NIP temporal válido. Intenta de nuevo.");
+      setCargando(false);
+      return;
+    }
+    setNipTemporal(nipTemporal);
     setCargando(false);
     router.refresh();
   }
 
   if (hecho) {
     return (
-      <p className="text-sm text-emerald-600 dark:text-emerald-400">
-        NIP reiniciado. {nombre.split(" ")[0]} podrá crear uno nuevo la próxima vez que entre.
-      </p>
+      <div className="flex flex-col gap-1 text-sm text-emerald-600 dark:text-emerald-400">
+        <p>NIP temporal para {nombre.split(" ")[0]}: <strong>{nipTemporal}</strong></p>
+        <p>Compártelo de forma privada. Al entrar, tendrá que cambiarlo por uno propio.</p>
+      </div>
     );
   }
 
@@ -59,8 +66,8 @@ export default function ReiniciarNip({ estudianteId, nombre }: { estudianteId: s
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
       <p className="text-sm text-slate-700 dark:text-slate-300">
-        ¿Reiniciar el NIP de {nombre}? Su sesión actual se cerrará y podrá crear un NIP nuevo la próxima
-        vez que entre con su nombre.
+        ¿Reiniciar el NIP de {nombre}? Su sesión actual se cerrará y recibirá un NIP temporal para entrar.
+        Después tendrá que cambiarlo por uno propio.
       </p>
       {error && <ErrorText>{error}</ErrorText>}
       <div className="flex gap-2">

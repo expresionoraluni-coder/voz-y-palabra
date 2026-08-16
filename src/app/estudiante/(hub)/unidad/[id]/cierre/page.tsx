@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import PageHeader from "@/components/ui/page-header";
 import ProgressBar from "@/components/ui/progress-bar";
 import UnidadCierre from "./unidad-cierre";
-import { unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-unidad";
 
 export default async function CierreUnidadEstudiante({
   params,
@@ -31,7 +31,7 @@ export default async function CierreUnidadEstudiante({
       .eq("id", id)
       .single(),
     admin.from("actividades").select("id, orden").eq("unidad_id", id).order("orden"),
-    supabase.from("entregas").select("actividad_id, puntaje_auto").eq("estudiante_id", estudiante.id),
+    supabase.from("entregas").select("actividad_id, puntaje_auto, respuesta").eq("estudiante_id", estudiante.id),
   ]);
   if (!unidad) notFound();
 
@@ -47,7 +47,7 @@ export default async function CierreUnidadEstudiante({
       const idsActividadesAnteriores = new Set(unidadAnterior.actividades.map((actividad) => actividad.id));
       const hechasAnterior = new Set(
         (entregas ?? [])
-          .filter((entrega) => idsActividadesAnteriores.has(entrega.actividad_id))
+          .filter((entrega) => idsActividadesAnteriores.has(entrega.actividad_id) && entregaCuentaComoCompletada(entrega))
           .map((entrega) => entrega.actividad_id),
       ).size;
       const { data: reflexionAnterior } = await supabase
@@ -77,7 +77,9 @@ export default async function CierreUnidadEstudiante({
   const listaActividades = actividades ?? [];
   const idsActividad = new Set(listaActividades.map((actividad) => actividad.id));
   const entregasUnidad = (entregas ?? []).filter((entrega) => idsActividad.has(entrega.actividad_id));
-  const entregasUnicasUnidad = new Set(entregasUnidad.map((entrega) => entrega.actividad_id));
+  const entregasUnicasUnidad = new Set(
+    entregasUnidad.filter((entrega) => entregaCuentaComoCompletada(entrega)).map((entrega) => entrega.actividad_id),
+  );
   const unidadCompleta = listaActividades.length > 0 && entregasUnicasUnidad.size === listaActividades.length;
   if (!unidadCompleta) redirect(`/estudiante/unidad/${id}`);
 

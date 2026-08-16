@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.101.0
       - name: Preparar proyecto Supabase efímero
         shell: bash
         run: |
@@ -44,6 +44,7 @@ jobs:
           cd .ci-supabase
           supabase init
           cat ../supabase/schema.sql ../supabase/functions.sql > supabase/migrations/20260101000000_initial.sql
+          cp ../supabase/migrations/*.sql supabase/migrations/
           cp ../supabase/tests/rls_seguridad.sql supabase/tests/rls_seguridad.sql
       - name: Iniciar base local
         working-directory: .ci-supabase

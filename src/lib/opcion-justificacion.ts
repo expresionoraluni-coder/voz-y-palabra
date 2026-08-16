@@ -1,11 +1,6 @@
-// opcion_justificacion pasó de una sola pregunta a poder tener varias
-// "rondas" dentro de una misma actividad (ej. un simulador narrado paso a
-// paso). Las ~4-5 actividades ya existentes en producción guardan la forma
-// plana de antes ({pregunta, opciones, ideas_clave}); todo lo nuevo se
-// guarda siempre como {rondas: [...]}, incluso con una sola pregunta. Estos
-// helpers son el único lugar que necesita saber que ambas formas existen —
-// el resto del código solo llama rondasDeContenido()/rondasDeRespuesta() y
-// nunca vuelve a chequear la forma.
+// opcion_justificacion puede tener varias "rondas" dentro de una actividad.
+// Se conserva la lectura de la forma plana únicamente para no romper entregas
+// históricas; el editor y las actividades vigentes guardan siempre rondas.
 
 // Todo lo que NO es la clave de calificación — lo único que el cliente
 // necesita para renderizar la pregunta antes de contestar. `RondaContenido`
@@ -76,12 +71,8 @@ export function rondasDeRespuesta(r?: Record<string, unknown> | null): RondaResp
 }
 
 function quitarClave(r: RondaContenido): RondaContenidoPublica {
-  const resto = { ...r } as RondaContenidoPublica & {
-    respuesta_correcta?: string;
-    ideas_clave?: string[];
-  };
+  const resto = { ...r } as RondaContenidoPublica & { respuesta_correcta?: string };
   delete resto.respuesta_correcta;
-  delete resto.ideas_clave;
   return resto;
 }
 

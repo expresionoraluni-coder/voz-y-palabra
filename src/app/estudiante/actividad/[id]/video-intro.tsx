@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { ChevronRight, Video } from "lucide-react";
 import Boton from "@/components/ui/button";
-import { urlEmbedYoutube } from "@/lib/video-embed";
+import { esVideoUrlPermitida, urlEmbedYoutube } from "@/lib/video-embed";
 
 // El video es un paso previo, no un bloque mezclado con la actividad: se ve
 // y solo después aparece el resto del contenido — así no compite por
@@ -23,7 +23,8 @@ export default function VideoIntro({
 
   if (avanzado) return <>{children}</>;
 
-  const embed = urlEmbedYoutube(videoUrl);
+  const urlSegura = esVideoUrlPermitida(videoUrl) ? videoUrl : null;
+  const embed = urlSegura ? urlEmbedYoutube(urlSegura) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,9 +40,9 @@ export default function VideoIntro({
             className="size-full"
           />
         </div>
-      ) : (
+      ) : urlSegura ? (
         <a
-          href={videoUrl}
+          href={urlSegura}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-slate-50 dark:border-slate-800 dark:text-indigo-400 dark:hover:bg-slate-800/50"
@@ -49,6 +50,10 @@ export default function VideoIntro({
           <Video className="size-4 shrink-0" aria-hidden="true" />
           Ver video
         </a>
+      ) : (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          Este video no tiene una dirección segura. Pide a la docente que lo revise.
+        </p>
       )}
       <Boton type="button" onClick={() => setAvanzado(true)} className="w-full">
         Continuar a la actividad

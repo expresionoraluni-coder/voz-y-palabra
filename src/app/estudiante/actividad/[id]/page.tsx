@@ -33,7 +33,9 @@ import { sanitizarContenidoComparador, type ContenidoComparador } from "@/lib/ca
 import { sanitizarContenidoClasificacion, type ContenidoClasificacion } from "@/lib/calificacion-clasificacion";
 import { sanitizarContenidoEtiquetadoTexto, type ContenidoEtiquetadoTexto } from "@/lib/calificacion-etiquetado-texto";
 import { sanitizarContenidoOrtografia, type ContenidoOrtografia } from "@/lib/comparar-ortografia";
-import { puedeAbrirDependiente } from "@/lib/progreso-unidad";
+import { validarAccesoActividad } from "@/lib/estudiante-entregas-server";
+import { entregaCuentaComoCompletada } from "@/lib/progreso-unidad";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 export default async function ActividadEstudiante({
   params,
@@ -52,30 +54,32 @@ export default async function ActividadEstudiante({
   // a estudiantes (RLS cerrado) — el contenido, incluida la clave de
   // calificación, solo se trae del lado del servidor con el cliente admin,
   // nunca con el JWT de sesión del estudiante.
-  const [{ data: estudiante }, { data: actividad }] = await Promise.all([
+  const [
+    { data: estudiante, error: estudianteError },
+    { data: actividad, error: actividadError },
+  ] = await Promise.all([
     supabase.from("estudiantes").select("id").eq("auth_user_id", user.id).single(),
     admin
       .from("actividades")
       .select(
-        "id, unidad_id, orden, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, requiere_actividad_id, tipos_actividad(nombre), unidades(unidad_competencia)",
+        "id, unidad_id, orden, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, requiere_actividad_id, tipos_actividad(nombre), unidades(orden, unidad_competencia)",
       )
       .eq("id", id)
       .single(),
   ]);
+  revisarErrorConsulta(estudianteError && estudianteError.code !== "PGRST116" ? estudianteError : null, "No pudimos cargar tu sesión de estudiante.");
+  revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
   if (!estudiante) redirect("/ingreso/estudiante");
   if (!actividad) notFound();
 
-  if (actividad.requiere_actividad_id) {
-    const { data: entregaPrerequisito } = await supabase
-      .from("entregas")
-      .select("puntaje_auto, respuesta")
-      .eq("actividad_id", actividad.requiere_actividad_id)
-      .eq("estudiante_id", estudiante.id)
-      .maybeSingle();
-    if (!entregaPrerequisito || !puedeAbrirDependiente(entregaPrerequisito.puntaje_auto, entregaPrerequisito.respuesta)) {
-      redirect(`/estudiante/unidad/${actividad.unidad_id}`);
-    }
-  }
+  const unidadParaAcceso = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
+  const acceso = await validarAccesoActividad(supabase, admin, estudiante.id, {
+    id: actividad.id,
+    unidadId: actividad.unidad_id,
+    requiereActividadId: actividad.requiere_actividad_id,
+    unidadOrden: Number(unidadParaAcceso?.orden ?? 1),
+  });
+  if (!acceso.ok) redirect(`/estudiante/unidad/${actividad.unidad_id}?bloqueada=${acceso.motivo}`);
 
   const tipo = Array.isArray(actividad.tipos_actividad)
     ? actividad.tipos_actividad[0]
@@ -87,11 +91,11 @@ export default async function ActividadEstudiante({
   const ayudaActividad = (actividad.contenido as { _ayuda?: string } | null)?._ayuda;
 
   const [
-    { data: entregaExistente },
-    { data: prediccionExistente },
-    { data: reflexionExistente },
-    { data: actividadesDeUnidad },
-    { data: entregasDeUnidad },
+    { data: entregaExistente, error: entregaError },
+    { data: prediccionExistente, error: prediccionError },
+    { data: reflexionExistente, error: reflexionError },
+    { data: actividadesDeUnidad, error: actividadesDeUnidadError },
+    { data: entregasDeUnidad, error: entregasDeUnidadError },
   ] = await Promise.all([
     supabase
       .from("entregas")
@@ -129,6 +133,12 @@ export default async function ActividadEstudiante({
       .eq("estudiante_id", estudiante.id),
   ]);
 
+  revisarErrorConsulta(entregaError, "No pudimos cargar tu entrega.");
+  revisarErrorConsulta(prediccionError, "No pudimos cargar tu nivel de seguridad.");
+  revisarErrorConsulta(reflexionError, "No pudimos cargar tu reflexión.");
+  revisarErrorConsulta(actividadesDeUnidadError, "No pudimos cargar la ruta de actividades.");
+  revisarErrorConsulta(entregasDeUnidadError, "No pudimos cargar tu avance en la unidad.");
+
   // Misma forma que antes (`entregas(puntaje_auto)` embebido), reconstruida
   // en JS a partir de las dos consultas separadas de arriba.
   const entregasPorActividad = new Map((entregasDeUnidad ?? []).map((e) => [e.actividad_id, e]));
@@ -148,14 +158,18 @@ export default async function ActividadEstudiante({
     ? hermanas?.find((a) => a.id === siguiente.requiere_actividad_id)
     : null;
   const entregaSiguientePrerequisito = siguientePrerequisito?.entregas?.[0];
+  const entregaActual = entregaExistente
+    ? { puntaje_auto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta }
+    : null;
+  const actividadActualLista = entregaCuentaComoCompletada(entregaActual);
+  const reflexionActualGuardada = Boolean(reflexionExistente?.texto?.trim());
   const siguienteDisponible = Boolean(
     siguiente &&
+      actividadActualLista &&
+      reflexionActualGuardada &&
       (!siguiente.requiere_actividad_id ||
         (entregaSiguientePrerequisito &&
-          puedeAbrirDependiente(
-            entregaSiguientePrerequisito.puntaje_auto,
-            entregaSiguientePrerequisito.respuesta,
-          ))),
+          entregaCuentaComoCompletada(entregaSiguientePrerequisito))),
   );
   // "Dos niveles": esta actividad requiere a otra (es el nivel 2) o alguna
   // otra la requiere a ella (es el nivel 1 que la desbloquea) — en ambos
@@ -395,7 +409,7 @@ export default async function ActividadEstudiante({
             </h2>
             <span>
               Actividad {indiceActual + 1} de {hermanas.length}
-              {entregaExistente ? " · Completada" : " · Lista para trabajar"}
+              {actividadActualLista ? " · Completada" : entregaExistente ? " · Necesita mejora" : " · Lista para trabajar"}
             </span>
           </div>
           <ProgressBar

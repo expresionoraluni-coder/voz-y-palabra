@@ -8,12 +8,13 @@ import Boton from "@/components/ui/button";
 import AvisoReintento from "@/components/estudiante/aviso-reintento";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import EmptyState from "@/components/ui/empty-state";
-import { urlEmbedYoutube } from "@/lib/video-embed";
+import { esVideoUrlPermitida, urlEmbedYoutube } from "@/lib/video-embed";
 import type { ContenidoEvaluarVideosPublico } from "@/lib/calificacion-evaluar-videos";
 import { calificarEvaluarVideos } from "./acciones-calificacion";
 
 function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion: string; url: string | null }) {
-  const embed = url ? urlEmbedYoutube(url) : null;
+  const urlSegura = url && esVideoUrlPermitida(url) ? url : null;
+  const embed = urlSegura ? urlEmbedYoutube(urlSegura) : null;
   return (
     <div className="flex flex-col gap-2">
       <div>
@@ -30,9 +31,9 @@ function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion
             className="size-full"
           />
         </div>
-      ) : url ? (
+      ) : urlSegura ? (
         <a
-          href={url}
+          href={urlSegura}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-indigo-600 hover:bg-slate-50 dark:border-slate-800 dark:text-indigo-400 dark:hover:bg-slate-800/50"
@@ -40,6 +41,8 @@ function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion
           <Video className="size-4 shrink-0" aria-hidden="true" />
           Ver video
         </a>
+      ) : url ? (
+        <EmptyState icon={Video} titulo="Video no disponible" descripcion="La dirección del video necesita revisión." />
       ) : (
         <EmptyState icon={Video} titulo="Video próximamente" descripcion="Aparecerá cuando el curso lo tenga disponible." />
       )}

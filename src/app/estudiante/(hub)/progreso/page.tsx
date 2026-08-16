@@ -11,6 +11,7 @@ import MetricCard from "@/components/ui/metric-card";
 import { calcularRacha } from "@/lib/racha";
 import { casoCalibracion } from "@/lib/calibracion-confianza";
 import { temaUnidad } from "@/lib/unidad-tema";
+import { entregaCuentaComoCompletada } from "@/lib/progreso-unidad";
 
 export default async function ProgresoEstudiante() {
   const supabase = await createClient();
@@ -22,7 +23,7 @@ export default async function ProgresoEstudiante() {
       admin.from("unidades").select("id, nombre, orden, actividades(id)").order("orden"),
       supabase
         .from("entregas")
-        .select("actividad_id, puntaje_auto, created_at")
+        .select("actividad_id, puntaje_auto, created_at, respuesta")
         .eq("estudiante_id", estudiante.id),
       supabase
         .from("reflexiones")
@@ -39,7 +40,9 @@ export default async function ProgresoEstudiante() {
         .not("unidad_id", "is", null),
     ]);
 
-  const idsCompletadas = new Set((entregas ?? []).map((e) => e.actividad_id));
+  const idsCompletadas = new Set(
+    (entregas ?? []).filter((e) => entregaCuentaComoCompletada(e)).map((e) => e.actividad_id),
+  );
   const unidadesConProgreso = (unidades ?? []).map((u) => {
     const total = u.actividades.length;
     const hechas = u.actividades.filter((a) => idsCompletadas.has(a.id)).length;

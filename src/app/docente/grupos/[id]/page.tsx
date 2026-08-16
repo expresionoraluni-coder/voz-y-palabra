@@ -14,6 +14,7 @@ import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
 import { temaUnidad } from "@/lib/unidad-tema";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 const DIAS_INACTIVIDAD = 10;
 
@@ -40,17 +41,15 @@ export default async function DetalleGrupo({
   // viaje le cuesta a esta base ~500ms de latencia de red, así que esto es
   // la diferencia entre sentir la página "trabada" o instantánea.
   const [
-    {
-      data: { user },
-    },
-    { data: grupo },
-    { data: estudiantesTodos },
-    { data: unidades },
-    { data: actividades },
-    { data: confianzas },
-    { data: avisos },
-    { data: eventos },
-    { data: entregas },
+    { data: { user }, error: sesionError },
+    { data: grupo, error: grupoError },
+    { data: estudiantesTodos, error: estudiantesError },
+    { data: unidades, error: unidadesError },
+    { data: actividades, error: actividadesError },
+    { data: confianzas, error: confianzasError },
+    { data: avisos, error: avisosError },
+    { data: eventos, error: eventosError },
+    { data: entregas, error: entregasError },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase
@@ -60,7 +59,7 @@ export default async function DetalleGrupo({
       .single(),
     supabase.from("estudiantes").select("id, nombre, created_at, activo").eq("grupo_id", id).order("nombre"),
     supabase.from("unidades").select("id, nombre, orden").order("orden"),
-    supabase.from("actividades").select("id, unidad_id"),
+    supabase.from("actividades").select("id, unidad_id, titulo, tipos_actividad(nombre)"),
     supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor"),
     supabase
       .from("avisos")
@@ -71,13 +70,53 @@ export default async function DetalleGrupo({
     supabase
       .from("entregas")
       .select(
-        "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta, actividades(titulo, unidad_id, tipos_actividad(nombre)), estudiantes!inner(grupo_id)",
+        "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, estudiantes!inner(grupo_id)",
       )
       .eq("estudiantes.grupo_id", id),
   ]);
 
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
+  revisarErrorConsulta(grupoError, "No pudimos cargar este grupo.");
+  revisarErrorConsulta(estudiantesError, "No pudimos cargar la lista de estudiantes.");
+  revisarErrorConsulta(unidadesError, "No pudimos cargar las unidades del curso.");
+  revisarErrorConsulta(actividadesError, "No pudimos cargar las actividades del curso.");
+  revisarErrorConsulta(confianzasError, "No pudimos cargar los niveles de seguridad.");
+  revisarErrorConsulta(avisosError, "No pudimos cargar los avisos del grupo.");
+  revisarErrorConsulta(eventosError, "No pudimos cargar los eventos del grupo.");
+  revisarErrorConsulta(entregasError, "No pudimos cargar el avance del grupo.");
+
   if (!user) redirect("/ingreso/profesora");
   if (!grupo) notFound();
+
+  // La tabla entregas puede contener respuestas JSON grandes. El panel solo
+  // necesita ese JSON para la matriz de confusión de los dos tipos
+  // autoevaluables; el resto de métricas usa únicamente el resumen anterior.
+  // Así se evita descargar respuestas abiertas y textos largos en cada visita.
+  const tiposConConfusion = new Set(["clasificacion", "etiquetado_texto"]);
+  const actividadesMapa = new Map(
+    (actividades ?? []).map((actividad) => {
+      const tipo = Array.isArray(actividad.tipos_actividad)
+        ? actividad.tipos_actividad[0]
+        : actividad.tipos_actividad;
+      return [actividad.id, { titulo: actividad.titulo, tipo: tipo?.nombre ?? "otro" }];
+    }),
+  );
+  const idsActividadesConConfusion = (actividades ?? [])
+    .filter((actividad) => {
+      const tipo = Array.isArray(actividad.tipos_actividad)
+        ? actividad.tipos_actividad[0]
+        : actividad.tipos_actividad;
+      return tiposConConfusion.has(tipo?.nombre ?? "");
+    })
+    .map((actividad) => actividad.id);
+  const { data: entregasConConfusion, error: entregasConConfusionError } = idsActividadesConConfusion.length
+    ? await supabase
+        .from("entregas")
+        .select("id, estudiante_id, actividad_id, respuesta, estudiantes!inner(grupo_id)")
+        .eq("estudiantes.grupo_id", id)
+        .in("actividad_id", idsActividadesConConfusion)
+    : { data: [], error: null };
+  revisarErrorConsulta(entregasConConfusionError, "No pudimos cargar los datos para detectar dificultades comunes.");
 
   const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);
   const estudiantesBaja = (estudiantesTodos ?? []).filter((e) => !e.activo);
@@ -133,11 +172,8 @@ export default async function DetalleGrupo({
   // de texto, opción-justificación, ordenar fragmentos, y comparador en
   // modo chips). Ordenado de peor a mejor para que salte a la vista dónde
   // intervenir.
-  function nombreTipoDe(en: { actividades: unknown }) {
-    const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
-    const tipo = (act as { tipos_actividad?: unknown } | undefined)?.tipos_actividad;
-    const t = Array.isArray(tipo) ? tipo[0] : tipo;
-    return (t as { nombre?: string } | undefined)?.nombre ?? "otro";
+  function nombreTipoDe(en: { actividad_id: string }) {
+    return actividadesMapa.get(en.actividad_id)?.tipo ?? "otro";
   }
 
   const precisionPorTipoBase = Object.values(
@@ -192,15 +228,7 @@ export default async function DetalleGrupo({
   // sino "el grupo confunde 'Receptor' con 'Emisor' en 5 entregas" — mismo
   // dato ya guardado en respuesta.elegidas, solo que agregado más fino.
   const confusionMap = new Map<string, { elemento: string; correcta: string; elegida: string; veces: number }>();
-  for (const en of entregas ?? []) {
-    const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
-    const tipo = act
-      ? Array.isArray(act.tipos_actividad)
-        ? act.tipos_actividad[0]
-        : act.tipos_actividad
-      : undefined;
-    if (!act || (tipo?.nombre !== "clasificacion" && tipo?.nombre !== "etiquetado_texto")) continue;
-
+  for (const en of entregasConConfusion ?? []) {
     const respuesta = en.respuesta as {
       elegidas?: string[];
       itemsSnapshot?: { texto: string; correcta: string }[];
@@ -443,7 +471,7 @@ export default async function DetalleGrupo({
           <div className="flex flex-col gap-2">
             {entregasPorRevisar.map((en) => {
               const est = porEstudianteMap.get(en.estudiante_id);
-              const act = Array.isArray(en.actividades) ? en.actividades[0] : en.actividades;
+              const act = actividadesMapa.get(en.actividad_id);
               return (
                 <Link key={en.id} href={`/docente/estudiantes/${en.estudiante_id}#entrega-${en.id}`}>
                   <CardLink className="flex items-center gap-3 px-4 py-3">

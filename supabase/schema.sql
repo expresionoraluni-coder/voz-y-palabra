@@ -1,4 +1,4 @@
--- Voz y Palabra · esquema inicial de base de datos (Fase 1)
+-- Voz y Palabra · esquema canónico ejecutable
 -- Ejecuta este archivo primero y después supabase/functions.sql. No contiene datos privados.
 
 create extension if not exists pgcrypto with schema extensions;
@@ -69,7 +69,11 @@ create table actividades (
   aprendizaje_esperado text,
   video_url text,
   requiere_actividad_id uuid references actividades(id) on delete set null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint actividades_video_url_https_check check (
+    video_url is null
+    or lower(video_url) ~ '^https://(www\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)(/|$)'
+  )
 );
 
 -- ============================================================
@@ -201,6 +205,32 @@ create table intentos_nombre_grupo (
 );
 
 create index actividades_requiere_actividad_id_idx on actividades(requiere_actividad_id);
+create index actividades_tipo_id_idx on actividades(tipo_id);
+create index actividades_unidad_id_idx on actividades(unidad_id);
+create index autoevaluaciones_confianza_unidad_id_idx on autoevaluaciones_confianza(unidad_id);
+create index avisos_docente_id_idx on avisos(docente_id);
+create index avisos_grupo_id_idx on avisos(grupo_id);
+create index avisos_unidad_id_idx on avisos(unidad_id);
+create index bitacora_unidad_id_idx on bitacora(unidad_id);
+create index entregas_actividad_id_idx on entregas(actividad_id);
+create index eventos_docente_id_idx on eventos(docente_id);
+create index eventos_grupo_id_idx on eventos(grupo_id);
+create index eventos_unidad_id_idx on eventos(unidad_id);
+create index grupos_docente_id_idx on grupos(docente_id);
+create index insignias_otorgadas_insignia_id_idx on insignias_otorgadas(insignia_id);
+create index reflexiones_actividad_id_idx on reflexiones(actividad_id);
+create index reflexiones_unidad_id_idx on reflexiones(unidad_id);
+create index retroalimentacion_docente_docente_id_idx on retroalimentacion_docente(docente_id);
+create index retroalimentacion_docente_entrega_id_idx on retroalimentacion_docente(entrega_id);
+create unique index estudiantes_boleta_unica_por_grupo
+  on estudiantes(grupo_id, boleta)
+  where boleta is not null;
+create unique index estudiantes_nombre_unico_por_grupo
+  on estudiantes(grupo_id, lower(trim(nombre)));
+create unique index reflexiones_unica_por_actividad
+  on reflexiones(estudiante_id, actividad_id, momento);
+create unique index reflexiones_unica_por_unidad
+  on reflexiones(estudiante_id, unidad_id, momento);
 
 -- ============================================================
 -- 6. SEGURIDAD (RLS) — cada tabla protegida a nivel de base de datos
@@ -225,6 +255,22 @@ alter table bitacora enable row level security;
 alter table intentos_codigo_invitacion enable row level security;
 alter table intentos_nombre_estudiante enable row level security;
 alter table intentos_nombre_grupo enable row level security;
+
+-- Son tablas internas: solo las funciones SECURITY DEFINER las consultan.
+-- RLS las protege y estos privilegios evitan que el Data API pueda leerlas
+-- aunque una policy se agregue por accidente en el futuro.
+revoke all on table
+  configuracion_plataforma,
+  intentos_codigo_invitacion,
+  intentos_nombre_estudiante,
+  intentos_nombre_grupo
+from public, anon, authenticated;
+grant all on table
+  configuracion_plataforma,
+  intentos_codigo_invitacion,
+  intentos_nombre_estudiante,
+  intentos_nombre_grupo
+to service_role;
 
 -- función auxiliar: ¿el usuario que hace la consulta es un estudiante, y cuál es su fila?
 create or replace function estudiante_actual()
@@ -324,7 +370,7 @@ create policy "docente ve confianza de sus grupos" on autoevaluaciones_confianza
     )
   );
 
--- insignias: catálogo de lectura abierta
+-- insignias: catálogo de lectura disponible para sesiones autenticadas
 create policy "sesión lee insignias" on insignias
   for select to authenticated using ((select auth.uid()) is not null);
 
@@ -446,11 +492,11 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
   ('Exposición oral', 3, 'Cualidades y técnicas de la exposición oral.', 'Exponer ante el grupo con seguridad.');
 
 -- ============================================================
--- 8. CAMBIOS APLICADOS DESPUÉS DE ESTE ARCHIVO (directo en producción)
+-- 8. HISTORIAL DE CAMBIOS (solo comentarios; el DDL ejecutable anterior es
+-- la fuente canónica de reconstrucción)
 -- ============================================================
--- Este archivo es la foto del esquema inicial (Fase 1); varias correcciones
--- y features posteriores se aplicaron directo en Supabase y no siempre se
--- reflejaron aquí. Las más importantes, por si hay que reconstruir desde cero:
+-- Las notas siguientes conservan contexto histórico para revisar migraciones.
+-- Si una nota antigua contradice el DDL anterior, prevalece el DDL anterior.
 --
 -- 1. estudiante_actual() y grupo_del_estudiante_actual() se volvieron
 --    SECURITY DEFINER para romper una recursión infinita en las políticas

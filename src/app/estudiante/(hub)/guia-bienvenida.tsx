@@ -55,7 +55,7 @@ export default function GuiaBienvenida({
             Tu primera ruta
           </h2>
           <p className="mt-0.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-            Tres pasos para empezar sin perderte. Puedes cerrar esta guía cuando quieras.
+            Tres pasos para empezar sin perderte. La tarjeta morada te dirá qué hacer después.
           </p>
         </div>
         <button
@@ -118,7 +118,7 @@ export default function GuiaBienvenida({
 
       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
         <CircleHelp className="size-3.5 shrink-0" aria-hidden="true" />
-        <span>Las actividades se desbloquean paso a paso para que avances con calma.</span>
+        <span>Las actividades se desbloquean paso a paso. Guarda cada respuesta; no necesitas terminar todo en una sola sesión.</span>
       </div>
     </section>
   );

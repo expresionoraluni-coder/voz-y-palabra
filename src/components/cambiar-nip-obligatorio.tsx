@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { KeyRound, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
+import Alert from "@/components/ui/alert";
 import { ErrorText } from "@/components/ui/field";
 import CampoNip from "@/components/ui/campo-nip";
 import Boton from "@/components/ui/button";
@@ -75,6 +76,16 @@ export default function CambiarNipObligatorio() {
           Entraste con el NIP que te asignamos desde tu boleta escolar (un compañero podría
           conocerlo). Cámbialo por uno que solo tú sepas.
         </p>
+      </div>
+
+      <div className="w-full max-w-sm">
+        <Alert tono="info" titulo="Cómo empezar en este ingreso">
+          <ol className="list-decimal space-y-1 pl-4">
+            <li>Cambia el NIP temporal por uno de cuatro números que solo tú conozcas.</li>
+            <li>Al guardar, volverás a Inicio y verás tu primer paso.</li>
+            <li>Define tu meta y avanza por las actividades en el orden indicado.</li>
+          </ol>
+        </Alert>
       </div>
 
       <Card className="w-full max-w-sm p-6">

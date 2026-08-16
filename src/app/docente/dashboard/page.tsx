@@ -7,6 +7,7 @@ import Avatar from "@/components/ui/avatar";
 import { CardLink } from "@/components/ui/card";
 import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 export default async function DashboardDocente() {
   const supabase = await createClient();
@@ -16,7 +17,11 @@ export default async function DashboardDocente() {
 
   if (!user) redirect("/ingreso/profesora");
 
-  const [{ data: docente }, { data: grupos }, { data: unidades }] = await Promise.all([
+  const [
+    { data: docente, error: docenteError },
+    { data: grupos, error: gruposError },
+    { data: unidades, error: unidadesError },
+  ] = await Promise.all([
     supabase.from("docentes").select("nombre").eq("id", user.id).single(),
     supabase
       .from("grupos")
@@ -26,6 +31,10 @@ export default async function DashboardDocente() {
       .order("created_at", { ascending: false }),
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo").order("orden"),
   ]);
+
+  revisarErrorConsulta(docenteError, "No pudimos cargar tu perfil docente.");
+  revisarErrorConsulta(gruposError, "No pudimos cargar tus grupos.");
+  revisarErrorConsulta(unidadesError, "No pudimos cargar las unidades del curso.");
 
   if (!docente) redirect("/ingreso/profesora/verificar");
 

@@ -2,7 +2,7 @@
 
 import { calificarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
 import { calificarOrden, type ContenidoOrdenarFragmentos } from "@/lib/calificacion-ordenar-fragmentos";
-import { calificarComparadorChips, type ContenidoComparador } from "@/lib/calificacion-comparador";
+import { calificarComparadorChips, esModoChips, type ContenidoComparador } from "@/lib/calificacion-comparador";
 import { calificarClasificacion, type ContenidoClasificacion } from "@/lib/calificacion-clasificacion";
 import { calificarEtiquetado, type ContenidoEtiquetadoTexto } from "@/lib/calificacion-etiquetado-texto";
 import {
@@ -87,6 +87,9 @@ export async function calificarComparadorChipsAccion(actividadId: string, celdas
 
   const ctx = await obtenerContextoCalificacion(actividadId, "comparador");
   if (!ctx.ok) return ctx;
+  if (!esModoChips(ctx.contexto.contenido as ContenidoComparador)) {
+    return { ok: false, error: "Esta actividad no usa respuestas automáticas. Recarga la página e inténtalo de nuevo." };
+  }
   const { puntajeAuto, resultadoCeldas } = calificarComparadorChips(ctx.contexto.contenido as ContenidoComparador, celdas);
   return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { celdas, resultadoCeldas }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }

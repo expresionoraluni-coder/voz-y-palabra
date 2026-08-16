@@ -5,16 +5,18 @@ create or replace function public.normalizar_nombre(p_nombre text)
 returns text language sql immutable set search_path = public, extensions
 as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, '')), '\s+', ' ', 'g'))) $$;
 
+create or replace function public.estudiante_actual()
+returns uuid language sql stable security definer set search_path = public
+as $$
+  select e.id
+  from public.estudiantes e
+  where e.auth_user_id = auth.uid()
+    and e.activo = true
+$$;
+
 create or replace function public.grupo_del_estudiante_actual()
 returns uuid language sql stable security definer set search_path = public
 as $$ select grupo_id from public.estudiantes where auth_user_id = auth.uid() and activo = true $$;
-
-create or replace function public.estudiante_tiene_nip(p_codigo text, p_nombre text)
-returns boolean language sql security definer set search_path = public
-as $$
-  select coalesce((select e.nip_hash is not null from public.estudiantes e join public.grupos g on g.id = e.grupo_id
-    where g.codigo_acceso = trim(p_codigo) and g.activo = true and lower(trim(e.nombre)) = lower(trim(p_nombre)) and e.activo = true limit 1), false)
-$$;
 
 create or replace function public.ingresar_estudiante(p_codigo text, p_nombre text, p_nip text)
 returns table(id uuid, nombre text, grupo_id uuid, grupo_nombre text, nip_nuevo boolean, error text)
@@ -25,7 +27,13 @@ declare v_grupo record; v_estudiante record; v_intentos_nombre record; v_intento
   v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo'; end if;
-  if p_nip !~ '^[0-9]{4}$' then raise exception 'Tu NIP debe ser de 4 dígitos.'; end if;
+  if length(trim(coalesce(p_codigo, ''))) < 4 or length(trim(coalesce(p_codigo, ''))) > 64 then
+    raise exception 'El código de grupo no es válido.';
+  end if;
+  if p_nombre is null or length(trim(p_nombre)) = 0 or length(p_nombre) > 200 then
+    raise exception 'Escribe tu nombre completo.';
+  end if;
+  if coalesce(p_nip, '') !~ '^[0-9]{4}$' then raise exception 'Tu NIP debe ser de 4 dígitos.'; end if;
   select g.id, g.nombre into v_grupo from public.grupos g where g.codigo_acceso = trim(p_codigo) and g.activo = true;
   if v_grupo.id is null then perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
   select * into v_intentos_nombre from public.intentos_nombre_estudiante where usuario_id = auth.uid();
@@ -33,7 +41,8 @@ begin
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_intentos_nombre.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
   select e.id, e.nombre, e.nip_hash, e.activo, e.intentos_fallidos, e.bloqueado_hasta into v_estudiante
-    from public.estudiantes e where e.grupo_id = v_grupo.id and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre);
+    from public.estudiantes e where e.grupo_id = v_grupo.id and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre)
+    for update;
   if v_estudiante.id is null then
     insert into public.intentos_nombre_estudiante (usuario_id, intentos, bloqueado_hasta) values (auth.uid(), 1, null)
       on conflict (usuario_id) do update set intentos = public.intentos_nombre_estudiante.intentos + 1,
@@ -50,16 +59,16 @@ begin
   end if;
   delete from public.intentos_nombre_estudiante where usuario_id = auth.uid();
   if v_estudiante.nip_hash is null then
-    update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and id <> v_estudiante.id;
-    update public.estudiantes set auth_user_id = auth.uid(), nip_hash = extensions.crypt(p_nip, extensions.gen_salt('bf')), intentos_fallidos = 0, bloqueado_hasta = null where id = v_estudiante.id;
+    update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
+    update public.estudiantes set auth_user_id = auth.uid(), nip_hash = extensions.crypt(p_nip, extensions.gen_salt('bf')), intentos_fallidos = 0, bloqueado_hasta = null where public.estudiantes.id = v_estudiante.id;
     return query select v_estudiante.id, v_estudiante.nombre, v_grupo.id, v_grupo.nombre, true, null::text; return;
   end if;
   if extensions.crypt(p_nip, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
-    update public.estudiantes set intentos_fallidos = v_estudiante.intentos_fallidos + 1, bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end where id = v_estudiante.id;
+    update public.estudiantes set intentos_fallidos = v_estudiante.intentos_fallidos + 1, bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end where public.estudiantes.id = v_estudiante.id;
     perform pg_sleep(0.5); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
   end if;
-  update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and id <> v_estudiante.id;
-  update public.estudiantes set auth_user_id = auth.uid(), intentos_fallidos = 0, bloqueado_hasta = null where id = v_estudiante.id;
+  update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
+  update public.estudiantes set auth_user_id = auth.uid(), intentos_fallidos = 0, bloqueado_hasta = null where public.estudiantes.id = v_estudiante.id;
   return query select v_estudiante.id, v_estudiante.nombre, v_grupo.id, v_grupo.nombre, false, null::text;
 end;
 $$;
@@ -88,8 +97,9 @@ as $$
 declare v_estudiante record; v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo'; end if;
-  if p_nip_nuevo !~ '^[0-9]{4}$' then raise exception 'Tu nuevo NIP debe ser de 4 dígitos.'; end if;
-  select id, nip_hash, intentos_fallidos, bloqueado_hasta into v_estudiante from public.estudiantes where auth_user_id = auth.uid();
+  if coalesce(p_nip_actual, '') !~ '^[0-9]{4}$' then return 'Tu NIP actual no es correcto.'; end if;
+  if coalesce(p_nip_nuevo, '') !~ '^[0-9]{4}$' then raise exception 'Tu nuevo NIP debe ser de 4 dígitos.'; end if;
+  select id, nip_hash, intentos_fallidos, bloqueado_hasta into v_estudiante from public.estudiantes where auth_user_id = auth.uid() for update;
   if v_estudiante.id is null then raise exception 'No encontramos tu sesión de estudiante, intenta entrar de nuevo.'; end if;
   if v_estudiante.bloqueado_hasta is not null and v_estudiante.bloqueado_hasta > now() then return format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_estudiante.bloqueado_hasta - now())) / 60))); end if;
   if extensions.crypt(p_nip_actual, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
@@ -101,12 +111,25 @@ begin
 end;
 $$;
 
-create or replace function public.reiniciar_nip_estudiante(p_estudiante_id uuid)
-returns void language plpgsql security definer set search_path = public
+drop function if exists public.reiniciar_nip_estudiante(uuid);
+create function public.reiniciar_nip_estudiante(p_estudiante_id uuid)
+returns text language plpgsql security definer set search_path = public, extensions
 as $$
+declare
+  v_nip_temporal text;
+  v_bytes bytea;
 begin
   if not exists (select 1 from public.estudiantes e join public.grupos g on g.id = e.grupo_id where e.id = p_estudiante_id and g.docente_id = auth.uid()) then raise exception 'No tienes permiso sobre este estudiante.'; end if;
-  update public.estudiantes set nip_hash = null, auth_user_id = null, debe_cambiar_nip = false where id = p_estudiante_id;
+  v_bytes := extensions.gen_random_bytes(2);
+  v_nip_temporal := (1000 + (get_byte(v_bytes, 0) * 256 + get_byte(v_bytes, 1)) % 9000)::text;
+  update public.estudiantes
+     set nip_hash = extensions.crypt(v_nip_temporal, extensions.gen_salt('bf')),
+         auth_user_id = null,
+         intentos_fallidos = 0,
+         bloqueado_hasta = null,
+         debe_cambiar_nip = true
+   where id = p_estudiante_id;
+  return v_nip_temporal;
 end;
 $$;
 
@@ -175,12 +198,17 @@ begin
   if v_estudiante is null then raise exception 'No hay una sesión de estudiante válida'; end if;
   select count(*) into v_total_reflexiones from public.reflexiones where estudiante_id = v_estudiante and momento = 'cierre' and unidad_id is not null;
   select count(*) into v_total_actividades from public.actividades;
-  select count(*) into v_total_hechas from public.entregas where estudiante_id = v_estudiante;
+  select count(*) into v_total_hechas
+    from public.entregas
+   where estudiante_id = v_estudiante
+     and (puntaje_auto is null or puntaje_auto >= 70 or respuesta -> '_meta' ->> 'intentos' = '3');
   select count(*) into v_unidades_con_ambas_confianzas from (select unidad_id from public.autoevaluaciones_confianza where estudiante_id = v_estudiante group by unidad_id having count(distinct momento) = 2) x;
   if v_total_reflexiones >= 1 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, id from public.insignias where nombre = 'Primera reflexión' on conflict do nothing; end if;
   if v_total_reflexiones >= 3 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, id from public.insignias where nombre = 'Mente reflexiva' on conflict do nothing; end if;
   for v_orden, v_unidad_total, v_unidad_hechas in
-    select u.orden, count(a.id), count(e.id)
+    select u.orden,
+           count(a.id),
+           count(e.id) filter (where e.puntaje_auto is null or e.puntaje_auto >= 70 or e.respuesta -> '_meta' ->> 'intentos' = '3')
     from public.unidades u
     left join public.actividades a on a.unidad_id = u.id
     left join public.entregas e on e.actividad_id = a.id and e.estudiante_id = v_estudiante
@@ -210,7 +238,21 @@ for each row execute function public.proteger_columnas_entrega();
 -- Los triggers internos no son endpoints RPC.
 revoke execute on function public.proteger_columnas_entrega() from public, anon, authenticated;
 revoke execute on function public.proteger_correo_docente() from public, anon, authenticated;
-revoke execute on function public.estudiante_tiene_nip(text, text) from public, anon, authenticated;
+revoke execute on function public.normalizar_nombre(text) from public, anon, authenticated;
+
+-- Tablas internas: las funciones SECURITY DEFINER las usan por dentro; el
+-- cliente nunca recibe privilegios directos sobre sus contadores o secretos.
+revoke all on table public.configuracion_plataforma,
+  public.intentos_codigo_invitacion,
+  public.intentos_nombre_estudiante,
+  public.intentos_nombre_grupo
+from public, anon, authenticated;
+grant all on table public.configuracion_plataforma,
+  public.intentos_codigo_invitacion,
+  public.intentos_nombre_estudiante,
+  public.intentos_nombre_grupo
+to service_role;
+
 revoke execute on function public.agregar_estudiantes_con_boleta(uuid, jsonb) from public, anon;
 grant execute on function public.agregar_estudiantes_con_boleta(uuid, jsonb) to authenticated;
 revoke execute on function public.reiniciar_nip_estudiante(uuid) from public, anon;

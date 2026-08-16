@@ -31,7 +31,7 @@ export default function AccesoGrupo({ codigo }: { codigo: string }) {
     const texto =
       tipo === "codigo"
         ? codigo
-        : `Para entrar a Voz y Palabra:\n1. Abre ${window.location.origin}/ingreso/estudiante\n2. Escribe el código de grupo: ${codigo}\n3. Escribe tu nombre y los últimos 4 dígitos de tu boleta como NIP inicial.`;
+        : `Para entrar a Voz y Palabra:\n1. Abre ${window.location.origin}/ingreso/estudiante\n2. Escribe el código de grupo tal como aparece aquí: ${codigo}\n3. Escribe tu nombre completo igual que en la lista: apellidos primero y después nombres, sin abreviaturas. Puedes escribirlo sin acentos. Ejemplo: GARCIA LOPEZ MARIA.\n4. La primera vez, usa como NIP los últimos 4 dígitos de tu boleta.\n5. Al entrar, cambia ese NIP por uno propio y guárdalo en privado. Si lo olvidas, pide a la profesora que lo reinicie.`;
 
     setError(false);
     try {
@@ -53,7 +53,8 @@ export default function AccesoGrupo({ codigo }: { codigo: string }) {
         <div>
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Acceso al grupo</h2>
           <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            Comparte estas instrucciones con tu grupo. Cada estudiante entra con su nombre; el NIP inicial son los últimos 4 dígitos de su boleta.
+            Comparte estas instrucciones con tu grupo. El nombre debe ir como en la lista: apellidos primero,
+            después nombres y sin abreviaturas. El NIP inicial son los últimos 4 dígitos de la boleta.
           </p>
         </div>
       </div>

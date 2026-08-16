@@ -8,7 +8,6 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
-import UnidadCompetenciaTag from "@/components/ui/unidad-competencia-tag";
 
 export default function Bitacora({
   estudianteId,
@@ -16,16 +15,15 @@ export default function Bitacora({
   metaPrevia,
   cumplidaPrevia,
   avancePct,
-  unidadCompetencia,
 }: {
   estudianteId: string;
   unidadId: string;
   metaPrevia: string | null;
   cumplidaPrevia: boolean;
   avancePct: number;
-  unidadCompetencia?: string | null;
 }) {
   const router = useRouter();
+  const [metaGuardada, setMetaGuardada] = useState(metaPrevia);
   const [editando, setEditando] = useState(!metaPrevia);
   const [verbo, setVerbo] = useState("");
   const [que, setQue] = useState("");
@@ -51,6 +49,10 @@ export default function Bitacora({
         setError(mensajeError(upsertError));
         return;
       }
+      // Conserva la meta en el estado local mientras router.refresh() trae
+      // los datos nuevos. Así no aparece una tarjeta vacía durante el
+      // intervalo entre la respuesta de Supabase y el refresco del servidor.
+      setMetaGuardada(meta);
       setEditando(false);
       router.refresh();
     } catch {
@@ -92,7 +94,6 @@ export default function Bitacora({
             ¿Qué aprendizaje esperas alcanzar en esta unidad?
           </p>
         </div>
-        {unidadCompetencia && <UnidadCompetenciaTag texto={unidadCompetencia} compacto />}
         <form onSubmit={guardarMeta} className="flex flex-col gap-3">
           <Field>
             <Label htmlFor="verbo">Verbo</Label>
@@ -141,7 +142,7 @@ export default function Bitacora({
         <NotebookPen className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Lo que esperas aprender</p>
       </div>
-      <p className="text-sm italic text-slate-700 dark:text-slate-300">&quot;{metaPrevia}&quot;</p>
+      <p className="text-sm italic text-slate-700 dark:text-slate-300">&quot;{metaGuardada}&quot;</p>
       <p className="text-xs text-slate-500 dark:text-slate-500">Progreso de la unidad: {avancePct}%</p>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton
