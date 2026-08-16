@@ -192,6 +192,7 @@ export default function ActividadForm({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
+  const [borradorListo, setBorradorListo] = useState(false);
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -224,7 +225,7 @@ export default function ActividadForm({
     localStorage.removeItem(claveBorradorLegacy(unidadId));
     const guardado = localStorage.getItem(claveBorrador(unidadId, usuarioId));
     if (!guardado) {
-      setBorradorRestaurado(true);
+      setBorradorListo(true);
       return;
     }
     try {
@@ -269,12 +270,16 @@ export default function ActividadForm({
       if (datos.textoCorrecto) setTextoCorrecto(datos.textoCorrecto);
       if (datos.temasOrtografia) setTemasOrtografia(datos.temasOrtografia);
       setBorradorRestaurado(true);
-    } catch {}
+    } catch {
+      // Un borrador incompleto no debe bloquear la captura de uno nuevo.
+    } finally {
+      setBorradorListo(true);
+    }
   }, [modoEdicion, unidadId, usuarioId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (modoEdicion || !usuarioId || !borradorRestaurado) return;
+    if (modoEdicion || !usuarioId || !borradorListo) return;
     const datos = {
       titulo,
       instrucciones,
@@ -325,7 +330,7 @@ export default function ActividadForm({
     modoEdicion,
     unidadId,
     usuarioId,
-    borradorRestaurado,
+    borradorListo,
     titulo,
     instrucciones,
     aprendizajeEsperado,

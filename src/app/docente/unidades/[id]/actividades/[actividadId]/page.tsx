@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ExternalLink, Video } from "lucide-react";
+import { ExternalLink, Pencil, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -44,7 +44,16 @@ export default async function VistaActividadDocente({
         volverTexto={`Unidad ${unidad?.orden ?? ""}`}
         eyebrow={`Actividad ${actividad.orden} · ${etiquetaTipo(tipo?.nombre)}`}
         titulo={actividad.titulo}
-        descripcion="Vista de consulta. Este contenido ya está configurado para el curso."
+        descripcion="Vista de consulta. Puedes modificar esta actividad cuando sea necesario."
+        accion={
+          <Link
+            href={`/docente/unidades/${unidadId}/actividades/${actividadId}/editar`}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+          >
+            <Pencil className="size-4" aria-hidden="true" />
+            Editar actividad
+          </Link>
+        }
       />
 
       {actividad.aprendizaje_esperado && (

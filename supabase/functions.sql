@@ -7,7 +7,12 @@ as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, ''
 
 -- Rate limit ligero por IP para el RPC de ingreso. Corre antes de los RPC del
 -- Data API, usa una tabla privada y no duerme una conexión de Postgres.
-create or replace function private.controlar_rate_limit_ingreso()
+--
+-- El pre-request de PostgREST debe vivir en un esquema expuesto (la función
+-- corre con el rol de la petición). La tabla y el estado siguen en `private`;
+-- por eso esta función es SECURITY DEFINER y limita su lógica al endpoint
+-- específico de ingreso estudiantil.
+create or replace function public.controlar_rate_limit_ingreso()
 returns void
 language plpgsql
 security definer
@@ -66,9 +71,8 @@ begin
 end;
 $$;
 
-grant usage on schema private to authenticator;
-grant execute on function private.controlar_rate_limit_ingreso() to authenticator;
-alter role authenticator set pgrst.db_pre_request = 'private.controlar_rate_limit_ingreso';
+grant execute on function public.controlar_rate_limit_ingreso() to public;
+alter role authenticator set pgrst.db_pre_request = 'public.controlar_rate_limit_ingreso';
 notify pgrst, 'reload config';
 
 create or replace function public.estudiante_actual()

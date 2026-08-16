@@ -44,16 +44,14 @@ export default async function DashboardDocente() {
     supabase.from("docentes").select("nombre").eq("id", user.id).maybeSingle(),
     supabase
       .from("grupos")
-      .select("id, nombre, codigo_acceso, estudiantes(count)")
+      .select("id, nombre, codigo_acceso")
       .eq("docente_id", user.id)
-      .eq("estudiantes.activo", true)
       .order("created_at", { ascending: false }),
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, actividades(id)").order("orden"),
     supabase.from("estudiantes").select("id, grupo_id, created_at, activo").eq("activo", true),
     supabase
       .from("entregas")
-      .select("estudiante_id, created_at, estudiantes!inner(grupo_id, activo)")
-      .eq("estudiantes.activo", true),
+      .select("estudiante_id, created_at"),
   ]);
 
   revisarErrorConsulta(docenteError, "No pudimos cargar tu perfil docente.");
@@ -205,7 +203,7 @@ export default async function DashboardDocente() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Unidades del curso</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Contenido fijo de consulta; las actividades ya están configuradas.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Consulta las actividades actuales y ajusta su contenido cuando sea necesario.</p>
         <div className="grid gap-3 md:grid-cols-3">
           {unidades?.map((u) => (
             <Link key={u.id} href={`/docente/unidades/${u.id}`}>

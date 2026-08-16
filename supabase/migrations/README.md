@@ -12,6 +12,8 @@ La migración `20260816212023_endurecer_sesion_y_insignias.sql` limita el RPC de
 
 La migración `20260816222713_docente_y_limite_ingreso.sql` retira del Data API las columnas internas de autenticación de estudiantes y configura un límite por IP para el RPC de ingreso sin mantener conexiones de Postgres dormidas.
 
+La migración `20260816223843_corregir_pre_request_rate_limit_docente.sql` mueve la función pre-request al esquema `public` (manteniendo la tabla de contadores en `private`), que es el contexto requerido por PostgREST para no bloquear las consultas autenticadas del panel docente.
+
 Antes de desplegar una migración:
 
 1. Comparar el esquema remoto y las migraciones locales.

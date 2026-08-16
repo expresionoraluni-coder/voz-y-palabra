@@ -46,17 +46,18 @@ const TAMANO_PAGINA_ENTREGAS = 1000;
 
 async function cargarEntregasPaginadas<T>(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  grupoId: string,
+  estudianteIds: string[],
   select: string,
   actividadIds?: string[],
 ): Promise<{ data: T[]; error: ErrorDeConsultaLocal }> {
+  if (estudianteIds.length === 0) return { data: [], error: null };
   const filas: T[] = [];
 
   for (let desde = 0; ; desde += TAMANO_PAGINA_ENTREGAS) {
     let consulta = supabase
       .from("entregas")
       .select(select)
-      .eq("estudiantes.grupo_id", grupoId)
+      .in("estudiante_id", estudianteIds)
       // La paginación necesita un orden estable para no duplicar u omitir
       // filas si una entrega entra mientras se recorren varias páginas.
       .order("created_at", { ascending: true })
@@ -84,15 +85,10 @@ export default async function DetalleGrupo({
   const { id } = await params;
   const supabase = await createClient();
 
-  // Ninguna de estas consultas depende de otra — todas filtran por el id de
-  // la URL directamente, incluida entregas (antes esperaba a conocer los
-  // ids de estudiantes de una consulta previa; ahora filtra con el mismo
-  // join que ya usa su política RLS: estudiantes!inner(grupo_id)). RLS ya
-  // protege cada tabla por docente_id, así que tampoco hace falta esperar
-  // la confirmación de sesión antes de lanzar el resto. Antes eran hasta 4
-  // viajes de ida y vuelta seguidos a Supabase; ahora son consultas paralelas
-  // y la entrega se pagina solo cuando supera el límite de 1,000 filas. Así
-  // el panel conserva los conteos completos sin descargar JSON innecesario.
+  // Estas consultas independientes se lanzan en paralelo. Las entregas se
+  // cargan después de conocer los ids del grupo para no usar un embed de
+  // estudiantes que exigiría privilegios de tabla completos y expondría más
+  // columnas de las necesarias.
   const [
     { data: { user }, error: sesionError },
     { data: grupo, error: grupoError },
@@ -102,7 +98,6 @@ export default async function DetalleGrupo({
     { data: confianzas, error: confianzasError },
     { data: avisos, error: avisosError },
     { data: eventos, error: eventosError },
-    { data: entregas, error: entregasError },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase
@@ -120,11 +115,6 @@ export default async function DetalleGrupo({
       .eq("grupo_id", id)
       .order("created_at", { ascending: false }),
     supabase.from("eventos").select("id, titulo, tipo, fecha, unidad_id").eq("grupo_id", id),
-    cargarEntregasPaginadas<EntregaResumenGrupo>(
-      supabase,
-      id,
-      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, estudiantes!inner(grupo_id)",
-    ),
   ]);
 
   revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
@@ -135,10 +125,17 @@ export default async function DetalleGrupo({
   revisarErrorConsulta(confianzasError, "No pudimos cargar los niveles de seguridad.");
   revisarErrorConsulta(avisosError, "No pudimos cargar los avisos del grupo.");
   revisarErrorConsulta(eventosError, "No pudimos cargar los eventos del grupo.");
-  revisarErrorConsulta(entregasError, "No pudimos cargar el avance del grupo.");
 
   if (!user) redirect("/ingreso/profesora");
   if (!grupo) notFound();
+
+  const idsEstudiantesGrupo = (estudiantesTodos ?? []).map((estudiante) => estudiante.id);
+  const { data: entregas, error: entregasError } = await cargarEntregasPaginadas<EntregaResumenGrupo>(
+    supabase,
+    idsEstudiantesGrupo,
+    "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente",
+  );
+  revisarErrorConsulta(entregasError, "No pudimos cargar el avance del grupo.");
 
   // La tabla entregas puede contener respuestas JSON grandes. El panel solo
   // necesita ese JSON para la matriz de confusión de los dos tipos
@@ -165,8 +162,8 @@ export default async function DetalleGrupo({
   const { data: entregasConConfusion, error: entregasConConfusionError } = idsActividadesConConfusion.length
     ? await cargarEntregasPaginadas<EntregaConfusionGrupo>(
         supabase,
-        id,
-        "id, estudiante_id, actividad_id, respuesta, estudiantes!inner(grupo_id)",
+        idsEstudiantesGrupo,
+        "id, estudiante_id, actividad_id, respuesta",
         idsActividadesConConfusion,
       )
     : { data: [] as EntregaConfusionGrupo[], error: null };
