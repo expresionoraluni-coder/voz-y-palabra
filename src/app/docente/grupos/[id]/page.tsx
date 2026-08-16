@@ -23,6 +23,55 @@ type AlertaDocente = {
   estudianteId: string;
 };
 
+type ErrorDeConsultaLocal = { message?: string; code?: string } | null;
+
+type EntregaResumenGrupo = {
+  id: string;
+  estudiante_id: string;
+  actividad_id: string;
+  estado: string | null;
+  created_at: string;
+  puntaje_auto: number | null;
+  evaluacion_docente: string | null;
+};
+
+type EntregaConfusionGrupo = {
+  id: string;
+  estudiante_id: string;
+  actividad_id: string;
+  respuesta: unknown;
+};
+
+const TAMANO_PAGINA_ENTREGAS = 1000;
+
+async function cargarEntregasPaginadas<T>(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  grupoId: string,
+  select: string,
+  actividadIds?: string[],
+): Promise<{ data: T[]; error: ErrorDeConsultaLocal }> {
+  const filas: T[] = [];
+
+  for (let desde = 0; ; desde += TAMANO_PAGINA_ENTREGAS) {
+    let consulta = supabase
+      .from("entregas")
+      .select(select)
+      .eq("estudiantes.grupo_id", grupoId)
+      .range(desde, desde + TAMANO_PAGINA_ENTREGAS - 1);
+
+    if (actividadIds?.length) consulta = consulta.in("actividad_id", actividadIds);
+
+    const { data, error } = await consulta;
+    if (error) return { data: filas, error };
+
+    const pagina = (data ?? []) as T[];
+    filas.push(...pagina);
+    if (pagina.length < TAMANO_PAGINA_ENTREGAS) break;
+  }
+
+  return { data: filas, error: null };
+}
+
 export default async function DetalleGrupo({
   params,
 }: {
@@ -37,9 +86,9 @@ export default async function DetalleGrupo({
   // join que ya usa su política RLS: estudiantes!inner(grupo_id)). RLS ya
   // protege cada tabla por docente_id, así que tampoco hace falta esperar
   // la confirmación de sesión antes de lanzar el resto. Antes eran hasta 4
-  // viajes de ida y vuelta seguidos a Supabase; ahora es 1 solo — y cada
-  // viaje le cuesta a esta base ~500ms de latencia de red, así que esto es
-  // la diferencia entre sentir la página "trabada" o instantánea.
+  // viajes de ida y vuelta seguidos a Supabase; ahora son consultas paralelas
+  // y la entrega se pagina solo cuando supera el límite de 1,000 filas. Así
+  // el panel conserva los conteos completos sin descargar JSON innecesario.
   const [
     { data: { user }, error: sesionError },
     { data: grupo, error: grupoError },
@@ -67,12 +116,11 @@ export default async function DetalleGrupo({
       .eq("grupo_id", id)
       .order("created_at", { ascending: false }),
     supabase.from("eventos").select("id, titulo, tipo, fecha, unidad_id").eq("grupo_id", id),
-    supabase
-      .from("entregas")
-      .select(
-        "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, estudiantes!inner(grupo_id)",
-      )
-      .eq("estudiantes.grupo_id", id),
+    cargarEntregasPaginadas<EntregaResumenGrupo>(
+      supabase,
+      id,
+      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, estudiantes!inner(grupo_id)",
+    ),
   ]);
 
   revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
@@ -110,12 +158,13 @@ export default async function DetalleGrupo({
     })
     .map((actividad) => actividad.id);
   const { data: entregasConConfusion, error: entregasConConfusionError } = idsActividadesConConfusion.length
-    ? await supabase
-        .from("entregas")
-        .select("id, estudiante_id, actividad_id, respuesta, estudiantes!inner(grupo_id)")
-        .eq("estudiantes.grupo_id", id)
-        .in("actividad_id", idsActividadesConConfusion)
-    : { data: [], error: null };
+    ? await cargarEntregasPaginadas<EntregaConfusionGrupo>(
+        supabase,
+        id,
+        "id, estudiante_id, actividad_id, respuesta, estudiantes!inner(grupo_id)",
+        idsActividadesConConfusion,
+      )
+    : { data: [] as EntregaConfusionGrupo[], error: null };
   revisarErrorConsulta(entregasConConfusionError, "No pudimos cargar los datos para detectar dificultades comunes.");
 
   const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);

@@ -158,6 +158,12 @@ export default async function ActividadEstudiante({
     ? hermanas?.find((a) => a.id === siguiente.requiere_actividad_id)
     : null;
   const entregaSiguientePrerequisito = siguientePrerequisito?.entregas?.[0];
+  const siguienteDependenciaListaTrasEntrega = Boolean(
+    siguiente &&
+      (!siguiente.requiere_actividad_id ||
+        siguiente.requiere_actividad_id === actividad.id ||
+        (entregaSiguientePrerequisito && entregaCuentaComoCompletada(entregaSiguientePrerequisito))),
+  );
   const entregaActual = entregaExistente
     ? { puntaje_auto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta }
     : null;
@@ -331,13 +337,17 @@ export default async function ActividadEstudiante({
               ? `/estudiante/actividad/${actividad.id}`
               : `/estudiante/unidad/${actividad.unidad_id}`
         }
+        siguienteHrefTrasEntrega={
+          siguienteDependenciaListaTrasEntrega ? `/estudiante/actividad/${siguiente!.id}` : null
+        }
         textoSiguiente={
           siguienteDisponible
             ? "Siguiente actividad"
             : siguiente
               ? "Intentar de nuevo antes de continuar"
-              : "Volver a la unidad"
+            : "Volver a la unidad"
         }
+        textoSiguienteTrasEntrega={siguiente ? "Siguiente actividad" : "Volver a la unidad"}
         placeholderReflexionPersonalizado={
           nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
             ? "Reflexiona sobre cómo cambió tu seguridad inicial después de comparar los tres textos."
