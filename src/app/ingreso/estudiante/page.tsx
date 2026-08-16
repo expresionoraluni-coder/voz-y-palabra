@@ -60,6 +60,7 @@ export default function IngresoEstudiante() {
     setCargando(true);
 
     const supabase = createClient();
+    let limpiarSesionAnonimaSiFalla = false;
 
     // Se valida contra el servidor (no solo lo guardado localmente): si la
     // sesión ya no existe de verdad (por ejemplo, quedó "fantasma" en el
@@ -70,6 +71,13 @@ export default function IngresoEstudiante() {
     // la cuenta de la docente en vez de una identidad propia — heredando
     // sin querer sus permisos.
     const { data: usuario, error: usuarioError } = await supabase.auth.getUser();
+    if (usuario?.user?.is_anonymous && !usuarioError) {
+      const { data: estudianteLigado, error: estudianteLigadoError } = await supabase
+        .from("estudiantes")
+        .select("id")
+        .maybeSingle();
+      limpiarSesionAnonimaSiFalla = !estudianteLigado && !estudianteLigadoError;
+    }
     if (usuarioError || !usuario.user || !usuario.user.is_anonymous) {
       if (usuario?.user && !usuario.user.is_anonymous) {
         await supabase.auth.signOut();
@@ -80,6 +88,7 @@ export default function IngresoEstudiante() {
         setCargando(false);
         return;
       }
+      limpiarSesionAnonimaSiFalla = true;
     }
 
     let { data: resultado, error: rpcError } = await supabase.rpc("ingresar_estudiante", {
@@ -103,6 +112,7 @@ export default function IngresoEstudiante() {
     }
 
     if (rpcError) {
+      if (limpiarSesionAnonimaSiFalla) await supabase.auth.signOut();
       setError(mensajeErrorIngreso(rpcError.message));
       setCargando(false);
       return;
@@ -113,6 +123,7 @@ export default function IngresoEstudiante() {
     // quede guardado (una excepción deshace todo lo hecho en esa llamada).
     const fila = resultado?.[0];
     if (fila?.error) {
+      if (limpiarSesionAnonimaSiFalla) await supabase.auth.signOut();
       setError(mensajeErrorIngreso(fila.error));
       setCargando(false);
       return;
