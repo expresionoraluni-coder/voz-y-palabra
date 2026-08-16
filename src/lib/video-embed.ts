@@ -31,6 +31,10 @@ export function urlEmbedYoutube(url: string): string | null {
         const id = u.searchParams.get("v");
         return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
       }
+      if (u.pathname.startsWith("/shorts/") || u.pathname.startsWith("/live/")) {
+        const id = u.pathname.split("/")[2];
+        return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+      }
       if (u.pathname.startsWith("/embed/")) return `https://www.youtube-nocookie.com${u.pathname}${u.search}`;
     }
     return null;
