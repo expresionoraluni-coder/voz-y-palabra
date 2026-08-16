@@ -196,6 +196,7 @@ export async function obtenerContextoCalificacion(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: SESION_INVALIDA };
+  if (user.is_anonymous !== true) return { ok: false, error: SESION_INVALIDA };
 
   const { data: estudiante } = await supabase
     .from("estudiantes")
@@ -320,22 +321,4 @@ export async function guardarEntregaInterna(
   if (error) return { ok: false, error: mensajeError(error) };
 
   return { ok: true, puntajeAuto: puntajeParaGuardar, respuesta: respuestaParaCliente, intentos, mejorPuntaje };
-}
-
-export async function reiniciarEntregaInterna(
-  supabase: SupabaseServerClient,
-  actividadId: string,
-  estudianteIdValidado?: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!esUuid(actividadId)) return { ok: false, error: "La actividad no es válida." };
-  const estudianteId = estudianteIdValidado ?? (await estudianteDeSesion(supabase));
-  if (!estudianteId) return { ok: false, error: SESION_INVALIDA };
-
-  const { error } = await createAdminClient()
-    .from("entregas")
-    .delete()
-    .eq("estudiante_id", estudianteId)
-    .eq("actividad_id", actividadId);
-  if (error) return { ok: false, error: mensajeError(error) };
-  return { ok: true };
 }

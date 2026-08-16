@@ -57,6 +57,10 @@ async function cargarEntregasPaginadas<T>(
       .from("entregas")
       .select(select)
       .eq("estudiantes.grupo_id", grupoId)
+      // La paginación necesita un orden estable para no duplicar u omitir
+      // filas si una entrega entra mientras se recorren varias páginas.
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
       .range(desde, desde + TAMANO_PAGINA_ENTREGAS - 1);
 
     if (actividadIds?.length) consulta = consulta.in("actividad_id", actividadIds);

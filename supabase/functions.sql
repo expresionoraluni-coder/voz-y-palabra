@@ -27,6 +27,9 @@ declare v_grupo record; v_estudiante record; v_intentos_nombre record; v_intento
   v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo'; end if;
+  if coalesce(auth.jwt() ->> 'is_anonymous', 'false') <> 'true' then
+    raise exception 'Este acceso requiere una sesión de estudiante.';
+  end if;
   if length(trim(coalesce(p_codigo, ''))) < 4 or length(trim(coalesce(p_codigo, ''))) > 64 then
     raise exception 'El código de grupo no es válido.';
   end if;
@@ -196,13 +199,51 @@ as $$
 declare v_estudiante uuid := public.estudiante_actual(); v_total_reflexiones int; v_total_actividades int; v_total_hechas int; v_unidades_con_ambas_confianzas int; v_orden int; v_unidad_total int; v_unidad_hechas int;
 begin
   if v_estudiante is null then raise exception 'No hay una sesión de estudiante válida'; end if;
-  select count(*) into v_total_reflexiones from public.reflexiones where estudiante_id = v_estudiante and momento = 'cierre' and unidad_id is not null;
+  with unidades_completas as (
+    select u.id
+      from public.unidades u
+      join public.actividades a on a.unidad_id = u.id
+      left join public.entregas e on e.actividad_id = a.id and e.estudiante_id = v_estudiante
+     group by u.id
+    having count(distinct a.id) > 0
+       and count(distinct a.id) filter (
+         where e.id is not null
+           and (e.puntaje_auto is null or e.puntaje_auto >= 70 or e.respuesta -> '_meta' ->> 'intentos' = '3')
+       ) = count(distinct a.id)
+  )
+  select count(distinct r.unidad_id) into v_total_reflexiones
+    from public.reflexiones r
+   where r.estudiante_id = v_estudiante
+     and r.momento = 'cierre'
+     and r.unidad_id is not null
+     and exists (select 1 from unidades_completas uc where uc.id = r.unidad_id);
   select count(*) into v_total_actividades from public.actividades;
   select count(*) into v_total_hechas
     from public.entregas
    where estudiante_id = v_estudiante
      and (puntaje_auto is null or puntaje_auto >= 70 or respuesta -> '_meta' ->> 'intentos' = '3');
-  select count(*) into v_unidades_con_ambas_confianzas from (select unidad_id from public.autoevaluaciones_confianza where estudiante_id = v_estudiante group by unidad_id having count(distinct momento) = 2) x;
+  with unidades_completas as (
+    select u.id
+      from public.unidades u
+      join public.actividades a on a.unidad_id = u.id
+      left join public.entregas e on e.actividad_id = a.id and e.estudiante_id = v_estudiante
+     group by u.id
+    having count(distinct a.id) > 0
+       and count(distinct a.id) filter (
+         where e.id is not null
+           and (e.puntaje_auto is null or e.puntaje_auto >= 70 or e.respuesta -> '_meta' ->> 'intentos' = '3')
+       ) = count(distinct a.id)
+  )
+  select count(*) into v_unidades_con_ambas_confianzas
+    from (
+      select ac.unidad_id
+        from public.autoevaluaciones_confianza ac
+        join unidades_completas uc on uc.id = ac.unidad_id
+       where ac.estudiante_id = v_estudiante
+       group by ac.unidad_id
+      having count(*) filter (where ac.momento = 'inicio') > 0
+         and count(*) filter (where ac.momento = 'cierre') > 0
+    ) x;
   if v_total_reflexiones >= 1 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, i.id from public.insignias i where i.nombre = 'Primera reflexión' on conflict do nothing; end if;
   if v_total_reflexiones >= 3 then insert into public.insignias_otorgadas (estudiante_id, insignia_id) select v_estudiante, i.id from public.insignias i where i.nombre = 'Mente reflexiva' on conflict do nothing; end if;
   for v_orden, v_unidad_total, v_unidad_hechas in

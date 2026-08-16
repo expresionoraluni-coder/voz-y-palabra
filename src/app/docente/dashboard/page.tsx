@@ -38,7 +38,10 @@ export default async function DashboardDocente() {
     { data: estudiantes, error: estudiantesError },
     { data: entregas, error: entregasError },
   ] = await Promise.all([
-    supabase.from("docentes").select("nombre").eq("id", user.id).single(),
+    // El layout ya valida el perfil; `maybeSingle` evita un 406 fugaz en
+    // sesiones antiguas o durante la creación del perfil y permite que el
+    // redirect del layout sea la única salida para una docente sin perfil.
+    supabase.from("docentes").select("nombre").eq("id", user.id).maybeSingle(),
     supabase
       .from("grupos")
       .select("id, nombre, codigo_acceso, estudiantes(count)")

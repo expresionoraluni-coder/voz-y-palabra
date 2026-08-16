@@ -1,6 +1,6 @@
 "use server";
 
-import { guardarEntregaInterna, obtenerContextoCalificacion, reiniciarEntregaInterna } from "@/lib/estudiante-entregas-server";
+import { guardarEntregaInterna, obtenerContextoCalificacion } from "@/lib/estudiante-entregas-server";
 import { esRegistroPlano, esUuid, validarEstadoEntrega, validarJsonDeEntrega } from "@/lib/validar-entrega";
 import { validarRespuestaComprension } from "@/lib/validar-respuesta-comprension";
 import { contarPalabras } from "@/lib/contar-palabras";
@@ -111,15 +111,4 @@ export async function guardarEntregaAbiertaAccion(
     estado,
     ctx.contexto.estudianteId,
   );
-}
-export async function reiniciarEntregaAccion(
-  actividadId: string,
-  tipoEsperado: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!esUuid(actividadId) || !TIPOS_ENTREGA_ABIERTA.has(tipoEsperado) && !["clasificacion", "opcion_justificacion"].includes(tipoEsperado)) {
-    return { ok: false, error: "La actividad no es válida." };
-  }
-  const ctx = await obtenerContextoCalificacion(actividadId, tipoEsperado);
-  if (!ctx.ok) return ctx;
-  return reiniciarEntregaInterna(ctx.contexto.supabase, actividadId, ctx.contexto.estudianteId);
 }

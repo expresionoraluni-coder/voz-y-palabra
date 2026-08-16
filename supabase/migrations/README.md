@@ -8,6 +8,8 @@ La migración `20260816010000_corregir_contenido_y_privilegios.sql` corrige el c
 
 La migración `20260816011000_alinear_insignias_con_avance.sql` hace que las insignias usen la misma regla de avance que la interfaz: 70 puntos o tres intentos para actividades automáticas.
 
+La migración `20260816212023_endurecer_sesion_y_insignias.sql` limita el RPC de ingreso a sesiones anónimas y evita otorgar insignias de reflexión o autoconocimiento antes de completar la unidad correspondiente. La corrección `20260816212205_corregir_sesion_insignias.sql` hace explícito el rechazo cuando falta el claim de anonimato y evita contar reflexiones duplicadas de la misma unidad.
+
 Antes de desplegar una migración:
 
 1. Comparar el esquema remoto y las migraciones locales.

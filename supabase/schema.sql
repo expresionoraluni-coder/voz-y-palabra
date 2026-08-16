@@ -471,6 +471,13 @@ create policy "estudiante lee eventos de su grupo" on eventos
 create policy "estudiante administra su bitácora" on bitacora
   for all to authenticated using (estudiante_id = estudiante_actual())
   with check (estudiante_id = estudiante_actual());
+create policy "docente ve bitacora de sus grupos" on bitacora
+  for select to authenticated using (
+    estudiante_id in (
+      select e.id from estudiantes e join grupos g on g.id = e.grupo_id
+      where g.docente_id = (select auth.uid())
+    )
+  );
 
 -- ============================================================
 -- 7. DATOS INICIALES: los 8 tipos de actividad vigentes y las 3 unidades

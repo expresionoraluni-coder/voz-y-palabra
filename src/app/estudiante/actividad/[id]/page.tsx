@@ -49,6 +49,7 @@ export default async function ActividadEstudiante({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
+  if (user.is_anonymous !== true) redirect("/ingreso/estudiante");
 
   // `actividades`/`unidades` ya no tienen ninguna policy de lectura abierta
   // a estudiantes (RLS cerrado) — el contenido, incluida la clave de

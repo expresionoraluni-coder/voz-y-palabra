@@ -10,6 +10,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
+  if (user.is_anonymous !== true) redirect("/ingreso/estudiante");
 
   const { data: estudiante } = await supabase
     .from("estudiantes")
