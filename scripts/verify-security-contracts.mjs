@@ -53,12 +53,14 @@ const workflow = await texto(".github/workflows/quality.yml");
 const adminLayout = await texto("src/app/admin/layout.tsx");
 const adminConstants = await texto("src/lib/admin-constantes.ts");
 const reportarProblema = await texto("src/components/reportar-problema.tsx");
+const reportesConstantes = await texto("src/lib/reportes-constantes.ts");
 const migracionAdmin = await texto("supabase/migrations/20260817010000_separar_administrador_y_reportes.sql");
 const proxy = await texto("proxy.ts");
 const adminGuard = await texto("src/lib/supabase/requerir-administrador.ts");
 const adminAction = await texto("src/app/admin/reportes/acciones-atencion.ts");
 const migracionAdminProtegido = await texto("supabase/migrations/20260817012000_proteger_admin_y_reportes.sql");
 const migracionMfaAdmin = await texto("supabase/migrations/20260817103542_exigir_mfa_administrador.sql");
+const migracionMfaPoliciesAdmin = await texto("supabase/migrations/20260818001000_endurecer_mfa_y_separar_admin.sql");
 const adminMfaLogin = await texto("src/app/ingreso/admin/verificar/page.tsx");
 const adminMfaSetup = await texto("src/app/admin/seguridad/configurar-mfa.tsx");
 const migracionReportesOrientacion = await texto("supabase/migrations/20260817110853_orientacion_y_contexto_en_reportes.sql");
@@ -155,11 +157,20 @@ if (!proxy.includes("createServerClient") || !proxy.includes("supabase.auth.getU
 if (!reportarProblema.includes('.rpc("registrar_reporte"') || reportarProblema.includes("nip:") || reportarProblema.includes("password:")) {
   failures.push("reportes: el botón debe registrar casos sin transportar NIP ni contraseña.");
 }
-if (!reportarProblema.includes("Mis reportes") || !reportarProblema.includes("contextoDeRuta") || !reportarProblema.includes("bottom-24")) {
+if (!reportarProblema.includes("Mis solicitudes") || !reportarProblema.includes("contextoDeRuta") || !reportarProblema.includes("bottom-24")) {
   failures.push("reportes: el flujo debe ofrecer seguimiento propio, contexto de ruta y espacio para la navegación inferior del estudiante.");
 }
-if (!reportarProblema.includes("AYUDAS") || !reportarProblema.includes("orientacion")) {
+if (!reportarProblema.includes("AYUDAS_ESTUDIANTE") || !reportarProblema.includes("AYUDAS_DOCENTE")) {
   failures.push("reportes: las dudas frecuentes deben recibir orientación rápida antes de generar un caso.");
+}
+if (reportarProblema.includes("Ayuda y reportes") || !reportarProblema.includes(">Ayuda</h2>")) {
+  failures.push("ayuda: el acceso visible debe llamarse solo Ayuda.");
+}
+if (!reportesConstantes.includes("CATEGORIAS_REPORTE_ESTUDIANTE") || !reportesConstantes.includes("CATEGORIAS_REPORTE_DOCENTE")) {
+  failures.push("reportes: deben existir listas separadas de categorías para estudiantes y docentes.");
+}
+if (!functions.includes("estudiante_instruccion") || !functions.includes("docente_estudiantes") || !functions.includes("La categoría no corresponde a una solicitud de estudiante.") || !functions.includes("La categoría no corresponde a una solicitud de docente.") || !schema.includes("docente_seguimiento")) {
+  failures.push("Supabase: schema.sql y functions.sql deben aceptar las categorías específicas por rol.");
 }
 if (adminReportesPage.includes('from("reportes").select("*")')) {
   failures.push("admin: la bandeja de reportes no debe traer columnas innecesarias.");
@@ -191,8 +202,11 @@ if (!adminMfaSetup.includes("mfa.enroll") || !adminMfaSetup.includes("challengeA
 if (!migracionMfaAdmin.includes("auth.mfa_factors") || !migracionMfaAdmin.includes("aal2") || !migracionMfaAdmin.includes("es_administrador_activo")) {
   failures.push("Supabase: las policies administrativas deben exigir AAL2 cuando existe un factor verificado.");
 }
-if (!schema.includes("auth.mfa_factors") || !functions.includes("auth.mfa_factors")) {
-  failures.push("Supabase: schema.sql y functions.sql deben conservar la protección MFA del administrador.");
+if (!schema.includes("auth.mfa_factors") || !functions.includes("auth.mfa_factors") || !functions.includes("factor.factor_type = 'totp'") || !functions.includes("and coalesce((select auth.jwt()->>'aal'), 'aal1') = 'aal2'") || !migracionMfaPoliciesAdmin.includes("and exists") || !migracionMfaPoliciesAdmin.includes("factor.factor_type = 'totp'") || !migracionMfaPoliciesAdmin.includes("grant execute on function public.es_administrador_activo() to authenticated")) {
+  failures.push("Supabase: schema.sql, functions.sql y la migración final deben exigir MFA AAL2 al administrador.");
+}
+if (!functions.includes("Esta cuenta tiene acceso administrativo y no se puede registrar como docente.") || !migracionMfaPoliciesAdmin.includes("Esta cuenta tiene acceso administrativo y no se puede registrar como docente.")) {
+  failures.push("Supabase: la cuenta administrativa no debe poder registrarse también como docente.");
 }
 if (!workflow.includes("cp ../supabase/migrations/*.sql supabase/migrations/") || !workflow.includes("version: 2.101.0")) {
   failures.push("CI: debe aplicar las migraciones versionadas y fijar la versiÃ³n de Supabase CLI.");

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { ADMINISTRADOR_EMAIL } from "@/lib/admin-constantes";
 import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
 import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
@@ -27,6 +28,11 @@ export default function VerificarDocente() {
 
       if (!user || user.is_anonymous === true) {
         router.replace("/ingreso/profesora");
+        return;
+      }
+
+      if (user.email?.trim().toLowerCase() === ADMINISTRADOR_EMAIL) {
+        router.replace("/admin");
         return;
       }
 

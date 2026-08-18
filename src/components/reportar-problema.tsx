@@ -4,40 +4,78 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { LifeBuoy, Send, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { CATEGORIAS_REPORTE, ETIQUETAS_CATEGORIA, ESTADOS_REPORTE, type CategoriaReporte } from "@/lib/reportes-constantes";
+import {
+  CATEGORIAS_REPORTE_DOCENTE,
+  CATEGORIAS_REPORTE_ESTUDIANTE,
+  ETIQUETAS_CATEGORIA,
+  ESTADOS_REPORTE,
+  type CategoriaReporte,
+} from "@/lib/reportes-constantes";
 import Boton from "@/components/ui/button";
 import { ErrorText, Field, HelpText, Label } from "@/components/ui/field";
 
-const AYUDAS: Record<CategoriaReporte, { titulo: string; pasos: string[] } | undefined> = {
-  acceso: {
-    titulo: "Prueba esto antes de reportarlo",
-    pasos: ["Confirma que estás usando el código, nombre y NIP de tu grupo.", "Si olvidaste el NIP, pide a la docente que lo reinicie desde su grupo."],
+type AyudaRapida = { titulo: string; pasos: string[] };
+
+const AYUDAS_ESTUDIANTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
+  estudiante_acceso: {
+    titulo: "Comprueba tus datos",
+    pasos: ["Usa el código exacto de tu grupo y escribe tu nombre como aparece en la lista.", "Si olvidaste tu NIP, pide a la docente que lo reinicie desde tu grupo."],
   },
-  actividad: {
-    titulo: "Revisa estos pasos",
-    pasos: ["Guarda la respuesta antes de salir.", "Si la actividad depende de otra, termina la anterior y vuelve a intentarlo.", "Si te quedan intentos, usa el botón de volver a intentar."],
+  estudiante_actividad: {
+    titulo: "Antes de pedir ayuda",
+    pasos: ["Guarda tu respuesta antes de salir.", "Si depende de otra actividad, termina la anterior y vuelve a intentarlo.", "Si tienes intentos disponibles, usa Volver a intentar."],
   },
-  avance: {
-    titulo: "El avance suele depender de esto",
-    pasos: ["Comprueba que la actividad anterior esté guardada.", "Revisa si falta una reflexión o una actividad de cierre.", "Actualiza la pantalla una sola vez después de guardar."],
+  estudiante_avance: {
+    titulo: "Revisa qué falta",
+    pasos: ["Confirma que la actividad anterior esté guardada y aprobada.", "Revisa si falta una reflexión o el cierre de la unidad.", "Actualiza una sola vez después de guardar."],
   },
-  video: {
-    titulo: "Prueba la reproducción",
-    pasos: ["Comprueba tu conexión y toca el botón de reproducir.", "Si YouTube no abre, prueba otra red o desactiva temporalmente el ahorro de datos."],
+  estudiante_instruccion: {
+    titulo: "Encuentra la indicación",
+    pasos: ["Lee la instrucción de la sección que tienes abierta.", "Revisa el ejemplo o criterio que aparece antes de responder.", "Si todavía tienes dudas, explica qué parte no entiendes."],
   },
-  carga: {
-    titulo: "Antes de enviarlo",
-    pasos: ["Espera unos segundos y actualiza una sola vez.", "Si ocurre en varias pantallas, prueba otra red y anota cuál estabas usando."],
+  estudiante_video: {
+    titulo: "Prueba el video",
+    pasos: ["Comprueba tu conexión y toca reproducir.", "Si no abre, prueba otra red o dispositivo.", "Indica el nombre de la actividad si sigue sin funcionar."],
   },
-  contenido: {
-    titulo: "Este caso sí conviene reportarlo",
-    pasos: ["Indica qué texto, instrucción o respuesta parece incorrecta.", "Si puedes, copia únicamente la frase problemática; no incluyas NIP ni contraseñas."],
+  estudiante_tecnico: {
+    titulo: "Descarta una falla momentánea",
+    pasos: ["Espera unos segundos y actualiza una sola vez.", "Si ocurre en varias pantallas, prueba otra red.", "Indica qué botón tocaste y qué esperabas que ocurriera."],
   },
-  orientacion: {
-    titulo: "Busca primero la instrucción de la pantalla",
-    pasos: ["Lee el bloque de instrucciones de la actividad o unidad.", "Revisa el botón de ayuda de esa sección y el avance de la unidad.", "Si todavía no sabes qué hacer, envía el reporte con tu pregunta concreta."],
+  estudiante_contenido: {
+    titulo: "Ayúdanos a ubicarlo",
+    pasos: ["Escribe el nombre de la unidad y actividad.", "Copia solo la frase o instrucción problemática.", "No incluyas tu NIP, contraseña ni datos de otros estudiantes."],
   },
-  otro: undefined,
+};
+
+const AYUDAS_DOCENTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
+  docente_acceso: {
+    titulo: "Comprueba tu cuenta",
+    pasos: ["Usa el correo confirmado con el que registraste tu cuenta.", "Si es tu primer ingreso, termina la verificación con el código de invitación."],
+  },
+  docente_grupo: {
+    titulo: "Ubica el grupo correcto",
+    pasos: ["Revisa la nomenclatura visible del grupo antes de editarlo.", "Confirma que estás dentro del grupo que quieres administrar.", "Indica qué acción intentabas realizar."],
+  },
+  docente_estudiantes: {
+    titulo: "Revisa la lista",
+    pasos: ["Usa el archivo de Excel con nombre y boleta en sus columnas.", "Corrige duplicados o filas incompletas antes de cargarlo.", "Para un NIP olvidado, usa Reiniciar NIP desde la ficha del estudiante."],
+  },
+  docente_actividad: {
+    titulo: "Antes de guardar",
+    pasos: ["Completa título, instrucciones, tipo y orden.", "Revisa la vista previa y confirma que la respuesta esperada no revele la solución al estudiante.", "Guarda una sola vez y espera el mensaje de confirmación."],
+  },
+  docente_seguimiento: {
+    titulo: "Comprueba el contexto",
+    pasos: ["Verifica que estés en el grupo correcto.", "Actualiza una sola vez si acabas de recibir una entrega.", "Indica qué cifra o estudiante no coincide con lo esperado."],
+  },
+  docente_video: {
+    titulo: "Revisa el enlace",
+    pasos: ["Usa un enlace HTTPS de YouTube.", "Ábrelo en una pestaña nueva para confirmar que funciona.", "Indica la actividad donde debe aparecer."],
+  },
+  docente_tecnico: {
+    titulo: "Descarta una falla momentánea",
+    pasos: ["Espera unos segundos y actualiza una sola vez.", "Si ocurre en varias pantallas, prueba otra red.", "Indica la acción exacta que no respondió."],
+  },
 };
 
 type ReportePropio = {
@@ -81,9 +119,11 @@ export default function ReportarProblema({
   navegacionInferior?: boolean;
 }) {
   const pathname = usePathname();
+  const categorias = tipo === "estudiante" ? CATEGORIAS_REPORTE_ESTUDIANTE : CATEGORIAS_REPORTE_DOCENTE;
+  const ayudas = tipo === "estudiante" ? AYUDAS_ESTUDIANTE : AYUDAS_DOCENTE;
   const [abierto, setAbierto] = useState(false);
   const [vista, setVista] = useState<"formulario" | "reportes">("formulario");
-  const [categoria, setCategoria] = useState<CategoriaReporte>("otro");
+  const [categoria, setCategoria] = useState<CategoriaReporte>(tipo === "estudiante" ? "estudiante_actividad" : "docente_grupo");
   const [descripcion, setDescripcion] = useState("");
   const [cargando, setCargando] = useState(false);
   const [cargandoReportes, setCargandoReportes] = useState(false);
@@ -117,7 +157,7 @@ export default function ReportarProblema({
       .limit(5);
 
     if (consultaError) {
-      setError("No pudimos cargar tus reportes. Revisa tu conexión e inténtalo de nuevo.");
+      setError("No pudimos cargar tus solicitudes. Revisa tu conexión e inténtalo de nuevo.");
       setCargandoReportes(false);
       return;
     }
@@ -167,7 +207,7 @@ export default function ReportarProblema({
     }
 
     if (resultado?.[0]?.duplicado) {
-      setError("Ya registraste un reporte parecido recientemente. Puedes consultar su estado en “Mis reportes”.");
+      setError("Ya registraste una solicitud parecida recientemente. Puedes consultar su estado en “Mis solicitudes”.");
       setCargando(false);
       return;
     }
@@ -178,7 +218,7 @@ export default function ReportarProblema({
     setEnviado(true);
   }
 
-  const ayuda = AYUDAS[categoria];
+  const ayuda = ayudas[categoria];
 
   return (
     <div className={`fixed ${tipo === "estudiante" && navegacionInferior ? "bottom-24" : "bottom-4"} right-4 z-30 sm:right-6`}>
@@ -186,8 +226,8 @@ export default function ReportarProblema({
         <div role="dialog" aria-modal="true" aria-labelledby="reporte-titulo" className="w-[min(92vw,22rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 id="reporte-titulo" className="font-semibold text-slate-900 dark:text-slate-50">Ayuda y reportes</h2>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Primero encontrarás una orientación rápida; si no basta, envía el caso.</p>
+              <h2 id="reporte-titulo" className="font-semibold text-slate-900 dark:text-slate-50">Ayuda</h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Primero encontrarás una orientación rápida; si no basta, envía una solicitud.</p>
             </div>
             <button type="button" onClick={cerrar} aria-label="Cerrar ayuda" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800 dark:hover:text-slate-200">
               <X className="size-4" aria-hidden="true" />
@@ -195,16 +235,16 @@ export default function ReportarProblema({
           </div>
 
           <div className="mt-3 flex gap-2 border-b border-slate-100 pb-3 text-xs dark:border-slate-800">
-            <button type="button" onClick={() => { setVista("formulario"); setEnviado(false); setError(null); }} className={`rounded-lg px-2.5 py-1.5 font-semibold ${vista === "formulario" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}>Levantar reporte</button>
+            <button type="button" onClick={() => { setVista("formulario"); setEnviado(false); setError(null); }} className={`rounded-lg px-2.5 py-1.5 font-semibold ${vista === "formulario" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}>Enviar solicitud</button>
             <button type="button" onClick={abrirMisReportes} disabled={cargandoReportes} className={`rounded-lg px-2.5 py-1.5 font-semibold ${vista === "reportes" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}>
-              {cargandoReportes ? "Cargando…" : "Mis reportes"}
+              {cargandoReportes ? "Cargando…" : "Mis solicitudes"}
             </button>
           </div>
 
           {vista === "reportes" ? (
             <div className="mt-4 flex flex-col gap-3">
               {!misReportes || misReportes.length === 0 ? (
-                <p className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">Todavía no tienes reportes registrados.</p>
+                <p className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">Todavía no tienes solicitudes registradas.</p>
               ) : (
                 <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
                   {misReportes.map((reporte) => (
@@ -224,19 +264,19 @@ export default function ReportarProblema({
             </div>
           ) : enviado ? (
             <div className="mt-4 flex flex-col gap-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-              <p className="font-semibold">Reporte enviado.</p>
-              <p>Ya registramos dónde ocurrió. Puedes continuar trabajando mientras se revisa.</p>
+              <p className="font-semibold">Solicitud enviada.</p>
+              <p>Ya registramos dónde ocurrió. Puedes continuar trabajando mientras la revisamos.</p>
               <div className="flex flex-wrap gap-2">
-                <Boton type="button" size="sm" variant="secondary" onClick={abrirMisReportes}>Ver mis reportes</Boton>
+                <Boton type="button" size="sm" variant="secondary" onClick={abrirMisReportes}>Ver mis solicitudes</Boton>
                 <Boton type="button" size="sm" variant="secondary" onClick={cerrar}>Cerrar</Boton>
               </div>
             </div>
           ) : (
             <form onSubmit={enviar} className="mt-4 flex flex-col gap-3">
               <Field>
-                <Label htmlFor="reporte-categoria">¿Qué ocurrió?</Label>
+                <Label htmlFor="reporte-categoria">¿Con qué necesitas ayuda?</Label>
                 <select id="reporte-categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaReporte)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-                  {CATEGORIAS_REPORTE.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
+                  {categorias.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
                 </select>
               </Field>
               {ayuda && (
@@ -249,14 +289,14 @@ export default function ReportarProblema({
                 </div>
               )}
               <Field>
-                <Label htmlFor="reporte-descripcion">Descríbelo brevemente</Label>
-                <textarea id="reporte-descripcion" required minLength={10} maxLength={2000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={4} placeholder="Ejemplo: terminé la actividad anterior, pero la siguiente sigue bloqueada." className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
+                <Label htmlFor="reporte-descripcion">Cuéntanos brevemente qué sucede</Label>
+                <textarea id="reporte-descripcion" required minLength={10} maxLength={2000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={4} placeholder={tipo === "estudiante" ? "Ejemplo: terminé la actividad anterior, pero la siguiente sigue bloqueada." : "Ejemplo: cargué el Excel, pero no aparecen los estudiantes del grupo."} className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
                 <HelpText>Se adjunta automáticamente la pantalla, unidad y actividad cuando se pueden identificar. No escribas contraseñas ni NIP.</HelpText>
               </Field>
               {error && <ErrorText>{error}</ErrorText>}
               <Boton type="submit" size="sm" cargando={cargando}>
                 <Send className="size-4" aria-hidden="true" />
-                {cargando ? "Enviando…" : "Enviar reporte"}
+                {cargando ? "Enviando…" : "Enviar solicitud"}
               </Boton>
             </form>
           )}
@@ -264,7 +304,7 @@ export default function ReportarProblema({
       ) : (
         <button type="button" onClick={() => setAbierto(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-lg shadow-slate-900/10 transition hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300 dark:hover:bg-indigo-950/50">
           <LifeBuoy className="size-4" aria-hidden="true" />
-          Ayuda y reportes
+          Ayuda
         </button>
       )}
     </div>

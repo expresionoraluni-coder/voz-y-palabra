@@ -52,9 +52,9 @@ async function cargarAdministrador(): Promise<ContextoAdministrador | null> {
   // degradarse silenciosamente a una sesión administrativa sin segundo factor.
   if (factoresError || aalError) return null;
 
-  const tieneFactorVerificado = (factores?.totp ?? []).some((factor) => factor.status === "verified") ||
-    (factores?.phone ?? []).some((factor) => factor.status === "verified") ||
-    (factores?.webauthn ?? []).some((factor) => factor.status === "verified");
+  // La interfaz administrativa verifica códigos TOTP; no se consideran
+  // factores de otro tipo que esta aplicación no sabe desafiar.
+  const tieneFactorVerificado = (factores?.totp ?? []).some((factor) => factor.status === "verified");
   const nivelActual = aal?.currentLevel ?? null;
 
   return {
