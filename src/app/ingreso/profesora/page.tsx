@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserRound, ArrowLeft, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { ADMINISTRADOR_EMAIL } from "@/lib/admin-constantes";
 import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
 import { mensajeErrorAuth } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
@@ -17,9 +18,19 @@ export default function IngresoProfesora() {
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [contrasenaConfirmar, setContrasenaConfirmar] = useState("");
+  const [codigoInvitacion, setCodigoInvitacion] = useState("");
+  const [codigoListo, setCodigoListo] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avisoConfirmacion, setAvisoConfirmacion] = useState(false);
+  const reglasContrasena = [
+    { etiqueta: "12 caracteres como mínimo", cumple: contrasena.length >= 12 },
+    { etiqueta: "Una letra mayúscula", cumple: /[A-ZÁÉÍÓÚÜÑ]/.test(contrasena) },
+    { etiqueta: "Una letra minúscula", cumple: /[a-záéíóúüñ]/.test(contrasena) },
+    { etiqueta: "Un número", cumple: /\d/.test(contrasena) },
+    { etiqueta: "Un símbolo", cumple: /[^\p{L}\p{N}\s]/u.test(contrasena) },
+  ];
+  const contrasenaValida = reglasContrasena.every((regla) => regla.cumple);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,8 +38,13 @@ export default function IngresoProfesora() {
     setError(null);
     setAvisoConfirmacion(false);
 
-    if (modo === "crear" && contrasena !== contrasenaConfirmar) {
+    if (modo === "crear" && codigoListo && contrasena !== contrasenaConfirmar) {
       setError("Las dos contraseñas no coinciden. Revísalas.");
+      return;
+    }
+
+    if (modo === "crear" && codigoListo && !contrasenaValida) {
+      setError("Tu contraseña todavía no cumple todos los requisitos.");
       return;
     }
 
@@ -47,15 +63,45 @@ export default function IngresoProfesora() {
         return;
       }
 
+      const esAdministrador = data.user.email?.trim().toLowerCase() === ADMINISTRADOR_EMAIL;
+      if (esAdministrador) {
+        const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalError) {
+          await supabase.auth.signOut();
+          setError("No pudimos comprobar la seguridad de la cuenta. Intenta de nuevo.");
+          setCargando(false);
+          return;
+        }
+
+        router.push(aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2" ? "/ingreso/admin/verificar" : "/admin");
+        router.refresh();
+        return;
+      }
+
       const tienePerfil = await existePerfilDocente(supabase, data.user.id);
       router.push(tienePerfil ? "/docente/dashboard" : "/ingreso/profesora/verificar");
       router.refresh();
       return;
     }
 
+    if (!codigoListo) {
+      const longitudCodigo = codigoInvitacion.trim().length;
+      if (longitudCodigo < 4 || longitudCodigo > 64) {
+        setError("Escribe el código de invitación para continuar.");
+        setCargando(false);
+        return;
+      }
+      setCodigoListo(true);
+      setCargando(false);
+      return;
+    }
+
     const { data, error: authError } = await supabase.auth.signUp({
       email: correo,
       password: contrasena,
+      options: {
+        data: { codigo_invitacion_docente: codigoInvitacion.trim() },
+      },
     });
     if (authError || !data.user) {
       setError(mensajeErrorAuth(authError, "crear"));
@@ -106,67 +152,126 @@ export default function IngresoProfesora() {
               <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-3 text-sm text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
                 <p className="font-semibold text-slate-900 dark:text-slate-50">Antes de comenzar</p>
                 <p className="mt-1 leading-relaxed">
-                  Usa el correo con el que entrarás al panel. Después confirmarás tu correo y te pediremos tu nombre y el código de invitación del piloto.
+                  Primero comprueba tu código de invitación. Después podrás registrar el correo y la contraseña con los que entrarás al panel.
                 </p>
               </div>
             )}
-            <Field>
-              <Label htmlFor="correo">Correo</Label>
-              <Input
-                id="correo"
-                required
-                type="email"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                autoComplete="email"
-              />
-            </Field>
-            <Field>
-              <Label htmlFor="contrasena">Contraseña</Label>
-              <Input
-                id="contrasena"
-                required
-                type="password"
-                minLength={8}
-                value={contrasena}
-                onChange={(e) => setContrasena(e.target.value)}
-                autoComplete={modo === "entrar" ? "current-password" : "new-password"}
-              />
-              {modo === "crear" && <HelpText>Usa al menos 8 caracteres. No compartas esta contraseña.</HelpText>}
-            </Field>
             {modo === "crear" && (
               <Field>
-                <Label htmlFor="contrasenaConfirmar">Confirma tu contraseña</Label>
+                <Label htmlFor="codigoInvitacion">Código de invitación</Label>
                 <Input
-                  id="contrasenaConfirmar"
+                  id="codigoInvitacion"
                   required
-                  type="password"
-                  minLength={8}
-                  value={contrasenaConfirmar}
-                  onChange={(e) => setContrasenaConfirmar(e.target.value)}
-                  autoComplete="new-password"
+                  value={codigoInvitacion}
+                  onChange={(e) => {
+                    setCodigoInvitacion(e.target.value);
+                    setCodigoListo(false);
+                  }}
+                  autoComplete="off"
+                  disabled={codigoListo}
                 />
-                {contrasenaConfirmar.length > 0 && contrasenaConfirmar !== contrasena && (
-                  <ErrorText>No coincide con la contraseña de arriba.</ErrorText>
-                )}
+                {codigoListo && <HelpText>Código capturado. Ahora registra tus datos de acceso.</HelpText>}
               </Field>
+            )}
+            {(modo === "entrar" || codigoListo) && (
+              <>
+                <Field>
+                  <Label htmlFor="correo">Correo</Label>
+                  <Input
+                    id="correo"
+                    required
+                    type="email"
+                    value={correo}
+                    onChange={(e) => setCorreo(e.target.value)}
+                    autoComplete="email"
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="contrasena">Contraseña</Label>
+                  <Input
+                    id="contrasena"
+                    required
+                    type="password"
+                    minLength={modo === "crear" ? 12 : undefined}
+                    value={contrasena}
+                    onChange={(e) => setContrasena(e.target.value)}
+                    autoComplete={modo === "entrar" ? "current-password" : "new-password"}
+                  />
+                  {modo === "crear" && (
+                    <div className="space-y-2" aria-live="polite">
+                      <HelpText>Usa una contraseña que no compartas con nadie.</HelpText>
+                      <ul className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        {reglasContrasena.map((regla) => (
+                          <li key={regla.etiqueta} className={regla.cumple ? "text-emerald-600 dark:text-emerald-400" : undefined}>
+                            <span aria-hidden="true" className="mr-1.5">
+                              {regla.cumple ? "✓" : "○"}
+                            </span>
+                            {regla.etiqueta}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </Field>
+                {modo === "crear" && (
+                  <Field>
+                    <Label htmlFor="contrasenaConfirmar">Confirma tu contraseña</Label>
+                    <Input
+                      id="contrasenaConfirmar"
+                      required
+                      type="password"
+                      minLength={12}
+                      value={contrasenaConfirmar}
+                      onChange={(e) => setContrasenaConfirmar(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    {contrasenaConfirmar.length > 0 && contrasenaConfirmar !== contrasena && (
+                      <ErrorText>No coincide con la contraseña de arriba.</ErrorText>
+                    )}
+                  </Field>
+                )}
+              </>
             )}
             {error && <ErrorText>{error}</ErrorText>}
             <Boton
               type="submit"
               cargando={cargando}
               disabled={
-                modo === "crear" && contrasenaConfirmar.length > 0 && contrasenaConfirmar !== contrasena
+                modo === "crear" &&
+                codigoListo &&
+                (!contrasenaValida || (contrasenaConfirmar.length > 0 && contrasenaConfirmar !== contrasena))
               }
               className="w-full"
             >
-              {cargando ? "Un momento…" : modo === "entrar" ? "Entrar" : "Crear cuenta"}
+              {cargando
+                ? "Un momento…"
+                : modo === "entrar"
+                  ? "Entrar"
+                  : codigoListo
+                    ? "Crear cuenta"
+                    : "Continuar"}
             </Boton>
+            {modo === "crear" && codigoListo && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCodigoInvitacion("");
+                  setCodigoListo(false);
+                  setError(null);
+                }}
+                className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              >
+                Cambiar código de invitación
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
                 setModo(modo === "entrar" ? "crear" : "entrar");
+                setContrasena("");
                 setContrasenaConfirmar("");
+                setCodigoInvitacion("");
+                setCodigoListo(false);
                 setError(null);
               }}
               className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"

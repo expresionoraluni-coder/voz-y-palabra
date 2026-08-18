@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeErrorRpc } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import Alert from "@/components/ui/alert";
 import { ErrorText } from "@/components/ui/field";
@@ -47,7 +48,7 @@ export default function CambiarNipObligatorio() {
     });
 
     if (rpcError) {
-      setError(rpcError.message);
+      setError(mensajeErrorRpc(rpcError, [], "No pudimos cambiar tu NIP. Intenta de nuevo."));
       setCargando(false);
       return;
     }

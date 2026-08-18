@@ -39,10 +39,33 @@ if (!lote.includes('.eq("grupo_id", grupoId)')) failures.push("acciones-estudian
 
 const schema = await texto("supabase/schema.sql");
 const functions = await texto("supabase/functions.sql");
+const ingresoDocente = await texto("src/app/ingreso/profesora/page.tsx");
+const verificarDocente = await texto("src/app/ingreso/profesora/verificar/page.tsx");
+const mensajeErrores = await texto("src/lib/mensaje-error.ts");
+const cambiarNip = await texto("src/components/cambiar-nip.tsx");
+const cambiarNipObligatorio = await texto("src/components/cambiar-nip-obligatorio.tsx");
+const migracionEndurecimiento = await texto("supabase/migrations/20260817000801_endurecer_alta_docente_y_nip.sql");
+const migracionInvitacion = await texto("supabase/migrations/20260817002812_proteger_registro_docente_con_invitacion.sql");
 const accionesEntrega = await texto("src/app/estudiante/actividad/[id]/acciones-entrega.ts");
 const contextoEntregas = await texto("src/lib/estudiante-entregas-server.ts");
 const videoEmbed = await texto("src/lib/video-embed.ts");
 const workflow = await texto(".github/workflows/quality.yml");
+const adminLayout = await texto("src/app/admin/layout.tsx");
+const adminConstants = await texto("src/lib/admin-constantes.ts");
+const reportarProblema = await texto("src/components/reportar-problema.tsx");
+const migracionAdmin = await texto("supabase/migrations/20260817010000_separar_administrador_y_reportes.sql");
+const proxy = await texto("proxy.ts");
+const adminGuard = await texto("src/lib/supabase/requerir-administrador.ts");
+const adminAction = await texto("src/app/admin/reportes/acciones-atencion.ts");
+const migracionAdminProtegido = await texto("supabase/migrations/20260817012000_proteger_admin_y_reportes.sql");
+const migracionMfaAdmin = await texto("supabase/migrations/20260817103542_exigir_mfa_administrador.sql");
+const adminMfaLogin = await texto("src/app/ingreso/admin/verificar/page.tsx");
+const adminMfaSetup = await texto("src/app/admin/seguridad/configurar-mfa.tsx");
+const migracionReportesOrientacion = await texto("supabase/migrations/20260817110853_orientacion_y_contexto_en_reportes.sql");
+const adminReportesPage = await texto("src/app/admin/reportes/page.tsx");
+const actividadEstudiante = await texto("src/app/estudiante/actividad/[id]/page.tsx");
+const migracionReportesProtegidos = await texto("supabase/migrations/20260817121500_restringir_alta_reportes.sql");
+const migracionContextoReportes = await texto("supabase/migrations/20260817123000_derivar_unidad_en_reportes.sql");
 if (schema.includes('create policy "estudiante edita su propia fila"')) {
   failures.push("schema: el estudiante no debe tener una policy de UPDATE sobre su fila.");
 }
@@ -61,6 +84,38 @@ if (/create\s+policy\s+"cualquiera con sesi[oó]n lee (actividades|unidades)"/i.
 if (functions.includes("auth.role()")) failures.push("supabase/functions.sql: auth.role() está deprecado y no debe usarse.");
 if (!schema.includes('to authenticated')) failures.push("supabase/schema.sql: faltan policies dirigidas explícitamente a authenticated.");
 if (!functions.includes("proteger_columnas_entrega")) failures.push("supabase/functions.sql: falta la protección de columnas de entregas.");
+if (!verificarDocente.includes("user.is_anonymous === true")) failures.push("verificar docente: debe rechazar sesiones anónimas.");
+if (mensajeErrores.includes("Este correo ya tiene una cuenta")) failures.push("auth docente: no debe enumerar correos registrados.");
+if (cambiarNip.includes("setError(rpcError.message)") || cambiarNipObligatorio.includes("setError(rpcError.message)")) {
+  failures.push("NIP: no debe mostrar mensajes crudos del proveedor.");
+}
+if (!functions.includes("crear_perfil_docente") || !functions.includes("email_confirmed_at") || !functions.includes("Se requiere una cuenta docente confirmada.")) {
+  failures.push("functions: el alta docente debe exigir cuenta permanente y correo confirmado.");
+}
+if (!functions.includes("v_path not like '%/rpc/crear_perfil_docente'") || !migracionEndurecimiento.includes("crear_perfil_docente")) {
+  failures.push("rate limit: falta cubrir el RPC de alta docente en la función y su migración.");
+}
+if (!ingresoDocente.includes("codigo_invitacion_docente") || !ingresoDocente.includes("codigoListo")) {
+  failures.push("alta docente: el código debe comprobarse antes de registrar la cuenta.");
+}
+if (!ingresoDocente.includes("12 caracteres como mínimo") || !ingresoDocente.includes("contrasenaValida")) {
+  failures.push("alta docente: la contraseña debe mostrar y validar sus requisitos en español.");
+}
+if (!functions.includes("validar_invitacion_alta_docente") || !migracionInvitacion.includes("before insert on auth.users")) {
+  failures.push("Supabase: falta el control transaccional de invitación antes de crear la cuenta.");
+}
+if (ingresoDocente.includes("piloto") || verificarDocente.includes("piloto")) {
+  failures.push("alta docente: no debe mostrar la palabra piloto.");
+}
+if (!functions.includes("where auth_user_id = auth.uid() and activo = true") || !functions.includes("Este cambio requiere una sesión de estudiante.")) {
+  failures.push("NIP: el cambio debe exigir sesión anónima y estudiante activo.");
+}
+if (!functions.includes("v_estudiante.debe_cambiar_nip") || !functions.includes("v_estudiante.auth_user_id is not null")) {
+  failures.push("NIP: el primer vínculo debe evitar que otra sesión reclame un estudiante pendiente.");
+}
+if (!schema.includes('solo perfiles docentes permanentes usan unidades') || !schema.includes('solo perfiles docentes permanentes usan actividades')) {
+  failures.push("schema: unidades y actividades deben excluir explícitamente sesiones anónimas.");
+}
 
 if (!contextoEntregas.includes("validarAccesoActividad")) failures.push("entregas: falta el guard server-side de prerrequisitos.");
 if (!accionesEntrega.includes("validarEntregaAbiertaPorTipo")) failures.push("entregas: faltan validaciones server-side por tipo.");
@@ -75,6 +130,69 @@ if (!schema.includes("actividades_video_url_https_check") || !videoEmbed.include
 }
 if (!schema.includes("revoke select on public.docentes from public, anon, authenticated") || !functions.includes("grant select (id, nombre, created_at) on public.docentes to authenticated")) {
   failures.push("docentes: el correo no debe quedar expuesto por el Data API.");
+}
+if (!schema.includes("create table administradores") || !schema.includes("create table reportes")) {
+  failures.push("admin: schema.sql debe reconstruir las tablas administrativas y de reportes.");
+}
+if (!migracionAdmin.includes('create policy "administrador atiende reportes"') || !migracionAdmin.includes('create policy "estudiante o docente crea su reporte"')) {
+  failures.push("admin: la migración debe separar la atención administrativa de la creación de reportes.");
+}
+if (!adminLayout.includes("requerirAdministrador") || !adminLayout.includes("administrador")) {
+  failures.push("admin: las rutas administrativas deben validar el perfil antes de renderizar.");
+}
+if (!adminConstants.includes('digp.inv.ipn@gmail.com') || !adminGuard.includes("email_confirmed_at") || !adminGuard.includes("administrador?.activo")) {
+  failures.push("admin: el guard debe exigir la cuenta permanente, correo confirmado y perfil activo.");
+}
+if (!adminAction.includes('"use server"') || !adminAction.includes("obtenerAdministrador") || !adminAction.includes("revalidatePath")) {
+  failures.push("admin: la atención de reportes debe ejecutarse en una Server Action protegida.");
+}
+if (!migracionAdminProtegido.includes("es_administrador_activo") || !migracionAdminProtegido.includes("proteger_reporte_atencion")) {
+  failures.push("admin: Supabase debe verificar la cuenta permanente y proteger los datos originales del reporte.");
+}
+if (!proxy.includes("createServerClient") || !proxy.includes("supabase.auth.getUser()") || !proxy.includes('"/admin/:path*"')) {
+  failures.push("sesión SSR: falta renovar la sesión de Supabase antes de renderizar rutas protegidas.");
+}
+if (!reportarProblema.includes('.rpc("registrar_reporte"') || reportarProblema.includes("nip:") || reportarProblema.includes("password:")) {
+  failures.push("reportes: el botón debe registrar casos sin transportar NIP ni contraseña.");
+}
+if (!reportarProblema.includes("Mis reportes") || !reportarProblema.includes("contextoDeRuta") || !reportarProblema.includes("bottom-24")) {
+  failures.push("reportes: el flujo debe ofrecer seguimiento propio, contexto de ruta y espacio para la navegación inferior del estudiante.");
+}
+if (!reportarProblema.includes("AYUDAS") || !reportarProblema.includes("orientacion")) {
+  failures.push("reportes: las dudas frecuentes deben recibir orientación rápida antes de generar un caso.");
+}
+if (adminReportesPage.includes('from("reportes").select("*")')) {
+  failures.push("admin: la bandeja de reportes no debe traer columnas innecesarias.");
+}
+if (!migracionReportesOrientacion.includes("reportes_categoria_check") || !migracionReportesOrientacion.includes("p_unidad_id") || !migracionReportesOrientacion.includes("p_actividad_id") || !migracionReportesOrientacion.includes("p_categoria = 'orientacion'")) {
+  failures.push("Supabase: la migración de reportes debe validar contexto y conservar la orientación automática.");
+}
+if (!schema.includes("revoke all on public.reportes from public, anon, authenticated") || !functions.includes("grant select, update on public.reportes to authenticated") || !migracionReportesProtegidos.includes("revoke insert on public.reportes from authenticated")) {
+  failures.push("reportes: la creación debe quedar exclusivamente detrás del RPC validado.");
+}
+if (!schema.includes('drop policy if exists "estudiante o docente crea su reporte"') || !migracionReportesProtegidos.includes('drop policy if exists "estudiante o docente crea su reporte"')) {
+  failures.push("reportes: no debe permanecer una policy de inserción directa como ruta heredada.");
+}
+if (!actividadEstudiante.includes("ReportarProblema") || !actividadEstudiante.includes("navegacionInferior={false}")) {
+  failures.push("reportes: el estudiante debe poder solicitar ayuda dentro de una actividad.");
+}
+if (!migracionContextoReportes.includes("v_unidad_id") || !migracionContextoReportes.includes("jsonb_set")) {
+  failures.push("reportes: la actividad debe completar la unidad en el contexto guardado.");
+}
+if (!adminGuard.includes("listFactors") || !adminGuard.includes("getAuthenticatorAssuranceLevel") || !adminGuard.includes("/ingreso/admin/verificar")) {
+  failures.push("admin: el guard server-side debe comprobar MFA y redirigir a su verificación.");
+}
+if (!adminMfaLogin.includes("challengeAndVerify") || !adminMfaLogin.includes("one-time-code") || !adminMfaLogin.includes("ADMINISTRADOR_EMAIL")) {
+  failures.push("admin: falta el flujo de verificación TOTP en el ingreso.");
+}
+if (!adminMfaSetup.includes("mfa.enroll") || !adminMfaSetup.includes("challengeAndVerify") || !adminMfaSetup.includes("factorType: \"totp\"")) {
+  failures.push("admin: falta la configuración TOTP dentro del panel de seguridad.");
+}
+if (!migracionMfaAdmin.includes("auth.mfa_factors") || !migracionMfaAdmin.includes("aal2") || !migracionMfaAdmin.includes("es_administrador_activo")) {
+  failures.push("Supabase: las policies administrativas deben exigir AAL2 cuando existe un factor verificado.");
+}
+if (!schema.includes("auth.mfa_factors") || !functions.includes("auth.mfa_factors")) {
+  failures.push("Supabase: schema.sql y functions.sql deben conservar la protección MFA del administrador.");
 }
 if (!workflow.includes("cp ../supabase/migrations/*.sql supabase/migrations/") || !workflow.includes("version: 2.101.0")) {
   failures.push("CI: debe aplicar las migraciones versionadas y fijar la versiÃ³n de Supabase CLI.");

@@ -34,12 +34,19 @@ export default function NuevoGrupo() {
       return;
     }
 
-    const codigo_acceso = generarCodigoAcceso(nombre);
+    const nombreGrupo = nombre.trim();
+    if (!nombreGrupo) {
+      setError("Escribe el identificador visible del grupo.");
+      setCargando(false);
+      return;
+    }
+
+    const codigo_acceso = generarCodigoAcceso(nombreGrupo);
 
     const { data, error: insertError } = await supabase
       .from("grupos")
       .insert({
-        nombre,
+        nombre: nombreGrupo,
         codigo_acceso,
         ciclo_escolar: cicloEscolar || null,
         docente_id: user.id,
@@ -62,7 +69,7 @@ export default function NuevoGrupo() {
       <PageHeader
         volverHref="/docente/dashboard"
         titulo="Crear grupo"
-        descripcion="El código de acceso se genera automáticamente."
+        descripcion="Define cómo identificarás el grupo; el código de acceso se genera aparte."
       />
       <Card className="flex flex-col gap-5 p-6">
         <div className="flex size-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
@@ -70,14 +77,16 @@ export default function NuevoGrupo() {
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Field>
-            <Label htmlFor="nombre">Nombre del grupo</Label>
+            <Label htmlFor="nombre">Identificador visible del grupo</Label>
             <Input
               id="nombre"
               required
+              maxLength={40}
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej. 1IM4"
+              placeholder="Ej. 1IM4 o 2IM3"
             />
+            <HelpText>Así aparecerá en tu panel para que reconozcas el grupo. No es el código que usarán los estudiantes.</HelpText>
           </Field>
           <Field>
             <Label htmlFor="ciclo">Ciclo escolar (opcional)</Label>

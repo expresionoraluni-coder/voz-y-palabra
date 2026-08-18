@@ -25,7 +25,7 @@ export default function VerificarDocente() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) {
+      if (!user || user.is_anonymous === true) {
         router.replace("/ingreso/profesora");
         return;
       }
@@ -94,7 +94,7 @@ export default function VerificarDocente() {
           Confirma tu acceso docente
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
-          Tu correo ya quedó confirmado. Para entrar al panel necesitamos validar que formas parte del piloto.
+          Tu correo ya quedó confirmado. Para entrar al panel necesitamos confirmar tu autorización docente.
         </p>
       </div>
 
@@ -114,7 +114,6 @@ export default function VerificarDocente() {
               onChange={(e) => setCodigoInvitacion(e.target.value)}
               autoComplete="off"
             />
-            <HelpText>Te lo compartió quien coordina el piloto. Es obligatorio y no sustituye tu contraseña.</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">

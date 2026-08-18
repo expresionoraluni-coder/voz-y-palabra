@@ -78,8 +78,9 @@ export default function EditarGrupo({
       className="flex w-full max-w-xs flex-col gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800 dark:bg-slate-900/60"
     >
       <Field>
-        <Label htmlFor="grupo-nombre">Nombre del grupo</Label>
-        <Input id="grupo-nombre" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        <Label htmlFor="grupo-nombre">Identificador visible del grupo</Label>
+        <Input id="grupo-nombre" required maxLength={40} value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        <HelpText>Es la referencia que verás en el panel, por ejemplo 1IM4. Es independiente del código de acceso.</HelpText>
       </Field>
       <Field>
         <Label htmlFor="grupo-codigo">Código de acceso</Label>

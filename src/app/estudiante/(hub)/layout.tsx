@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import CambiarNipObligatorio from "@/components/cambiar-nip-obligatorio";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import BottomNav from "./bottom-nav";
+import ReportarProblema from "@/components/reportar-problema";
 
 export default async function HubLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -14,7 +15,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
 
   const { data: estudiante } = await supabase
     .from("estudiantes")
-    .select("debe_cambiar_nip")
+    .select("id, grupo_id, debe_cambiar_nip")
     .single();
   if (!estudiante) redirect("/ingreso/estudiante");
 
@@ -34,6 +35,11 @@ export default async function HubLayout({ children }: { children: React.ReactNod
         <AvisoSinConexion />
         {children}
       </main>
+      <ReportarProblema
+        tipo="estudiante"
+        estudianteId={estudiante.id}
+        grupoId={estudiante.grupo_id}
+      />
       <BottomNav />
     </>
   );

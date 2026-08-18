@@ -26,7 +26,9 @@ declare
   v_ip inet;
   v_intentos int;
 begin
-  if v_method <> 'POST' or v_path is null or v_path not like '%/rpc/ingresar_estudiante' then
+  if v_method <> 'POST' or v_path is null
+     or (v_path not like '%/rpc/ingresar_estudiante'
+         and v_path not like '%/rpc/crear_perfil_docente') then
     return;
   end if;
 
@@ -113,7 +115,8 @@ begin
   if v_intentos_nombre.bloqueado_hasta is not null and v_intentos_nombre.bloqueado_hasta > now() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_intentos_nombre.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
-  select e.id, e.nombre, e.nip_hash, e.activo, e.intentos_fallidos, e.bloqueado_hasta into v_estudiante
+  select e.id, e.nombre, e.nip_hash, e.activo, e.auth_user_id, e.debe_cambiar_nip,
+         e.intentos_fallidos, e.bloqueado_hasta into v_estudiante
     from public.estudiantes e where e.grupo_id = v_grupo.id and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre)
     for update;
   if v_estudiante.id is null then
@@ -128,12 +131,18 @@ begin
   end if;
   delete from public.intentos_nombre_estudiante where usuario_id = auth.uid();
   if v_estudiante.nip_hash is null then
+    if v_estudiante.auth_user_id is not null and v_estudiante.auth_user_id <> auth.uid() then
+      return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
+    end if;
     update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
     update public.estudiantes set auth_user_id = auth.uid(), nip_hash = extensions.crypt(p_nip, extensions.gen_salt('bf')), intentos_fallidos = 0, bloqueado_hasta = null where public.estudiantes.id = v_estudiante.id;
     return query select v_estudiante.id, v_estudiante.nombre, v_grupo.id, v_grupo.nombre, true, null::text; return;
   end if;
   if extensions.crypt(p_nip, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
     update public.estudiantes set intentos_fallidos = v_estudiante.intentos_fallidos + 1, bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end where public.estudiantes.id = v_estudiante.id;
+    return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
+  end if;
+  if v_estudiante.debe_cambiar_nip and v_estudiante.auth_user_id is not null and v_estudiante.auth_user_id <> auth.uid() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
   end if;
   update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
@@ -166,9 +175,15 @@ as $$
 declare v_estudiante record; v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo'; end if;
+  if coalesce(auth.jwt() ->> 'is_anonymous', 'false') <> 'true' then
+    raise exception 'Este cambio requiere una sesión de estudiante.';
+  end if;
   if coalesce(p_nip_actual, '') !~ '^[0-9]{4}$' then return 'Tu NIP actual no es correcto.'; end if;
   if coalesce(p_nip_nuevo, '') !~ '^[0-9]{4}$' then raise exception 'Tu nuevo NIP debe ser de 4 dígitos.'; end if;
-  select id, nip_hash, intentos_fallidos, bloqueado_hasta into v_estudiante from public.estudiantes where auth_user_id = auth.uid() for update;
+  select id, nip_hash, intentos_fallidos, bloqueado_hasta into v_estudiante
+    from public.estudiantes
+    where auth_user_id = auth.uid() and activo = true
+    for update;
   if v_estudiante.id is null then raise exception 'No encontramos tu sesión de estudiante, intenta entrar de nuevo.'; end if;
   if v_estudiante.bloqueado_hasta is not null and v_estudiante.bloqueado_hasta > now() then return format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_estudiante.bloqueado_hasta - now())) / 60))); end if;
   if extensions.crypt(p_nip_actual, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
@@ -202,12 +217,54 @@ begin
 end;
 $$;
 
+create or replace function public.validar_invitacion_alta_docente()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_hash text;
+  v_codigo text;
+begin
+  -- Las sesiones anónimas de estudiantes no pasan por este control.
+  if coalesce(new.is_anonymous, false) then return new; end if;
+
+  v_codigo := new.raw_user_meta_data ->> 'codigo_invitacion_docente';
+  select valor into v_hash
+    from public.configuracion_plataforma
+    where clave = 'codigo_invitacion_docente_hash';
+  if length(trim(coalesce(v_codigo, ''))) < 4
+     or length(trim(coalesce(v_codigo, ''))) > 64
+     or v_hash is null
+     or extensions.crypt(trim(coalesce(v_codigo, '')), v_hash) <> v_hash then
+    raise exception 'El código de invitación no es correcto.';
+  end if;
+
+  -- El secreto no debe quedar guardado en auth.users ni viajar en el JWT.
+  new.raw_user_meta_data := coalesce(new.raw_user_meta_data, '{}'::jsonb)
+    - 'codigo_invitacion_docente';
+  return new;
+end;
+$$;
+
+drop trigger if exists validar_invitacion_alta_docente on auth.users;
+create trigger validar_invitacion_alta_docente
+  before insert on auth.users
+  for each row execute function public.validar_invitacion_alta_docente();
+
 create or replace function public.crear_perfil_docente(p_nombre text, p_codigo_invitacion text)
 returns text language plpgsql security definer set search_path = public, extensions
 as $$
 declare v_hash text; v_correo text; v_intentos record; v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
+  v_email_confirmado timestamptz;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo'; end if;
+  if coalesce(auth.jwt() ->> 'is_anonymous', 'false') = 'true' then
+    raise exception 'Se requiere una cuenta docente confirmada.';
+  end if;
+  select email, email_confirmed_at into v_correo, v_email_confirmado from auth.users where id = auth.uid();
+  if v_email_confirmado is null then raise exception 'Confirma tu correo antes de continuar.'; end if;
   select * into v_intentos from public.intentos_codigo_invitacion where usuario_id = auth.uid();
   if v_intentos.bloqueado_hasta is not null and v_intentos.bloqueado_hasta > now() then return format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_intentos.bloqueado_hasta - now())) / 60))); end if;
   select valor into v_hash from public.configuracion_plataforma where clave = 'codigo_invitacion_docente_hash';
@@ -218,7 +275,6 @@ begin
   end if;
   delete from public.intentos_codigo_invitacion where usuario_id = auth.uid();
   if p_nombre is null or length(trim(p_nombre)) = 0 or length(p_nombre) > 200 then raise exception 'Escribe tu nombre.'; end if;
-  select email into v_correo from auth.users where id = auth.uid();
   insert into public.docentes (id, nombre, correo) values (auth.uid(), trim(p_nombre), v_correo) on conflict (id) do nothing;
   return null;
 end;
@@ -387,6 +443,16 @@ revoke execute on function public.cambiar_nip_estudiante(text, text) from public
 grant execute on function public.cambiar_nip_estudiante(text, text) to authenticated;
 revoke execute on function public.crear_perfil_docente(text, text) from public, anon;
 grant execute on function public.crear_perfil_docente(text, text) to authenticated;
+-- El perfil administrativo es independiente del perfil docente. La cuenta
+-- inicial se crea de forma controlada; el cliente solo consulta su perfil y
+-- opera sobre reportes mediante RLS.
+revoke all on public.administradores from public, anon, authenticated;
+grant select (id, nombre, activo, created_at) on public.administradores to authenticated;
+grant all on public.administradores to service_role;
+revoke all on public.reportes from public, anon, authenticated;
+grant select, update on public.reportes to authenticated;
+revoke delete on public.reportes from public, anon, authenticated;
+revoke all on function public.validar_invitacion_alta_docente() from public, anon, authenticated;
 revoke execute on function public.verificar_insignias() from public, anon;
 grant execute on function public.verificar_insignias() to authenticated;
 revoke execute on function public.estudiante_actual() from public, anon;
@@ -532,3 +598,89 @@ $$;
 
 revoke execute on function public.guardar_entrega_auto(uuid, uuid, jsonb, integer, text) from public, anon, authenticated;
 grant execute on function public.guardar_entrega_auto(uuid, uuid, jsonb, integer, text) to service_role;
+
+-- Administración permanente y registro seguro de reportes. Cuando la cuenta
+-- administrativa ya tiene un factor verificado, sus consultas requieren AAL2.
+create or replace function public.es_administrador_activo()
+returns boolean language sql stable security definer set search_path = public, auth, extensions
+as $$
+  select exists (
+    select 1 from public.administradores a
+    join auth.users u on u.id = a.id
+    where a.id = (select auth.uid())
+      and a.activo = true
+      and u.email_confirmed_at is not null
+      and lower(u.email) = lower('digp.inv.ipn@gmail.com')
+      and (
+        not exists (
+          select 1 from auth.mfa_factors factor
+          where factor.user_id = (select auth.uid())
+            and factor.status = 'verified'
+        )
+        or coalesce((select auth.jwt()->>'aal'), 'aal1') = 'aal2'
+      )
+  );
+$$;
+
+revoke all on function public.es_administrador_activo() from public, anon;
+grant execute on function public.es_administrador_activo() to authenticated;
+
+create or replace function public.registrar_reporte(
+  p_reportante_tipo text, p_estudiante_id uuid, p_docente_id uuid,
+  p_grupo_id uuid, p_unidad_id uuid, p_actividad_id uuid,
+  p_categoria text, p_descripcion text, p_ruta text, p_contexto jsonb
+)
+returns table(id uuid, duplicado boolean)
+language plpgsql security definer set search_path = public
+as $$
+declare v_existente uuid; v_prioridad text; v_unidad_id uuid := p_unidad_id; v_contexto jsonb := coalesce(p_contexto, '{}'::jsonb);
+begin
+  if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo.'; end if;
+  if p_reportante_tipo not in ('estudiante', 'docente') then raise exception 'El tipo de reporte no es válido.'; end if;
+  if p_categoria not in ('acceso', 'actividad', 'avance', 'video', 'carga', 'contenido', 'orientacion', 'otro') then raise exception 'La categoría no es válida.'; end if;
+  if p_descripcion is null or length(trim(p_descripcion)) not between 10 and 2000 then raise exception 'La descripción debe tener entre 10 y 2000 caracteres.'; end if;
+  if p_ruta is not null and length(p_ruta) > 300 then raise exception 'La pantalla indicada no es válida.'; end if;
+  if jsonb_typeof(v_contexto) <> 'object' or length(v_contexto::text) > 4000 then raise exception 'El contexto del reporte no es válido.'; end if;
+  if p_unidad_id is not null and not exists (select 1 from public.unidades u where u.id = p_unidad_id) then raise exception 'La unidad del reporte no es válida.'; end if;
+  if p_actividad_id is not null then
+    select a.unidad_id into v_unidad_id from public.actividades a where a.id = p_actividad_id and (p_unidad_id is null or a.unidad_id = p_unidad_id);
+    if v_unidad_id is null then raise exception 'La actividad del reporte no es válida.'; end if;
+    v_contexto := jsonb_set(v_contexto, '{unidad_id}', to_jsonb(v_unidad_id::text), true);
+  end if;
+  if p_reportante_tipo = 'estudiante' then
+    if p_estudiante_id is null or p_docente_id is not null then raise exception 'El reporte de estudiante no es válido.'; end if;
+    if not exists (select 1 from public.estudiantes e where e.id = p_estudiante_id and e.auth_user_id = (select auth.uid()) and e.activo = true and (p_grupo_id is null or p_grupo_id = e.grupo_id)) then raise exception 'No tienes permiso para reportar ese contexto.'; end if;
+  else
+    if p_docente_id is null or p_estudiante_id is not null or p_docente_id <> (select auth.uid()) then raise exception 'El reporte de docente no es válido.'; end if;
+    if not exists (select 1 from public.docentes d where d.id = (select auth.uid())) then raise exception 'No encontramos tu perfil docente.'; end if;
+    if p_grupo_id is not null and not exists (select 1 from public.grupos g where g.id = p_grupo_id and g.docente_id = (select auth.uid())) then raise exception 'No tienes permiso para reportar ese grupo.'; end if;
+  end if;
+  select r.id into v_existente from public.reportes r where r.reportante_id = (select auth.uid()) and r.categoria = p_categoria and coalesce(r.ruta, '') = coalesce(p_ruta, '') and r.estado in ('recibido', 'en_revision', 'necesita_informacion') and r.created_at >= now() - interval '24 hours' order by r.created_at desc limit 1;
+  if v_existente is not null then return query select v_existente, true; return; end if;
+  v_prioridad := case when p_categoria in ('acceso', 'avance') then 'alta' when p_categoria = 'orientacion' then 'baja' else 'normal' end;
+  insert into public.reportes (reportante_id, reportante_tipo, estudiante_id, docente_id, grupo_id, unidad_id, actividad_id, categoria, descripcion, prioridad, ruta, contexto)
+  values ((select auth.uid()), p_reportante_tipo, p_estudiante_id, p_docente_id, p_grupo_id, v_unidad_id, p_actividad_id, p_categoria, trim(p_descripcion), v_prioridad, p_ruta, v_contexto)
+  returning public.reportes.id into v_existente;
+  return query select v_existente, false;
+end;
+$$;
+
+revoke execute on function public.registrar_reporte(text, uuid, uuid, uuid, uuid, uuid, text, text, text, jsonb) from public, anon;
+grant execute on function public.registrar_reporte(text, uuid, uuid, uuid, uuid, uuid, text, text, text, jsonb) to authenticated;
+
+create or replace function public.proteger_reporte_atencion()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  if new.reportante_id is distinct from old.reportante_id or new.reportante_tipo is distinct from old.reportante_tipo or new.estudiante_id is distinct from old.estudiante_id or new.docente_id is distinct from old.docente_id or new.grupo_id is distinct from old.grupo_id or new.unidad_id is distinct from old.unidad_id or new.actividad_id is distinct from old.actividad_id or new.categoria is distinct from old.categoria or new.descripcion is distinct from old.descripcion or new.ruta is distinct from old.ruta or new.contexto is distinct from old.contexto or new.created_at is distinct from old.created_at then
+    raise exception 'Los datos originales del reporte no se pueden modificar.';
+  end if;
+  if auth.uid() is not null and not public.es_administrador_activo() then raise exception 'No tienes permiso para atender reportes.'; end if;
+  if auth.uid() is not null and new.atendido_por is not null and new.atendido_por <> (select auth.uid()) then raise exception 'El reporte debe quedar atendido por la cuenta administrativa activa.'; end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_proteger_reporte_atencion on public.reportes;
+create trigger trg_proteger_reporte_atencion before update on public.reportes for each row execute function public.proteger_reporte_atencion();
+revoke execute on function public.proteger_reporte_atencion() from public, anon, authenticated;

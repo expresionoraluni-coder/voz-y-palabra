@@ -44,7 +44,7 @@ export default async function DashboardDocente() {
     supabase.from("docentes").select("nombre").eq("id", user.id).maybeSingle(),
     supabase
       .from("grupos")
-      .select("id, nombre, codigo_acceso")
+      .select("id, nombre, codigo_acceso, ciclo_escolar")
       .eq("docente_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, actividades(id)").order("orden"),
@@ -172,10 +172,16 @@ export default async function DashboardDocente() {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-slate-900 dark:text-slate-50">{g.nombre}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-500">{metrica.estudiantes} estudiantes activos</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">
+                      Identificador del grupo{g.ciclo_escolar ? ` · ${g.ciclo_escolar}` : ""}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">{metrica.estudiantes} estudiantes activos</p>
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                         </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                          Código de acceso: <span className="font-mono font-semibold tracking-wide text-slate-700 dark:text-slate-300">{g.codigo_acceso}</span>
+                        </p>
                         <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                           <div>
                             <p className="text-xs text-slate-500 dark:text-slate-500">Avance</p>

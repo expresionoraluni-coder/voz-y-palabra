@@ -31,7 +31,7 @@ export default function GestionEstudiante({
     const supabase = createClient();
     const { error: updError } = await supabase
       .from("estudiantes")
-      .update({ activo: false })
+      .update({ activo: false, auth_user_id: null, debe_cambiar_nip: true })
       .eq("id", estudianteId);
     if (updError) {
       setError(mensajeError(updError));

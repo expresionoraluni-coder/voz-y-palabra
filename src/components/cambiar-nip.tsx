@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mensajeErrorRpc } from "@/lib/mensaje-error";
 import { ErrorText } from "@/components/ui/field";
 import CampoNip from "@/components/ui/campo-nip";
 import Boton from "@/components/ui/button";
@@ -48,7 +49,7 @@ export default function CambiarNip() {
     });
 
     if (rpcError) {
-      setError(rpcError.message);
+      setError(mensajeErrorRpc(rpcError, [], "No pudimos cambiar tu NIP. Intenta de nuevo."));
       setCargando(false);
       return;
     }

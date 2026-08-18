@@ -49,8 +49,8 @@ export default function IngresoEstudiante() {
       setError("El código de tu grupo no puede tener más de 64 caracteres.");
       return;
     }
-    if (nombreLimpio.split(" ").length < 2) {
-      setError("Escribe tu nombre completo: primero tus apellidos y después tus nombres.");
+    if (nombreLimpio.length === 0) {
+      setError("Escribe tu nombre tal como aparece en la lista del grupo.");
       return;
     }
     if (!/^\d{4}$/.test(nip)) {

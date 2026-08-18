@@ -49,9 +49,12 @@ export async function actualizarEstudiantesLote(
     return { ok: false, error: "Uno de los estudiantes no pertenece a este grupo." };
   }
 
+  const cambios = accion === "dar_de_baja"
+    ? { activo: false, auth_user_id: null, debe_cambiar_nip: true }
+    : { activo: true };
   const { error: actualizarError } = await admin
     .from("estudiantes")
-    .update({ activo: accion === "reactivar" })
+    .update(cambios)
     .eq("grupo_id", grupoId)
     .in("id", idsUnicos);
   if (actualizarError) return { ok: false, error: mensajeError(actualizarError) };

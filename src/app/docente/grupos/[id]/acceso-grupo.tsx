@@ -5,7 +5,7 @@ import { Check, Clipboard, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import Boton from "@/components/ui/button";
 
-export default function AccesoGrupo({ codigo }: { codigo: string }) {
+export default function AccesoGrupo({ codigo, nombreGrupo }: { codigo: string; nombreGrupo: string }) {
   const [copiado, setCopiado] = useState<"codigo" | "instrucciones" | null>(null);
   const [error, setError] = useState(false);
 
@@ -31,7 +31,7 @@ export default function AccesoGrupo({ codigo }: { codigo: string }) {
     const texto =
       tipo === "codigo"
         ? codigo
-        : `Para entrar a Voz y Palabra:\n1. Abre ${window.location.origin}/ingreso/estudiante\n2. Escribe el código de grupo tal como aparece aquí: ${codigo}\n3. Escribe tu nombre completo igual que en la lista: apellidos primero y después nombres, sin abreviaturas. Puedes escribirlo sin acentos. Ejemplo: GARCIA LOPEZ MARIA.\n4. La primera vez, usa como NIP los últimos 4 dígitos de tu boleta.\n5. Al entrar, cambia ese NIP por uno propio y guárdalo en privado. Si lo olvidas, pide a la profesora que lo reinicie.`;
+        : `Grupo: ${nombreGrupo}\nCódigo de acceso: ${codigo}\n\nPara entrar a Voz y Palabra:\n1. Abre ${window.location.origin}/ingreso/estudiante\n2. Escribe el código de acceso tal como aparece aquí: ${codigo}\n3. Escribe tu nombre completo igual que en la lista: apellidos primero y después nombres, sin abreviaturas. Puedes escribirlo sin acentos. Ejemplo: GARCIA LOPEZ MARIA.\n4. La primera vez, usa como NIP los últimos 4 dígitos de tu boleta.\n5. Al entrar, cambia ese NIP por uno propio y guárdalo en privado. Si lo olvidas, pide a la profesora que lo reinicie.`;
 
     setError(false);
     try {
@@ -59,7 +59,7 @@ export default function AccesoGrupo({ codigo }: { codigo: string }) {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2.5 dark:border-indigo-800 dark:bg-slate-900">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Código</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Código de acceso</span>
         <code className="mr-auto font-mono text-lg font-bold tracking-widest text-indigo-700 dark:text-indigo-300">{codigo}</code>
         <Boton type="button" variant="secondary" size="sm" onClick={() => copiar("codigo")}>
           {copiado === "codigo" ? <Check className="size-4" aria-hidden="true" /> : <Clipboard className="size-4" aria-hidden="true" />}

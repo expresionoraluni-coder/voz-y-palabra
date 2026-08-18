@@ -31,11 +31,21 @@ export function mensajeErrorAuth(error: ErrorAuth, contexto: "entrar" | "crear")
   if (texto.includes("email not confirmed") || texto.includes("email_not_confirmed")) {
     return "Primero confirma tu correo desde el mensaje que te enviamos.";
   }
-  if (texto.includes("user already registered") || texto.includes("already been registered")) {
-    return "Este correo ya tiene una cuenta. Regresa a «Iniciar sesión» para entrar.";
+  if (texto.includes("código de invitación") || texto.includes("codigo de invitacion")) {
+    return "El código de invitación no es correcto.";
   }
-  if (texto.includes("password should be at least") || texto.includes("password must be at least")) {
-    return "La contraseña debe tener al menos 8 caracteres.";
+  if (texto.includes("user already registered") || texto.includes("already been registered")) {
+    return contexto === "crear"
+      ? "No pudimos crear la cuenta con esos datos. Si el correo puede registrarse, recibirás instrucciones para confirmar tu cuenta."
+      : "El correo o la contraseña no son correctos.";
+  }
+  if (
+    texto.includes("password should be at least") ||
+    texto.includes("password must be at least") ||
+    texto.includes("weak password") ||
+    texto.includes("password does not meet")
+  ) {
+    return "La contraseña debe tener al menos 12 caracteres, con mayúsculas, minúsculas, números y símbolos.";
   }
   if (texto.includes("password") && (texto.includes("breached") || texto.includes("leaked") || texto.includes("pwned"))) {
     return "Elige otra contraseña: la actual aparece en una lista pública de contraseñas comprometidas.";

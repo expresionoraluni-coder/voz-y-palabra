@@ -354,7 +354,7 @@ export default async function DetalleGrupo({
       <PageHeader
         volverHref="/docente/dashboard"
         titulo={grupo.nombre}
-        descripcion={`${estudiantes?.length ?? 0} estudiantes activos · seguimiento del avance y señales de apoyo`}
+        descripcion={`Identificador del grupo · ${estudiantes?.length ?? 0} estudiantes activos · seguimiento del avance y señales de apoyo`}
         accion={<EditarGrupo grupoId={grupo.id} nombreActual={grupo.nombre} codigoActual={grupo.codigo_acceso} />}
       />
 
@@ -423,7 +423,7 @@ export default async function DetalleGrupo({
         </div>
       </section>
 
-      <AccesoGrupo codigo={grupo.codigo_acceso} />
+      <AccesoGrupo codigo={grupo.codigo_acceso} nombreGrupo={grupo.nombre} />
 
       {alertas.length > 0 && (
         <Alert tono="warning" titulo="Alertas">

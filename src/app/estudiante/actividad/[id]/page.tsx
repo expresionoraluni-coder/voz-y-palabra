@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
+import ReportarProblema from "@/components/reportar-problema";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
@@ -59,7 +60,7 @@ export default async function ActividadEstudiante({
     { data: estudiante, error: estudianteError },
     { data: actividad, error: actividadError },
   ] = await Promise.all([
-    supabase.from("estudiantes").select("id").single(),
+    supabase.from("estudiantes").select("id, grupo_id").single(),
     admin
       .from("actividades")
       .select(
@@ -457,6 +458,12 @@ export default async function ActividadEstudiante({
         )}
       </EntregaRecienteProvider>
       </div>
+      <ReportarProblema
+        tipo="estudiante"
+        estudianteId={estudiante.id}
+        grupoId={estudiante.grupo_id}
+        navegacionInferior={false}
+      />
     </>
   );
 }

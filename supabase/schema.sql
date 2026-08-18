@@ -19,6 +19,16 @@ create table docentes (
   created_at timestamptz not null default now()
 );
 
+-- La cuenta administrativa es independiente de una cuenta docente. No hay
+-- registro público de administradores: la primera cuenta se incorpora por
+-- una operación controlada y después usa el panel /admin.
+create table administradores (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nombre text not null,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
 create table grupos (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
@@ -52,6 +62,12 @@ create table private.ingreso_rate_limits (
 create index ingreso_rate_limits_actualizado_idx on private.ingreso_rate_limits(actualizado_en);
 revoke all on private.ingreso_rate_limits from public, anon, authenticated;
 grant all on private.ingreso_rate_limits to service_role;
+
+-- Las funciones SECURITY DEFINER que usan esta tabla viven en
+-- supabase/functions.sql y deben conservar estos límites: el pre-request
+-- cubre tanto ingresar_estudiante como crear_perfil_docente; el alta docente
+-- exige una cuenta permanente con correo confirmado; cambiar_nip_estudiante
+-- exige una sesión anónima activa y solo vincula estudiantes activos.
 
 -- ============================================================
 -- 2. QUÉ SE ENSEÑA
@@ -200,6 +216,30 @@ create table bitacora (
   unique (estudiante_id, unidad_id)
 );
 
+create table reportes (
+  id uuid primary key default gen_random_uuid(),
+  reportante_id uuid not null references auth.users(id) on delete cascade,
+  reportante_tipo text not null check (reportante_tipo in ('estudiante', 'docente')),
+  estudiante_id uuid references estudiantes(id) on delete set null,
+  docente_id uuid references docentes(id) on delete set null,
+  grupo_id uuid references grupos(id) on delete set null,
+  unidad_id uuid references unidades(id) on delete set null,
+  actividad_id uuid references actividades(id) on delete set null,
+  categoria text not null check (categoria in ('acceso', 'actividad', 'avance', 'video', 'carga', 'contenido', 'orientacion', 'otro')),
+  descripcion text not null check (length(trim(descripcion)) between 10 and 2000),
+  estado text not null default 'recibido' check (estado in ('recibido', 'en_revision', 'necesita_informacion', 'resuelto', 'cerrado')),
+  prioridad text not null default 'normal' check (prioridad in ('baja', 'normal', 'alta', 'urgente')),
+  ruta text check (ruta is null or length(ruta) <= 300),
+  contexto jsonb not null default '{}'::jsonb check (length(contexto::text) <= 4000),
+  resolucion text check (resolucion is null or length(resolucion) <= 2000),
+  atendido_por uuid references administradores(id) on delete set null,
+  atendido_en timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check ((reportante_tipo = 'estudiante' and estudiante_id is not null and docente_id is null)
+    or (reportante_tipo = 'docente' and docente_id is not null and estudiante_id is null))
+);
+
 create table intentos_codigo_invitacion (
   usuario_id uuid primary key references auth.users(id) on delete cascade,
   intentos int not null default 0,
@@ -230,6 +270,14 @@ create index entregas_actividad_id_idx on entregas(actividad_id);
 create index eventos_docente_id_idx on eventos(docente_id);
 create index eventos_grupo_id_idx on eventos(grupo_id);
 create index eventos_unidad_id_idx on eventos(unidad_id);
+create index reportes_estado_prioridad_idx on reportes(estado, prioridad, created_at desc);
+create index reportes_reportante_id_idx on reportes(reportante_id, created_at desc);
+create index reportes_grupo_id_idx on reportes(grupo_id, created_at desc);
+create index reportes_actividad_id_idx on reportes(actividad_id);
+create index reportes_atendido_por_idx on reportes(atendido_por);
+create index reportes_docente_id_idx on reportes(docente_id);
+create index reportes_estudiante_id_idx on reportes(estudiante_id);
+create index reportes_unidad_id_idx on reportes(unidad_id);
 create index grupos_docente_id_idx on grupos(docente_id);
 create index insignias_otorgadas_insignia_id_idx on insignias_otorgadas(insignia_id);
 create index reflexiones_actividad_id_idx on reflexiones(actividad_id);
@@ -251,6 +299,7 @@ create unique index reflexiones_unica_por_unidad
 -- ============================================================
 
 alter table docentes enable row level security;
+alter table administradores enable row level security;
 alter table grupos enable row level security;
 alter table estudiantes enable row level security;
 alter table unidades enable row level security;
@@ -266,6 +315,7 @@ alter table avisos enable row level security;
 alter table configuracion_plataforma enable row level security;
 alter table eventos enable row level security;
 alter table bitacora enable row level security;
+alter table reportes enable row level security;
 alter table intentos_codigo_invitacion enable row level security;
 alter table intentos_nombre_estudiante enable row level security;
 alter table intentos_nombre_grupo enable row level security;
@@ -297,11 +347,18 @@ as $$
 $$;
 
 -- docentes: solo ve y edita su propio perfil
-create policy "docente ve su propio perfil" on docentes
-  for select to authenticated using (id = (select auth.uid()));
 create policy "docente edita su propio perfil" on docentes
   for update to authenticated using (id = (select auth.uid()))
   with check (id = (select auth.uid()));
+create policy "docente ve su propio perfil" on docentes
+  for select to authenticated using (id = (select auth.uid()));
+create policy "administrador observa docentes" on docentes
+  for select to authenticated
+  using (exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true));
+
+create policy "administrador ve su perfil" on administradores
+  for select to authenticated
+  using (id = (select auth.uid()) and activo = true);
 
 -- El correo es un dato de autenticación sensible. La aplicación solo necesita
 -- leer el identificador y el nombre de la docente; el correo queda disponible
@@ -309,11 +366,38 @@ create policy "docente edita su propio perfil" on docentes
 revoke select on public.docentes from public, anon, authenticated;
 grant select (id, nombre, created_at) on public.docentes to authenticated;
 grant all on public.docentes to service_role;
+revoke all on public.administradores from public, anon, authenticated;
+grant select (id, nombre, activo, created_at) on public.administradores to authenticated;
+grant all on public.administradores to service_role;
+
+revoke all on public.reportes from public, anon, authenticated;
+grant select, update on public.reportes to authenticated;
+revoke delete on public.reportes from public, anon, authenticated;
+
+create policy "reportes visibles para reportante o administrador" on reportes
+  for select to authenticated
+  using (
+    reportante_id = (select auth.uid())
+    or exists (
+      select 1 from administradores a
+      where a.id = (select auth.uid()) and a.activo = true
+    )
+  );
+create policy "administrador atiende reportes" on reportes
+  for update to authenticated
+  using (exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true))
+  with check (
+    exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true)
+    and (atendido_por is null or atendido_por = (select auth.uid()))
+  );
 
 -- grupos: el docente administra los suyos; el estudiante solo lee el suyo
 create policy "docente administra sus grupos" on grupos
   for all to authenticated using (docente_id = (select auth.uid()))
   with check (docente_id = (select auth.uid()));
+create policy "administrador observa grupos" on grupos
+  for select to authenticated
+  using (exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true));
 create policy "estudiante lee su grupo" on grupos
   for select to authenticated using (id = (select grupo_id from estudiantes where id = estudiante_actual()));
 
@@ -322,6 +406,9 @@ create policy "docente administra estudiantes de sus grupos" on estudiantes
   for all to authenticated
   using (grupo_id in (select id from grupos where docente_id = (select auth.uid())))
   with check (grupo_id in (select id from grupos where docente_id = (select auth.uid())));
+create policy "administrador observa estudiantes" on estudiantes
+  for select to authenticated
+  using (exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true));
 create policy "estudiante lee su propia fila" on estudiantes
   for select to authenticated using (auth_user_id = (select auth.uid()) and activo = true);
 
@@ -339,6 +426,10 @@ drop policy if exists "cualquiera con sesión lee unidades" on unidades;
 create policy "docente administra unidades" on unidades
   for all to authenticated using (exists (select 1 from docentes where id = (select auth.uid())))
   with check (exists (select 1 from docentes where id = (select auth.uid())));
+create policy "solo perfiles docentes permanentes usan unidades" on unidades
+  as restrictive for all to authenticated
+  using (coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) = false)
+  with check (coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) = false);
 create policy "sesión lee tipos de actividad" on tipos_actividad
   for select to authenticated using ((select auth.uid()) is not null);
 
@@ -349,6 +440,10 @@ drop policy if exists "cualquiera con sesión lee actividades" on actividades;
 create policy "docente administra actividades" on actividades
   for all to authenticated using (exists (select 1 from docentes where id = (select auth.uid())))
   with check (exists (select 1 from docentes where id = (select auth.uid())));
+create policy "solo perfiles docentes permanentes usan actividades" on actividades
+  as restrictive for all to authenticated
+  using (coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) = false)
+  with check (coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) = false);
 
 -- entregas: el estudiante ve y crea las suyas; el docente ve las de sus grupos
 create policy "estudiante lee sus entregas" on entregas
@@ -387,6 +482,7 @@ create policy "docente ve reflexiones de sus grupos" on reflexiones
     )
   );
 
+
 -- autoevaluaciones_confianza: mismo patrón
 create policy "estudiante administra su confianza" on autoevaluaciones_confianza
   for all to authenticated using (estudiante_id = estudiante_actual())
@@ -398,6 +494,7 @@ create policy "docente ve confianza de sus grupos" on autoevaluaciones_confianza
       where g.docente_id = (select auth.uid())
     )
   );
+
 
 -- insignias: catálogo de lectura disponible para sesiones autenticadas
 create policy "sesión lee insignias" on insignias
@@ -413,6 +510,7 @@ create policy "docente ve insignias de sus grupos" on insignias_otorgadas
       where g.docente_id = (select auth.uid())
     )
   );
+
 
 -- retroalimentacion_docente: el docente registra apoyos solo en entregas de sus grupos;
 -- el estudiante dueño de la entrega las lee
@@ -546,6 +644,10 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --      (solo accesible vía funciones SECURITY DEFINER). Guarda el hash
 --      (pgcrypto) del código de invitación bajo la clave
 --      'codigo_invitacion_docente_hash'.
+--    - validar_invitacion_alta_docente() rechaza en auth.users cualquier alta
+--      permanente sin código válido antes de crear la cuenta; el secreto se
+--      elimina del metadata y crear_perfil_docente() vuelve a validarlo después
+--      de confirmar el correo.
 --    - se eliminó la policy "docente crea su propio perfil" (insert
 --      directo a la tabla docentes ya no está permitido para nadie).
 --    - función crear_perfil_docente(p_nombre, p_codigo_invitacion) es el
@@ -3103,12 +3205,10 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --       identificaban por placeholder.
 --     Typecheck y build limpios.
 --
---     Pendiente de decision de la usuaria, no corregido en esta pasada:
---     cerrar la lectura abierta de actividades/unidades (cualquier
---     sesion autenticada puede leer contenido con clave via API/SDK
---     directo, sin pasar por la UI) -- documentado como decision
---     consciente desde la Octava fase, y 3 de los 7 informes externos
---     lo volvieron a encontrar de forma independiente.
+--     La lectura abierta de actividades/unidades quedó cerrada: las
+--     policies anteriores se eliminan y solo la docente puede leerlas por
+--     Data API. El estudiante las recibe por Server Components después de
+--     validar su sesión y sus prerrequisitos.
 --
 -- 70. Cierre del punto diferido de la entrada anterior: la usuaria
 --     confirmo explicitamente cerrar ahora la lectura abierta de
@@ -3179,3 +3279,103 @@ insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
 --     entrada 69, la clave viajo en un ZIP a herramientas de IA
 --     externas) y compartir la clave nueva para actualizar .env.local
 --     (y despues Netlify por separado).
+
+-- ============================================================================
+-- Contrato vigente: administración permanente, MFA AAL2 y reportes con deduplicación.
+-- Este bloque debe permanecer en una reconstrucción junto con la migración
+-- 20260817012000_proteger_admin_y_reportes.sql.
+-- ============================================================================
+create or replace function public.es_administrador_activo()
+returns boolean language sql stable security definer set search_path = public, auth
+as $$
+  select exists (
+    select 1 from public.administradores a
+    join auth.users u on u.id = a.id
+    where a.id = (select auth.uid())
+      and a.activo = true
+      and u.email_confirmed_at is not null
+      and lower(u.email) = lower('digp.inv.ipn@gmail.com')
+      and (
+        not exists (
+          select 1 from auth.mfa_factors factor
+          where factor.user_id = (select auth.uid())
+            and factor.status = 'verified'
+        )
+        or coalesce((select auth.jwt()->>'aal'), 'aal1') = 'aal2'
+      )
+  );
+$$;
+revoke all on function public.es_administrador_activo() from public, anon;
+grant execute on function public.es_administrador_activo() to authenticated;
+
+create or replace function public.registrar_reporte(
+  p_reportante_tipo text, p_estudiante_id uuid, p_docente_id uuid,
+  p_grupo_id uuid, p_unidad_id uuid, p_actividad_id uuid,
+  p_categoria text, p_descripcion text, p_ruta text, p_contexto jsonb
+)
+returns table(id uuid, duplicado boolean)
+language plpgsql security definer set search_path = public
+as $$
+declare v_existente uuid; v_prioridad text; v_unidad_id uuid := p_unidad_id; v_contexto jsonb := coalesce(p_contexto, '{}'::jsonb);
+begin
+  if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo.'; end if;
+  if p_reportante_tipo not in ('estudiante', 'docente') then raise exception 'El tipo de reporte no es válido.'; end if;
+  if p_categoria not in ('acceso', 'actividad', 'avance', 'video', 'carga', 'contenido', 'orientacion', 'otro') then raise exception 'La categoría no es válida.'; end if;
+  if p_descripcion is null or length(trim(p_descripcion)) not between 10 and 2000 then raise exception 'La descripción debe tener entre 10 y 2000 caracteres.'; end if;
+  if p_ruta is not null and length(p_ruta) > 300 then raise exception 'La pantalla indicada no es válida.'; end if;
+  if jsonb_typeof(v_contexto) <> 'object' or length(v_contexto::text) > 4000 then raise exception 'El contexto del reporte no es válido.'; end if;
+  if p_unidad_id is not null and not exists (select 1 from public.unidades u where u.id = p_unidad_id) then raise exception 'La unidad del reporte no es válida.'; end if;
+  if p_actividad_id is not null then
+    select a.unidad_id into v_unidad_id from public.actividades a where a.id = p_actividad_id and (p_unidad_id is null or a.unidad_id = p_unidad_id);
+    if v_unidad_id is null then raise exception 'La actividad del reporte no es válida.'; end if;
+    v_contexto := jsonb_set(v_contexto, '{unidad_id}', to_jsonb(v_unidad_id::text), true);
+  end if;
+  if p_reportante_tipo = 'estudiante' then
+    if p_estudiante_id is null or p_docente_id is not null then raise exception 'El reporte de estudiante no es válido.'; end if;
+    if not exists (select 1 from public.estudiantes e where e.id = p_estudiante_id and e.auth_user_id = (select auth.uid()) and e.activo = true and (p_grupo_id is null or p_grupo_id = e.grupo_id)) then raise exception 'No tienes permiso para reportar ese contexto.'; end if;
+  else
+    if p_docente_id is null or p_estudiante_id is not null or p_docente_id <> (select auth.uid()) then raise exception 'El reporte de docente no es válido.'; end if;
+    if not exists (select 1 from public.docentes d where d.id = (select auth.uid())) then raise exception 'No encontramos tu perfil docente.'; end if;
+    if p_grupo_id is not null and not exists (select 1 from public.grupos g where g.id = p_grupo_id and g.docente_id = (select auth.uid())) then raise exception 'No tienes permiso para reportar ese grupo.'; end if;
+  end if;
+  select r.id into v_existente from public.reportes r where r.reportante_id = (select auth.uid()) and r.categoria = p_categoria and coalesce(r.ruta, '') = coalesce(p_ruta, '') and r.estado in ('recibido', 'en_revision', 'necesita_informacion') and r.created_at >= now() - interval '24 hours' order by r.created_at desc limit 1;
+  if v_existente is not null then return query select v_existente, true; return; end if;
+  v_prioridad := case when p_categoria in ('acceso', 'avance') then 'alta' when p_categoria = 'orientacion' then 'baja' else 'normal' end;
+  insert into public.reportes (reportante_id, reportante_tipo, estudiante_id, docente_id, grupo_id, unidad_id, actividad_id, categoria, descripcion, prioridad, ruta, contexto)
+  values ((select auth.uid()), p_reportante_tipo, p_estudiante_id, p_docente_id, p_grupo_id, v_unidad_id, p_actividad_id, p_categoria, trim(p_descripcion), v_prioridad, p_ruta, v_contexto)
+  returning public.reportes.id into v_existente;
+  return query select v_existente, false;
+end;
+$$;
+revoke execute on function public.registrar_reporte(text, uuid, uuid, uuid, uuid, uuid, text, text, text, jsonb) from public, anon;
+grant execute on function public.registrar_reporte(text, uuid, uuid, uuid, uuid, uuid, text, text, text, jsonb) to authenticated;
+
+create or replace function public.proteger_reporte_atencion()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  if new.reportante_id is distinct from old.reportante_id or new.reportante_tipo is distinct from old.reportante_tipo or new.estudiante_id is distinct from old.estudiante_id or new.docente_id is distinct from old.docente_id or new.grupo_id is distinct from old.grupo_id or new.unidad_id is distinct from old.unidad_id or new.actividad_id is distinct from old.actividad_id or new.categoria is distinct from old.categoria or new.descripcion is distinct from old.descripcion or new.ruta is distinct from old.ruta or new.contexto is distinct from old.contexto or new.created_at is distinct from old.created_at then
+    raise exception 'Los datos originales del reporte no se pueden modificar.';
+  end if;
+  if auth.uid() is not null and not public.es_administrador_activo() then raise exception 'No tienes permiso para atender reportes.'; end if;
+  if auth.uid() is not null and new.atendido_por is not null and new.atendido_por <> (select auth.uid()) then raise exception 'El reporte debe quedar atendido por la cuenta administrativa activa.'; end if;
+  return new;
+end;
+$$;
+drop trigger if exists trg_proteger_reporte_atencion on public.reportes;
+create trigger trg_proteger_reporte_atencion before update on public.reportes for each row execute function public.proteger_reporte_atencion();
+revoke execute on function public.proteger_reporte_atencion() from public, anon, authenticated;
+
+drop policy if exists "administrador ve su perfil" on public.administradores;
+create policy "administrador ve su perfil" on public.administradores for select to authenticated using (id = (select auth.uid()) and public.es_administrador_activo());
+drop policy if exists "reportes visibles para reportante o administrador" on public.reportes;
+create policy "reportes visibles para reportante o administrador" on public.reportes for select to authenticated using (reportante_id = (select auth.uid()) or public.es_administrador_activo());
+drop policy if exists "estudiante o docente crea su reporte" on public.reportes;
+drop policy if exists "administrador atiende reportes" on public.reportes;
+create policy "administrador atiende reportes" on public.reportes for update to authenticated using (public.es_administrador_activo()) with check (public.es_administrador_activo() and (atendido_por is null or atendido_por = (select auth.uid())));
+drop policy if exists "administrador observa docentes" on public.docentes;
+create policy "administrador observa docentes" on public.docentes for select to authenticated using (public.es_administrador_activo());
+drop policy if exists "administrador observa grupos" on public.grupos;
+create policy "administrador observa grupos" on public.grupos for select to authenticated using (public.es_administrador_activo());
+drop policy if exists "administrador observa estudiantes" on public.estudiantes;
+create policy "administrador observa estudiantes" on public.estudiantes for select to authenticated using (public.es_administrador_activo());
