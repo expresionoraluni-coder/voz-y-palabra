@@ -68,6 +68,13 @@ const adminReportesPage = await texto("src/app/admin/reportes/page.tsx");
 const actividadEstudiante = await texto("src/app/estudiante/actividad/[id]/page.tsx");
 const migracionReportesProtegidos = await texto("supabase/migrations/20260817121500_restringir_alta_reportes.sql");
 const migracionContextoReportes = await texto("supabase/migrations/20260817123000_derivar_unidad_en_reportes.sql");
+const recuperacion = await texto("src/app/ingreso/recuperar/page.tsx");
+const actualizarContrasena = await texto("src/app/ingreso/recuperar/actualizar/page.tsx");
+const reglasContrasena = await texto("src/lib/validar-contrasena.ts");
+const controlSesionAdmin = await texto("src/app/admin/control-sesion-admin.tsx");
+const adminDashboard = await texto("src/app/admin/page.tsx");
+const bandejaReportes = await texto("src/app/admin/reportes/bandeja-reportes.tsx");
+const reporteAtencion = await texto("src/app/admin/reportes/reporte-atencion.tsx");
 if (schema.includes('create policy "estudiante edita su propia fila"')) {
   failures.push("schema: el estudiante no debe tener una policy de UPDATE sobre su fila.");
 }
@@ -100,7 +107,7 @@ if (!functions.includes("v_path not like '%/rpc/crear_perfil_docente'") || !migr
 if (!ingresoDocente.includes("codigo_invitacion_docente") || !ingresoDocente.includes("codigoListo")) {
   failures.push("alta docente: el código debe comprobarse antes de registrar la cuenta.");
 }
-if (!ingresoDocente.includes("12 caracteres como mínimo") || !ingresoDocente.includes("contrasenaValida")) {
+if (!reglasContrasena.includes("12 caracteres como mínimo") || !ingresoDocente.includes("contrasenaValida")) {
   failures.push("alta docente: la contraseña debe mostrar y validar sus requisitos en español.");
 }
 if (!functions.includes("validar_invitacion_alta_docente") || !migracionInvitacion.includes("before insert on auth.users")) {
@@ -207,6 +214,30 @@ if (!schema.includes("auth.mfa_factors") || !functions.includes("auth.mfa_factor
 }
 if (!functions.includes("Esta cuenta tiene acceso administrativo y no se puede registrar como docente.") || !migracionMfaPoliciesAdmin.includes("Esta cuenta tiene acceso administrativo y no se puede registrar como docente.")) {
   failures.push("Supabase: la cuenta administrativa no debe poder registrarse también como docente.");
+}
+if (!ingresoDocente.includes("/ingreso/recuperar") || !recuperacion.includes("resetPasswordForEmail") || !recuperacion.includes("No se informa si el correo existe")) {
+  failures.push("recuperación: debe existir un restablecimiento por correo sin enumerar cuentas.");
+}
+if (!actualizarContrasena.includes("exchangeCodeForSession") || !actualizarContrasena.includes("PASSWORD_RECOVERY") || !actualizarContrasena.includes("updateUser({ password") || !actualizarContrasena.includes('signOut({ scope: "local" })')) {
+  failures.push("recuperación: el enlace debe intercambiarse, actualizar la contraseña y cerrar la sesión local.");
+}
+if (!reglasContrasena.includes("12 caracteres como mínimo") || !reglasContrasena.includes("esContrasenaValida")) {
+  failures.push("contraseña: los requisitos deben estar centralizados y reutilizables.");
+}
+if (!controlSesionAdmin.includes("30 * 60 * 1000") || !controlSesionAdmin.includes('signOut({ scope: "local" })')) {
+  failures.push("admin: debe cerrar la sesión local tras un periodo de inactividad.");
+}
+if (!proxy.includes('"private, no-store, max-age=0"') || !proxy.includes('"/ingreso/recuperar/:path*"')) {
+  failures.push("admin: las pantallas sensibles deben enviar Cache-Control no-store.");
+}
+if (!adminDashboard.includes('select("id", { count: "exact", head: true })') || !adminDashboard.includes("reportes24hCount")) {
+  failures.push("admin: el resumen debe usar conteos ligeros y mostrar actividad reciente.");
+}
+if (!bandejaReportes.includes("textoBusqueda") || !bandejaReportes.includes("limpiarFiltros")) {
+  failures.push("admin: la bandeja debe permitir buscar y limpiar filtros.");
+}
+if (!reporteAtencion.includes("SUGERENCIAS_ATENCION") || !reporteAtencion.includes("no una resolución automática")) {
+  failures.push("admin: la atención debe ofrecer una guía contextual sin resolver casos automáticamente.");
 }
 if (!workflow.includes("cp ../supabase/migrations/*.sql supabase/migrations/") || !workflow.includes("version: 2.101.0")) {
   failures.push("CI: debe aplicar las migraciones versionadas y fijar la versiÃ³n de Supabase CLI.");

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, KeyRound, ShieldCheck } from "lucide-react";
 import { requerirAdministrador } from "@/lib/supabase/requerir-administrador";
 import { Card } from "@/components/ui/card";
 import ConfigurarMfa from "./configurar-mfa";
@@ -36,6 +36,22 @@ export default async function SeguridadAdministrador() {
       </Card>
 
       <ConfigurarMfa activo={mfa.tieneFactorVerificado} />
+
+      <Card className="flex items-start gap-3 p-5">
+        <KeyRound className="mt-0.5 size-5 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+        <div className="flex flex-col gap-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          <p className="font-semibold text-slate-900 dark:text-slate-50">Contraseña administrativa</p>
+          <p>Si necesitas reemplazarla y no recuerdas la anterior, solicita un enlace en tu correo. La sesión se cerrará al terminar y el siguiente ingreso volverá a pedir el segundo factor.</p>
+          <Link href="/ingreso/recuperar" className="w-fit font-medium text-indigo-600 underline underline-offset-2 dark:text-indigo-400">
+            Cambiar contraseña por correo
+          </Link>
+        </div>
+      </Card>
+
+      <Card className="p-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        <p className="font-semibold text-slate-900 dark:text-slate-50">Cierre por inactividad</p>
+        <p className="mt-1">Por protección, el panel cierra esta sesión después de 30 minutos sin actividad. Si estás trabajando, cualquier interacción mantiene la sesión abierta.</p>
+      </Card>
     </div>
   );
 }

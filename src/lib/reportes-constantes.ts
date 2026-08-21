@@ -57,3 +57,23 @@ export const PRIORIDADES_REPORTE: Record<string, string> = {
   alta: "Alta",
   urgente: "Urgente",
 };
+
+// Son ayudas para quien atiende el caso, no respuestas automáticas. La
+// resolución siempre debe confirmar lo que se revisó realmente.
+export const SUGERENCIAS_ATENCION: Record<string, string> = {
+  estudiante_acceso: "Confirma que el código, el nombre y el NIP coincidan con la lista del grupo. Si el problema continúa, reinicia el NIP desde la ficha del estudiante.",
+  estudiante_actividad: "Revisa el intento guardado, la actividad anterior y si la respuesta quedó pendiente de mejorar antes de continuar.",
+  estudiante_avance: "Verifica la actividad que mantiene bloqueado el avance y confirma que la reflexión de la unidad esté guardada.",
+  estudiante_instruccion: "Aclara el objetivo de la actividad con una indicación breve y señala qué debe guardar para continuar.",
+  estudiante_video: "Comprueba que el enlace de YouTube siga disponible y que la actividad conserve la URL correcta.",
+  estudiante_tecnico: "Comprueba si el problema se reproduce en otra pestaña o dispositivo y revisa la conexión antes de modificar datos.",
+  estudiante_contenido: "Compara el contenido publicado con la versión validada de la actividad antes de corregirlo.",
+  docente_acceso: "Confirma el correo, la cuenta docente y, si es la cuenta administrativa, la verificación TOTP antes de revisar otro dato.",
+  docente_grupo: "Confirma el grupo visible, su nomenclatura y que la docente sea la responsable de ese grupo.",
+  docente_estudiantes: "Revisa la boleta, el nombre normalizado y el estado activo antes de reiniciar un NIP.",
+  docente_actividad: "Revisa la actividad y su tipo, instrucciones, respuesta esperada y dependencias antes de editarla.",
+  docente_seguimiento: "Compara el avance mostrado con las entregas guardadas y evita interpretar una actividad pendiente como una calificación.",
+  docente_video: "Comprueba que el enlace de YouTube sea público, corresponda al video indicado y esté guardado en la actividad correcta.",
+  docente_tecnico: "Comprueba si el problema se reproduce en otra pestaña o dispositivo y revisa la conexión antes de modificar datos.",
+  docente_otro: "Describe qué se revisó, qué se descartó y cuál es el siguiente paso recomendado.",
+};

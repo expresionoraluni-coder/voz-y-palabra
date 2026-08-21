@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ADMINISTRADOR_EMAIL } from "@/lib/admin-constantes";
 import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
 import { mensajeErrorAuth } from "@/lib/mensaje-error";
+import { esContrasenaValida, obtenerReglasContrasena } from "@/lib/validar-contrasena";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -23,14 +24,8 @@ export default function IngresoProfesora() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avisoConfirmacion, setAvisoConfirmacion] = useState(false);
-  const reglasContrasena = [
-    { etiqueta: "12 caracteres como mínimo", cumple: contrasena.length >= 12 },
-    { etiqueta: "Una letra mayúscula", cumple: /[A-ZÁÉÍÓÚÜÑ]/.test(contrasena) },
-    { etiqueta: "Una letra minúscula", cumple: /[a-záéíóúüñ]/.test(contrasena) },
-    { etiqueta: "Un número", cumple: /\d/.test(contrasena) },
-    { etiqueta: "Un símbolo", cumple: /[^\p{L}\p{N}\s]/u.test(contrasena) },
-  ];
-  const contrasenaValida = reglasContrasena.every((regla) => regla.cumple);
+  const reglasContrasena = obtenerReglasContrasena(contrasena);
+  const contrasenaValida = esContrasenaValida(contrasena);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -251,6 +246,14 @@ export default function IngresoProfesora() {
                     ? "Crear cuenta"
                     : "Continuar"}
             </Boton>
+            {modo === "entrar" && (
+              <Link
+                href="/ingreso/recuperar"
+                className="text-center text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            )}
             {modo === "crear" && codigoListo && (
               <button
                 type="button"

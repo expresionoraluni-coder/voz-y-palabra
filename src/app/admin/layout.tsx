@@ -3,6 +3,7 @@ import { LayoutDashboard, MessageSquareText, ShieldCheck } from "lucide-react";
 import { requerirAdministrador } from "@/lib/supabase/requerir-administrador";
 import CerrarSesion from "@/components/cerrar-sesion";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
+import ControlSesionAdmin from "./control-sesion-admin";
 
 export default async function LayoutAdministrador({ children }: { children: React.ReactNode }) {
   const { administrador, mfa } = await requerirAdministrador({ permitirConfiguracionMfa: true });
@@ -16,6 +17,7 @@ export default async function LayoutAdministrador({ children }: { children: Reac
         Saltar al contenido
       </a>
       <AvisoSinConexion mensaje="Estás sin conexión. La atención de reportes se reanudará cuando vuelva la conexión." />
+      <ControlSesionAdmin />
       <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <div>

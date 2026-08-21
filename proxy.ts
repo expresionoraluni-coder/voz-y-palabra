@@ -31,6 +31,17 @@ export async function proxy(request: NextRequest) {
   // los tokens antes de renderizar cualquier pantalla protegida.
   await supabase.auth.getUser();
 
+  // El panel administrativo y los formularios que contienen credenciales no
+  // deben quedar en caché del navegador ni de una capa intermedia.
+  if (
+    request.nextUrl.pathname.startsWith("/admin") ||
+    request.nextUrl.pathname.startsWith("/ingreso/admin") ||
+    request.nextUrl.pathname.startsWith("/ingreso/recuperar")
+  ) {
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("Pragma", "no-cache");
+  }
+
   return response;
 }
 
@@ -41,5 +52,6 @@ export const config = {
     "/estudiante/:path*",
     "/ingreso/profesora/:path*",
     "/ingreso/admin/:path*",
+    "/ingreso/recuperar/:path*",
   ],
 };

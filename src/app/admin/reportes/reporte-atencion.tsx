@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, MessageSquareText } from "lucide-react";
-import { ESTADOS_REPORTE, ETIQUETAS_CATEGORIA, PRIORIDADES_REPORTE } from "@/lib/reportes-constantes";
+import { Check, ChevronDown, Lightbulb, MessageSquareText } from "lucide-react";
+import { ESTADOS_REPORTE, ETIQUETAS_CATEGORIA, PRIORIDADES_REPORTE, SUGERENCIAS_ATENCION } from "@/lib/reportes-constantes";
 import { Card } from "@/components/ui/card";
 import Boton from "@/components/ui/button";
 import { ErrorText, Field, HelpText, Input, Label } from "@/components/ui/field";
@@ -53,6 +53,7 @@ export default function ReporteAtencion({
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sugerencia = SUGERENCIAS_ATENCION[reporte.categoria];
 
   async function guardar() {
     if (cargando) return;
@@ -125,6 +126,22 @@ export default function ReporteAtencion({
             <Input id={`resolucion-${reporte.id}`} value={resolucion} onChange={(e) => setResolucion(e.target.value)} maxLength={2000} placeholder="Qué revisaste o qué debe hacer la persona" />
             <HelpText>No es una calificación. Sirve para recordar cómo se resolvió el caso.</HelpText>
           </Field>
+          {sugerencia && (
+            <div className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-sm dark:border-indigo-900/70 dark:bg-indigo-950/30">
+              <Lightbulb className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+              <div className="flex min-w-0 flex-1 flex-col gap-2 text-slate-700 dark:text-slate-300">
+                <p><span className="font-semibold text-slate-900 dark:text-slate-50">Sugerencia de revisión:</span> {sugerencia}</p>
+                <button
+                  type="button"
+                  onClick={() => setResolucion((actual) => actual.trim() ? actual : sugerencia)}
+                  className="w-fit text-xs font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  Usar como base de la nota
+                </button>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Es una guía, no una resolución automática. Ajusta el texto a lo que realmente verificaste.</p>
+              </div>
+            </div>
+          )}
           {Object.keys(reporte.contexto ?? {}).length > 0 && (
             <p className="text-xs text-slate-500 dark:text-slate-400">El reporte incluye contexto automático de la pantalla donde ocurrió.</p>
           )}
