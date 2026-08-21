@@ -34,20 +34,31 @@ export default function ActualizarContrasena() {
       suscripcion = listener.data.subscription;
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      let session = null;
+
+      // createBrowserClient puede procesar automáticamente el código PKCE al
+      // leer la URL. Primero usamos esa sesión; solo hacemos el intercambio
+      // manual si todavía no existe, para no canjear el mismo código dos veces.
+      const { data: sesionInicial } = await supabase.auth.getSession();
+      session = sesionInicial.session;
+
+      if (!session && code) {
+        const { data: intercambio, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           if (activo) setError("El enlace ya venció o no es válido. Solicita uno nuevo.");
           if (activo) setCargando(false);
           return;
         }
+        session = intercambio.session;
+      }
+
+      if (session && code) {
         url.searchParams.delete("code");
         window.history.replaceState({}, "", url.toString());
       }
 
-      const { data, error: sessionError } = await supabase.auth.getSession();
       if (!activo) return;
-      if (sessionError || !data.session) {
+      if (!session) {
         setError("El enlace ya venció o no es válido. Solicita uno nuevo.");
       } else {
         setLista(true);
