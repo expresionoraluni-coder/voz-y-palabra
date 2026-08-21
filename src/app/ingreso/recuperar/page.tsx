@@ -10,7 +10,6 @@ import Boton from "@/components/ui/button";
 
 const SEGUNDOS_ESPERA_RECUPERACION = 60;
 const CLAVE_ESPERA_RECUPERACION = "voz-palabra-recuperacion-espera";
-const URL_PRODUCCION = "https://voz-y-palabra.netlify.app";
 
 export default function RecuperarContrasena() {
   const [correo, setCorreo] = useState("");
@@ -55,10 +54,8 @@ export default function RecuperarContrasena() {
     setCargando(true);
 
     const supabase = createClient();
-    const esEntornoLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-    const baseDeRetorno = esEntornoLocal ? URL_PRODUCCION : window.location.origin;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(correo.trim(), {
-      redirectTo: `${baseDeRetorno}/ingreso/recuperar/actualizar`,
+      redirectTo: `${window.location.origin}/ingreso/recuperar/actualizar`,
     });
 
     // No se informa si el correo existe: así el formulario no permite
@@ -130,7 +127,7 @@ export default function RecuperarContrasena() {
               {cargando ? "Enviando…" : segundosEspera > 0 ? `Espera ${segundosEspera} s` : "Enviar enlace"}
             </Boton>
             <p className="text-center text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              El enlace es de un solo uso. Solicítalo una vez y abre el mensaje más reciente en este mismo navegador.
+              El enlace es de un solo uso. Solicítalo una vez y abre el mensaje más reciente en este mismo navegador y dirección web.
             </p>
           </form>
         )}
