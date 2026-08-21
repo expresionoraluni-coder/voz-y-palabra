@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, MailCheck, KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -8,31 +8,73 @@ import { Card } from "@/components/ui/card";
 import { ErrorText, Field, HelpText, Input, Label } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 
+const SEGUNDOS_ESPERA_RECUPERACION = 60;
+const CLAVE_ESPERA_RECUPERACION = "voz-palabra-recuperacion-espera";
+const URL_PRODUCCION = "https://voz-y-palabra.netlify.app";
+
 export default function RecuperarContrasena() {
   const [correo, setCorreo] = useState("");
   const [cargando, setCargando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [segundosEspera, setSegundosEspera] = useState(0);
+
+  useEffect(() => {
+    const inicializador = window.setTimeout(() => {
+      const venceEn = Number(sessionStorage.getItem(CLAVE_ESPERA_RECUPERACION) ?? 0);
+      if (venceEn > Date.now()) {
+        setSegundosEspera(Math.ceil((venceEn - Date.now()) / 1000));
+      } else {
+        sessionStorage.removeItem(CLAVE_ESPERA_RECUPERACION);
+      }
+    }, 0);
+    return () => window.clearTimeout(inicializador);
+  }, []);
+
+  useEffect(() => {
+    if (segundosEspera <= 0) return;
+    const temporizador = window.setInterval(() => {
+      const venceEn = Number(sessionStorage.getItem(CLAVE_ESPERA_RECUPERACION) ?? 0);
+      const restantes = Math.max(0, Math.ceil((venceEn - Date.now()) / 1000));
+      setSegundosEspera(restantes);
+      if (restantes === 0) sessionStorage.removeItem(CLAVE_ESPERA_RECUPERACION);
+    }, 1000);
+    return () => window.clearInterval(temporizador);
+  }, [segundosEspera]);
+
+  function activarEspera() {
+    const venceEn = Date.now() + SEGUNDOS_ESPERA_RECUPERACION * 1000;
+    sessionStorage.setItem(CLAVE_ESPERA_RECUPERACION, String(venceEn));
+    setSegundosEspera(SEGUNDOS_ESPERA_RECUPERACION);
+  }
 
   async function enviarEnlace(evento: React.FormEvent) {
     evento.preventDefault();
-    if (cargando) return;
+    if (cargando || segundosEspera > 0) return;
     setError(null);
     setCargando(true);
 
     const supabase = createClient();
+    const esEntornoLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const baseDeRetorno = esEntornoLocal ? URL_PRODUCCION : window.location.origin;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(correo.trim(), {
-      redirectTo: `${window.location.origin}/ingreso/recuperar/actualizar`,
+      redirectTo: `${baseDeRetorno}/ingreso/recuperar/actualizar`,
     });
 
     // No se informa si el correo existe: así el formulario no permite
     // enumerar cuentas docentes o la cuenta administrativa.
     if (resetError) {
-      setError("No pudimos enviar el enlace. Revisa el correo e inténtalo de nuevo.");
+      if (/rate limit|only request this after|too many/i.test(resetError.message)) {
+        activarEspera();
+        setError("Por seguridad, espera un minuto antes de solicitar otro enlace. Usa únicamente el enlace más reciente.");
+      } else {
+        setError("No pudimos enviar el enlace. Revisa el correo e inténtalo de nuevo.");
+      }
       setCargando(false);
       return;
     }
 
+    activarEspera();
     setEnviado(true);
     setCargando(false);
   }
@@ -84,9 +126,12 @@ export default function RecuperarContrasena() {
               <HelpText>Necesitas tener acceso a este correo para completar el cambio.</HelpText>
             </Field>
             {error && <ErrorText>{error}</ErrorText>}
-            <Boton type="submit" cargando={cargando} className="w-full">
-              {cargando ? "Enviando…" : "Enviar enlace"}
+            <Boton type="submit" cargando={cargando} disabled={segundosEspera > 0} className="w-full">
+              {cargando ? "Enviando…" : segundosEspera > 0 ? `Espera ${segundosEspera} s` : "Enviar enlace"}
             </Boton>
+            <p className="text-center text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              El enlace es de un solo uso. Solicítalo una vez y abre el mensaje más reciente en este mismo navegador.
+            </p>
           </form>
         )}
       </Card>
