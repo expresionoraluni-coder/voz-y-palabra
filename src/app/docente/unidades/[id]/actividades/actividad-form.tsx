@@ -15,6 +15,7 @@ import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui
 import Boton from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
 import Alert from "@/components/ui/alert";
+import { instruccionesMomentosDeContenido } from "@/lib/instrucciones-momentos";
 
 type TipoActividad = { id: string; nombre: string; descripcion: string | null };
 
@@ -79,15 +80,18 @@ function ContadorLineas({ texto, singular, plural }: { texto: string; singular: 
 export default function ActividadForm({
   unidadId,
   actividadInicial,
+  tieneEntregas = false,
 }: {
   unidadId: string;
   actividadInicial?: ActividadInicial;
+  tieneEntregas?: boolean;
 }) {
   const router = useRouter();
   const modoEdicion = !!actividadInicial;
   // El contenido se conserva como JSON porque cada tipo tiene una forma distinta.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = (actividadInicial?.contenido ?? {}) as Record<string, any>;
+  const instruccionesIniciales = instruccionesMomentosDeContenido(c, actividadInicial?.instrucciones ?? "");
 
   const [tipos, setTipos] = useState<TipoActividad[]>([]);
   const [tipoId, setTipoId] = useState("");
@@ -96,6 +100,8 @@ export default function ActividadForm({
   const [aprendizajeEsperado, setAprendizajeEsperado] = useState(actividadInicial?.aprendizajeEsperado ?? "");
   const [videoUrl, setVideoUrl] = useState(actividadInicial?.videoUrl ?? "");
   const [ayuda, setAyuda] = useState(typeof c._ayuda === "string" ? c._ayuda : "");
+  const [instruccionPresentacion, setInstruccionPresentacion] = useState(instruccionesIniciales.presentacion);
+  const [instruccionVideo, setInstruccionVideo] = useState(instruccionesIniciales.video);
 
   type RondaEditor = {
     contexto: string;
@@ -191,30 +197,62 @@ export default function ActividadForm({
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCargaTipos, setErrorCargaTipos] = useState<string | null>(null);
+  const [cargandoTipos, setCargandoTipos] = useState(true);
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
   const [borradorListo, setBorradorListo] = useState(false);
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const [tipoBorradorNombre, setTipoBorradorNombre] = useState<string | null>(null);
+  const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
+  const nombreTipo = tipoSeleccionado?.nombre;
+  const disponible = esTipoActividadActual(nombreTipo);
+  const tipoHistoricoEnEdicion = modoEdicion && Boolean(nombreTipo) && !disponible;
+  const puedeGuardar = disponible || tipoHistoricoEnEdicion;
+  const contenidoBloqueado = modoEdicion && tieneEntregas;
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setUsuarioId(data.user?.id ?? null));
+    const nombresTipos = Array.from(
+      new Set([
+        ...TIPOS_ACTIVIDAD_ACTUALES,
+        ...(actividadInicial?.tipoNombre ? [actividadInicial.tipoNombre] : []),
+      ]),
+    );
     supabase
       .from("tipos_actividad")
       .select("id, nombre, descripcion")
-      .in("nombre", TIPOS_ACTIVIDAD_ACTUALES)
+      .in("nombre", nombresTipos)
       .order("nombre")
-      .then(({ data }) => {
-        setTipos(data ?? []);
-        if (actividadInicial) {
-          const actual = data?.find((t) => t.nombre === actividadInicial.tipoNombre);
-          if (actual) setTipoId(actual.id);
+      .then(({ data, error: tiposError }) => {
+        if (tiposError) {
+          setTipos([]);
+          setErrorCargaTipos("No pudimos cargar los tipos de actividad. Recarga la página para intentarlo de nuevo.");
+          setCargandoTipos(false);
+          return;
+        }
+        const tiposCargados = data ?? [];
+        setTipos(tiposCargados);
+        const nombrePreferido = actividadInicial?.tipoNombre ?? tipoBorradorNombre;
+        const actual = nombrePreferido
+          ? tiposCargados.find((t) => t.nombre === nombrePreferido)
+          : undefined;
+        if (actividadInicial && !actual) {
+          setErrorCargaTipos("No pudimos encontrar el tipo de esta actividad. No se puede editar hasta recuperar sus datos.");
+        }
+        if (actual) {
+          setTipoId(actual.id);
         } else {
-          const primero = data?.find((t) => t.nombre === TIPOS_ACTIVIDAD_ACTUALES[0]);
+          const primero = tiposCargados.find((t) => t.nombre === TIPOS_ACTIVIDAD_ACTUALES[0]);
           if (primero) setTipoId(primero.id);
         }
+        if (!actividadInicial && tiposCargados.length === 0) {
+          setErrorCargaTipos("No hay tipos de actividad disponibles. Recarga la página para intentarlo de nuevo.");
+        }
+        setCargandoTipos(false);
       });
-  }, [actividadInicial]);
+  }, [actividadInicial, tipoBorradorNombre]);
 
   // Borrador: solo en modo creación — se restaura una vez al montar y se
   // guarda en cada cambio; se limpia al guardar con éxito.
@@ -230,11 +268,14 @@ export default function ActividadForm({
     }
     try {
       const datos = JSON.parse(guardado);
+      if (typeof datos.tipoNombre === "string" && datos.tipoNombre) setTipoBorradorNombre(datos.tipoNombre);
       if (datos.titulo) setTitulo(datos.titulo);
       if (datos.instrucciones) setInstrucciones(datos.instrucciones);
       if (datos.aprendizajeEsperado) setAprendizajeEsperado(datos.aprendizajeEsperado);
       if (datos.videoUrl) setVideoUrl(datos.videoUrl);
       if (datos.ayuda) setAyuda(datos.ayuda);
+      if (datos.instruccionPresentacion) setInstruccionPresentacion(datos.instruccionPresentacion);
+      if (datos.instruccionVideo) setInstruccionVideo(datos.instruccionVideo);
       if (datos.introOJ) setIntroOJ(datos.introOJ);
       if (datos.rondasOJ) setRondasOJ(datos.rondasOJ);
       if (datos.categorias) setCategorias(datos.categorias);
@@ -279,13 +320,16 @@ export default function ActividadForm({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (modoEdicion || !usuarioId || !borradorListo) return;
+    if (modoEdicion || !usuarioId || !borradorListo || cargandoTipos) return;
     const datos = {
+      tipoNombre: nombreTipo,
       titulo,
       instrucciones,
       aprendizajeEsperado,
       videoUrl,
       ayuda,
+      instruccionPresentacion,
+      instruccionVideo,
       introOJ,
       rondasOJ,
       categorias,
@@ -331,11 +375,15 @@ export default function ActividadForm({
     unidadId,
     usuarioId,
     borradorListo,
+    cargandoTipos,
+    nombreTipo,
     titulo,
     instrucciones,
     aprendizajeEsperado,
     videoUrl,
     ayuda,
+    instruccionPresentacion,
+    instruccionVideo,
     introOJ,
     rondasOJ,
     categorias,
@@ -372,9 +420,6 @@ export default function ActividadForm({
     temasOrtografia,
   ]);
 
-  const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
-  const nombreTipo = tipoSeleccionado?.nombre;
-  const disponible = esTipoActividadActual(nombreTipo);
   const IconoTipo = ICONO_TIPO[nombreTipo ?? ""] ?? MessageSquareText;
   const listaCategorias = lineas(categorias);
   const listaEtiquetas = lineas(etiquetas);
@@ -434,13 +479,20 @@ export default function ActividadForm({
     if (cargando) return;
     setError(null);
 
-    if (!tipoId || !nombreTipo || !disponible) {
+    if (contenidoBloqueado) {
+      setError("Esta actividad ya tiene entregas y su contenido está protegido para no invalidar respuestas previas.");
+      return;
+    }
+
+    if (!tipoId || !nombreTipo || !puedeGuardar) {
       setError("Selecciona un tipo de actividad vigente antes de guardar.");
       return;
     }
 
     const tituloNormalizado = titulo.trim();
     const instruccionesNormalizadas = instrucciones.trim();
+    const instruccionPresentacionNormalizada = instruccionPresentacion.trim();
+    const instruccionVideoNormalizada = instruccionVideo.trim();
     const aprendizajeNormalizado = aprendizajeEsperado.trim();
     const ayudaNormalizada = ayuda.trim();
     if (!tituloNormalizado) {
@@ -452,11 +504,19 @@ export default function ActividadForm({
       return;
     }
     if (!instruccionesNormalizadas) {
-      setError("Escribe una instrucción clara para el estudiante.");
+      setError("Escribe una instrucción clara para el momento de resolver la actividad.");
       return;
     }
     if (instruccionesNormalizadas.length > 3000) {
       setError("Las instrucciones no pueden superar 3000 caracteres.");
+      return;
+    }
+    if (!instruccionPresentacionNormalizada || !instruccionVideoNormalizada) {
+      setError("Escribe las instrucciones de presentación y del video.");
+      return;
+    }
+    if (instruccionPresentacionNormalizada.length > 1200 || instruccionVideoNormalizada.length > 1200) {
+      setError("Las instrucciones de presentación y del video no pueden superar 1200 caracteres cada una.");
       return;
     }
     if (aprendizajeNormalizado.length > 800) {
@@ -470,7 +530,11 @@ export default function ActividadForm({
 
     let contenido: Record<string, unknown> | null = null;
 
-    if (nombreTipo === "opcion_justificacion") {
+    if (tipoHistoricoEnEdicion) {
+      // Un tipo histórico se conserva tal cual: ya no tiene editor vigente,
+      // pero sus datos sí deben poder mantenerse al actualizar metadatos.
+      contenido = actividadInicial?.contenido ?? {};
+    } else if (nombreTipo === "opcion_justificacion") {
       const rondasValidas: {
         contexto?: string;
         pregunta: string;
@@ -662,7 +726,17 @@ export default function ActividadForm({
       return;
     }
 
-    if (contenido && ayudaNormalizada) contenido = { ...contenido, _ayuda: ayudaNormalizada };
+    if (contenido) {
+      contenido = {
+        ...contenido,
+        instrucciones_momentos: {
+          presentacion: instruccionPresentacionNormalizada,
+          video: instruccionVideoNormalizada,
+          actividad: instruccionesNormalizadas,
+        },
+      };
+      if (ayudaNormalizada) contenido = { ...contenido, _ayuda: ayudaNormalizada };
+    }
 
     const videoUrlNormalizada = videoUrl.trim();
     const videosConfigurados = [
@@ -697,10 +771,15 @@ export default function ActividadForm({
         return;
       }
     } else {
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from("actividades")
         .select("id", { count: "exact", head: true })
         .eq("unidad_id", unidadId);
+      if (countError) {
+        setError("No pudimos determinar el orden de la nueva actividad. Intenta de nuevo.");
+        setCargando(false);
+        return;
+      }
 
       const { error: insertError } = await supabase.from("actividades").insert({
         unidad_id: unidadId,
@@ -799,7 +878,7 @@ export default function ActividadForm({
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref={`/docente/unidades/${unidadId}`}
         eyebrow={modoEdicion ? "Editar actividad" : "Nueva actividad"}
@@ -830,7 +909,15 @@ export default function ActividadForm({
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      {errorCargaTipos && <Alert tono="error">{errorCargaTipos}</Alert>}
+      {contenidoBloqueado && (
+        <Alert tono="warning">
+          Esta actividad ya tiene entregas. Su contenido no se puede modificar porque podría cambiar la interpretación de respuestas previas. Puedes actualizar el video desde la lista de actividades.
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit}>
+    <fieldset disabled={contenidoBloqueado || cargandoTipos || Boolean(errorCargaTipos)} className="flex flex-col gap-6">
         <Card className="flex flex-col gap-4 p-5">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Datos que verá el estudiante</h2>
@@ -841,7 +928,8 @@ export default function ActividadForm({
           <Field>
             <Label htmlFor="tipo">Dinámica de la actividad</Label>
             <Select id="tipo" value={tipoId} onChange={(e) => setTipoId(e.target.value)} disabled={modoEdicion || tipos.length === 0}>
-              {!tipos.length && <option value="">Cargando tipos de actividad…</option>}
+              {cargandoTipos && <option value="">Cargando tipos de actividad…</option>}
+              {!cargandoTipos && !tipos.length && <option value="">No hay tipos disponibles</option>}
               {tipos.map((t) => (
                 <option key={t.id} value={t.id}>
                   {etiquetaTipo(t.nombre)}
@@ -851,6 +939,11 @@ export default function ActividadForm({
             {nombreTipo && <HelpText>{DESCRIPCION_TIPO[nombreTipo] ?? "Configura esta dinámica paso a paso."}</HelpText>}
             {modoEdicion && (
               <HelpText>El tipo no se puede cambiar una vez creada la actividad.</HelpText>
+            )}
+            {tipoHistoricoEnEdicion && (
+              <HelpText>
+                Esta actividad usa un tipo histórico. Se conservará su contenido mientras editas sus datos generales; ese tipo ya no está disponible para nuevas actividades.
+              </HelpText>
             )}
             {!disponible && tipoId && (
               <HelpText>
@@ -866,7 +959,33 @@ export default function ActividadForm({
           </Field>
 
           <Field>
-            <Label htmlFor="instrucciones">Instrucciones</Label>
+            <Label htmlFor="instruccionPresentacion">Momento 1 · Presentación y expectativa</Label>
+            <Textarea
+              id="instruccionPresentacion"
+              required
+              maxLength={1200}
+              value={instruccionPresentacion}
+              onChange={(e) => setInstruccionPresentacion(e.target.value)}
+              rows={2}
+            />
+            <HelpText>Indica qué debe observar, pensar o anticipar antes de ver el video.</HelpText>
+          </Field>
+
+          <Field>
+            <Label htmlFor="instruccionVideo">Momento 2 · Video de apoyo</Label>
+            <Textarea
+              id="instruccionVideo"
+              required
+              maxLength={1200}
+              value={instruccionVideo}
+              onChange={(e) => setInstruccionVideo(e.target.value)}
+              rows={2}
+            />
+            <HelpText>Indica qué debe buscar o relacionar mientras observa el video.</HelpText>
+          </Field>
+
+          <Field>
+            <Label htmlFor="instrucciones">Momento 3 · Resolver la actividad</Label>
             <Textarea
               id="instrucciones"
               required
@@ -920,7 +1039,7 @@ export default function ActividadForm({
               placeholder="https://www.youtube.com/watch?v=..."
             />
             <HelpText>
-              Usa un enlace público o no listado de YouTube. Se mostrará antes de las instrucciones de la actividad.
+              Usa un enlace público o no listado de YouTube. Se mostrará en el momento 2, antes del ejercicio.
             </HelpText>
           </Field>
         </Card>
@@ -1540,9 +1659,15 @@ export default function ActividadForm({
 
         {error && <Alert tono="error">{error}</Alert>}
 
-        <Boton type="submit" disabled={cargando || !tipoId || !disponible} cargando={cargando} className="self-start">
+        <Boton
+          type="submit"
+          disabled={cargando || cargandoTipos || Boolean(errorCargaTipos) || contenidoBloqueado || !tipoId || !puedeGuardar}
+          cargando={cargando}
+          className="self-start"
+        >
           {cargando ? "Guardando..." : modoEdicion ? "Guardar cambios" : "Crear actividad"}
         </Boton>
+        </fieldset>
       </form>
     </div>
   );

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LifeBuoy, Send, X } from "lucide-react";
+import { CheckCircle2, LifeBuoy, Send, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   CATEGORIAS_REPORTE_DOCENTE,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/reportes-constantes";
 import Boton from "@/components/ui/button";
 import { ErrorText, Field, HelpText, Label } from "@/components/ui/field";
+import { faqFallback, idFaqValido, normalizarFaqArticulo, type FaqArticulo } from "@/lib/faq";
 
 type AyudaRapida = { titulo: string; pasos: string[] };
 
@@ -23,7 +24,7 @@ const AYUDAS_ESTUDIANTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
   },
   estudiante_actividad: {
     titulo: "Antes de pedir ayuda",
-    pasos: ["Guarda tu respuesta antes de salir.", "Si depende de otra actividad, termina la anterior y vuelve a intentarlo.", "Si tienes intentos disponibles, usa Volver a intentar."],
+    pasos: ["Guarda tu respuesta antes de salir.", "Si depende de otra actividad, termina la anterior y guarda su reflexión.", "Cada actividad tiene un solo intento; revisa tu respuesta antes de guardarla y repórtalo aquí si algo no funciona."],
   },
   estudiante_avance: {
     titulo: "Revisa qué falta",
@@ -83,8 +84,17 @@ type ReportePropio = {
   categoria: string;
   descripcion: string;
   estado: string;
-  resolucion: string | null;
+  respuesta_publica: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+type MensajePropio = {
+  id: string;
+  reporte_id: string;
+  autor_tipo: "reportante" | "administrador";
+  mensaje: string;
+  creado_en: string;
 };
 
 const UUID_FRAGMENT = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
@@ -105,6 +115,10 @@ function etiquetaCategoria(categoria: string) {
   return ETIQUETAS_CATEGORIA[categoria] ?? categoria;
 }
 
+function folioReporte(id: string) {
+  return id.slice(0, 8).toUpperCase();
+}
+
 export default function ReportarProblema({
   tipo,
   estudianteId,
@@ -121,6 +135,7 @@ export default function ReportarProblema({
   const pathname = usePathname();
   const categorias = tipo === "estudiante" ? CATEGORIAS_REPORTE_ESTUDIANTE : CATEGORIAS_REPORTE_DOCENTE;
   const ayudas = tipo === "estudiante" ? AYUDAS_ESTUDIANTE : AYUDAS_DOCENTE;
+  const audiencia = tipo === "estudiante" ? "estudiante" : "docente";
   const [abierto, setAbierto] = useState(false);
   const [vista, setVista] = useState<"formulario" | "reportes">("formulario");
   const [categoria, setCategoria] = useState<CategoriaReporte>(tipo === "estudiante" ? "estudiante_actividad" : "docente_grupo");
@@ -128,16 +143,132 @@ export default function ReportarProblema({
   const [cargando, setCargando] = useState(false);
   const [cargandoReportes, setCargandoReportes] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [reporteEnviadoId, setReporteEnviadoId] = useState<string | null>(null);
   const [misReportes, setMisReportes] = useState<ReportePropio[] | null>(null);
+  const [faqArticulos, setFaqArticulos] = useState<FaqArticulo[] | null>(null);
+  const [faqCargando, setFaqCargando] = useState(false);
+  const [faqResuelto, setFaqResuelto] = useState(false);
+  const [respuestasFaq, setRespuestasFaq] = useState<Record<string, string>>({});
+  const [mensajesReporte, setMensajesReporte] = useState<Record<string, string>>({});
+  const [mensajesPropios, setMensajesPropios] = useState<Record<string, MensajePropio[]>>({});
+  const [enviandoMensajeId, setEnviandoMensajeId] = useState<string | null>(null);
+  const [mensajeEnviadoId, setMensajeEnviadoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const primerFocoRef = useRef<HTMLButtonElement>(null);
+  const focoAnteriorRef = useRef<HTMLElement | null>(null);
+  const faqMostradaRef = useRef<string | null>(null);
+  const faqCargaIniciadaRef = useRef(false);
 
-  function cerrar() {
+  const cerrar = useCallback(() => {
     if (cargando || cargandoReportes) return;
     setAbierto(false);
     setVista("formulario");
     setEnviado(false);
+    setReporteEnviadoId(null);
     setMisReportes(null);
+    setFaqResuelto(false);
+    setRespuestasFaq({});
+    setMensajesReporte({});
+    setMensajesPropios({});
+    setMensajeEnviadoId(null);
     setError(null);
+  }, [cargando, cargandoReportes]);
+
+  useEffect(() => {
+    if (!abierto) {
+      focoAnteriorRef.current?.focus();
+      focoAnteriorRef.current = null;
+      return;
+    }
+
+    focoAnteriorRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => primerFocoRef.current?.focus());
+
+    function controlarTeclado(evento: KeyboardEvent) {
+      if (evento.key === "Escape") {
+        evento.preventDefault();
+        cerrar();
+        return;
+      }
+
+      if (evento.key !== "Tab" || !dialogRef.current) return;
+      const elementosEnfoque = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (elementosEnfoque.length === 0) return;
+
+      const primero = elementosEnfoque[0];
+      const ultimo = elementosEnfoque[elementosEnfoque.length - 1];
+      if (evento.shiftKey && document.activeElement === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    }
+
+    document.addEventListener("keydown", controlarTeclado);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", controlarTeclado);
+    };
+  }, [abierto, cerrar]);
+
+  useEffect(() => {
+    if (!abierto || faqArticulos !== null || faqCargaIniciadaRef.current) return;
+    let cancelado = false;
+    faqCargaIniciadaRef.current = true;
+    void (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("faq_articulos")
+        .select("id, audiencia, categoria, slug, titulo, resumen, pasos, preguntas")
+        .eq("activo", true)
+        .order("orden", { ascending: true })
+        .limit(40);
+      if (cancelado) return;
+      const articulos = (data ?? []).map(normalizarFaqArticulo).filter((articulo): articulo is FaqArticulo => articulo !== null);
+      setFaqArticulos(articulos);
+      setFaqCargando(false);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [abierto, faqArticulos, faqCargando]);
+
+  const articuloFaq = faqArticulos?.find((articulo) => (articulo.categoria === categoria || (articulo.categoria === "tecnico" && categoria.endsWith("_tecnico"))) && (articulo.audiencia === audiencia || articulo.audiencia === "ambos"))
+    ?? faqFallback(categoria, audiencia);
+
+  useEffect(() => {
+    if (!abierto || !articuloFaq || faqMostradaRef.current === articuloFaq.slug) return;
+    faqMostradaRef.current = articuloFaq.slug;
+    if (!idFaqValido(articuloFaq.id)) return;
+    void createClient().rpc("registrar_interaccion_faq", {
+      p_articulo_id: articuloFaq.id,
+      p_evento: "mostrado",
+      p_contexto: { origen: "boton_ayuda", ruta: pathname, audiencia },
+    });
+  }, [abierto, articuloFaq, audiencia, pathname]);
+
+  function cambiarCategoria(valor: CategoriaReporte) {
+    setCategoria(valor);
+    setRespuestasFaq({});
+    setFaqResuelto(false);
+    setError(null);
+  }
+
+  function registrarEventoFaq(evento: "abierto" | "util" | "no_util" | "reporte_creado", reporteId?: string | null) {
+    if (!articuloFaq || !idFaqValido(articuloFaq.id)) return;
+    void createClient().rpc("registrar_interaccion_faq", {
+      p_articulo_id: articuloFaq.id,
+      p_evento: evento,
+      p_reporte_id: reporteId ?? null,
+      p_contexto: { origen: "boton_ayuda", ruta: pathname, respuestas: respuestasFaq },
+    });
   }
 
   async function abrirMisReportes() {
@@ -152,7 +283,7 @@ export default function ReportarProblema({
     const supabase = createClient();
     const { data, error: consultaError } = await supabase
       .from("reportes")
-      .select("id, categoria, descripcion, estado, resolucion, created_at")
+      .select("id, categoria, descripcion, estado, respuesta_publica, created_at, updated_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
@@ -162,9 +293,58 @@ export default function ReportarProblema({
       return;
     }
 
-    setMisReportes((data ?? []) as ReportePropio[]);
+    const reportes = (data ?? []) as ReportePropio[];
+    const ids = reportes.map((reporte) => reporte.id);
+    const { data: mensajes, error: mensajesError } = ids.length
+      ? await supabase
+          .from("reporte_mensajes")
+          .select("id, reporte_id, autor_tipo, mensaje, creado_en")
+          .in("reporte_id", ids)
+          .order("creado_en", { ascending: true })
+      : { data: [], error: null };
+    if (mensajesError) {
+      setError("Cargamos tus solicitudes, pero no pudimos cargar la conversación.");
+    }
+    const mapaMensajes: Record<string, MensajePropio[]> = {};
+    for (const mensaje of (mensajes ?? []) as MensajePropio[]) {
+      (mapaMensajes[mensaje.reporte_id] ??= []).push(mensaje);
+    }
+    setMensajesPropios(mapaMensajes);
+    setMisReportes(reportes);
     setVista("reportes");
     setCargandoReportes(false);
+  }
+
+  async function enviarMensajeEnSolicitud(reporteId: string) {
+    const mensaje = (mensajesReporte[reporteId] ?? "").trim();
+    if (mensaje.length < 2 || enviandoMensajeId) return;
+    setEnviandoMensajeId(reporteId);
+    setError(null);
+    const resultado = await createClient().rpc("registrar_mensaje_reporte", {
+      p_reporte_id: reporteId,
+      p_mensaje: mensaje,
+    });
+    if (resultado.error) {
+      setError("No pudimos enviar la información adicional. Intenta de nuevo.");
+      setEnviandoMensajeId(null);
+      return;
+    }
+    setMensajesPropios((actual) => ({
+      ...actual,
+      [reporteId]: [
+        ...(actual[reporteId] ?? []),
+        {
+          id: `${reporteId}-local-${(actual[reporteId] ?? []).length}`,
+          reporte_id: reporteId,
+          autor_tipo: "reportante",
+          mensaje,
+          creado_en: "",
+        },
+      ],
+    }));
+    setMensajesReporte((actual) => ({ ...actual, [reporteId]: "" }));
+    setMensajeEnviadoId(reporteId);
+    setEnviandoMensajeId(null);
   }
 
   async function enviar(e: React.FormEvent) {
@@ -186,6 +366,8 @@ export default function ReportarProblema({
       grupo_id: grupoId ?? ruta.grupoId,
       unidad_id: ruta.unidadId,
       actividad_id: ruta.actividadId,
+      ...(idFaqValido(articuloFaq?.id ?? null) ? { faq_articulo_id: articuloFaq?.id } : {}),
+      ...(Object.keys(respuestasFaq).length ? { faq_respuestas: respuestasFaq } : {}),
     };
     const { data: resultado, error: insertError } = await supabase.rpc("registrar_reporte", {
       p_reportante_tipo: tipo,
@@ -212,6 +394,9 @@ export default function ReportarProblema({
       return;
     }
 
+    const reporteId = resultado?.[0]?.id ?? null;
+    setReporteEnviadoId(reporteId);
+    if (reporteId && articuloFaq) registrarEventoFaq("reporte_creado", reporteId);
     setDescripcion("");
     setCargando(false);
     setMisReportes(null);
@@ -221,15 +406,15 @@ export default function ReportarProblema({
   const ayuda = ayudas[categoria];
 
   return (
-    <div className={`fixed ${tipo === "estudiante" && navegacionInferior ? "bottom-24" : "bottom-4"} right-4 z-30 sm:right-6`}>
+    <div className={`fixed print:hidden ${tipo === "estudiante" && navegacionInferior ? "bottom-24" : "bottom-4"} right-4 z-30 sm:right-6`}>
       {abierto ? (
-        <div role="dialog" aria-modal="true" aria-labelledby="reporte-titulo" className="w-[min(92vw,22rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reporte-titulo" className="max-h-[calc(100dvh-2rem)] w-[min(92vw,22rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 id="reporte-titulo" className="font-semibold text-slate-900 dark:text-slate-50">Ayuda</h2>
               <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Primero encontrarás una orientación rápida; si no basta, envía una solicitud.</p>
             </div>
-            <button type="button" onClick={cerrar} aria-label="Cerrar ayuda" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+            <button ref={primerFocoRef} type="button" onClick={cerrar} aria-label="Cerrar ayuda" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800 dark:hover:text-slate-200">
               <X className="size-4" aria-hidden="true" />
             </button>
           </div>
@@ -254,8 +439,30 @@ export default function ReportarProblema({
                         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ESTADOS_REPORTE[reporte.estado] ?? reporte.estado}</span>
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">{reporte.descripcion}</p>
-                      {reporte.resolucion && <p className="mt-2 rounded-lg bg-emerald-50 p-2 text-xs leading-relaxed text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{reporte.resolucion}</p>}
-                      <time dateTime={reporte.created_at} className="mt-2 block text-[11px] text-slate-400 dark:text-slate-500">{reporte.created_at.slice(0, 10)}</time>
+                      {reporte.respuesta_publica && <p className="mt-2 rounded-lg bg-emerald-50 p-2 text-xs leading-relaxed text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{reporte.respuesta_publica}</p>}
+                      <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">Folio {folioReporte(reporte.id)} · Actualizado {reporte.updated_at.slice(0, 10)}</p>
+                      {(mensajesPropios[reporte.id] ?? []).length > 0 && (
+                        <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Conversación</p>
+                          {(mensajesPropios[reporte.id] ?? []).map((mensaje) => (
+                            <div key={mensaje.id} className={`rounded-lg p-2 text-xs leading-relaxed ${mensaje.autor_tipo === "administrador" ? "bg-indigo-50 text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200" : "bg-slate-50 text-slate-700 dark:bg-slate-800/70 dark:text-slate-300"}`}>
+                              <p className="font-semibold">{mensaje.autor_tipo === "administrador" ? "Administración" : "Tú"}</p>
+                              <p className="mt-0.5 whitespace-pre-wrap">{mensaje.mensaje}</p>
+                              <time dateTime={mensaje.creado_en || undefined} className="mt-1 block text-[10px] opacity-70">{mensaje.creado_en ? new Date(mensaje.creado_en).toLocaleString("es-MX") : "Ahora"}</time>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {reporte.estado === "necesita_informacion" && (
+                        <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                          <label htmlFor={`respuesta-${reporte.id}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">El administrador necesita más información</label>
+                          <textarea id={`respuesta-${reporte.id}`} value={mensajesReporte[reporte.id] ?? ""} onChange={(e) => setMensajesReporte((actual) => ({ ...actual, [reporte.id]: e.target.value }))} maxLength={2000} rows={2} placeholder="Explica qué ocurrió o qué probaste" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500">{mensajeEnviadoId === reporte.id ? "Información enviada." : "No incluyas contraseñas ni NIP."}</span>
+                            <Boton type="button" size="sm" variant="secondary" onClick={() => enviarMensajeEnSolicitud(reporte.id)} cargando={enviandoMensajeId === reporte.id} disabled={(mensajesReporte[reporte.id] ?? "").trim().length < 2}>Enviar información</Boton>
+                          </div>
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -266,20 +473,50 @@ export default function ReportarProblema({
             <div className="mt-4 flex flex-col gap-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
               <p className="font-semibold">Solicitud enviada.</p>
               <p>Ya registramos dónde ocurrió. Puedes continuar trabajando mientras la revisamos.</p>
+              {reporteEnviadoId && <p className="text-xs font-semibold">Folio de seguimiento: {folioReporte(reporteEnviadoId)}</p>}
               <div className="flex flex-wrap gap-2">
                 <Boton type="button" size="sm" variant="secondary" onClick={abrirMisReportes}>Ver mis solicitudes</Boton>
                 <Boton type="button" size="sm" variant="secondary" onClick={cerrar}>Cerrar</Boton>
               </div>
             </div>
+          ) : faqResuelto ? (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <CheckCircle2 className="size-5" aria-hidden="true" />
+              <p className="font-semibold">Qué bueno, esperamos que puedas continuar.</p>
+              <p>Si el problema vuelve a aparecer, abre Ayuda y envía una solicitud con la pantalla donde ocurrió.</p>
+              <Boton type="button" size="sm" variant="secondary" onClick={() => setFaqResuelto(false)}>Necesito enviar otra solicitud</Boton>
+            </div>
           ) : (
             <form onSubmit={enviar} className="mt-4 flex flex-col gap-3">
               <Field>
                 <Label htmlFor="reporte-categoria">¿Con qué necesitas ayuda?</Label>
-                <select id="reporte-categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaReporte)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
+                <select id="reporte-categoria" value={categoria} onChange={(e) => cambiarCategoria(e.target.value as CategoriaReporte)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
                   {categorias.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
                 </select>
               </Field>
-              {ayuda && (
+              {articuloFaq ? (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-xs leading-relaxed text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
+                  <p className="font-semibold text-slate-900 dark:text-slate-50">{articuloFaq.titulo}</p>
+                  <p className="mt-1">{articuloFaq.resumen}</p>
+                  <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                    {articuloFaq.pasos.map((paso) => <li key={paso}>{paso}</li>)}
+                  </ul>
+                  {articuloFaq.preguntas.map((pregunta) => (
+                    <div key={pregunta.id} className="mt-3 flex flex-col gap-1.5">
+                      <Label htmlFor={`faq-${pregunta.id}`}>{pregunta.pregunta}</Label>
+                      <select id={`faq-${pregunta.id}`} value={respuestasFaq[pregunta.id] ?? ""} onChange={(e) => setRespuestasFaq((actual) => ({ ...actual, [pregunta.id]: e.target.value }))} className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
+                        <option value="">Selecciona una opción</option>
+                        {pregunta.opciones.map((opcion) => <option key={opcion.id} value={opcion.id}>{opcion.etiqueta}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => { registrarEventoFaq("util"); setFaqResuelto(true); }} className="rounded-lg bg-emerald-100 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200">Sí, me sirvió</button>
+                    <button type="button" onClick={() => registrarEventoFaq("no_util")} className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 dark:bg-slate-900 dark:text-indigo-300 dark:ring-indigo-800">No, todavía necesito ayuda</button>
+                  </div>
+                  {faqCargando && <p className="mt-2 text-slate-500 dark:text-slate-400">Actualizando la orientación…</p>}
+                </div>
+              ) : ayuda && (
                 <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-xs leading-relaxed text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
                   <p className="font-semibold text-slate-900 dark:text-slate-50">{ayuda.titulo}</p>
                   <ul className="mt-1.5 list-disc space-y-1 pl-4">

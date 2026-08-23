@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
 import { normalizarNombre } from "@/lib/normalizar-nombre";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { editarEstudiante } from "./acciones-estudiante";
 
 export default function EditarEstudiante({
   estudianteId,
@@ -43,14 +42,9 @@ export default function EditarEstudiante({
     }
 
     setCargando(true);
-    const supabase = createClient();
-    const { error: updError } = await supabase
-      .from("estudiantes")
-      .update({ nombre: normalizarNombre(nombre), boleta: boleta.trim() || null })
-      .eq("id", estudianteId);
-
-    if (updError) {
-      setError(mensajeError(updError));
+    const resultado = await editarEstudiante(estudianteId, nombre, boleta);
+    if (!resultado.ok) {
+      setError(resultado.error);
       setCargando(false);
       return;
     }

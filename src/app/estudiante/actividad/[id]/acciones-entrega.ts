@@ -26,16 +26,25 @@ function validarEntregaAbiertaPorTipo(
     }
     if (estado !== "pendiente_revision") return "El estado de esta entrega no es válido.";
     const celdas = respuesta.celdas;
+    const conceptos = contenido.conceptos;
+    const criterios = contenido.criterios;
     if (
       !Array.isArray(celdas) ||
+      !Array.isArray(conceptos) ||
+      !Array.isArray(criterios) ||
+      celdas.length !== criterios.length ||
       !celdas.every(
         (fila) =>
           Array.isArray(fila) &&
-          fila.length <= 20 &&
+          fila.length === conceptos.length &&
           fila.every((celda) => typeof celda === "string" && celda.length <= 500),
       )
     ) {
       return "La respuesta del comparador no es válida.";
+    }
+    const celdasTexto = celdas as string[][];
+    if (celdasTexto.some((fila) => fila.some((celda) => contarPalabras(celda) < 2))) {
+      return "Completa todas las celdas con al menos unas palabras antes de guardar.";
     }
   }
 

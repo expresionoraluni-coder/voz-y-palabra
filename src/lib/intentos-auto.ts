@@ -1,5 +1,6 @@
-export const MAX_INTENTOS_AUTO = 3;
-export const PUNTAJE_DESBLOQUEO = 70;
+// Cada actividad conserva una sola entrega por estudiante. El límite se aplica
+// también en Supabase para que no dependa de lo que envíe el navegador.
+export const MAX_INTENTOS_AUTO = 1;
 
 export type MetaEntregaAuto = {
   intentos: number;
@@ -47,13 +48,8 @@ export function quitarMetaEntregaAuto(respuesta: Record<string, unknown>): Recor
   return respuestaLimpia;
 }
 
-export function agregarMetaEntregaAuto(
-  respuesta: Record<string, unknown>,
-  meta: MetaEntregaAuto,
-): Record<string, unknown> {
-  return { ...quitarMetaEntregaAuto(respuesta), _meta: meta };
-}
-
 export function puedeAbrirDependiente(puntaje: number | null, respuesta: unknown): boolean {
-  return (puntaje ?? 0) >= PUNTAJE_DESBLOQUEO || intentosDeEntregaAuto(respuesta) >= MAX_INTENTOS_AUTO;
+  // El desbloqueo depende de que exista una entrega, no de que alcance un
+  // umbral ni de que todavía queden intentos.
+  return Boolean(respuesta) || puntaje !== null;
 }

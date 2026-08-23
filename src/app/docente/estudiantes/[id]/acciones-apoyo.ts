@@ -28,7 +28,9 @@ export async function guardarOrientacionAccion(
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+  if (userError) return { ok: false, error: "No pudimos validar tu sesión. Intenta de nuevo." };
   if (!user) return { ok: false, error: "Tu sesión expiró. Entra de nuevo para continuar." };
 
   const admin = createAdminClient();
@@ -37,32 +39,37 @@ export async function guardarOrientacionAccion(
     .select("id, estudiante_id, estado")
     .eq("id", entregaId)
     .single();
-  if (entregaError || !entrega) return { ok: false, error: "No encontramos esta entrega." };
+  if (entregaError) {
+    return {
+      ok: false,
+      error: entregaError.code === "PGRST116" ? "No encontramos esta entrega." : "No pudimos cargar esta entrega. Intenta de nuevo.",
+    };
+  }
+  if (!entrega) return { ok: false, error: "No encontramos esta entrega." };
 
-  const { data: estudiante } = await admin
+  const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
     .select("grupo_id")
     .eq("id", entrega.estudiante_id)
     .single();
-  const { data: grupo } = estudiante?.grupo_id
-    ? await admin.from("grupos").select("docente_id").eq("id", estudiante.grupo_id).single()
-    : { data: null };
+  if (estudianteError || !estudiante?.grupo_id) return { ok: false, error: "No pudimos comprobar el grupo de esta entrega." };
+
+  const { data: grupo, error: grupoError } = await admin
+    .from("grupos")
+    .select("docente_id")
+    .eq("id", estudiante.grupo_id)
+    .single();
+  if (grupoError) return { ok: false, error: "No pudimos comprobar el permiso sobre esta entrega." };
   if (grupo?.docente_id !== user.id) {
     return { ok: false, error: "No tienes permiso para acompañar esta entrega." };
   }
 
-  if (comentario.trim()) {
-    const { error } = await admin.from("retroalimentacion_docente").insert({
-      entrega_id: entregaId,
-      docente_id: user.id,
-      comentario: comentario.trim(),
-    });
-    if (error) return { ok: false, error: mensajeError(error) };
-  }
-
-  const cambios: Record<string, unknown> = { evaluacion_docente: estadoApoyo };
-  if (marcarAtendida && entrega.estado === "pendiente_revision") cambios.estado = "revisada";
-  const { error: actualizarError } = await admin.from("entregas").update(cambios).eq("id", entregaId);
+  const { error: actualizarError } = await supabase.rpc("registrar_orientacion_docente", {
+    p_entrega_id: entregaId,
+    p_comentario: comentario.trim(),
+    p_estado_apoyo: estadoApoyo,
+    p_marcar_atendida: marcarAtendida,
+  });
   if (actualizarError) return { ok: false, error: mensajeError(actualizarError) };
 
   return { ok: true };

@@ -9,9 +9,33 @@ loadEnvConfig(process.cwd(), false, { info: () => {}, error: () => {} });
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const TARGET_PROJECT_REF = process.env.E2E_PROJECT_REF;
+const TARGET_CONFIRMATION = process.env.E2E_CONFIRMATION;
 
 if (!URL || !ANON_KEY || !SERVICE_ROLE_KEY) {
   throw new Error("Faltan variables de entorno necesarias para la prueba de carga.");
+}
+
+const projectRefFromUrl = (() => {
+  try {
+    return new URL(URL).hostname.split(".")[0] ?? "";
+  } catch {
+    return "";
+  }
+})();
+
+if (
+  !TARGET_PROJECT_REF ||
+  projectRefFromUrl !== TARGET_PROJECT_REF ||
+  TARGET_CONFIRMATION !== `VOZ_Y_PALABRA_CARGA_${TARGET_PROJECT_REF}`
+) {
+  throw new Error(
+    "Prueba detenida: define E2E_PROJECT_REF y E2E_CONFIRMATION=VOZ_Y_PALABRA_CARGA_<project-ref> para confirmar el proyecto objetivo.",
+  );
+}
+
+if (process.env.NODE_ENV === "production" && process.env.E2E_ALLOW_PRODUCTION !== "1") {
+  throw new Error("Prueba detenida: no se permite ejecutar la carga en producción sin E2E_ALLOW_PRODUCTION=1.");
 }
 
 const TOTAL_GROUPS = 2;

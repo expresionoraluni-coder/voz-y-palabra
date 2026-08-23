@@ -14,6 +14,7 @@ import ProgressBar from "@/components/ui/progress-bar";
 import Avatar from "@/components/ui/avatar";
 import EmptyState from "@/components/ui/empty-state";
 import { temaUnidad } from "@/lib/unidad-tema";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 export default async function FichaEstudiante({
   params,
@@ -33,23 +34,24 @@ export default async function FichaEstudiante({
   const [
     {
       data: { user },
+      error: sesionError,
     },
-    { data: estudiante },
-    { data: unidades },
-    { data: entregas },
-    { data: confianzas },
-    { data: reflexiones },
-    { data: insignias },
-    { data: predicciones },
-    { data: bitacoras },
-    { data: comentarios },
+    { data: estudiante, error: estudianteError },
+    { data: unidades, error: unidadesError },
+    { data: entregas, error: entregasError },
+    { data: confianzas, error: confianzasError },
+    { data: reflexiones, error: reflexionesError },
+    { data: insignias, error: insigniasError },
+    { data: predicciones, error: prediccionesError },
+    { data: bitacoras, error: bitacorasError },
+    { data: comentarios, error: comentariosError },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase
       .from("estudiantes")
       .select("id, nombre, grupo_id, activo, boleta, grupos(nombre)")
       .eq("id", id)
-      .single(),
+      .maybeSingle(),
     supabase
       .from("unidades")
       .select("id, nombre, orden, actividades(id)")
@@ -91,6 +93,17 @@ export default async function FichaEstudiante({
       .order("created_at", { ascending: false }),
   ]);
 
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
+  revisarErrorConsulta(estudianteError, "No pudimos cargar esta ficha de estudiante.");
+  revisarErrorConsulta(unidadesError, "No pudimos cargar las unidades del curso.");
+  revisarErrorConsulta(entregasError, "No pudimos cargar las entregas de este estudiante.");
+  revisarErrorConsulta(confianzasError, "No pudimos cargar los niveles de confianza.");
+  revisarErrorConsulta(reflexionesError, "No pudimos cargar las reflexiones del estudiante.");
+  revisarErrorConsulta(insigniasError, "No pudimos cargar las insignias del estudiante.");
+  revisarErrorConsulta(prediccionesError, "No pudimos cargar las predicciones del estudiante.");
+  revisarErrorConsulta(bitacorasError, "No pudimos cargar la bitácora del estudiante.");
+  revisarErrorConsulta(comentariosError, "No pudimos cargar las orientaciones docentes.");
+
   if (!user) redirect("/ingreso/profesora");
   if (!estudiante) notFound();
 
@@ -107,7 +120,7 @@ export default async function FichaEstudiante({
   const casosPendientes = entregas?.filter((entrega) => entrega.estado === "pendiente_revision").length ?? 0;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col gap-8 px-6 py-10">
       <div className="flex items-start gap-4">
         <Avatar nombre={estudiante.nombre} size="lg" />
         <div className="flex-1">

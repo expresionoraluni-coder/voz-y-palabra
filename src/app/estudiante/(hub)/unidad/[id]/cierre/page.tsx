@@ -21,8 +21,9 @@ export default async function CierreUnidadEstudiante({
   } = await supabase.auth.getUser();
   if (!user) redirect("/ingreso/estudiante");
 
-  const { data: estudiante } = await supabase.from("estudiantes").select("id").single();
+  const { data: estudiante } = await supabase.from("estudiantes").select("id, debe_cambiar_nip").single();
   if (!estudiante) redirect("/ingreso/estudiante");
+  if (estudiante.debe_cambiar_nip) redirect("/estudiante/cambiar-nip");
 
   const [{ data: unidad }, { data: actividades }, { data: entregas }] = await Promise.all([
     admin
@@ -50,25 +51,38 @@ export default async function CierreUnidadEstudiante({
           .filter((entrega) => idsActividadesAnteriores.has(entrega.actividad_id) && entregaCuentaComoCompletada(entrega))
           .map((entrega) => entrega.actividad_id),
       ).size;
-      const { data: reflexionAnterior } = await supabase
-        .from("reflexiones")
-        .select("id")
-        .eq("estudiante_id", estudiante.id)
-        .eq("unidad_id", unidadAnterior.id)
-        .eq("momento", "cierre")
-        .maybeSingle();
       const ultimaActividadAnterior = unidadAnterior.actividades.slice().sort((a, b) => b.orden - a.orden)[0];
-      const { data: reflexionUltimaActividadAnterior } = ultimaActividadAnterior
-        ? await supabase
+      const [
+        { data: reflexionAnterior },
+        { data: confianzaAnterior },
+        { data: reflexionUltimaActividadAnterior },
+      ] = await Promise.all([
+        supabase
+          .from("reflexiones")
+          .select("id")
+          .eq("estudiante_id", estudiante.id)
+          .eq("unidad_id", unidadAnterior.id)
+          .eq("momento", "cierre")
+          .maybeSingle(),
+        supabase
+          .from("autoevaluaciones_confianza")
+          .select("id")
+          .eq("estudiante_id", estudiante.id)
+          .eq("unidad_id", unidadAnterior.id)
+          .eq("momento", "cierre")
+          .maybeSingle(),
+        ultimaActividadAnterior
+          ? supabase
             .from("reflexiones")
             .select("id")
             .eq("estudiante_id", estudiante.id)
             .eq("actividad_id", ultimaActividadAnterior.id)
             .eq("momento", "cierre")
             .maybeSingle()
-        : { data: null };
+          : Promise.resolve({ data: null, error: null }),
+      ]);
 
-      if (!unidadEstaCompleta(totalAnterior, hechasAnterior) || !reflexionAnterior || !reflexionUltimaActividadAnterior) {
+      if (!unidadEstaCompleta(totalAnterior, hechasAnterior) || !reflexionAnterior || !reflexionUltimaActividadAnterior || !confianzaAnterior) {
         redirect(`/estudiante/unidad/${unidadAnterior.id}`);
       }
     }
@@ -80,7 +94,7 @@ export default async function CierreUnidadEstudiante({
   const entregasUnicasUnidad = new Set(
     entregasUnidad.filter((entrega) => entregaCuentaComoCompletada(entrega)).map((entrega) => entrega.actividad_id),
   );
-  const unidadCompleta = listaActividades.length > 0 && entregasUnicasUnidad.size === listaActividades.length;
+  const unidadCompleta = unidadEstaCompleta(listaActividades.length, entregasUnicasUnidad.size);
   if (!unidadCompleta) redirect(`/estudiante/unidad/${id}`);
 
   const ultimaActividad = listaActividades[listaActividades.length - 1];
@@ -178,7 +192,6 @@ export default async function CierreUnidadEstudiante({
       </div>
 
       <UnidadCierre
-        estudianteId={estudiante.id}
         unidadId={id}
         metaPrevia={bitacora?.meta ?? null}
         textoPrevio={reflexionCierre?.texto ?? null}

@@ -3,15 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Gauge, Lightbulb } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { mensajeCalibracionUnidad, placeholderReflexionUnidad } from "@/lib/calibracion-confianza";
+import { guardarReflexionUnidad } from "../../../acciones-reflexiones";
 
 export default function ReflexionCierre({
-  estudianteId,
   unidadId,
   metaPrevia,
   textoPrevio,
@@ -19,7 +17,6 @@ export default function ReflexionCierre({
   promedioUnidad,
   onGuardado,
 }: {
-  estudianteId: string;
   unidadId: string;
   metaPrevia?: string | null;
   textoPrevio?: string | null;
@@ -41,20 +38,16 @@ export default function ReflexionCierre({
     setError(null);
     setCargando(true);
 
-    const supabase = createClient();
     try {
-      const { error: upsertError } = await supabase.from("reflexiones").upsert(
-        { estudiante_id: estudianteId, unidad_id: unidadId, momento: "cierre", texto },
-        { onConflict: "estudiante_id,unidad_id,momento" },
-      );
-
-      if (upsertError) {
-        setError(mensajeError(upsertError));
+      const resultado = await guardarReflexionUnidad(unidadId, texto);
+      if (!resultado.ok) {
+        setError(resultado.error);
         return;
       }
 
     // Igual que en bitácora/confianza: las reflexiones de cierre cuentan
     // para "Primera reflexión"/"Mente reflexiva".
+      const supabase = (await import("@/lib/supabase/client")).createClient();
       try {
         await supabase.rpc("verificar_insignias");
       } catch {

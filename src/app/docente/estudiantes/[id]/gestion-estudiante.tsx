@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, UserCheck, UserX } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
 import Boton from "@/components/ui/button";
 import { ErrorText } from "@/components/ui/field";
+import { darDeBajaEstudiante, eliminarEstudiante, reactivarEstudiante } from "./acciones-estudiante";
 
 export default function GestionEstudiante({
   estudianteId,
@@ -28,13 +27,9 @@ export default function GestionEstudiante({
     if (cargando) return;
     setCargando(true);
     setError(null);
-    const supabase = createClient();
-    const { error: updError } = await supabase
-      .from("estudiantes")
-      .update({ activo: false, auth_user_id: null, debe_cambiar_nip: true })
-      .eq("id", estudianteId);
-    if (updError) {
-      setError(mensajeError(updError));
+    const resultado = await darDeBajaEstudiante(estudianteId);
+    if (!resultado.ok) {
+      setError(resultado.error);
       setCargando(false);
       return;
     }
@@ -47,13 +42,9 @@ export default function GestionEstudiante({
     if (cargando) return;
     setCargando(true);
     setError(null);
-    const supabase = createClient();
-    const { error: updError } = await supabase
-      .from("estudiantes")
-      .update({ activo: true })
-      .eq("id", estudianteId);
-    if (updError) {
-      setError(mensajeError(updError));
+    const resultado = await reactivarEstudiante(estudianteId);
+    if (!resultado.ok) {
+      setError(resultado.error);
       setCargando(false);
       return;
     }
@@ -65,10 +56,9 @@ export default function GestionEstudiante({
     if (cargando) return;
     setCargando(true);
     setError(null);
-    const supabase = createClient();
-    const { error: delError } = await supabase.from("estudiantes").delete().eq("id", estudianteId);
-    if (delError) {
-      setError(mensajeError(delError));
+    const resultado = await eliminarEstudiante(estudianteId);
+    if (!resultado.ok) {
+      setError(resultado.error);
       setCargando(false);
       return;
     }

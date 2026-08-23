@@ -55,7 +55,7 @@ export default async function Portafolio() {
   );
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10 print:px-0">
+    <main className="print-surface mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10 print:px-0">
       <div className="flex items-center justify-between print:hidden">
         <PageHeader
           volverHref="/estudiante/inicio"
@@ -122,6 +122,6 @@ export default async function Portafolio() {
           </section>
         );
       })}
-    </div>
+    </main>
   );
 }

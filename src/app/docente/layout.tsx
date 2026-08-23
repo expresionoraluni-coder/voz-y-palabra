@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ADMINISTRADOR_EMAIL } from "@/lib/admin-constantes";
+import { createAdminClient } from "@/lib/supabase/admin";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import ReportarProblema from "@/components/reportar-problema";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 // Sin esto, cualquier sesión con "authenticated" (incluida la de un
 // estudiante, cuyo login también pasa por auth.signInAnonymously()) podía
@@ -15,14 +16,33 @@ export default async function LayoutDocente({ children }: { children: React.Reac
   const supabase = await createClient();
   const {
     data: { user },
+    error: sesionError,
   } = await supabase.auth.getUser();
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
   if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
 
-  if (user.email?.trim().toLowerCase() === ADMINISTRADOR_EMAIL) {
+  const [
+    { data: administrador, error: administradorError },
+    { data: docente, error: docenteError },
+  ] = await Promise.all([
+    createAdminClient()
+      .from("administradores")
+      .select("id")
+      .eq("id", user.id)
+      .eq("activo", true)
+      .maybeSingle(),
+    supabase
+      .from("docentes")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
+  revisarErrorConsulta(administradorError, "No pudimos validar los permisos de esta cuenta.");
+  if (administrador) {
     redirect("/admin");
   }
 
-  const { data: docente } = await supabase.from("docentes").select("id").eq("id", user.id).maybeSingle();
+  revisarErrorConsulta(docenteError, "No pudimos cargar tu perfil docente.");
   if (!docente) {
     redirect("/ingreso/profesora/verificar");
   }

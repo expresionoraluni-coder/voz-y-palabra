@@ -8,7 +8,6 @@ import ReflexionCierre from "../reflexion-cierre";
 import Confianza from "../confianza";
 
 export default function UnidadCierre({
-  estudianteId,
   unidadId,
   metaPrevia,
   textoPrevio,
@@ -18,7 +17,6 @@ export default function UnidadCierre({
   siguienteHref,
   textoSiguiente,
 }: {
-  estudianteId: string;
   unidadId: string;
   metaPrevia: string | null;
   textoPrevio: string | null;
@@ -50,12 +48,11 @@ export default function UnidadCierre({
       <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3.5 dark:border-emerald-900 dark:bg-emerald-950/30">
         <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Tu esfuerzo cuenta</p>
         <p className="mt-1 text-sm leading-relaxed text-emerald-800 dark:text-emerald-300">
-          Cada intento te ayudó a practicar. Reconocer lo que ya puedes hacer también forma parte de aprender.
+          Cada actividad te ayudó a practicar. Reconocer lo que ya puedes hacer también forma parte de aprender.
         </p>
       </div>
 
       <ReflexionCierre
-        estudianteId={estudianteId}
         unidadId={unidadId}
         metaPrevia={metaPrevia}
         textoPrevio={textoPrevio}
@@ -65,7 +62,6 @@ export default function UnidadCierre({
       />
 
       <Confianza
-        estudianteId={estudianteId}
         unidadId={unidadId}
         momento="cierre"
         valorPrevio={confianzaCierrePct}

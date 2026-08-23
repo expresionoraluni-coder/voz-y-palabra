@@ -107,7 +107,7 @@ export default async function DetalleGrupo({
       .single(),
     supabase.from("estudiantes").select("id, nombre, created_at, activo").eq("grupo_id", id).order("nombre"),
     supabase.from("unidades").select("id, nombre, orden").order("orden"),
-    supabase.from("actividades").select("id, unidad_id, titulo, tipos_actividad(nombre)"),
+    supabase.from("actividades").select("id, unidad_id, titulo, contenido, tipos_actividad(nombre)"),
     supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor"),
     supabase
       .from("avisos")
@@ -129,7 +129,12 @@ export default async function DetalleGrupo({
   if (!user) redirect("/ingreso/profesora");
   if (!grupo) notFound();
 
-  const idsEstudiantesGrupo = (estudiantesTodos ?? []).map((estudiante) => estudiante.id);
+  const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);
+  const estudiantesBaja = (estudiantesTodos ?? []).filter((e) => !e.activo);
+  // Las métricas del grupo representan al roster activo. Las entregas de una
+  // persona dada de baja se conservan para su ficha, pero no deben inflar el
+  // avance ni aparecer como casos sin nombre en este panel.
+  const idsEstudiantesGrupo = estudiantes.map((estudiante) => estudiante.id);
   const { data: entregas, error: entregasError } = await cargarEntregasPaginadas<EntregaResumenGrupo>(
     supabase,
     idsEstudiantesGrupo,
@@ -138,9 +143,9 @@ export default async function DetalleGrupo({
   revisarErrorConsulta(entregasError, "No pudimos cargar el avance del grupo.");
 
   // La tabla entregas puede contener respuestas JSON grandes. El panel solo
-  // necesita ese JSON para la matriz de confusión de los dos tipos
-  // autoevaluables; el resto de métricas usa únicamente el resumen anterior.
-  // Así se evita descargar respuestas abiertas y textos largos en cada visita.
+  // necesita las elecciones del estudiante para la matriz de confusión; las
+  // respuestas correctas se leen del contenido de la actividad en el servidor
+  // y nunca se guardan dentro de la respuesta visible al estudiante.
   const tiposConConfusion = new Set(["clasificacion", "etiquetado_texto"]);
   const actividadesMapa = new Map(
     (actividades ?? []).map((actividad) => {
@@ -148,7 +153,15 @@ export default async function DetalleGrupo({
         ? actividad.tipos_actividad[0]
         : actividad.tipos_actividad;
       const unidad = (unidades ?? []).find((item) => item.id === actividad.unidad_id);
-      return [actividad.id, { titulo: actividad.titulo, tipo: tipo?.nombre ?? "otro", unidadOrden: unidad?.orden ?? null }];
+      return [
+        actividad.id,
+        {
+          titulo: actividad.titulo,
+          tipo: tipo?.nombre ?? "otro",
+          unidadOrden: unidad?.orden ?? null,
+          contenido: actividad.contenido as Record<string, unknown>,
+        },
+      ];
     }),
   );
   const idsActividadesConConfusion = (actividades ?? [])
@@ -169,8 +182,6 @@ export default async function DetalleGrupo({
     : { data: [] as EntregaConfusionGrupo[], error: null };
   revisarErrorConsulta(entregasConConfusionError, "No pudimos cargar los datos para detectar dificultades comunes.");
 
-  const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);
-  const estudiantesBaja = (estudiantesTodos ?? []).filter((e) => !e.activo);
   const totalActividades = actividades?.length ?? 0;
   const entregasSeguras = entregas ?? [];
   const entregasPorEstudiante = new Map<string, typeof entregasSeguras>();
@@ -219,7 +230,7 @@ export default async function DetalleGrupo({
   const sinActividadReciente = porEstudiante.filter((e) => e.diasInactivo !== null && e.diasInactivo > DIAS_INACTIVIDAD).length;
   // Más antigua primero: sin esto salían en el orden arbitrario en que las
   // devolvía Postgres, no en el orden en que conviene atenderlas.
-  const entregasPorRevisar = (entregas ?? [])
+  const entregasPorRevisar = entregasSeguras
     .filter((en) => en.estado === "pendiente_revision")
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
@@ -295,18 +306,21 @@ export default async function DetalleGrupo({
   // dato ya guardado en respuesta.elegidas, solo que agregado más fino.
   const confusionMap = new Map<string, { elemento: string; correcta: string; elegida: string; veces: number }>();
   for (const en of entregasConConfusion ?? []) {
-    const respuesta = en.respuesta as {
-      elegidas?: string[];
-      itemsSnapshot?: { texto: string; correcta: string }[];
-    } | null;
+    const respuesta = en.respuesta as { elegidas?: string[] } | null;
     const elegidas = respuesta?.elegidas ?? [];
+    const actividad = actividadesMapa.get(en.actividad_id);
+    const contenido = (actividad as { contenido?: Record<string, unknown> } | undefined)?.contenido ?? {};
+    const elementos = actividad?.tipo === "clasificacion"
+      ? ((contenido.elementos as { texto?: string; categoria_correcta?: string }[] | undefined) ?? []).map((item) => ({
+          texto: item.texto ?? "",
+          correcta: item.categoria_correcta ?? "",
+        }))
+      : ((contenido.fragmentos as { texto?: string; etiqueta_correcta?: string }[] | undefined) ?? []).map((item) => ({
+          texto: item.texto ?? "",
+          correcta: item.etiqueta_correcta ?? "",
+        }));
 
-    // Las entregas actuales guardan un snapshot de los elementos evaluados.
-    // Si una entrega histórica no lo tiene, se omite de esta métrica para no
-    // traer el JSON completo de cada actividad solo como respaldo.
-    const items = respuesta?.itemsSnapshot ?? [];
-
-    items.forEach((item, i) => {
+    elementos.forEach((item, i) => {
       const elegida = elegidas[i];
       if (!elegida || elegida === item.correcta) return;
       const key = `${item.texto}|||${elegida}`;
@@ -350,7 +364,7 @@ export default async function DetalleGrupo({
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-6 py-10">
       <PageHeader
         volverHref="/docente/dashboard"
         titulo={grupo.nombre}
@@ -433,7 +447,7 @@ export default async function DetalleGrupo({
                 <span>{a.texto}</span>
                 <Link
                   href={`/docente/estudiantes/${a.estudianteId}`}
-                  className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-xs font-semibold text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-200 dark:hover:text-amber-50"
+                  className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs font-semibold text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-200 dark:hover:text-amber-50"
                 >
                   Ver perfil
                 </Link>

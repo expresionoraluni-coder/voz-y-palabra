@@ -1,4 +1,5 @@
 export type ComparacionPalabra = { correcta: string; escrita: string; correcto: boolean };
+export type ComparacionPalabraPublica = { escrita: string; correcto: boolean };
 
 export type ContenidoOrtografia = {
   contexto?: string | null;
@@ -32,6 +33,10 @@ function quitarPuntuacionBorde(palabra: string): string {
     .replace(/[.,;:!?"'«»)(){}\]["'—–-]+$/, "");
 }
 
+function normalizarPalabra(palabra: string): string {
+  return quitarPuntuacionBorde(palabra).normalize("NFC").toLocaleLowerCase("es-MX");
+}
+
 export function compararPalabras(textoCorrecto: string, textoReescrito: string): ComparacionPalabra[] {
   const correctas = tokenizar(textoCorrecto);
   const escritas = tokenizar(textoReescrito);
@@ -41,7 +46,7 @@ export function compararPalabras(textoCorrecto: string, textoReescrito: string):
     const correcta = correctas[i] ?? "";
     const escrita = escritas[i] ?? "";
     const correcto =
-      correcta !== "" && escrita !== "" && quitarPuntuacionBorde(correcta) === quitarPuntuacionBorde(escrita);
+      correcta !== "" && escrita !== "" && normalizarPalabra(correcta) === normalizarPalabra(escrita);
     comparacion.push({ correcta, escrita, correcto });
   }
   return comparacion;

@@ -5,7 +5,7 @@ import { Check, CheckCircle2, ChevronLeft, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
-import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import ProgressBar from "@/components/ui/progress-bar";
 import { bloquearPegado } from "@/lib/anti-copiar";
@@ -23,7 +23,7 @@ import {
 } from "@/lib/opcion-justificacion";
 import { calificarOpcionJustificacionAccion } from "./acciones-calificacion";
 
-type ItemResultado = { correcta: boolean; opcionCorrecta: string };
+type ItemResultado = { correcta: boolean };
 
 function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
   if (mensajes.length === 0) return null;
@@ -80,14 +80,14 @@ function PreguntaRonda({
   indice,
   onCambiar,
   bloqueado,
-  opcionCorrecta,
+  resultado,
 }: {
   ronda: RondaContenidoPublica;
   respuesta: RondaRespuesta;
   indice: number;
   onCambiar: (cambios: Partial<RondaRespuesta>) => void;
   bloqueado: boolean;
-  opcionCorrecta?: string;
+  resultado?: ItemResultado;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -102,10 +102,9 @@ function PreguntaRonda({
         <div className="flex flex-col gap-2">
           {ronda.opciones.map((op) => {
             const seleccionada = respuesta.opcion === op;
-            const esCorrecta = op === opcionCorrecta;
             let estilo =
               "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50";
-            if (bloqueado && esCorrecta) {
+            if (bloqueado && seleccionada && resultado?.correcta) {
               estilo = "border-emerald-500 bg-emerald-50 dark:border-emerald-400 dark:bg-emerald-950/40";
             } else if (bloqueado && seleccionada) {
               estilo = "border-red-400 bg-red-50 dark:border-red-500 dark:bg-red-950/30";
@@ -139,13 +138,13 @@ function PreguntaRonda({
                   {seleccionada && <Check className="size-2.5 text-white" strokeWidth={3} aria-hidden="true" />}
                 </span>
                 <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">{op}</span>
-                {bloqueado && esCorrecta && (
+                {bloqueado && seleccionada && resultado?.correcta && (
                   <CheckCircle2
                     className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
                     aria-hidden="true"
                   />
                 )}
-                {bloqueado && seleccionada && !esCorrecta && (
+                {bloqueado && seleccionada && resultado && !resultado.correcta && (
                   <XCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
                 )}
               </label>
@@ -186,7 +185,7 @@ export default function OpcionJustificacion({
   respuestaPrevia?: Record<string, unknown>;
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
 
   const rondas = useMemo(() => rondasDeContenido(contenido), [contenido]);
   const intro = introDeContenido(contenido);
@@ -196,7 +195,7 @@ export default function OpcionJustificacion({
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,
-    Boolean(respuestaPrevia?.resultado),
+    Boolean(respuestaPrevia),
   );
 
   const [indiceActual, setIndiceActual] = useState(0);
@@ -210,7 +209,7 @@ export default function OpcionJustificacion({
   const [resultado, setResultado] = useState<ItemResultado[] | null>(
     (respuestaPrevia?.resultado as ItemResultado[] | undefined) ?? null,
   );
-  const bloqueado = resultado !== null;
+  const bloqueado = entregaRegistrada || resultado !== null;
 
   const ronda = rondas[indiceActual];
   const respuesta = respuestas[indiceActual];
@@ -264,6 +263,7 @@ export default function OpcionJustificacion({
   }
 
   function iniciarReintento() {
+    prepararReintento();
     setError(null);
     setResultado(null);
     setIndiceActual(0);
@@ -302,6 +302,7 @@ export default function OpcionJustificacion({
                 indice={i}
                 onCambiar={(cambios) => actualizarRespuestaEn(i, cambios)}
                 bloqueado={bloqueado}
+                resultado={resultado?.[i]}
               />
             </div>
           ))}
@@ -334,6 +335,7 @@ export default function OpcionJustificacion({
             indice={indiceActual}
             onCambiar={(cambios) => actualizarRespuestaEn(indiceActual, cambios)}
             bloqueado={bloqueado}
+            resultado={resultado?.[indiceActual]}
           />
 
           {error && <ErrorText>{error}</ErrorText>}
@@ -359,14 +361,7 @@ export default function OpcionJustificacion({
           </div>
         </>
       )}
-      {bloqueado && (
-        <AvisoReintento
-          puntaje={mejorPuntaje}
-          intentos={intentos}
-          onReintentar={iniciarReintento}
-          cargando={cargando}
-        />
-      )}
+      <PieEntregaAuto error={null} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} />
     </form>
   );
 }

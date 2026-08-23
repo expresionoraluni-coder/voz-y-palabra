@@ -4,7 +4,7 @@ import { CardLink } from "@/components/ui/card";
 
 export default function Ingreso() {
   return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-8 px-6">
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-8 px-6 py-10">
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
         ¿Quién eres?
       </h1>
@@ -38,6 +38,9 @@ export default function Ingreso() {
           </CardLink>
         </Link>
       </div>
-    </div>
+      <Link href="/privacidad" className="text-center text-xs text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300">
+        Uso y privacidad
+      </Link>
+    </main>
   );
 }

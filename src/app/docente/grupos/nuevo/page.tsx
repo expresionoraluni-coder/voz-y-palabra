@@ -65,7 +65,7 @@ export default function NuevoGrupo() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/docente/dashboard"
         titulo="Crear grupo"

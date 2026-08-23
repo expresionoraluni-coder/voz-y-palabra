@@ -25,12 +25,12 @@ export default function RedaccionLectura({
   };
   respuestaPrevia?: Record<string, unknown>;
 }) {
-  const { cargando, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, guardarConAccion } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const respuestaPreviaTexto =
     typeof respuestaPrevia?.respuesta_comprension === "string" ? respuestaPrevia.respuesta_comprension : "";
   const [respuestaComprension, setRespuestaComprension] = useState(respuestaPreviaTexto);
   const [error, setError] = useState<string | null>(null);
-  const [entregado, setEntregado] = useState(Boolean(respuestaPreviaTexto.trim()));
+  const [entregado, setEntregado] = useState(Boolean(respuestaPrevia));
 
   const columnas = [
     { etiqueta: "Resumen", texto: contenido.ejemplo_resumen },

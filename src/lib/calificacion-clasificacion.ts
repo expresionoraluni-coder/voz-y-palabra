@@ -21,12 +21,10 @@ export function sanitizarContenidoClasificacion(contenido: ContenidoClasificacio
   };
 }
 
-// Mismo itemsSnapshot que ya se guardaba antes de este cambio (lo usa la
-// matriz de confusión docente) — ahora también es lo único que el
-// estudiante lee de vuelta para pintar "Era: X" tras calificar.
 export function calificarClasificacion(contenido: ContenidoClasificacion, elegidas: string[]) {
-  const itemsSnapshot = contenido.elementos.map((el) => ({ texto: el.texto, correcta: el.categoria_correcta }));
-  const aciertos = itemsSnapshot.map((item, i) => item.correcta === elegidas[i]);
-  const puntajeAuto = Math.round((aciertos.filter(Boolean).length / itemsSnapshot.length) * 100);
-  return { puntajeAuto, itemsSnapshot };
+  const resultado = contenido.elementos.map((item, i) => item.categoria_correcta === elegidas[i]);
+  const puntajeAuto = resultado.length === 0
+    ? 0
+    : Math.round((resultado.filter(Boolean).length / resultado.length) * 100);
+  return { puntajeAuto, resultado };
 }

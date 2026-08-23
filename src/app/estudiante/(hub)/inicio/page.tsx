@@ -34,7 +34,7 @@ import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
 import { proximoRepaso } from "@/lib/calendario-repaso";
-import { entregaCuentaComoCompletada, intentosDeEntregaAuto, unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-unidad";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 type Grupo = { nombre: string } | { nombre: string }[] | null;
@@ -80,6 +80,7 @@ export default async function InicioEstudiante({
     { data: unidades, error: unidadesError },
     { data: entregas, error: entregasError },
     { data: reflexionesCierre, error: reflexionesError },
+    { data: confianzasCierre, error: confianzasCierreError },
     { data: avisos, error: avisosError },
     { data: eventosProximos, error: eventosError },
   ] = await Promise.all([
@@ -97,6 +98,11 @@ export default async function InicioEstudiante({
     supabase
       .from("reflexiones")
       .select("unidad_id, actividad_id")
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "cierre"),
+    supabase
+      .from("autoevaluaciones_confianza")
+      .select("unidad_id")
       .eq("estudiante_id", estudiante.id)
       .eq("momento", "cierre"),
     supabase
@@ -118,6 +124,7 @@ export default async function InicioEstudiante({
   revisarErrorConsulta(unidadesError, "No pudimos cargar tu ruta de aprendizaje.");
   revisarErrorConsulta(entregasError, "No pudimos cargar tus actividades.");
   revisarErrorConsulta(reflexionesError, "No pudimos cargar tus reflexiones.");
+  revisarErrorConsulta(confianzasCierreError, "No pudimos cargar tu confianza final.");
   revisarErrorConsulta(avisosError, "No pudimos cargar los avisos del grupo.");
   revisarErrorConsulta(eventosError, "No pudimos cargar el calendario del grupo.");
   revisarErrorConsulta(insigniasError, "No pudimos cargar tus insignias.");
@@ -142,6 +149,7 @@ export default async function InicioEstudiante({
   const actividadesConReflexion = new Set(
     (reflexionesCierre ?? []).filter((r) => r.actividad_id !== null).map((r) => r.actividad_id),
   );
+  const unidadesConConfianzaCierre = new Set((confianzasCierre ?? []).map((c) => c.unidad_id));
   const puntos = idsCompletadas.size * 10 + unidadesConReflexion.size * 5;
   const racha = calcularRacha((entregas ?? []).map((e) => e.created_at));
 
@@ -173,7 +181,8 @@ export default async function InicioEstudiante({
     (u) =>
       !unidadEstaCompleta(u.total, u.hechas) ||
       !u.tieneReflexionUltimaActividad ||
-      !unidadesConReflexion.has(u.id),
+      !unidadesConReflexion.has(u.id) ||
+      !unidadesConConfianzaCierre.has(u.id),
   );
   const unidadActiva = unidadesConProgreso[indiceActiva === -1 ? unidadesConProgreso.length - 1 : indiceActiva];
 
@@ -187,16 +196,17 @@ export default async function InicioEstudiante({
           .maybeSingle(),
         supabase
           .from("autoevaluaciones_confianza")
-          .select("id")
+          .select("id, momento")
           .eq("estudiante_id", estudiante.id)
-          .eq("unidad_id", unidadActiva.id)
-          .eq("momento", "inicio")
-          .maybeSingle(),
+          .eq("unidad_id", unidadActiva.id),
       ])
     : [{ data: null }, { data: null }];
 
   revisarErrorConsulta(bitacoraError, "No pudimos cargar tu meta de unidad.");
   revisarErrorConsulta(confianzaError, "No pudimos cargar tu nivel de seguridad.");
+
+  const confianzaInicioActiva = (confianzaActiva ?? []).some((confianza) => confianza.momento === "inicio");
+  const confianzaCierreActiva = (confianzaActiva ?? []).some((confianza) => confianza.momento === "cierre");
 
   const actividadesActiva = (unidadActiva?.actividades ?? []).slice().sort((a, b) => a.orden - b.orden);
   const primeraActividadAccesible = actividadesActiva.find((actividad) => {
@@ -205,19 +215,15 @@ export default async function InicioEstudiante({
     const entregaPrerequisito = (entregas ?? []).find(
       (entrega) => entrega.actividad_id === actividad.requiere_actividad_id,
     );
-    return entregaCuentaComoCompletada(entregaPrerequisito);
+    return entregaCuentaComoCompletada(entregaPrerequisito) && actividadesConReflexion.has(actividad.requiere_actividad_id);
   });
 
-  const reintentoPendiente = (entregas ?? []).find(
-    (entrega) =>
-      entrega.puntaje_auto !== null &&
-      entrega.puntaje_auto < 70 &&
-      intentosDeEntregaAuto(entrega.respuesta, true) < 3,
-  );
   const faltaCerrarUnidad = Boolean(
     unidadActiva &&
       unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) &&
-      (!unidadActiva.tieneReflexionUltimaActividad || !unidadesConReflexion.has(unidadActiva.id)),
+      (!unidadActiva.tieneReflexionUltimaActividad ||
+        !unidadesConReflexion.has(unidadActiva.id) ||
+        !confianzaCierreActiva),
   );
   const faltaReflexionUltimaActividad = Boolean(
     unidadActiva && unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) && !unidadActiva.tieneReflexionUltimaActividad,
@@ -245,7 +251,7 @@ export default async function InicioEstudiante({
           cta: "Definir meta",
           icon: Target,
         }
-      : !confianzaActiva
+      : !confianzaInicioActiva
         ? {
             etiqueta: "Antes de empezar",
             titulo: `Indica qué tanta seguridad tienes de la Unidad ${unidadActiva.orden}`,
@@ -278,16 +284,7 @@ export default async function InicioEstudiante({
               cta: "Continuar actividad",
               icon: PlayCircle,
             }
-          : reintentoPendiente
-            ? {
-              etiqueta: "Una oportunidad más",
-                titulo: "Vuelve a practicar una actividad",
-                descripcion: "Puedes mejorar tu mejor resultado antes de seguir.",
-                href: `/estudiante/actividad/${reintentoPendiente.actividad_id}`,
-                cta: "Intentar de nuevo",
-                icon: RotateCcw,
-              }
-            : {
+          : {
               etiqueta: "Ruta completa",
               titulo: "Revisa cómo has avanzado",
               descripcion: "Observa tus resultados y reconoce lo que ya dominas.",

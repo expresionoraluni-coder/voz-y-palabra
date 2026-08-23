@@ -83,11 +83,8 @@ export function sanitizarContenido(c: ContenidoOpcionJustificacion): ContenidoOp
   return quitarClave(c);
 }
 
-// El snapshot guarda el texto de la opción correcta (no solo un booleano):
-// la UI resalta en verde cuál era la opción correcta, no solo si se acertó.
 export function calificarRondas(rondas: RondaContenido[], respuestas: RondaRespuesta[]) {
   return rondas.map((r, i) => ({
     correcta: respuestas[i]?.opcion === r.respuesta_correcta,
-    opcionCorrecta: r.respuesta_correcta,
   }));
 }

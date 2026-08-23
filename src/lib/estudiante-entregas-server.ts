@@ -4,7 +4,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { mensajeError } from "@/lib/mensaje-error";
 import {
-  MAX_INTENTOS_AUTO,
   quitarMetaEntregaAuto,
 } from "@/lib/intentos-auto";
 import {
@@ -48,21 +47,38 @@ type ActividadParaAcceso = {
 
 type ClienteAdmin = ReturnType<typeof createAdminClient>;
 
+export function sanitizarRespuestaParaEstudiante(valor: unknown): unknown {
+  if (Array.isArray(valor)) return valor.map(sanitizarRespuestaParaEstudiante);
+  if (!valor || typeof valor !== "object") return valor;
+  const resultado: Record<string, unknown> = {};
+  for (const [clave, contenido] of Object.entries(valor as Record<string, unknown>)) {
+    if (["respuesta_correcta", "opcionCorrecta", "texto_correcto", "itemsSnapshot"].includes(clave)) continue;
+    if (clave === "correcta" && typeof contenido === "string") continue;
+    resultado[clave] = sanitizarRespuestaParaEstudiante(contenido);
+  }
+  return resultado;
+}
+
 export async function validarAccesoActividad(
   supabase: SupabaseServerClient,
   admin: ClienteAdmin,
   estudianteId: string,
   actividad: ActividadParaAcceso,
+  opciones: { requiereInicio?: boolean } = {},
 ): Promise<{ ok: true } | { ok: false; error: string; motivo: MotivoBloqueoActividad }> {
+  // Todas las lecturas de avance se filtran por el estudiante previamente
+  // resuelto desde auth.uid(). Se usa el cliente de servidor para no depender
+  // de permisos directos de una sesión anónima sobre tablas de aprendizaje.
+  const lectura = admin;
   if (actividad.requiereActividadId) {
     const [{ data: entregaPrerequisito, error: entregaPrerequisitoError }, { data: reflexionPrerequisito, error: reflexionPrerequisitoError }] = await Promise.all([
-      supabase
+      lectura
         .from("entregas")
         .select("puntaje_auto, respuesta")
         .eq("actividad_id", actividad.requiereActividadId)
         .eq("estudiante_id", estudianteId)
         .maybeSingle(),
-      supabase
+      lectura
         .from("reflexiones")
         .select("id")
         .eq("actividad_id", actividad.requiereActividadId)
@@ -89,6 +105,31 @@ export async function validarAccesoActividad(
     }
   }
 
+  const [{ data: bitacoraInicio, error: bitacoraError }, { data: confianzaInicio, error: confianzaError }] = await Promise.all([
+    lectura
+      .from("bitacora")
+      .select("id")
+      .eq("estudiante_id", estudianteId)
+      .eq("unidad_id", actividad.unidadId)
+      .maybeSingle(),
+    lectura
+      .from("autoevaluaciones_confianza")
+      .select("id")
+      .eq("estudiante_id", estudianteId)
+      .eq("unidad_id", actividad.unidadId)
+      .eq("momento", "inicio")
+      .maybeSingle(),
+  ]);
+  revisarErrorConsulta(bitacoraError, "No pudimos comprobar tu meta de unidad.");
+  revisarErrorConsulta(confianzaError, "No pudimos comprobar tu confianza inicial.");
+  if (opciones.requiereInicio !== false && (!bitacoraInicio || !confianzaInicio)) {
+    return {
+      ok: false,
+      error: "Define tu meta y registra tu confianza inicial antes de comenzar esta unidad.",
+      motivo: "unidad_inicio",
+    };
+  }
+
   if (actividad.unidadOrden <= 1) return { ok: true };
 
   const { data: unidadAnterior, error: unidadAnteriorError } = await admin
@@ -105,7 +146,7 @@ export async function validarAccesoActividad(
     : [];
   const idsAnteriores = actividadesAnteriores.map((item: { id: string }) => item.id);
   const { data: entregasAnteriores, error: entregasAnterioresError } = idsAnteriores.length
-    ? await supabase
+    ? await lectura
         .from("entregas")
       .select("actividad_id, puntaje_auto, respuesta")
         .eq("estudiante_id", estudianteId)
@@ -119,8 +160,9 @@ export async function validarAccesoActividad(
   const [
     { data: reflexionUnidad, error: reflexionUnidadError },
     { data: reflexionUltimaActividad, error: reflexionUltimaActividadError },
+    { data: confianzaCierre, error: confianzaCierreError },
   ] = await Promise.all([
-    supabase
+    lectura
       .from("reflexiones")
       .select("id")
       .eq("estudiante_id", estudianteId)
@@ -128,7 +170,7 @@ export async function validarAccesoActividad(
       .eq("momento", "cierre")
       .maybeSingle(),
     ultimaActividadAnterior
-      ? supabase
+      ? lectura
           .from("reflexiones")
           .select("id")
           .eq("estudiante_id", estudianteId)
@@ -136,9 +178,17 @@ export async function validarAccesoActividad(
           .eq("momento", "cierre")
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    lectura
+      .from("autoevaluaciones_confianza")
+      .select("id")
+      .eq("estudiante_id", estudianteId)
+      .eq("unidad_id", unidadAnterior.id)
+      .eq("momento", "cierre")
+      .maybeSingle(),
   ]);
   revisarErrorConsulta(reflexionUnidadError, "No pudimos comprobar el cierre de la unidad anterior.");
   revisarErrorConsulta(reflexionUltimaActividadError, "No pudimos comprobar la reflexión de la última actividad.");
+  revisarErrorConsulta(confianzaCierreError, "No pudimos comprobar la confianza final de la unidad anterior.");
 
   const actividadesAnterioresCompletadas = new Set(
     (entregasAnteriores ?? [])
@@ -178,7 +228,47 @@ export async function validarAccesoActividad(
     };
   }
 
+  if (!confianzaCierre) {
+    return {
+      ok: false,
+      error: `Termina primero la Unidad ${unidadAnterior.orden}: registra tu confianza final.`,
+      motivo: "unidad_anterior_confianza",
+    };
+  }
+
   return { ok: true };
+}
+
+/** Valida la unidad anterior y devuelve el primer paso de la unidad actual. */
+export async function validarAccesoUnidad(
+  supabase: SupabaseServerClient,
+  admin: ClienteAdmin,
+  estudianteId: string,
+  unidadId: string,
+  requiereInicio = true,
+) {
+  const { data: actividad, error } = await admin
+    .from("actividades")
+    .select("id, unidad_id, requiere_actividad_id, unidades(orden)")
+    .eq("unidad_id", unidadId)
+    .order("orden")
+    .limit(1)
+    .maybeSingle();
+  revisarErrorConsulta(error, "No pudimos comprobar el inicio de la unidad.");
+  if (!actividad) return { ok: true as const };
+  const unidad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
+  return validarAccesoActividad(
+    supabase,
+    admin,
+    estudianteId,
+    {
+      id: actividad.id,
+      unidadId: actividad.unidad_id,
+      requiereActividadId: actividad.requiere_actividad_id,
+      unidadOrden: Number(unidad?.orden ?? 1),
+    },
+    { requiereInicio },
+  );
 }
 
 const SESION_INVALIDA = "Tu sesión ya no es válida. Entra de nuevo para continuar.";
@@ -198,13 +288,17 @@ export async function obtenerContextoCalificacion(
   if (!user) return { ok: false, error: SESION_INVALIDA };
   if (user.is_anonymous !== true) return { ok: false, error: SESION_INVALIDA };
 
-  const { data: estudiante } = await supabase
+  const admin = createAdminClient();
+  const { data: estudiante } = await admin
     .from("estudiantes")
-    .select("id")
+    .select("id, debe_cambiar_nip")
+    .eq("auth_user_id", user.id)
+    .eq("activo", true)
     .single();
   if (!estudiante) return { ok: false, error: SESION_INVALIDA };
+  if (estudiante.debe_cambiar_nip) return { ok: false, error: "Debes cambiar tu NIP antes de continuar." };
 
-  const { data: actividad } = await createAdminClient()
+  const { data: actividad } = await admin
     .from("actividades")
     .select("id, unidad_id, requiere_actividad_id, contenido, tipos_actividad(nombre), unidades(orden)")
     .eq("id", actividadId)
@@ -217,7 +311,7 @@ export async function obtenerContextoCalificacion(
   }
 
   const unidad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
-  const acceso = await validarAccesoActividad(supabase, createAdminClient(), estudiante.id, {
+  const acceso = await validarAccesoActividad(admin, admin, estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
     requiereActividadId: actividad.requiere_actividad_id,
@@ -237,9 +331,11 @@ async function estudianteDeSesion(supabase: SupabaseServerClient) {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: estudiante } = await supabase
+  const { data: estudiante } = await createAdminClient()
     .from("estudiantes")
     .select("id")
+    .eq("auth_user_id", user.id)
+    .eq("activo", true)
     .single();
   return estudiante?.id ?? null;
 }
@@ -269,54 +365,37 @@ export async function guardarEntregaInterna(
   if (!estudianteId) return { ok: false, error: SESION_INVALIDA };
 
   const admin = createAdminClient();
-  const esAutocalificable = puntajeAuto !== null;
-  const respuestaLimpia = esAutocalificable ? quitarMetaEntregaAuto(respuesta) : respuesta;
-  let respuestaParaGuardar = respuestaLimpia;
-  let respuestaParaCliente = respuestaLimpia;
-  let puntajeParaGuardar = puntajeAuto;
-  let intentos: number | undefined;
-  let mejorPuntaje: number | null = puntajeAuto;
-
-  if (esAutocalificable) {
-    const { data: resultadoAuto, error: resultadoAutoError } = await admin.rpc("guardar_entrega_auto", {
-      p_estudiante_id: estudianteId,
-      p_actividad_id: actividadId,
-      p_respuesta: respuestaLimpia,
-      p_puntaje_auto: puntajeAuto,
-      p_estado: estado,
-    });
-    if (resultadoAutoError) {
-      const mensaje = resultadoAutoError.message?.includes("Ya usaste los 3 intentos")
-        ? `Ya usaste los ${MAX_INTENTOS_AUTO} intentos de esta actividad.`
-        : mensajeError(resultadoAutoError);
-      return { ok: false, error: mensaje };
-    }
-
-    const filaAuto = Array.isArray(resultadoAuto) ? resultadoAuto[0] : resultadoAuto;
-    if (!filaAuto || typeof filaAuto !== "object") {
-      return { ok: false, error: "No pudimos guardar tu intento. Intenta de nuevo." };
-    }
-
-    intentos = Number(filaAuto.intentos);
-    mejorPuntaje = Number(filaAuto.mejor_puntaje);
-    puntajeParaGuardar = Number(filaAuto.puntaje_guardado);
-    respuestaParaCliente = filaAuto.respuesta_cliente as Record<string, unknown>;
-    respuestaParaGuardar = filaAuto.respuesta_guardada as Record<string, unknown>;
-
-    return { ok: true, puntajeAuto: puntajeParaGuardar, respuesta: respuestaParaCliente, intentos, mejorPuntaje };
+  const respuestaLimpia = quitarMetaEntregaAuto(respuesta);
+  const { data: resultado, error: resultadoError } = await admin.rpc("guardar_entrega_auto", {
+    p_estudiante_id: estudianteId,
+    p_actividad_id: actividadId,
+    p_respuesta: respuestaLimpia,
+    p_puntaje_auto: puntajeAuto,
+    p_estado: estado,
+  });
+  if (resultadoError) {
+    const mensaje = resultadoError.message?.includes("Ya registraste el único intento")
+      ? "Ya registraste el único intento de esta actividad. Se conserva tu respuesta y puedes continuar con la reflexión."
+      : mensajeError(resultadoError);
+    return { ok: false, error: mensaje };
   }
 
-  const { error } = await admin.from("entregas").upsert(
-    {
-      estudiante_id: estudianteId,
-      actividad_id: actividadId,
-      respuesta: respuestaParaGuardar,
-      estado,
-      puntaje_auto: puntajeParaGuardar,
-    },
-    { onConflict: "estudiante_id,actividad_id" },
-  );
-  if (error) return { ok: false, error: mensajeError(error) };
+  const fila = Array.isArray(resultado) ? resultado[0] : resultado;
+  if (!fila || typeof fila !== "object") {
+    return { ok: false, error: "No pudimos guardar tu intento. Intenta de nuevo." };
+  }
 
-  return { ok: true, puntajeAuto: puntajeParaGuardar, respuesta: respuestaParaCliente, intentos, mejorPuntaje };
+  const puntajeGuardado = fila.puntaje_guardado == null ? null : Number(fila.puntaje_guardado);
+  const intentos = Number(fila.intentos);
+  const mejorPuntaje = fila.mejor_puntaje == null ? null : Number(fila.mejor_puntaje);
+  if (!Number.isInteger(intentos) || intentos !== 1) {
+    return { ok: false, error: "No pudimos confirmar el número de intentos. Intenta de nuevo." };
+  }
+  return {
+    ok: true,
+    puntajeAuto: puntajeGuardado,
+    respuesta: sanitizarRespuestaParaEstudiante(fila.respuesta_cliente) as Record<string, unknown>,
+    intentos,
+    mejorPuntaje,
+  };
 }

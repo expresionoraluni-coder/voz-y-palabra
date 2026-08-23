@@ -3,16 +3,15 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
-import { Field, Label, HelpText, Textarea, ErrorText } from "@/components/ui/field";
-import Boton from "@/components/ui/button";
-import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { Field, Label, HelpText, Textarea } from "@/components/ui/field";
+import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
 import { contarPalabras } from "@/lib/contar-palabras";
-import type { ComparacionPalabra, ContenidoOrtografiaPublico } from "@/lib/comparar-ortografia";
+import type { ComparacionPalabraPublica, ContenidoOrtografiaPublico } from "@/lib/comparar-ortografia";
 import { calificarCorregirOrtografia } from "./acciones-calificacion";
 
-type ResultadoOrtografia = { comparacion: ComparacionPalabra[]; totalPalabras: number; errores: number; aprobado: boolean };
+type ResultadoOrtografia = { comparacion: ComparacionPalabraPublica[]; totalPalabras: number; errores: number; aprobado: boolean };
 
 export default function CorregirOrtografia({
   actividadId,
@@ -26,27 +25,22 @@ export default function CorregirOrtografia({
   contenido: ContenidoOrtografiaPublico;
   respuestaPrevia?: {
     texto_reescrito: string;
-    comparacion?: ComparacionPalabra[];
+    comparacion?: ComparacionPalabraPublica[];
     totalPalabras?: number;
     errores?: number;
     aprobado?: boolean;
   };
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,
     Boolean(respuestaPrevia),
   );
   const [textoReescrito, setTextoReescrito] = useState(respuestaPrevia?.texto_reescrito ?? "");
-  // El detalle de la comparación ya se calificó en el servidor al entregar
-  // (ver acciones-calificacion.ts) y se guardó junto a la respuesta — aquí
-  // solo se lee, nunca se recalcula (la clave `texto_correcto` ya no llega
-  // al cliente). Se exige que `comparacion` exista de verdad: una entrega
-  // vieja de un tipo anterior con otra forma de respuesta, o de antes de
-  // este cambio, se trata como si no hubiera entrega todavía en vez de
-  // tronar.
+  // El servidor devuelve únicamente la palabra escrita y el resultado; la
+  // palabra correcta nunca se guarda en la respuesta visible al estudiante.
   const [resultado, setResultado] = useState<ResultadoOrtografia | null>(
     respuestaPrevia?.comparacion
       ? {
@@ -57,7 +51,7 @@ export default function CorregirOrtografia({
         }
       : null,
   );
-  const bloqueado = resultado !== null;
+  const bloqueado = entregaRegistrada || resultado !== null;
   const soloMayusculas = (contenido.temas ?? []).length > 0 && (contenido.temas ?? []).every((tema) =>
     ["Mayúsculas al inicio de oración", "Nombres propios", "Días y materias van en minúscula"].includes(tema),
   );
@@ -79,7 +73,7 @@ export default function CorregirOrtografia({
     const guardada = await guardarConAccion(() => calificarCorregirOrtografia(actividadId, textoReescrito));
     if (guardada) {
       setResultado({
-        comparacion: guardada.comparacion as ComparacionPalabra[],
+        comparacion: guardada.comparacion as ComparacionPalabraPublica[],
         totalPalabras: guardada.totalPalabras as number,
         errores: guardada.errores as number,
         aprobado: guardada.aprobado as boolean,
@@ -89,6 +83,7 @@ export default function CorregirOrtografia({
   }
 
   function iniciarReintento() {
+    prepararReintento();
     setError(null);
     setResultado(null);
     setTextoReescrito("");
@@ -157,7 +152,7 @@ export default function CorregirOrtografia({
             {resultado!.aprobado ? " Está dentro del máximo aceptable (5)." : " Tiene más de los 5 errores aceptables."}
           </p>
           <p className="rounded-xl border border-slate-200 px-4 py-3.5 text-sm leading-[2.2] dark:border-slate-800">
-            {resultado!.comparacion.map((c: ComparacionPalabra, i: number) => (
+            {resultado!.comparacion.map((c: ComparacionPalabraPublica, i: number) => (
               <span key={i}>
                 <span className={c.correcto ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}>
                   {c.escrita || "(faltó)"}
@@ -169,20 +164,7 @@ export default function CorregirOrtografia({
         </div>
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
-      {!bloqueado && (
-        <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar y revisar"}
-        </Boton>
-      )}
-      {bloqueado && (
-        <AvisoReintento
-          puntaje={mejorPuntaje}
-          intentos={intentos}
-          onReintentar={iniciarReintento}
-          cargando={cargando}
-        />
-      )}
+      <PieEntregaAuto error={error} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} />
     </form>
   );
 }

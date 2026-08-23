@@ -3,20 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Gauge, Minus, Plus } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { guardarConfianzaUnidad } from "../../../acciones-reflexiones";
 
 export default function Confianza({
-  estudianteId,
   unidadId,
   momento = "inicio",
   valorPrevio = null,
   onGuardado,
 }: {
-  estudianteId: string;
   unidadId: string;
   momento?: "inicio" | "cierre";
   valorPrevio?: number | null;
@@ -38,18 +35,15 @@ export default function Confianza({
     if (cargando) return;
     setError(null);
     setCargando(true);
-    const supabase = createClient();
     try {
-      const { error: upsertError } = await supabase.from("autoevaluaciones_confianza").upsert(
-        { estudiante_id: estudianteId, unidad_id: unidadId, momento, valor },
-        { onConflict: "estudiante_id,unidad_id,momento" },
-      );
-      if (upsertError) {
-        setError(mensajeError(upsertError));
+      const resultado = await guardarConfianzaUnidad(unidadId, momento, valor);
+      if (!resultado.ok) {
+        setError(resultado.error);
         return;
       }
       if (esCierre) {
         try {
+          const supabase = (await import("@/lib/supabase/client")).createClient();
           await supabase.rpc("verificar_insignias");
         } catch {
           // El guardado no depende de actualizar la insignia en este instante.

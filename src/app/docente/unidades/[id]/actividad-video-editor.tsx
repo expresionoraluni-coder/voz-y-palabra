@@ -16,6 +16,7 @@ export default function ActividadVideoEditor({
   videoUrlInicial: string | null;
 }) {
   const [videoUrl, setVideoUrl] = useState(videoUrlInicial ?? "");
+  const [tieneVideoGuardado, setTieneVideoGuardado] = useState(Boolean(videoUrlInicial));
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [guardando, startTransition] = useTransition();
@@ -30,6 +31,7 @@ export default function ActividadVideoEditor({
         return;
       }
       setVideoUrl(url.trim());
+      setTieneVideoGuardado(Boolean(url.trim()));
       setMensaje(url.trim() ? "Enlace guardado." : "Video eliminado.");
     });
   }
@@ -67,20 +69,28 @@ export default function ActividadVideoEditor({
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Boton type="button" size="sm" onClick={() => guardar(videoUrl)} cargando={guardando} disabled={!videoUrl.trim()}>
+        <Boton
+          type="button"
+          size="sm"
+          onClick={() => guardar(videoUrl)}
+          cargando={guardando}
+          disabled={!videoUrl.trim() && !tieneVideoGuardado}
+        >
           Guardar video
         </Boton>
-        {videoUrl.trim() && (
+        {(videoUrl.trim() || tieneVideoGuardado) && (
           <>
-            <a
-              href={videoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-indigo-600 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-slate-900"
-            >
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-              Abrir enlace
-            </a>
+            {videoUrl.trim() && (
+              <a
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-indigo-600 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-slate-900"
+              >
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+                Abrir enlace
+              </a>
+            )}
             <Boton type="button" variant="ghost" size="sm" onClick={() => guardar("")} cargando={guardando}>
               <Trash2 className="size-3.5" aria-hidden="true" />
               Quitar video

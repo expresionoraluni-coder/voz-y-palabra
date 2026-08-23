@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ActividadForm from "../../actividad-form";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 export default async function EditarActividad({
   params,
@@ -13,8 +14,10 @@ export default async function EditarActividad({
   const [
     {
       data: { user },
+      error: sesionError,
     },
-    { data: actividad },
+    { data: actividad, error: actividadError },
+    { count: entregasCount, error: entregasError },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase
@@ -22,8 +25,16 @@ export default async function EditarActividad({
       .select("id, unidad_id, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, tipos_actividad(nombre)")
       .eq("id", actividadId)
       .eq("unidad_id", unidadId)
-      .single(),
+      .maybeSingle(),
+    supabase
+      .from("entregas")
+      .select("id", { count: "exact", head: true })
+      .eq("actividad_id", actividadId),
   ]);
+
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
+  revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
+  revisarErrorConsulta(entregasError, "No pudimos comprobar si esta actividad ya tiene entregas.");
 
   if (!user) redirect("/ingreso/profesora");
   if (!actividad) notFound();
@@ -42,6 +53,7 @@ export default async function EditarActividad({
         videoUrl: actividad.video_url ?? "",
         contenido: (actividad.contenido as Record<string, unknown>) ?? {},
       }}
+      tieneEntregas={(entregasCount ?? 0) > 0}
     />
   );
 }

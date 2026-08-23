@@ -135,7 +135,7 @@ export default function IngresoEstudiante() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
       <Link
         href="/ingreso"
         className="fixed left-6 top-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
@@ -240,6 +240,6 @@ export default function IngresoEstudiante() {
         <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         No necesitas correo ni contraseña para entrar como estudiante.
       </p>
-    </div>
+    </main>
   );
 }

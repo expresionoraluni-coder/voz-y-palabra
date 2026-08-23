@@ -6,6 +6,7 @@ import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { esVideoUrlPermitida, urlEmbedYoutube } from "@/lib/video-embed";
 import { etiquetaTipo } from "@/lib/tipo-actividad-icono";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 export default async function VistaActividadDocente({
   params,
@@ -17,8 +18,9 @@ export default async function VistaActividadDocente({
   const [
     {
       data: { user },
+      error: sesionError,
     },
-    { data: actividad },
+    { data: actividad, error: actividadError },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase
@@ -26,8 +28,11 @@ export default async function VistaActividadDocente({
       .select("id, unidad_id, orden, titulo, instrucciones, aprendizaje_esperado, video_url, tipos_actividad(nombre), unidades(nombre, orden)")
       .eq("id", actividadId)
       .eq("unidad_id", unidadId)
-      .single(),
+      .maybeSingle(),
   ]);
+
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
+  revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
 
   if (!user) redirect("/ingreso/profesora");
   if (!actividad) notFound();
@@ -38,7 +43,7 @@ export default async function VistaActividadDocente({
   const videoEmbed = videoSeguro ? urlEmbedYoutube(videoSeguro) : null;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref={`/docente/unidades/${unidadId}`}
         volverTexto={`Unidad ${unidad?.orden ?? ""}`}
@@ -48,7 +53,7 @@ export default async function VistaActividadDocente({
         accion={
           <Link
             href={`/docente/unidades/${unidadId}/actividades/${actividadId}/editar`}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
           >
             <Pencil className="size-4" aria-hidden="true" />
             Editar actividad

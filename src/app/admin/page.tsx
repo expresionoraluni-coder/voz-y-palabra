@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Activity, CheckCircle2, Clock3, MessageSquareText, ShieldCheck, Users, UserRound } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, MessageSquareText, ShieldCheck, Timer, Users, UserRound } from "lucide-react";
 import { requerirAdministrador } from "@/lib/supabase/requerir-administrador";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardLink } from "@/components/ui/card";
 import MetricCard from "@/components/ui/metric-card";
 import EmptyState from "@/components/ui/empty-state";
@@ -12,12 +13,16 @@ const ESTADOS_PENDIENTES = ["recibido", "en_revision", "necesita_informacion"];
 
 export default async function AdminDashboard() {
   const { supabase, administrador } = await requerirAdministrador();
+  const adminDb = createAdminClient();
   const hace24Horas = timestampHace24Horas();
+  const ahora = new Date().toISOString();
 
   const [
     { data: reportes, error: reportesError },
     { count: reportesPendientesCount, error: pendientesError },
     { count: reportes24hCount, error: reportes24hError },
+    { count: reportesUrgentesCount, error: urgentesError },
+    { count: reportesVencidosCount, error: vencidosError },
     { count: gruposCount, error: gruposError },
     { count: estudiantesActivosCount, error: estudiantesError },
     { count: docentesCount, error: docentesError },
@@ -35,20 +40,32 @@ export default async function AdminDashboard() {
       .from("reportes")
       .select("id", { count: "exact", head: true })
       .gte("created_at", hace24Horas),
+    supabase
+      .from("reportes")
+      .select("id", { count: "exact", head: true })
+      .in("estado", ESTADOS_PENDIENTES)
+      .in("prioridad", ["urgente", "alta"]),
+    supabase
+      .from("reportes")
+      .select("id", { count: "exact", head: true })
+      .in("estado", ESTADOS_PENDIENTES)
+      .lt("fecha_limite", ahora),
     supabase.from("grupos").select("id", { count: "exact", head: true }),
-    supabase.from("estudiantes").select("id", { count: "exact", head: true }).eq("activo", true),
+    adminDb.from("estudiantes").select("id", { count: "exact", head: true }).eq("activo", true),
     supabase.from("docentes").select("id", { count: "exact", head: true }),
   ]);
 
   revisarErrorConsulta(reportesError, "No pudimos cargar los reportes de atención.");
   revisarErrorConsulta(pendientesError, "No pudimos contar los reportes pendientes.");
   revisarErrorConsulta(reportes24hError, "No pudimos contar los reportes recientes.");
+  revisarErrorConsulta(urgentesError, "No pudimos contar los reportes prioritarios.");
+  revisarErrorConsulta(vencidosError, "No pudimos contar los reportes vencidos.");
   revisarErrorConsulta(gruposError, "No pudimos cargar los grupos para el monitoreo.");
   revisarErrorConsulta(estudiantesError, "No pudimos cargar el resumen de estudiantes.");
   revisarErrorConsulta(docentesError, "No pudimos cargar el resumen docente.");
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-8 px-6 py-10">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Panel administrativo</p>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Centro de atención de la plataforma</h1>
@@ -58,9 +75,11 @@ export default async function AdminDashboard() {
         </p>
       </section>
 
-      <section aria-label="Resumen de la plataforma" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <section aria-label="Resumen de la plataforma" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-8">
         <MetricCard etiqueta="Reportes pendientes" valor={reportesPendientesCount ?? 0} icon={MessageSquareText} tono="amber" />
         <MetricCard etiqueta="Reportes últimas 24 h" valor={reportes24hCount ?? 0} icon={Clock3} tono="indigo" />
+        <MetricCard etiqueta="Alta prioridad" valor={reportesUrgentesCount ?? 0} icon={AlertTriangle} tono="amber" />
+        <MetricCard etiqueta="Vencidos" valor={reportesVencidosCount ?? 0} icon={Timer} tono="amber" />
         <MetricCard etiqueta="Grupos" valor={gruposCount ?? 0} icon={Users} tono="indigo" />
         <MetricCard etiqueta="Estudiantes activos" valor={estudiantesActivosCount ?? 0} icon={Activity} tono="emerald" />
         <MetricCard etiqueta="Docentes" valor={docentesCount ?? 0} icon={UserRound} tono="slate" />

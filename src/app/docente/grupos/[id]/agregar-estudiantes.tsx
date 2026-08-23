@@ -91,11 +91,28 @@ export default function AgregarEstudiantes({
         const i = filaInicio + offset;
         while (next.length <= i) next.push(filaVacia());
         const fila = { ...next[i] };
+        const primero = (partes[0] ?? "").trim();
+        const segundo = partes[1]?.trim();
         if (columna === "nombre") {
-          fila.nombre = normalizarNombre(partes[0] ?? "");
-          if (partes[1] !== undefined) fila.boleta = partes[1].trim();
+          fila.nombre = normalizarNombre(primero);
+          if (segundo !== undefined) fila.boleta = segundo;
         } else {
-          fila.boleta = (partes[0] ?? "").trim();
+          if (segundo === undefined) {
+            fila.boleta = primero;
+          } else {
+            // Aunque el foco esté en Boleta, un rango pegado normalmente
+            // contiene Nombre + Boleta. Conservamos ambas celdas y también
+            // aceptamos el orden inverso para no perder la segunda columna.
+            const primeroEsBoleta = /^\d{4,20}$/.test(primero.replace(/\D/g, ""));
+            const segundoEsBoleta = /^\d{4,20}$/.test(segundo.replace(/\D/g, ""));
+            if (primeroEsBoleta && !segundoEsBoleta) {
+              fila.boleta = primero;
+              fila.nombre = normalizarNombre(segundo);
+            } else {
+              fila.nombre = normalizarNombre(primero);
+              fila.boleta = segundo;
+            }
+          }
         }
         next[i] = fila;
       });

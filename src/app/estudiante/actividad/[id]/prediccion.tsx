@@ -3,17 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Target } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { guardarPrediccionActividad } from "../../acciones-reflexiones";
 
 export default function Prediccion({
   actividadId,
-  estudianteId,
 }: {
   actividadId: string;
-  estudianteId: string;
 }) {
   const router = useRouter();
   const [confianza, setConfianza] = useState<number | null>(null);
@@ -26,21 +23,11 @@ export default function Prediccion({
     setError(null);
     setCargando(true);
 
-    const supabase = createClient();
     try {
-      const { error: upsertError } = await supabase.from("reflexiones").upsert(
-        {
-          estudiante_id: estudianteId,
-          actividad_id: actividadId,
-          momento: "prediccion",
-          texto: null,
-          confianza,
-        },
-        { onConflict: "estudiante_id,actividad_id,momento" },
-      );
-
-      if (upsertError) {
-        setError(mensajeError(upsertError));
+      if (confianza === null) return;
+      const resultado = await guardarPrediccionActividad(actividadId, confianza);
+      if (!resultado.ok) {
+        setError(resultado.error);
         return;
       }
 
@@ -53,10 +40,7 @@ export default function Prediccion({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 dark:border-indigo-900 dark:bg-indigo-950/40"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-5 dark:border-indigo-900 dark:bg-indigo-950/40">
       <div className="flex items-center gap-2">
         <Target className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">

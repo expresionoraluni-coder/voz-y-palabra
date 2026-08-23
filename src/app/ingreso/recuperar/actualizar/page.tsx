@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { actualizarContrasenaNueva } from "../acciones";
 import { Card } from "@/components/ui/card";
 import { ErrorText, Field, HelpText, Input, Label } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -86,23 +87,24 @@ export default function ActualizarContrasena() {
     }
 
     setGuardando(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password: contrasena });
-    if (updateError) {
-      setError("No pudimos actualizar la contraseña. Solicita un enlace nuevo e inténtalo otra vez.");
+    const resultado = await actualizarContrasenaNueva(contrasena);
+    if (!resultado.ok) {
+      setError(resultado.error);
       setGuardando(false);
       return;
     }
 
-    // Se cierra la sesión de recuperación para obligar a iniciar sesión de
-    // nuevo y, si es la cuenta administrativa, completar también el MFA.
-    await supabase.auth.signOut({ scope: "local" });
+    // Se revocan también las sesiones abiertas en otros dispositivos. La
+    // cuenta administrativa debe volver a completar MFA en el siguiente
+    // ingreso.
+    const supabase = createClient();
+    await supabase.auth.signOut({ scope: "global" });
     setActualizada(true);
     setGuardando(false);
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
       <Link
         href="/ingreso/profesora"
         className="fixed left-6 top-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
@@ -181,6 +183,6 @@ export default function ActualizarContrasena() {
           </form>
         )}
       </Card>
-    </div>
+    </main>
   );
 }

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import ReportarProblema from "@/components/reportar-problema";
+import CambiarNipObligatorio from "@/components/cambiar-nip-obligatorio";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import ProgressBar from "@/components/ui/progress-bar";
@@ -27,6 +28,7 @@ import OrdenarFragmentos from "./ordenar-fragmentos";
 import EvaluarVideos from "./evaluar-videos";
 import CorregirOrtografia from "./corregir-ortografia";
 import ActividadOrientacion from "./actividad-orientacion";
+import MomentoActividad from "./momento-actividad";
 import { esTipoActividadActual } from "@/lib/tipos-actividad-actuales";
 import { sanitizarContenidoEvaluarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
 import { sanitizarContenidoOrdenarFragmentos, type ContenidoOrdenarFragmentos } from "@/lib/calificacion-ordenar-fragmentos";
@@ -34,9 +36,10 @@ import { sanitizarContenidoComparador, type ContenidoComparador } from "@/lib/ca
 import { sanitizarContenidoClasificacion, type ContenidoClasificacion } from "@/lib/calificacion-clasificacion";
 import { sanitizarContenidoEtiquetadoTexto, type ContenidoEtiquetadoTexto } from "@/lib/calificacion-etiquetado-texto";
 import { sanitizarContenidoOrtografia, type ContenidoOrtografia } from "@/lib/comparar-ortografia";
-import { validarAccesoActividad } from "@/lib/estudiante-entregas-server";
+import { sanitizarRespuestaParaEstudiante, validarAccesoActividad } from "@/lib/estudiante-entregas-server";
 import { entregaCuentaComoCompletada } from "@/lib/progreso-unidad";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { instruccionesMomentosDeContenido } from "@/lib/instrucciones-momentos";
 
 export default async function ActividadEstudiante({
   params,
@@ -60,7 +63,12 @@ export default async function ActividadEstudiante({
     { data: estudiante, error: estudianteError },
     { data: actividad, error: actividadError },
   ] = await Promise.all([
-    supabase.from("estudiantes").select("id, grupo_id").single(),
+    admin
+      .from("estudiantes")
+      .select("id, grupo_id, debe_cambiar_nip")
+      .eq("auth_user_id", user.id)
+      .eq("activo", true)
+      .single(),
     admin
       .from("actividades")
       .select(
@@ -72,6 +80,7 @@ export default async function ActividadEstudiante({
   revisarErrorConsulta(estudianteError && estudianteError.code !== "PGRST116" ? estudianteError : null, "No pudimos cargar tu sesión de estudiante.");
   revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
   if (!estudiante) redirect("/ingreso/estudiante");
+  if (estudiante.debe_cambiar_nip) return <CambiarNipObligatorio />;
   if (!actividad) notFound();
 
   const unidadParaAcceso = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
@@ -91,6 +100,7 @@ export default async function ActividadEstudiante({
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const modoRedaccion = (actividad.contenido as { modo?: string } | null)?.modo;
   const ayudaActividad = (actividad.contenido as { _ayuda?: string } | null)?._ayuda;
+  const instruccionesMomentos = instruccionesMomentosDeContenido(actividad.contenido, actividad.instrucciones);
 
   const [
     { data: entregaExistente, error: entregaError },
@@ -99,20 +109,20 @@ export default async function ActividadEstudiante({
     { data: actividadesDeUnidad, error: actividadesDeUnidadError },
     { data: entregasDeUnidad, error: entregasDeUnidadError },
   ] = await Promise.all([
-    supabase
+    admin
       .from("entregas")
       .select("respuesta, puntaje_auto, estado")
       .eq("actividad_id", id)
       .eq("estudiante_id", estudiante.id)
       .maybeSingle(),
-    supabase
+    admin
       .from("reflexiones")
       .select("confianza")
       .eq("actividad_id", id)
       .eq("estudiante_id", estudiante.id)
       .eq("momento", "prediccion")
       .maybeSingle(),
-    supabase
+    admin
       .from("reflexiones")
       .select("texto")
       .eq("actividad_id", id)
@@ -124,12 +134,10 @@ export default async function ActividadEstudiante({
       .select("id, orden, requiere_actividad_id")
       .eq("unidad_id", actividad.unidad_id)
       .order("orden"),
-    // Las entregas de las actividades hermanas se traen aparte, con el
-    // cliente de SESIÓN (no admin) filtradas por el propio estudiante —
-    // si se pidieran embebidas en la consulta admin de arriba, el cliente
-    // admin ignora RLS y traería las entregas de TODO el grupo, no solo
-    // las propias.
-    supabase
+    // Las entregas de las actividades hermanas se traen aparte y se filtran
+    // explícitamente por el estudiante validado; así el cliente admin no
+    // puede mezclar datos de otro estudiante aunque omita RLS.
+    admin
       .from("entregas")
       .select("actividad_id, puntaje_auto, respuesta")
       .eq("estudiante_id", estudiante.id),
@@ -143,7 +151,12 @@ export default async function ActividadEstudiante({
 
   // Misma forma que antes (`entregas(puntaje_auto)` embebido), reconstruida
   // en JS a partir de las dos consultas separadas de arriba.
-  const entregasPorActividad = new Map((entregasDeUnidad ?? []).map((e) => [e.actividad_id, e]));
+  const entregasPorActividad = new Map(
+    (entregasDeUnidad ?? []).map((e) => [
+      e.actividad_id,
+      { ...e, respuesta: sanitizarRespuestaParaEstudiante(e.respuesta) },
+    ]),
+  );
   const hermanas = actividadesDeUnidad?.map((a) => ({
     ...a,
     entregas: entregasPorActividad.has(a.id)
@@ -154,7 +167,7 @@ export default async function ActividadEstudiante({
       : [],
   }));
 
-  const respuesta = entregaExistente?.respuesta;
+  const respuesta = sanitizarRespuestaParaEstudiante(entregaExistente?.respuesta);
   const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
   const siguientePrerequisito = siguiente?.requiere_actividad_id
     ? hermanas?.find((a) => a.id === siguiente.requiere_actividad_id)
@@ -167,7 +180,7 @@ export default async function ActividadEstudiante({
         (entregaSiguientePrerequisito && entregaCuentaComoCompletada(entregaSiguientePrerequisito))),
   );
   const entregaActual = entregaExistente
-    ? { puntaje_auto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta }
+    ? { puntaje_auto: entregaExistente.puntaje_auto, respuesta }
     : null;
   const actividadActualLista = entregaCuentaComoCompletada(entregaActual);
   const reflexionActualGuardada = Boolean(reflexionExistente?.texto?.trim());
@@ -204,9 +217,14 @@ export default async function ActividadEstudiante({
   // estado local de React, no en la base), así que debe quedar DESPUÉS de
   // la pregunta para que un reingreso posterior (predicción ya contestada)
   // muestre el video de nuevo sin volver a preguntar.
-  const contenidoTrasVideo = (
-    <>
-      <Card className="p-5 sm:p-6">
+  const contenidoActividad = (
+    <MomentoActividad
+      numero={3}
+      titulo="Resuelve la actividad"
+      instruccion={instruccionesMomentos.actividad}
+    >
+      <>
+        <Card className="p-5 sm:p-6">
       {nombreTipo === "opcion_justificacion" && (
         <OpcionJustificacion
           actividadId={actividad.id}
@@ -222,7 +240,7 @@ export default async function ActividadEstudiante({
           estudianteId={estudiante.id}
           contenido={sanitizarContenidoClasificacion(actividad.contenido as ContenidoClasificacion)}
           respuestaPrevia={
-            respuesta as { elegidas: string[]; itemsSnapshot?: { texto: string; correcta: string }[] } | undefined
+            respuesta as { elegidas: string[]; resultado?: boolean[] } | undefined
           }
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
           dosNiveles={esDosNiveles}
@@ -279,7 +297,7 @@ export default async function ActividadEstudiante({
           estudianteId={estudiante.id}
           contenido={sanitizarContenidoEtiquetadoTexto(actividad.contenido as ContenidoEtiquetadoTexto)}
           respuestaPrevia={
-            respuesta as { elegidas: string[]; itemsSnapshot?: { texto: string; correcta: string }[] } | undefined
+            respuesta as { elegidas: string[]; resultado?: boolean[] } | undefined
           }
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
@@ -325,48 +343,47 @@ export default async function ActividadEstudiante({
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
         />
       )}
-      </Card>
+        </Card>
 
-      <ActividadPostEntrega
-        actividadId={actividad.id}
-        estudianteId={estudiante.id}
-        confianza={prediccionExistente?.confianza ?? null}
-        textoReflexionPrevio={reflexionExistente?.texto ?? null}
-        siguienteHref={
-          siguienteDisponible
-            ? `/estudiante/actividad/${siguiente!.id}`
-            : siguiente
-              ? `/estudiante/actividad/${actividad.id}`
-              : `/estudiante/unidad/${actividad.unidad_id}`
-        }
-        siguienteHrefTrasEntrega={
-          siguienteDependenciaListaTrasEntrega ? `/estudiante/actividad/${siguiente!.id}` : null
-        }
-        textoSiguiente={
-          siguienteDisponible
-            ? "Siguiente actividad"
-            : siguiente
-              ? "Intentar de nuevo antes de continuar"
-            : "Volver a la unidad"
-        }
-        textoSiguienteTrasEntrega={siguiente ? "Siguiente actividad" : "Volver a la unidad"}
-        placeholderReflexionPersonalizado={
-          nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
-            ? "Reflexiona sobre cómo cambió tu seguridad inicial después de comparar los tres textos."
-            : undefined
-        }
-      />
-    </>
+        <ActividadPostEntrega
+          actividadId={actividad.id}
+          confianza={prediccionExistente?.confianza ?? null}
+          textoReflexionPrevio={reflexionExistente?.texto ?? null}
+          siguienteHref={
+            siguienteDisponible
+              ? `/estudiante/actividad/${siguiente!.id}`
+              : siguiente
+                ? `/estudiante/actividad/${actividad.id}`
+                : `/estudiante/unidad/${actividad.unidad_id}`
+          }
+          siguienteHrefTrasEntrega={
+            siguienteDependenciaListaTrasEntrega ? `/estudiante/actividad/${siguiente!.id}` : null
+          }
+          textoSiguiente={
+            siguienteDisponible
+              ? "Siguiente actividad"
+              : siguiente
+                ? "Revisar esta actividad antes de continuar"
+                : "Volver a la unidad"
+          }
+          textoSiguienteTrasEntrega={siguiente ? "Siguiente actividad" : "Volver a la unidad"}
+          placeholderReflexionPersonalizado={
+            nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
+              ? "Reflexiona sobre cómo cambió tu seguridad inicial después de comparar los tres textos."
+              : undefined
+          }
+        />
+      </>
+    </MomentoActividad>
   );
 
   return (
     <>
       <AvisoSinConexion />
-      <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
+      <main id="contenido-estudiante" className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref={`/estudiante/unidad/${actividad.unidad_id}`}
         titulo={actividad.titulo}
-        descripcion={actividad.instrucciones}
         accion={
           hermanas && hermanas.length > 1 && indiceActual >= 0 ? (
             <div className="flex shrink-0 items-center gap-1">
@@ -432,7 +449,6 @@ export default async function ActividadEstudiante({
       )}
 
       <ActividadOrientacion
-        nombreTipo={nombreTipo}
         tieneVideo={Boolean(actividad.video_url)}
         completada={Boolean(entregaExistente)}
         aprendizajeEsperado={actividad.aprendizaje_esperado}
@@ -443,21 +459,31 @@ export default async function ActividadEstudiante({
         key={actividad.id}
         inicial={
           entregaExistente
-            ? { puntajeAuto: entregaExistente.puntaje_auto, respuesta: entregaExistente.respuesta as Record<string, unknown> }
+            ? { puntajeAuto: entregaExistente.puntaje_auto, respuesta: respuesta as Record<string, unknown> }
             : null
         }
       >
         {!prediccionExistente && !entregaExistente ? (
-          <Prediccion actividadId={actividad.id} estudianteId={estudiante.id} />
+          <MomentoActividad
+            numero={1}
+            titulo="Piensa antes de empezar"
+            instruccion={instruccionesMomentos.presentacion}
+          >
+            <Prediccion actividadId={actividad.id} />
+          </MomentoActividad>
         ) : actividad.video_url ? (
-          <VideoIntro videoUrl={actividad.video_url} titulo={actividad.titulo}>
-            {contenidoTrasVideo}
+          <VideoIntro
+            videoUrl={actividad.video_url}
+            titulo={actividad.titulo}
+            instruccion={instruccionesMomentos.video}
+          >
+            {contenidoActividad}
           </VideoIntro>
         ) : (
-          contenidoTrasVideo
+          contenidoActividad
         )}
       </EntregaRecienteProvider>
-      </div>
+      </main>
       <ReportarProblema
         tipo="estudiante"
         estudianteId={estudiante.id}

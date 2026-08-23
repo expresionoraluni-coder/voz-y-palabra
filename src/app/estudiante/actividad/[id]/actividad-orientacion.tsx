@@ -1,23 +1,16 @@
 import { CheckCircle2, ListChecks, Video } from "lucide-react";
 
 export default function ActividadOrientacion({
-  nombreTipo,
   tieneVideo,
   completada,
   aprendizajeEsperado,
   ayuda,
 }: {
-  nombreTipo?: string;
   tieneVideo: boolean;
   completada: boolean;
   aprendizajeEsperado?: string | null;
   ayuda?: string | null;
   }) {
-  const esRedaccion = nombreTipo === "redaccion_checklist" || nombreTipo === "redaccion_lectura";
-  const pasos = esRedaccion
-      ? ["Lee el texto o ejemplo de referencia", "Escribe con tus propias palabras", "Revisa tu respuesta antes de guardarla"]
-      : ["Lee la instrucción completa", "Responde paso a paso", "Revisa tu respuesta antes de guardarla"];
-
   return (
     <section
       aria-labelledby="orientacion-actividad"
@@ -30,7 +23,7 @@ export default function ActividadOrientacion({
           <ListChecks className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         )}
         <h2 id="orientacion-actividad" className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-          Cómo trabajarla
+          Objetivo y ayuda
         </h2>
         {completada && (
           <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -39,16 +32,6 @@ export default function ActividadOrientacion({
           </span>
         )}
       </div>
-      <ol className="grid gap-2 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-3">
-        {pasos.map((paso, index) => (
-          <li key={paso} className="flex items-start gap-2">
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400">
-              {index + 1}
-            </span>
-            <span>{paso}</span>
-          </li>
-        ))}
-      </ol>
       {aprendizajeEsperado && (
         <div className="rounded-xl bg-white/70 px-3 py-2.5 dark:bg-slate-900/60">
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Al terminar podrás</p>

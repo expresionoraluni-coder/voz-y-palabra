@@ -14,7 +14,9 @@ export default function ControlSesionAdmin() {
     const cerrarPorInactividad = async () => {
       if (cerrando) return;
       cerrando = true;
-      await createClient().auth.signOut({ scope: "local" });
+      // El panel es un perfil de alto impacto: un cierre por inactividad
+      // también revoca las demás sesiones del mismo administrador.
+      await createClient().auth.signOut({ scope: "global" });
       window.location.replace("/ingreso/profesora?sesion=expirada");
     };
 

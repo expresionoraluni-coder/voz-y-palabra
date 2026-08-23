@@ -101,8 +101,19 @@ export async function calificarClasificacionAccion(actividadId: string, elegidas
 
   const ctx = await obtenerContextoCalificacion(actividadId, "clasificacion");
   if (!ctx.ok) return ctx;
-  const { puntajeAuto, itemsSnapshot } = calificarClasificacion(ctx.contexto.contenido as ContenidoClasificacion, elegidas);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, itemsSnapshot }, puntajeAuto, "completada", ctx.contexto.estudianteId);
+  const contenido = ctx.contexto.contenido as ContenidoClasificacion;
+  if (!Array.isArray(contenido.elementos) || contenido.elementos.length === 0) {
+    return { ok: false, error: "Esta actividad no tiene elementos configurados." };
+  }
+  if (elegidas.length !== contenido.elementos.length || elegidas.some((eleccion) => !eleccion.trim())) {
+    return { ok: false, error: "Clasifica todos los elementos antes de guardar." };
+  }
+  const categorias = new Set(Array.isArray(contenido.categorias) ? contenido.categorias : []);
+  if (categorias.size === 0 || elegidas.some((eleccion) => !categorias.has(eleccion))) {
+    return { ok: false, error: "Una de tus categorías ya no es válida. Recarga la actividad." };
+  }
+  const { puntajeAuto, resultado } = calificarClasificacion(contenido, elegidas);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, resultado }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 
 export async function calificarOpcionJustificacionAccion(
@@ -160,7 +171,13 @@ export async function calificarCorregirOrtografia(actividadId: string, textoRees
   return guardarEntregaInterna(
     ctx.contexto.supabase,
     actividadId,
-    { texto_reescrito: textoReescrito, comparacion: calificacion.comparacion, errores: calificacion.errores, aprobado: calificacion.aprobado, totalPalabras: calificacion.totalPalabras },
+    {
+      texto_reescrito: textoReescrito,
+      comparacion: calificacion.comparacion.map(({ escrita, correcto }) => ({ escrita, correcto })),
+      errores: calificacion.errores,
+      aprobado: calificacion.aprobado,
+      totalPalabras: calificacion.totalPalabras,
+    },
     calificacion.puntajeAuto,
     "completada",
     ctx.contexto.estudianteId,
@@ -174,6 +191,20 @@ export async function calificarEtiquetadoTextoAccion(actividadId: string, elegid
 
   const ctx = await obtenerContextoCalificacion(actividadId, "etiquetado_texto");
   if (!ctx.ok) return ctx;
-  const { puntajeAuto, itemsSnapshot } = calificarEtiquetado(ctx.contexto.contenido as ContenidoEtiquetadoTexto, elegidas);
-  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, itemsSnapshot }, puntajeAuto, "completada", ctx.contexto.estudianteId);
+  const contenido = ctx.contexto.contenido as ContenidoEtiquetadoTexto;
+  if (!Array.isArray(contenido.fragmentos) || contenido.fragmentos.length === 0) {
+    return { ok: false, error: "Esta actividad no tiene fragmentos configurados." };
+  }
+  if (elegidas.length !== contenido.fragmentos.length || elegidas.some((eleccion) => !eleccion.trim())) {
+    return { ok: false, error: "Etiqueta todos los fragmentos antes de guardar." };
+  }
+  const etiquetas = new Set(Array.isArray(contenido.etiquetas) ? contenido.etiquetas : []);
+  if (etiquetas.size === 0 || elegidas.some((eleccion, indice) => {
+    const opciones = contenido.fragmentos[indice]?.opciones;
+    return !(opciones?.length ? opciones : [...etiquetas]).includes(eleccion);
+  })) {
+    return { ok: false, error: "Una de tus etiquetas ya no es válida. Recarga la actividad." };
+  }
+  const { puntajeAuto, resultado } = calificarEtiquetado(contenido, elegidas);
+  return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { elegidas, resultado }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }

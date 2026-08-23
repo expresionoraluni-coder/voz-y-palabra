@@ -3,9 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, Video, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
-import { ErrorText } from "@/components/ui/field";
-import Boton from "@/components/ui/button";
-import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import EmptyState from "@/components/ui/empty-state";
 import { esVideoUrlPermitida, urlEmbedYoutube } from "@/lib/video-embed";
@@ -63,7 +61,7 @@ export default function EvaluarVideos({
   respuestaPrevia?: { marcadas_bien: string[]; marcadas_mal: string[]; resultado?: { bien: boolean[]; mal: boolean[] } };
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,
@@ -79,7 +77,7 @@ export default function EvaluarVideos({
   const [resultado, setResultado] = useState<{ bien: boolean[]; mal: boolean[] } | null>(
     respuestaPrevia?.resultado ?? null,
   );
-  const bloqueado = resultado !== null;
+  const bloqueado = entregaRegistrada || resultado !== null;
 
   function alternar(lista: "bien" | "mal", cualidad: string) {
     if (bloqueado) return;
@@ -100,6 +98,7 @@ export default function EvaluarVideos({
   }
 
   function iniciarReintento() {
+    prepararReintento();
     setError(null);
     setResultado(null);
     setMarcadasBien([]);
@@ -155,20 +154,7 @@ export default function EvaluarVideos({
         {checklist("mal", marcadasMal, resultado?.mal)}
       </div>
 
-      {error && <ErrorText>{error}</ErrorText>}
-      {!bloqueado && (
-        <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar y revisar"}
-        </Boton>
-      )}
-      {bloqueado && (
-        <AvisoReintento
-          puntaje={mejorPuntaje}
-          intentos={intentos}
-          onReintentar={iniciarReintento}
-          cargando={cargando}
-        />
-      )}
+      <PieEntregaAuto error={error} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} />
     </form>
   );
 }

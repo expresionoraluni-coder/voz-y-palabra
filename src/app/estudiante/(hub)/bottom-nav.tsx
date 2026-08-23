@@ -18,7 +18,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-slate-800 dark:bg-slate-950/95"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur print:hidden dark:border-slate-800 dark:bg-slate-950/95"
     >
       <div className="mx-auto flex max-w-2xl items-stretch justify-around">
         {ITEMS.map(({ href, label, icon: Icon }) => {

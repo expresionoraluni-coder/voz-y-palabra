@@ -3,20 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, NotebookPen } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { alternarBitacoraCumplida, guardarBitacoraMeta } from "../../../acciones-reflexiones";
 
 export default function Bitacora({
-  estudianteId,
   unidadId,
   metaPrevia,
   cumplidaPrevia,
   avancePct,
 }: {
-  estudianteId: string;
   unidadId: string;
   metaPrevia: string | null;
   cumplidaPrevia: boolean;
@@ -39,14 +36,10 @@ export default function Bitacora({
     setError(null);
     setCargando(true);
     const meta = `${verbo.trim()} ${que.trim()}, ${como.trim()}.`;
-    const supabase = createClient();
     try {
-      const { error: upsertError } = await supabase.from("bitacora").upsert(
-        { estudiante_id: estudianteId, unidad_id: unidadId, meta, cumplida: false },
-        { onConflict: "estudiante_id,unidad_id" },
-      );
-      if (upsertError) {
-        setError(mensajeError(upsertError));
+      const resultado = await guardarBitacoraMeta(unidadId, meta);
+      if (!resultado.ok) {
+        setError(resultado.error);
         return;
       }
       // Conserva la meta en el estado local mientras router.refresh() trae
@@ -66,15 +59,10 @@ export default function Bitacora({
     if (cargando) return;
     setError(null);
     setCargando(true);
-    const supabase = createClient();
     try {
-      const { error: updateError } = await supabase
-        .from("bitacora")
-        .update({ cumplida: !cumplidaPrevia })
-        .eq("estudiante_id", estudianteId)
-        .eq("unidad_id", unidadId);
-      if (updateError) {
-        setError(mensajeError(updateError));
+      const resultado = await alternarBitacoraCumplida(unidadId);
+      if (!resultado.ok) {
+        setError(resultado.error);
         return;
       }
       router.refresh();

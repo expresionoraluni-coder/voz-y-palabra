@@ -12,12 +12,13 @@ import type { ResultadoCalificacion } from "@/app/estudiante/actividad/[id]/acci
  * hardening de seguridad, sub-fase 5), así que un upsert directo desde el
  * cliente fallaría de todas formas.
  */
-export function useEntregaActividad(actividadId: string, estudianteId: string) {
+export function useEntregaActividad(actividadId: string, estudianteId: string, tieneEntregaInicial = false) {
   void actividadId;
   void estudianteId;
   const { marcarGuardada } = useEntregaReciente();
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
+  const [entregaRegistrada, setEntregaRegistrada] = useState(tieneEntregaInicial);
   const [error, setError] = useState<string | null>(null);
   const envioEnCurso = useRef(false);
 
@@ -37,6 +38,10 @@ export function useEntregaActividad(actividadId: string, estudianteId: string) {
     accion: () => Promise<ResultadoCalificacion>,
   ): Promise<Record<string, unknown> | null> {
     if (envioEnCurso.current) return null;
+    if (entregaRegistrada) {
+      setError("Esta actividad ya tiene un intento registrado. Puedes revisar tu resultado y guardar la reflexión.");
+      return null;
+    }
     envioEnCurso.current = true;
     setError(null);
     setGuardado(false);
@@ -51,6 +56,7 @@ export function useEntregaActividad(actividadId: string, estudianteId: string) {
 
       marcarGuardada({ puntajeAuto: resultado.puntajeAuto, respuesta: resultado.respuesta });
       setGuardado(true);
+      setEntregaRegistrada(true);
       return resultado.respuesta;
     } catch {
       setError("No pudimos guardar tu respuesta. Revisa tu conexión e inténtalo de nuevo.");
@@ -61,5 +67,11 @@ export function useEntregaActividad(actividadId: string, estudianteId: string) {
     }
   }
 
-  return { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar };
+  function prepararReintento() {
+    setError(null);
+    setGuardado(false);
+    setEntregaRegistrada(false);
+  }
+
+  return { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar, prepararReintento, entregaRegistrada };
 }

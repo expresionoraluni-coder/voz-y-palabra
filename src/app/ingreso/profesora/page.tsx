@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserRound, ArrowLeft, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ADMINISTRADOR_EMAIL } from "@/lib/admin-constantes";
 import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
 import { mensajeErrorAuth } from "@/lib/mensaje-error";
 import { esContrasenaValida, obtenerReglasContrasena } from "@/lib/validar-contrasena";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { comprobarAdministradorProvisionado } from "../admin/acciones";
 
 export default function IngresoProfesora() {
   const router = useRouter();
@@ -58,7 +58,7 @@ export default function IngresoProfesora() {
         return;
       }
 
-      const esAdministrador = data.user.email?.trim().toLowerCase() === ADMINISTRADOR_EMAIL;
+      const esAdministrador = await comprobarAdministradorProvisionado();
       if (esAdministrador) {
         const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (aalError) {
@@ -73,7 +73,12 @@ export default function IngresoProfesora() {
         return;
       }
 
-      const tienePerfil = await existePerfilDocente(supabase, data.user.id);
+      const { existe: tienePerfil, error: perfilError } = await existePerfilDocente(supabase, data.user.id);
+      if (perfilError) {
+        setError("No pudimos comprobar tu perfil docente. Intenta de nuevo.");
+        setCargando(false);
+        return;
+      }
       router.push(tienePerfil ? "/docente/dashboard" : "/ingreso/profesora/verificar");
       router.refresh();
       return;
@@ -83,6 +88,14 @@ export default function IngresoProfesora() {
       const longitudCodigo = codigoInvitacion.trim().length;
       if (longitudCodigo < 4 || longitudCodigo > 64) {
         setError("Escribe el código de invitación para continuar.");
+        setCargando(false);
+        return;
+      }
+      const { data: codigoValido, error: codigoError } = await supabase.rpc("validar_codigo_invitacion", {
+        p_codigo: codigoInvitacion.trim(),
+      });
+      if (codigoError || codigoValido !== true) {
+        setError("El código de invitación no es correcto o ya alcanzó el límite de intentos.");
         setCargando(false);
         return;
       }
@@ -115,7 +128,7 @@ export default function IngresoProfesora() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6">
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-start gap-6 overflow-y-auto px-6 py-12 sm:justify-center">
       <Link
         href="/ingreso"
         className="fixed left-6 top-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
@@ -284,6 +297,6 @@ export default function IngresoProfesora() {
           </form>
         )}
       </Card>
-    </div>
+    </main>
   );
 }

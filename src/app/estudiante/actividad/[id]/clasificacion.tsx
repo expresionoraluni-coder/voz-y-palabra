@@ -3,15 +3,12 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
-import { Select, ErrorText } from "@/components/ui/field";
-import Boton from "@/components/ui/button";
-import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { Select } from "@/components/ui/field";
+import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { bloquearCopiar } from "@/lib/anti-copiar";
 import type { ContenidoClasificacionPublico } from "@/lib/calificacion-clasificacion";
 import { calificarClasificacionAccion } from "./acciones-calificacion";
-
-type ItemSnapshot = { texto: string; correcta: string };
 
 function mezclar<T>(arr: T[]): T[] {
   const copia = [...arr];
@@ -33,11 +30,11 @@ export default function Clasificacion({
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoClasificacionPublico;
-  respuestaPrevia?: { elegidas: string[]; itemsSnapshot?: ItemSnapshot[] };
+  respuestaPrevia?: { elegidas: string[]; resultado?: boolean[] };
   dosNiveles?: boolean;
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,
@@ -46,22 +43,12 @@ export default function Clasificacion({
   const [elegidas, setElegidas] = useState<string[]>(
     respuestaPrevia?.elegidas ?? contenido.elementos.map(() => ""),
   );
-  // El detalle de aciertos/fallos ya se calificó en el servidor al entregar
-  // (ver acciones-calificacion.ts) y se guardó junto a la respuesta
-  // (itemsSnapshot, el mismo campo que ya usaba la matriz de confusión
-  // docente) — aquí solo se lee, nunca se recalcula. Entregas de antes de
-  // este cambio sin itemsSnapshot se tratan como si no hubiera entrega
-  // todavía, en vez de tronar.
-  const [resultado, setResultado] = useState<boolean[] | null>(
-    respuestaPrevia?.itemsSnapshot
-      ? respuestaPrevia.itemsSnapshot.map((item, i) => item.correcta === respuestaPrevia.elegidas[i])
-      : null,
-  );
-  const bloqueado = resultado !== null;
+  const [resultado, setResultado] = useState<boolean[] | null>(respuestaPrevia?.resultado ?? null);
+  const bloqueado = entregaRegistrada || resultado !== null;
 
   // En las actividades de "dos niveles" (una vez aprobadas, desbloquean su
   // nivel 2) el orden se revuelve una sola vez por carga de página — así no
-  // se puede memorizar "la pregunta 3 siempre es X" entre intentos.
+  // se puede memorizar "la pregunta 3 siempre es X" antes de entregar.
   const elementosOrden = useMemo(
     () => {
       const conIndice = contenido.elementos.map((el, i) => ({ ...el, indiceOriginal: i }));
@@ -93,13 +80,13 @@ export default function Clasificacion({
 
     const guardada = await guardarConAccion(() => calificarClasificacionAccion(actividadId, elegidas));
     if (guardada) {
-      const snapshot = guardada.itemsSnapshot as ItemSnapshot[];
-      setResultado(snapshot.map((item, i) => item.correcta === elegidas[i]));
+      setResultado(guardada.resultado as boolean[]);
       registrarEntrega(guardada);
     }
   }
 
   function iniciarReintento() {
+    prepararReintento();
     setError(null);
     setResultado(null);
     setElegidas(contenido.elementos.map(() => ""));
@@ -151,20 +138,7 @@ export default function Clasificacion({
           </div>
         );
       })}
-      {error && <ErrorText>{error}</ErrorText>}
-      {!bloqueado && (
-        <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar y revisar"}
-        </Boton>
-      )}
-      {bloqueado && (
-        <AvisoReintento
-          puntaje={mejorPuntaje}
-          intentos={intentos}
-          onReintentar={iniciarReintento}
-          cargando={cargando}
-        />
-      )}
+      <PieEntregaAuto error={error} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} />
     </form>
   );
 }

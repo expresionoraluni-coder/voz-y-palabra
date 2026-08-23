@@ -13,10 +13,12 @@ import { esVideoUrlPermitida, urlEmbedYoutube } from "@/lib/video-embed";
 export default function VideoIntro({
   videoUrl,
   titulo,
+  instruccion,
   children,
 }: {
   videoUrl: string;
   titulo: string;
+  instruccion: string;
   children: ReactNode;
 }) {
   const [avanzado, setAvanzado] = useState(false);
@@ -27,7 +29,18 @@ export default function VideoIntro({
   const embed = urlSegura ? urlEmbedYoutube(urlSegura) : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <section
+      aria-labelledby="momento-video-titulo"
+      className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">2</span>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Momento 2</p>
+          <h2 id="momento-video-titulo" className="text-base font-semibold text-slate-900 dark:text-slate-50">Observa el video</h2>
+        </div>
+      </div>
+      <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{instruccion}</p>
       {embed ? (
         <div className="aspect-video w-full overflow-hidden rounded-xl bg-slate-900">
           <iframe
@@ -56,9 +69,9 @@ export default function VideoIntro({
         </p>
       )}
       <Boton type="button" onClick={() => setAvanzado(true)} className="w-full">
-        Continuar a la actividad
+        Continuar al ejercicio
         <ChevronRight className="size-4" aria-hidden="true" />
       </Boton>
-    </div>
+    </section>
   );
 }

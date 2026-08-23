@@ -20,9 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { CheckCircle2, GripVertical, Plus, X, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
-import { ErrorText } from "@/components/ui/field";
-import Boton from "@/components/ui/button";
-import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import type { ContenidoOrdenarFragmentosPublico } from "@/lib/calificacion-ordenar-fragmentos";
 import { calificarOrdenarFragmentos } from "./acciones-calificacion";
@@ -115,7 +113,7 @@ export default function OrdenarFragmentos({
   respuestaPrevia?: { orden: number[]; resultadoPorPosicion?: boolean[] };
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,
@@ -129,7 +127,7 @@ export default function OrdenarFragmentos({
   // de antes de este cambio sin `resultadoPorPosicion` se tratan como si no
   // hubiera entrega todavía, en vez de tronar.
   const [resultado, setResultado] = useState<boolean[] | null>(respuestaPrevia?.resultadoPorPosicion ?? null);
-  const bloqueado = resultado !== null;
+  const bloqueado = entregaRegistrada || resultado !== null;
 
   const disponibles = useMemo(
     () => contenido.fragmentos.map((_, i) => i).filter((i) => !secuencia.includes(i)),
@@ -183,6 +181,7 @@ export default function OrdenarFragmentos({
   }
 
   function iniciarReintento() {
+    prepararReintento();
     setError(null);
     setResultado(null);
     setSecuencia([]);
@@ -256,20 +255,7 @@ export default function OrdenarFragmentos({
         </div>
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
-      {!bloqueado && (
-        <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar mi secuencia"}
-        </Boton>
-      )}
-      {bloqueado && (
-        <AvisoReintento
-          puntaje={mejorPuntaje}
-          intentos={intentos}
-          onReintentar={iniciarReintento}
-          cargando={cargando}
-        />
-      )}
+      <PieEntregaAuto error={error} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} textoBoton="Guardar mi secuencia" />
     </form>
   );
 }

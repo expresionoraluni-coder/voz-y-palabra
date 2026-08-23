@@ -23,12 +23,14 @@ select plan(25);
 -- ============================================================
 -- Fixtures
 -- ============================================================
+alter table auth.users disable trigger validar_invitacion_alta_docente;
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', '__test__docente@example.com'),
   ('22222222-2222-2222-2222-222222222222', '__test__estudiante-boleta@example.com'),
   ('33333333-3333-3333-3333-333333333333', '__test__estudiante@example.com'),
   ('99999999-0000-0000-0000-000000000001', '__test__sesion-login@example.com'),
   ('99999999-0000-0000-0000-000000000002', '__test__sesion-invitacion@example.com');
+alter table auth.users enable trigger validar_invitacion_alta_docente;
 
 insert into docentes (id, nombre, correo) values
   ('11111111-1111-1111-1111-111111111111', '__test__ Docente', '__test__docente@example.com');

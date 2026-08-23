@@ -18,7 +18,7 @@ export default function NotFoundDocente() {
         </div>
         <Link
           href="/docente/dashboard"
-          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
           Volver al panel
@@ -27,4 +27,3 @@ export default function NotFoundDocente() {
     </main>
   );
 }
-

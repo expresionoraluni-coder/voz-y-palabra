@@ -6,7 +6,9 @@ export type MotivoBloqueoActividad =
   | "unidad_anterior_actividades"
   | "unidad_anterior_reflexion_actividad"
   | "unidad_anterior_reflexion_unidad"
-  | "unidad_anterior_reflexiones";
+  | "unidad_anterior_reflexiones"
+  | "unidad_anterior_confianza"
+  | "unidad_inicio";
 
 export function detalleBloqueoActividad(motivo: string | null | undefined) {
   switch (motivo) {
@@ -21,7 +23,12 @@ export function detalleBloqueoActividad(motivo: string | null | undefined) {
       return {
         titulo: "Guarda la reflexión de la actividad anterior",
         descripcion:
-          "La actividad anterior ya está lista, pero falta guardar su reflexión. Escríbela y guárdala para abrir esta actividad.",
+          "La actividad anterior ya tiene una respuesta guardada, pero falta guardar su reflexión. Escríbela y guárdala para abrir esta actividad.",
+      };
+    case "unidad_inicio":
+      return {
+        titulo: "Completa el inicio de la unidad",
+        descripcion: "Define tu meta y registra tu confianza inicial antes de comenzar las actividades de esta unidad.",
       };
     case "unidad_anterior_actividades":
       return {
@@ -41,6 +48,11 @@ export function detalleBloqueoActividad(motivo: string | null | undefined) {
         descripcion:
           "La última actividad ya tiene su reflexión. Ahora completa la reflexión final de la unidad anterior para abrir la siguiente.",
       };
+    case "unidad_anterior_confianza":
+      return {
+        titulo: "Completa la confianza final",
+        descripcion: "La unidad anterior todavía necesita tu nivel de seguridad al terminar para desbloquear la siguiente.",
+      };
     case "unidad_anterior_reflexiones":
       return {
         titulo: "Completa las reflexiones de la unidad anterior",
@@ -59,17 +71,14 @@ export function unidadEstaCompleta(totalActividades: number, actividadesCompleta
   return totalActividades > 0 && actividadesCompletadas === totalActividades;
 }
 
-/**
- * Una entrega autocalificable solo cuenta cuando alcanzó el mínimo o agotó
- * sus tres intentos. Las actividades abiertas no tienen puntaje automático,
- * así que cuentan al guardarse.
- */
 export function entregaCuentaComoCompletada(
   entrega: { puntaje_auto: number | null; respuesta?: unknown } | null | undefined,
 ): boolean {
   if (!entrega) return false;
-  if (entrega.puntaje_auto === null) return true;
-  return puedeAbrirDependiente(entrega.puntaje_auto, entrega.respuesta);
+  // La entrega ya representa un trabajo guardado. El puntaje no puede volver
+  // a bloquear la ruta ni convertir una fila existente en una actividad
+  // incompleta; los intentos se controlan al guardar la actividad.
+  return true;
 }
 
 export { intentosDeEntregaAuto, puedeAbrirDependiente };

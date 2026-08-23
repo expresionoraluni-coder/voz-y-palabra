@@ -28,6 +28,30 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+@page {
+  margin: 1.5cm;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  .print-surface,
+  .print-surface * {
+    color: #0f172a !important;
+    background-color: transparent !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+  }
+
+  .print-surface {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}
+
 * {
   border-color: var(--border-default);
 }

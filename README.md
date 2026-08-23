@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Voz y Palabra
 
-## Getting Started
+Plataforma web para practicar Expresión Oral y Escrita I en CECyT 1, IPN. Incluye acceso de estudiantes, panel docente, portafolio, seguimiento de avance y un canal de atención de incidencias.
 
-First, run the development server:
+## Stack
+
+- Next.js 16.3 con App Router y React 19
+- Tailwind CSS 4
+- Supabase Auth, Postgres y RLS
+- Netlify para despliegue
+
+## Desarrollo local
+
+Requisitos: Node.js compatible con Next.js 16 y npm.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La aplicación queda disponible en `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Crea un archivo `.env.local` con estas variables. No compartas sus valores ni los guardes en Git:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
 
-## Learn More
+La clave `SUPABASE_SERVICE_ROLE_KEY` solo se usa en componentes y acciones de servidor. Nunca debe exponerse en el navegador.
 
-To learn more about Next.js, take a look at the following resources:
+## Comandos de calidad
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run lint
+npm run typecheck
+npm run test:contracts
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`test:contracts` comprueba invariantes de seguridad en las Server Actions, el esquema y las funciones SQL. El workflow de GitHub también aplica las migraciones de Supabase en un entorno efímero y ejecuta pgTAP.
 
-## Deploy on Vercel
+## Estructura funcional
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `/`: portada pública.
+- `/ingreso`: selección de rol y autenticación.
+- `/estudiante`: actividades, avance, insignias y portafolio.
+- `/docente`: grupos, actividades, estudiantes y seguimiento.
+- `/admin`: atención de reportes y seguridad administrativa con MFA.
+- `/privacidad`: explicación operativa del uso de datos.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Las rutas protegidas validan la sesión en el servidor. Las tablas expuestas usan RLS y las mutaciones sensibles pasan por funciones o Server Actions autorizadas.
+
+## Supabase
+
+El esquema base está en `supabase/schema.sql` y `supabase/functions.sql`. Las correcciones incrementales viven en `supabase/migrations/` y deben aplicarse en orden. Si se modifica una tabla o función, actualiza también sus políticas, los contratos de seguridad y la documentación de retención de datos.
+
+## Despliegue
+
+Netlify usa `npm run build` y el plugin oficial de Next.js configurado en `netlify.toml`. Define las tres variables de entorno en el sitio de Netlify antes de publicar.
+
+## Datos y privacidad
+
+La ruta `/privacidad` es una explicación para la comunidad; no sustituye el aviso institucional aplicable. Las responsabilidades de conservación, eliminación, atención de solicitudes y supervisión deben quedar definidas por la institución responsable del curso en `docs/politica-datos.md`.

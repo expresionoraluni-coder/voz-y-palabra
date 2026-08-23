@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ADMINISTRADOR_EMAIL } from "@/lib/admin-constantes";
 import { existePerfilDocente } from "@/lib/supabase/asegurar-perfil-docente";
 import { mensajeError } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { comprobarAdministradorProvisionado } from "../../admin/acciones";
 
 export default function VerificarDocente() {
   const router = useRouter();
-  const [listo, setListo] = useState(false);
+  const [estadoCarga, setEstadoCarga] = useState<"cargando" | "listo" | "error">("cargando");
   const [nombre, setNombre] = useState("");
   const [codigoInvitacion, setCodigoInvitacion] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -31,18 +31,23 @@ export default function VerificarDocente() {
         return;
       }
 
-      if (user.email?.trim().toLowerCase() === ADMINISTRADOR_EMAIL) {
+      if (await comprobarAdministradorProvisionado()) {
         router.replace("/admin");
         return;
       }
 
-      const tienePerfil = await existePerfilDocente(supabase, user.id);
+      const { existe: tienePerfil, error: perfilError } = await existePerfilDocente(supabase, user.id);
+      if (perfilError) {
+        setError("No pudimos comprobar tu perfil docente. Recarga la página para intentarlo de nuevo.");
+        setEstadoCarga("error");
+        return;
+      }
       if (tienePerfil) {
         router.replace("/docente/dashboard");
         return;
       }
 
-      setListo(true);
+      setEstadoCarga("listo");
     })();
   }, [router]);
 
@@ -81,16 +86,29 @@ export default function VerificarDocente() {
     router.refresh();
   }
 
-  if (!listo) {
+  if (estadoCarga === "cargando") {
     return (
-      <div className="flex min-h-screen flex-1 items-center justify-center px-6">
+      <div className="flex min-h-dvh flex-1 items-center justify-center px-6 py-10">
         <p className="text-sm text-slate-500 dark:text-slate-400">Cargando tu verificación…</p>
       </div>
     );
   }
 
+  if (estadoCarga === "error") {
+    return (
+      <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+        <Card className="w-full max-w-sm p-6">
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          <Boton type="button" className="mt-4 w-full" onClick={() => window.location.reload()}>
+            Intentar de nuevo
+          </Boton>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6">
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
       <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
         <KeyRound className="size-6" aria-hidden="true" />
       </div>
@@ -127,6 +145,6 @@ export default function VerificarDocente() {
           </Boton>
         </form>
       </Card>
-    </div>
+    </main>
   );
 }

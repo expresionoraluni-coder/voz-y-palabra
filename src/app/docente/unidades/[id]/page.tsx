@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
-import Boton from "@/components/ui/button";
 import { etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import ActividadVideoEditor from "./actividad-video-editor";
+import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 export default async function DetalleUnidadDocente({
   params,
@@ -22,12 +22,13 @@ export default async function DetalleUnidadDocente({
   const [
     {
       data: { user },
+      error: sesionError,
     },
-    { data: unidad },
-    { data: actividades },
+    { data: unidad, error: unidadError },
+    { data: actividades, error: actividadesError },
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, unidad_competencia").eq("id", id).single(),
+    supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, unidad_competencia").eq("id", id).maybeSingle(),
     supabase
       .from("actividades")
       .select("id, titulo, orden, video_url, tipos_actividad(nombre)")
@@ -35,11 +36,15 @@ export default async function DetalleUnidadDocente({
       .order("orden"),
   ]);
 
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
+  revisarErrorConsulta(unidadError, "No pudimos cargar esta unidad.");
+  revisarErrorConsulta(actividadesError, "No pudimos cargar las actividades de esta unidad.");
+
   if (!user) redirect("/ingreso/profesora");
   if (!unidad) notFound();
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 px-6 py-10">
       <PageHeader
         volverHref="/docente/dashboard"
         eyebrow={`Unidad ${unidad.orden}`}
@@ -59,11 +64,12 @@ export default async function DetalleUnidadDocente({
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Actividades del curso</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">Consulta las actividades actuales o crea una nueva cuando lo necesites.</p>
         </div>
-        <Link href={`/docente/unidades/${id}/actividades/nueva`}>
-          <Boton size="sm">
+        <Link
+          href={`/docente/unidades/${id}/actividades/nueva`}
+          className="inline-flex h-11 touch-manipulation items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white transition-[color,background-color,border-color,transform] duration-150 hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.97] dark:focus-visible:ring-offset-slate-950"
+        >
             <Plus className="size-4" aria-hidden="true" />
             Crear actividad
-          </Boton>
         </Link>
       </div>
 
@@ -89,10 +95,10 @@ export default async function DetalleUnidadDocente({
                     <p className="text-xs text-slate-500 dark:text-slate-500">{etiquetaTipo(tipo?.nombre)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <Link href={`/docente/unidades/${id}/actividades/${a.id}`} className="inline-flex min-h-9 items-center rounded-lg px-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-950/40">
+                    <Link href={`/docente/unidades/${id}/actividades/${a.id}`} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-950/40">
                       Ver instrucciones
                     </Link>
-                    <Link href={`/docente/unidades/${id}/actividades/${a.id}/editar`} aria-label={`Editar ${a.titulo}`} title="Editar actividad" className="inline-flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400">
+                    <Link href={`/docente/unidades/${id}/actividades/${a.id}/editar`} aria-label={`Editar ${a.titulo}`} title="Editar actividad" className="inline-flex size-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400">
                       <Pencil className="size-4" aria-hidden="true" />
                     </Link>
                   </div>

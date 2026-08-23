@@ -6,7 +6,7 @@ const ALTURAS_ONDA = [18, 34, 52, 30, 44, 60, 38, 26, 48, 20, 36, 56, 32, 22, 40
 
 export default function Home() {
   return (
-    <div className="relative flex min-h-dvh flex-1 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-6 py-16">
+    <main className="relative flex min-h-dvh flex-1 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-6 py-16">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-[0.07]"
@@ -33,7 +33,7 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <h1 className="text-6xl font-bold tracking-tight text-white sm:text-7xl">
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-7xl">
             Voz y Palabra
           </h1>
           <p className="text-lg font-medium text-violet-300 sm:text-xl">
@@ -54,9 +54,11 @@ export default function Home() {
         </Link>
       </div>
 
-      <p className="absolute bottom-6 text-xs text-indigo-200/40">
+      <div className="absolute bottom-5 flex flex-wrap justify-center gap-x-2 gap-y-1 px-6 text-center text-xs text-indigo-200/40">
         CECyT 1 &ldquo;Gonzalo Vázquez Vela&rdquo; · IPN
-      </p>
-    </div>
+        <span aria-hidden="true">·</span>
+        <Link href="/privacidad" className="underline underline-offset-2 hover:text-indigo-100/70">Uso y privacidad</Link>
+      </div>
+    </main>
   );
 }

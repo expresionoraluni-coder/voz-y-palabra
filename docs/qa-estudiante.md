@@ -12,7 +12,10 @@ Esta lista acompaña el flujo autodirigido. La orientación de una docente es op
 - Leer la instrucción, el aprendizaje esperado y los pasos.
 - Abrir “¿Te atoraste? Ver una pista” solo si hace falta y comprobar que orienta sin mostrar la respuesta.
 - Resolver, guardar y volver a abrir la actividad.
-- Completar una unidad y escribir la reflexión de cierre.
+- Confirmar que cada actividad solo permite un envío; después del envío se muestran el resultado y la reflexión, sin botón de reintento.
+- En una actividad de dos niveles, comprobar que el nivel 2 permanece bloqueado hasta concluir el nivel 1 y guardar su reflexión.
+- Completar todas las actividades de una unidad, guardar la reflexión de la última actividad, la reflexión de cierre y la confianza final.
+- Confirmar que la unidad siguiente permanece bloqueada hasta terminar todos esos pasos.
 - Confirmar que el progreso y las insignias se actualicen.
 
 ## Compatibilidad manual

@@ -10,10 +10,9 @@ import { useState } from "react";
 
 // La reflexión es una puerta real de navegación: guardar la entrega muestra
 // el cierre de la actividad, pero el siguiente paso permanece bloqueado hasta
-// que la persona escriba y guarde qué aprendió de ese intento.
+// que la persona escriba y guarde qué aprendió de esa actividad.
 export default function ActividadPostEntrega({
   actividadId,
-  estudianteId,
   confianza,
   textoReflexionPrevio,
   siguienteHref,
@@ -23,7 +22,6 @@ export default function ActividadPostEntrega({
   placeholderReflexionPersonalizado,
 }: {
   actividadId: string;
-  estudianteId: string;
   confianza: number | null;
   textoReflexionPrevio: string | null;
   siguienteHref: string;
@@ -50,7 +48,6 @@ export default function ActividadPostEntrega({
     <>
       <ReflexionActividad
         actividadId={actividadId}
-        estudianteId={estudianteId}
         confianza={confianza}
         puntajeAuto={entregaReciente.puntajeAuto}
         textoPrevio={textoReflexionPrevio}
@@ -66,7 +63,7 @@ export default function ActividadPostEntrega({
         </Link>
       ) : !entregaCompletada ? (
         <p className="rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          Mejora tu resultado antes de continuar. Revisa la explicación y vuelve a intentarlo.
+          Tu respuesta quedó registrada. Guarda la reflexión para continuar.
         </p>
       ) : (
         <p className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-center text-sm text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">

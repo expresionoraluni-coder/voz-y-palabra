@@ -8,7 +8,7 @@ export default async function SeguridadAdministrador() {
   const { administrador, mfa } = await requerirAdministrador({ permitirConfiguracionMfa: true });
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 px-6 py-10">
       <Link href="/admin" className="inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Volver al panel
@@ -50,7 +50,7 @@ export default async function SeguridadAdministrador() {
 
       <Card className="p-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
         <p className="font-semibold text-slate-900 dark:text-slate-50">Cierre por inactividad</p>
-        <p className="mt-1">Por protección, el panel cierra esta sesión después de 30 minutos sin actividad. Si estás trabajando, cualquier interacción mantiene la sesión abierta.</p>
+        <p className="mt-1">Por protección, el panel revoca las sesiones administrativas después de 30 minutos sin actividad. Si estás trabajando, cualquier interacción mantiene la sesión abierta.</p>
       </Card>
     </div>
   );

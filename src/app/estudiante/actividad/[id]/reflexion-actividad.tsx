@@ -2,15 +2,13 @@
 
 import { useState } from "react";
 import { Gauge, Lightbulb } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { mensajeCalibracion, placeholderReflexion } from "@/lib/calibracion-confianza";
+import { guardarReflexionActividad } from "../../acciones-reflexiones";
 
 export default function ReflexionActividad({
   actividadId,
-  estudianteId,
   confianza,
   puntajeAuto,
   textoPrevio,
@@ -18,7 +16,6 @@ export default function ReflexionActividad({
   onGuardada,
 }: {
   actividadId: string;
-  estudianteId: string;
   confianza: number | null;
   puntajeAuto: number | null;
   textoPrevio: string | null;
@@ -38,15 +35,10 @@ export default function ReflexionActividad({
     setError(null);
     setCargando(true);
 
-    const supabase = createClient();
     try {
-      const { error: upsertError } = await supabase.from("reflexiones").upsert(
-        { estudiante_id: estudianteId, actividad_id: actividadId, momento: "cierre", texto },
-        { onConflict: "estudiante_id,actividad_id,momento" },
-      );
-
-      if (upsertError) {
-        setError(mensajeError(upsertError));
+      const resultado = await guardarReflexionActividad(actividadId, texto);
+      if (!resultado.ok) {
+        setError(resultado.error);
         return;
       }
 

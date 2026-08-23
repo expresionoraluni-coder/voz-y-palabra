@@ -15,7 +15,6 @@ import { temaUnidad } from "@/lib/unidad-tema";
 import {
   detalleBloqueoActividad,
   entregaCuentaComoCompletada,
-  intentosDeEntregaAuto,
   unidadEstaCompleta,
 } from "@/lib/progreso-unidad";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
@@ -38,10 +37,11 @@ export default async function UnidadEstudiante({
 
   const { data: estudiante, error: estudianteError } = await supabase
     .from("estudiantes")
-    .select("id")
+    .select("id, debe_cambiar_nip")
     .single();
   revisarErrorConsulta(estudianteError && estudianteError.code !== "PGRST116" ? estudianteError : null, "No pudimos cargar tu sesión de estudiante.");
   if (!estudiante) redirect("/ingreso/estudiante");
+  if (estudiante.debe_cambiar_nip) redirect("/estudiante/cambiar-nip");
 
   // `unidades`/`actividades` ya no tienen policy de lectura abierta a
   // estudiantes — se traen con el cliente admin. Las entregas del propio
@@ -93,24 +93,38 @@ export default async function UnidadEstudiante({
       const hechasAnterior = unidadAnterior.actividades.filter((a) =>
         (entregasEstudiante ?? []).some((e) => e.actividad_id === a.id && entregaCuentaComoCompletada(e)),
       ).length;
-      const { data: reflexionAnterior, error: reflexionAnteriorError } = await supabase
-        .from("reflexiones")
-        .select("id")
-        .eq("estudiante_id", estudiante.id)
-        .eq("unidad_id", unidadAnterior.id)
-            .eq("momento", "cierre")
-            .maybeSingle();
-      revisarErrorConsulta(reflexionAnteriorError, "No pudimos comprobar el cierre de la unidad anterior.");
       const ultimaActividadAnterior = unidadAnterior.actividades.slice().sort((a, b) => b.orden - a.orden)[0];
-      const { data: reflexionUltimaActividadAnterior, error: reflexionUltimaActividadAnteriorError } = ultimaActividadAnterior
-        ? await supabase
+      const [
+        { data: reflexionAnterior, error: reflexionAnteriorError },
+        { data: confianzaAnterior, error: confianzaAnteriorError },
+        { data: reflexionUltimaActividadAnterior, error: reflexionUltimaActividadAnteriorError },
+      ] = await Promise.all([
+        supabase
+          .from("reflexiones")
+          .select("id")
+          .eq("estudiante_id", estudiante.id)
+          .eq("unidad_id", unidadAnterior.id)
+          .eq("momento", "cierre")
+          .maybeSingle(),
+        supabase
+          .from("autoevaluaciones_confianza")
+          .select("id")
+          .eq("estudiante_id", estudiante.id)
+          .eq("unidad_id", unidadAnterior.id)
+          .eq("momento", "cierre")
+          .maybeSingle(),
+        ultimaActividadAnterior
+          ? supabase
             .from("reflexiones")
             .select("id")
             .eq("estudiante_id", estudiante.id)
             .eq("actividad_id", ultimaActividadAnterior.id)
             .eq("momento", "cierre")
             .maybeSingle()
-        : { data: null };
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      revisarErrorConsulta(reflexionAnteriorError, "No pudimos comprobar el cierre de la unidad anterior.");
+      revisarErrorConsulta(confianzaAnteriorError, "No pudimos comprobar la confianza final de la unidad anterior.");
       revisarErrorConsulta(
         reflexionUltimaActividadAnteriorError,
         "No pudimos comprobar la reflexión de la última actividad.",
@@ -124,6 +138,8 @@ export default async function UnidadEstudiante({
             ? "unidad_anterior_reflexion_actividad"
             : !reflexionAnterior
               ? "unidad_anterior_reflexion_unidad"
+              : !confianzaAnterior
+                ? "unidad_anterior_confianza"
               : null;
 
       if (motivoUnidadAnterior) {
@@ -188,13 +204,14 @@ export default async function UnidadEstudiante({
   revisarErrorConsulta(reflexionesActividadesError, "No pudimos cargar las reflexiones de tus actividades.");
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
+  const inicioUnidadCompleto = Boolean(confianzaInicio && bitacora);
   const actividadesConReflexion = new Set((reflexionesActividades ?? []).map((reflexion) => reflexion.actividad_id));
 
   const totalActividades = actividades?.length ?? 0;
   const completadas =
     actividades?.filter((a) => entregaCuentaComoCompletada(a.entregas?.[0]))
       .length ?? 0;
-  const unidadCompleta = totalActividades > 0 && completadas === totalActividades;
+  const unidadCompleta = unidadEstaCompleta(totalActividades, completadas);
   const ultimaActividad = actividades?.[actividades.length - 1];
   const tieneReflexionUltimaActividad = Boolean(
     ultimaActividad && (reflexionesActividades ?? []).some((reflexion) => reflexion.actividad_id === ultimaActividad.id),
@@ -212,7 +229,7 @@ export default async function UnidadEstudiante({
         descripcion={unidad.reto_comunicativo}
       />
 
-      {!confianzaInicio ? (
+      {!inicioUnidadCompleto ? (
         <>
           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3.5 dark:border-indigo-900 dark:bg-indigo-950/30">
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tu ruta para aprender</p>
@@ -227,13 +244,12 @@ export default async function UnidadEstudiante({
             </Alert>
           )}
           <Bitacora
-            estudianteId={estudiante.id}
             unidadId={id}
             metaPrevia={bitacora?.meta ?? null}
             cumplidaPrevia={bitacora?.cumplida ?? false}
             avancePct={pct}
           />
-          <Confianza estudianteId={estudiante.id} unidadId={id} />
+          <Confianza unidadId={id} />
         </>
       ) : (
         <>
@@ -276,12 +292,6 @@ export default async function UnidadEstudiante({
                       !entregaCuentaComoCompletada(entregaPrerequisito) ||
                       !actividadesConReflexion.has(prerequisito.id)),
                 );
-                const puntajeActual = completada ? (a.entregas?.[0]?.puntaje_auto ?? null) : null;
-                const intentosActuales = intentosDeEntregaAuto(a.entregas?.[0]?.respuesta, completada);
-                const puedeRepasar = Boolean(
-                  completada && puntajeActual !== null && puntajeActual < 70 && intentosActuales < 3,
-                );
-
                 if (bloqueada) {
                   return (
                     <div
@@ -315,7 +325,7 @@ export default async function UnidadEstudiante({
                             : "text-xs text-slate-500 dark:text-slate-400"
                         }
                       >
-                        {puedeRepasar ? "Puedes mejorarla" : completada ? "Completada" : "Lista para comenzar"}
+                        {completada ? "Completada" : "Lista para comenzar"}
                       </span>
                     </CardLink>
                   </Link>

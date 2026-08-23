@@ -16,7 +16,7 @@ const VARIANTES: Record<Variant, string> = {
 };
 
 const TAMANOS: Record<Size, string> = {
-  sm: "h-9 px-3 text-sm gap-1.5",
+  sm: "h-11 px-3 text-sm gap-1.5",
   md: "h-11 px-5 text-sm gap-2",
 };
 
@@ -27,10 +27,11 @@ interface BotonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Boton = forwardRef<HTMLButtonElement, BotonProps>(
-  ({ variant = "primary", size = "md", cargando, disabled, className = "", children, ...props }, ref) => {
+  ({ variant = "primary", size = "md", cargando, disabled, type = "button", className = "", children, ...props }, ref) => {
     return (
       <button
         ref={ref}
+        type={type}
         aria-busy={cargando || undefined}
         disabled={disabled || cargando}
         className={`inline-flex touch-manipulation items-center justify-center rounded-lg font-medium transition-[color,background-color,border-color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.97] dark:focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:active:scale-100 ${VARIANTES[variant]} ${TAMANOS[size]} ${className}`}

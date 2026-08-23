@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import CambiarNipObligatorio from "@/components/cambiar-nip-obligatorio";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import BottomNav from "./bottom-nav";
@@ -13,9 +14,11 @@ export default async function HubLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/ingreso/estudiante");
   if (user.is_anonymous !== true) redirect("/ingreso/estudiante");
 
-  const { data: estudiante } = await supabase
+  const { data: estudiante } = await createAdminClient()
     .from("estudiantes")
     .select("id, grupo_id, debe_cambiar_nip")
+    .eq("auth_user_id", user.id)
+    .eq("activo", true)
     .single();
   if (!estudiante) redirect("/ingreso/estudiante");
 

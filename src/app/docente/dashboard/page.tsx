@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
 import { CardLink } from "@/components/ui/card";
-import Boton from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import MetricCard from "@/components/ui/metric-card";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
@@ -20,8 +19,9 @@ type EstudianteDashboard = {
 type EntregaDashboard = {
   estudiante_id: string;
   created_at: string;
-  estudiantes: { grupo_id: string; activo: boolean } | { grupo_id: string; activo: boolean }[] | null;
 };
+
+const TAMANO_PAGINA_ENTREGAS = 1000;
 
 export default async function DashboardDocente() {
   const supabase = await createClient();
@@ -36,7 +36,6 @@ export default async function DashboardDocente() {
     { data: grupos, error: gruposError },
     { data: unidades, error: unidadesError },
     { data: estudiantes, error: estudiantesError },
-    { data: entregas, error: entregasError },
   ] = await Promise.all([
     // El layout ya valida el perfil; `maybeSingle` evita un 406 fugaz en
     // sesiones antiguas o durante la creación del perfil y permite que el
@@ -49,10 +48,27 @@ export default async function DashboardDocente() {
       .order("created_at", { ascending: false }),
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, actividades(id)").order("orden"),
     supabase.from("estudiantes").select("id, grupo_id, created_at, activo").eq("activo", true),
-    supabase
-      .from("entregas")
-      .select("estudiante_id, created_at"),
   ]);
+
+  const entregasResumen: EntregaDashboard[] = [];
+  let entregasError: { message?: string; code?: string } | null = null;
+  const estudianteIds = (estudiantes ?? []).map((estudiante) => estudiante.id);
+  for (let desde = 0; estudianteIds.length > 0; desde += TAMANO_PAGINA_ENTREGAS) {
+    const { data, error } = await supabase
+      .from("entregas")
+      .select("estudiante_id, created_at")
+      .in("estudiante_id", estudianteIds)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(desde, desde + TAMANO_PAGINA_ENTREGAS - 1);
+    if (error) {
+      entregasError = error;
+      break;
+    }
+    const pagina = (data ?? []) as EntregaDashboard[];
+    entregasResumen.push(...pagina);
+    if (pagina.length < TAMANO_PAGINA_ENTREGAS) break;
+  }
 
   revisarErrorConsulta(docenteError, "No pudimos cargar tu perfil docente.");
   revisarErrorConsulta(gruposError, "No pudimos cargar tus grupos.");
@@ -65,7 +81,6 @@ export default async function DashboardDocente() {
   // El resumen reutiliza las entregas que ya se necesitan para los grupos,
   // evitando una consulta independiente por cada tarjeta.
   const estudiantesActivos = (estudiantes ?? []) as EstudianteDashboard[];
-  const entregasResumen = (entregas ?? []) as EntregaDashboard[];
   const totalActividades =
     unidades?.reduce((total, unidad) => total + (Array.isArray(unidad.actividades) ? unidad.actividades.length : 0), 0) ?? 0;
   const entregasPorEstudiante = new Map<string, { total: number; ultima: number | null }>();
@@ -113,7 +128,7 @@ export default async function DashboardDocente() {
     : 0;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-6 py-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar nombre={docente.nombre} />
@@ -143,11 +158,12 @@ export default async function DashboardDocente() {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Tus grupos</h2>
-          <Link href="/docente/grupos/nuevo">
-            <Boton size="sm">
-              <Plus className="size-4" aria-hidden="true" />
-              Crear grupo
-            </Boton>
+          <Link
+            href="/docente/grupos/nuevo"
+            className="inline-flex h-11 touch-manipulation items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white transition-[color,background-color,border-color,transform] duration-150 hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.97] dark:focus-visible:ring-offset-slate-950"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Crear grupo
           </Link>
         </div>
         {!grupos || grupos.length === 0 ? (

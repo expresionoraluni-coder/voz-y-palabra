@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, MessageSquareText, ShieldCheck } from "lucide-react";
+import { BookOpen, LayoutDashboard, MessageSquareText, ShieldCheck } from "lucide-react";
 import { requerirAdministrador } from "@/lib/supabase/requerir-administrador";
 import CerrarSesion from "@/components/cerrar-sesion";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
@@ -33,6 +33,10 @@ export default async function LayoutAdministrador({ children }: { children: Reac
             <Link href="/admin/reportes" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
               <MessageSquareText className="size-4" aria-hidden="true" />
               Reportes
+            </Link>
+            <Link href="/admin/faq" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
+              <BookOpen className="size-4" aria-hidden="true" />
+              Ayuda
             </Link>
             <Link href="/admin/seguridad" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
               <ShieldCheck className="size-4" aria-hidden="true" />

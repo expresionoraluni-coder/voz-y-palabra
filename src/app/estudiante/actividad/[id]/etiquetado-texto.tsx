@@ -3,14 +3,11 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
-import { Select, ErrorText } from "@/components/ui/field";
-import Boton from "@/components/ui/button";
-import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import { Select } from "@/components/ui/field";
+import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import type { ContenidoEtiquetadoTextoPublico } from "@/lib/calificacion-etiquetado-texto";
 import { calificarEtiquetadoTextoAccion } from "./acciones-calificacion";
-
-type ItemSnapshot = { texto: string; correcta: string };
 
 export default function EtiquetadoTexto({
   actividadId,
@@ -22,10 +19,10 @@ export default function EtiquetadoTexto({
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoEtiquetadoTextoPublico;
-  respuestaPrevia?: { elegidas: string[]; itemsSnapshot?: ItemSnapshot[] };
+  respuestaPrevia?: { elegidas: string[]; resultado?: boolean[] };
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion } = useEntregaActividad(actividadId, estudianteId);
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,
@@ -34,17 +31,8 @@ export default function EtiquetadoTexto({
   const [elegidas, setElegidas] = useState<string[]>(
     respuestaPrevia?.elegidas ?? contenido.fragmentos.map(() => ""),
   );
-  // El detalle de aciertos/fallos ya se calificó en el servidor al entregar
-  // (ver acciones-calificacion.ts) y se guardó junto a la respuesta
-  // (itemsSnapshot) — aquí solo se lee, nunca se recalcula. Entregas de
-  // antes de este cambio sin itemsSnapshot se tratan como si no hubiera
-  // entrega todavía, en vez de tronar.
-  const [resultado, setResultado] = useState<boolean[] | null>(
-    respuestaPrevia?.itemsSnapshot
-      ? respuestaPrevia.itemsSnapshot.map((item, i) => item.correcta === respuestaPrevia.elegidas[i])
-      : null,
-  );
-  const bloqueado = resultado !== null;
+  const [resultado, setResultado] = useState<boolean[] | null>(respuestaPrevia?.resultado ?? null);
+  const bloqueado = entregaRegistrada || resultado !== null;
 
   function actualizar(indice: number, valor: string) {
     if (bloqueado) return;
@@ -63,13 +51,13 @@ export default function EtiquetadoTexto({
 
     const guardada = await guardarConAccion(() => calificarEtiquetadoTextoAccion(actividadId, elegidas));
     if (guardada) {
-      const snapshot = guardada.itemsSnapshot as ItemSnapshot[];
-      setResultado(snapshot.map((item, i) => item.correcta === elegidas[i]));
+      setResultado(guardada.resultado as boolean[]);
       registrarEntrega(guardada);
     }
   }
 
   function iniciarReintento() {
+    prepararReintento();
     setError(null);
     setResultado(null);
     setElegidas(contenido.fragmentos.map(() => ""));
@@ -92,6 +80,7 @@ export default function EtiquetadoTexto({
             <span key={i}>
               {f.texto}{" "}
               <select
+                aria-label={`Etiqueta para el fragmento ${i + 1}`}
                 value={elegidas[i]}
                 disabled={bloqueado}
                 onChange={(e) => actualizar(i, e.target.value)}
@@ -125,7 +114,7 @@ export default function EtiquetadoTexto({
             className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800"
           >
             <p className="text-sm italic text-slate-900 dark:text-slate-50">&ldquo;{f.texto}&rdquo;</p>
-            <Select value={elegidas[i]} disabled={bloqueado} onChange={(e) => actualizar(i, e.target.value)}>
+            <Select aria-label={`Etiqueta para el fragmento ${i + 1}`} value={elegidas[i]} disabled={bloqueado} onChange={(e) => actualizar(i, e.target.value)}>
               <option value="">Elige una etiqueta</option>
               {contenido.etiquetas.map((e) => (
                 <option key={e} value={e}>
@@ -152,20 +141,7 @@ export default function EtiquetadoTexto({
           </div>
         ))
       )}
-      {error && <ErrorText>{error}</ErrorText>}
-      {!bloqueado && (
-        <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar y revisar"}
-        </Boton>
-      )}
-      {bloqueado && (
-        <AvisoReintento
-          puntaje={mejorPuntaje}
-          intentos={intentos}
-          onReintentar={iniciarReintento}
-          cargando={cargando}
-        />
-      )}
+      <PieEntregaAuto error={error} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} />
     </form>
   );
 }

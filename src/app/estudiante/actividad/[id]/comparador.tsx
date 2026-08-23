@@ -14,9 +14,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { CheckCircle2, GripVertical, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
-import { ErrorText } from "@/components/ui/field";
-import Boton from "@/components/ui/button";
-import AvisoReintento from "@/components/estudiante/aviso-reintento";
+import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { similitudTexto } from "@/lib/similitud-texto";
 import { contarPalabras } from "@/lib/contar-palabras";
@@ -49,6 +47,8 @@ function ChipArrastrable({
       style={style}
       {...listeners}
       {...attributes}
+      aria-pressed={seleccionado}
+      aria-label={`${chip}${seleccionado ? ", seleccionado" : ""}`}
       className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-left text-sm transition-colors ${
         isDragging ? "opacity-50" : ""
       } ${
@@ -133,9 +133,10 @@ export default function Comparador({
   respuestaPrevia?: { celdas: string[][]; resultadoCeldas?: boolean[][] };
   puntajeAuto?: number | null;
 }) {
-  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar, prepararReintento, entregaRegistrada } = useEntregaActividad(
     actividadId,
     estudianteId,
+    Boolean(respuestaPrevia),
   );
   const modoChips = esModoChips(contenido);
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
@@ -152,7 +153,7 @@ export default function Comparador({
   const [resultado, setResultado] = useState<boolean[][] | null>(
     modoChips ? (respuestaPrevia?.resultadoCeldas ?? null) : null,
   );
-  const bloqueado = resultado !== null;
+  const bloqueado = entregaRegistrada || resultado !== null;
 
   const colocados = useMemo(() => new Set(celdas.flat().filter(Boolean)), [celdas]);
   const disponibles = useMemo(
@@ -246,6 +247,7 @@ export default function Comparador({
   }
 
   function iniciarReintento() {
+    prepararReintento();
     setError(null);
     setResultado(null);
     setSeleccionado(null);
@@ -292,6 +294,7 @@ export default function Comparador({
                     <textarea
                       value={celdas[i]?.[j] ?? ""}
                       onChange={(e) => actualizarTexto(i, j, e.target.value)}
+                      disabled={bloqueado}
                       onPaste={bloquearPegado}
                       rows={2}
                       aria-label={`${criterio} (${concepto})`}
@@ -309,7 +312,7 @@ export default function Comparador({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {modoChips && disponibles.length > 0 && (
+      {modoChips && disponibles.length > 0 && !bloqueado && (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
             Respuestas disponibles (arrastra o toca, luego toca una celda)
@@ -335,25 +338,18 @@ export default function Comparador({
         tabla
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
-      {guardado && !modoChips && (
-        <p className="text-sm text-emerald-600 dark:text-emerald-400">
-          Guardado. Puedes seguir completando la tabla cuando quieras.
-        </p>
-      )}
-      {!bloqueado && (
-        <Boton type="submit" cargando={cargando} className="self-start">
-          {cargando ? "Guardando..." : "Guardar mi comparación"}
-        </Boton>
-      )}
-      {bloqueado && (
-        <AvisoReintento
-          puntaje={mejorPuntaje}
-          intentos={intentos}
-          onReintentar={iniciarReintento}
-          cargando={cargando}
-        />
-      )}
+      <PieEntregaAuto
+        error={error}
+        bloqueado={bloqueado}
+        cargando={cargando}
+        puntaje={mejorPuntaje}
+        intentos={intentos}
+        onReintentar={iniciarReintento}
+        textoBoton="Guardar mi comparación"
+        className="self-start"
+        guardado={guardado && !modoChips}
+        textoGuardado="Guardado. Puedes seguir completando la tabla cuando quieras."
+      />
     </form>
   );
 }

@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ADMINISTRADOR_EMAIL } from "@/lib/admin-constantes";
 import { Card } from "@/components/ui/card";
 import { ErrorText, Field, HelpText, Input, Label } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import { comprobarAdministradorProvisionado } from "../acciones";
 
 export default function VerificarAdministrador() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function VerificarAdministrador() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user || user.is_anonymous === true || user.email?.trim().toLowerCase() !== ADMINISTRADOR_EMAIL) {
+      if (!user || user.is_anonymous === true || !(await comprobarAdministradorProvisionado())) {
         router.replace("/ingreso/profesora");
         return;
       }
@@ -79,14 +79,14 @@ export default function VerificarAdministrador() {
 
   if (cargando) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-6">
+      <div className="flex min-h-dvh items-center justify-center px-6 py-10">
         <p className="text-sm text-slate-500 dark:text-slate-400">Comprobando la seguridad de tu cuenta…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 px-6">
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
       <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
         <ShieldCheck className="size-6" aria-hidden="true" />
       </div>
@@ -124,6 +124,6 @@ export default function VerificarAdministrador() {
           </Boton>
         </form>
       </Card>
-    </div>
+    </main>
   );
 }

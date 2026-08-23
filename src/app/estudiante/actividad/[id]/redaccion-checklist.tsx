@@ -30,12 +30,14 @@ export default function RedaccionChecklist({
   const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
     actividadId,
     estudianteId,
+    Boolean(respuestaPrevia),
   );
   const [texto, setTexto] = useState(respuestaPrevia?.texto ?? "");
   const [marcado, setMarcado] = useState<boolean[]>(
     respuestaPrevia?.checklist_marcado ?? contenido.checklist.map(() => false),
   );
   const [mostrarEjemplos, setMostrarEjemplos] = useState(false);
+  const [entregado, setEntregado] = useState(Boolean(respuestaPrevia));
 
   const palabras = contarPalabras(texto);
   const excedido = palabras > contenido.limite_palabras;
@@ -54,6 +56,7 @@ export default function RedaccionChecklist({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (entregado) return;
     setError(null);
 
     if (muyCorto) {
@@ -65,7 +68,7 @@ export default function RedaccionChecklist({
       return;
     }
 
-    await guardarConAccion(() =>
+    const guardada = await guardarConAccion(() =>
       guardarEntregaAbiertaAccion(
         actividadId,
         "redaccion_checklist",
@@ -83,6 +86,7 @@ export default function RedaccionChecklist({
         "pendiente_revision",
       ),
     );
+    if (guardada) setEntregado(true);
   }
 
   return (
@@ -133,6 +137,7 @@ export default function RedaccionChecklist({
             marcarSinGuardar();
           }}
           onPaste={bloquearPegado}
+          disabled={entregado}
           rows={6}
           placeholder="Escribe aquí"
         />
@@ -209,6 +214,7 @@ export default function RedaccionChecklist({
               type="checkbox"
               checked={marcado[i]}
               onChange={() => alternar(i)}
+              disabled={entregado}
               className="size-4 rounded border-slate-300 accent-indigo-600 dark:border-slate-600"
             />
             {punto}
@@ -217,14 +223,16 @@ export default function RedaccionChecklist({
       </div>
 
       {error && <ErrorText>{error}</ErrorText>}
-      {guardado && (
-        <p className="text-sm text-emerald-600 dark:text-emerald-400">
+      {guardado && !entregado && (
+        <p role="status" aria-live="polite" className="text-sm text-emerald-600 dark:text-emerald-400">
           Guardado. Puedes seguir puliendo tu texto cuando quieras.
         </p>
       )}
-      <Boton type="submit" cargando={cargando}>
-        {cargando ? "Guardando..." : "Guardar mi texto"}
-      </Boton>
+      {!entregado && (
+        <Boton type="submit" cargando={cargando}>
+          {cargando ? "Guardando..." : "Guardar mi texto"}
+        </Boton>
+      )}
     </form>
   );
 }

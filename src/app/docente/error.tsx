@@ -7,10 +7,10 @@ import Boton from "@/components/ui/button";
 
 export default function ErrorDocente({
   error,
-  retry,
+  reset,
 }: {
   error: Error & { digest?: string };
-  retry: () => void;
+  reset: () => void;
 }) {
   useEffect(() => {
     console.error(error);
@@ -34,13 +34,13 @@ export default function ErrorDocente({
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
-          <Boton type="button" onClick={() => retry()} size="sm">
+          <Boton type="button" onClick={reset} size="sm">
             <RefreshCw className="size-4" aria-hidden="true" />
             Intentar de nuevo
           </Boton>
           <Link
             href="/docente/dashboard"
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
             Ir al panel
@@ -50,4 +50,3 @@ export default function ErrorDocente({
     </main>
   );
 }
-
