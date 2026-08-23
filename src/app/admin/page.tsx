@@ -12,7 +12,44 @@ import { timestampHace24Horas } from "@/lib/fecha-servidor";
 const ESTADOS_PENDIENTES = ["recibido", "en_revision", "necesita_informacion"];
 
 export default async function AdminDashboard() {
-  const { supabase, administrador } = await requerirAdministrador();
+  const { supabase, administrador, mfa } = await requerirAdministrador({ permitirConfiguracionMfa: true });
+
+  if (!mfa.tieneFactorVerificado) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-8 px-6 py-10">
+        <section className="flex flex-col gap-2">
+          <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Panel administrativo</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Activa tu protección para continuar</h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+            Tu cuenta administrativa está reconocida. Solo falta configurar una aplicación autenticadora; después podrás atender reportes y administrar la ayuda.
+          </p>
+        </section>
+
+        <Card className="flex flex-col gap-4 border-amber-200 bg-amber-50/70 p-5 dark:border-amber-900/70 dark:bg-amber-950/30">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+            <div className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+              <p className="font-semibold text-slate-900 dark:text-slate-50">No es un error de acceso</p>
+              <p className="mt-1">Los reportes contienen información privada, por eso permanecen ocultos hasta confirmar el segundo factor.</p>
+            </div>
+          </div>
+          <Link href="/admin/seguridad?configurar=1" className="inline-flex w-fit items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+            Configurar seguridad
+          </Link>
+        </Card>
+
+        <Card className="p-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          <p className="font-semibold text-slate-900 dark:text-slate-50">Son solo tres pasos</p>
+          <ol className="mt-3 list-decimal space-y-2 pl-5">
+            <li>Abre Seguridad y genera el código QR.</li>
+            <li>Escanéalo con Google Authenticator, Microsoft Authenticator u otra app compatible.</li>
+            <li>Escribe el código de seis dígitos para desbloquear el panel.</li>
+          </ol>
+        </Card>
+      </div>
+    );
+  }
+
   const adminDb = createAdminClient();
   const hace24Horas = timestampHace24Horas();
   const ahora = new Date().toISOString();

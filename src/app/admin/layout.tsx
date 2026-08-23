@@ -7,6 +7,7 @@ import ControlSesionAdmin from "./control-sesion-admin";
 
 export default async function LayoutAdministrador({ children }: { children: React.ReactNode }) {
   const { administrador, mfa } = await requerirAdministrador({ permitirConfiguracionMfa: true });
+  const panelDesbloqueado = mfa.tieneFactorVerificado && mfa.nivelActual === "aal2";
 
   return (
     <>
@@ -26,22 +27,26 @@ export default async function LayoutAdministrador({ children }: { children: Reac
             <p className="text-xs text-slate-500 dark:text-slate-400">Sesión de {administrador.nombre}</p>
           </div>
           <nav aria-label="Navegación administrativa" className="order-3 flex w-full items-center gap-1 border-t border-slate-100 pt-3 text-sm dark:border-slate-800 sm:order-none sm:w-auto sm:border-0 sm:pt-0">
-            <Link href="/admin" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
-              <LayoutDashboard className="size-4" aria-hidden="true" />
-              Panel
-            </Link>
-            <Link href="/admin/reportes" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
-              <MessageSquareText className="size-4" aria-hidden="true" />
-              Reportes
-            </Link>
-            <Link href="/admin/faq" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
-              <BookOpen className="size-4" aria-hidden="true" />
-              Ayuda
-            </Link>
+            {panelDesbloqueado && (
+              <>
+                <Link href="/admin" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
+                  <LayoutDashboard className="size-4" aria-hidden="true" />
+                  Panel
+                </Link>
+                <Link href="/admin/reportes" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
+                  <MessageSquareText className="size-4" aria-hidden="true" />
+                  Reportes
+                </Link>
+                <Link href="/admin/faq" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
+                  <BookOpen className="size-4" aria-hidden="true" />
+                  Ayuda
+                </Link>
+              </>
+            )}
             <Link href="/admin/seguridad" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50">
               <ShieldCheck className="size-4" aria-hidden="true" />
               Seguridad
-              {!mfa.tieneFactorVerificado && <span className="size-2 rounded-full bg-amber-500" aria-label="Configuración pendiente" />}
+              {!panelDesbloqueado && <span className="size-2 rounded-full bg-amber-500" aria-label="Configuración pendiente" />}
             </Link>
           </nav>
           <CerrarSesion />

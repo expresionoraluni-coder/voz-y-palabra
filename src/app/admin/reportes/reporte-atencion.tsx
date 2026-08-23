@@ -124,6 +124,7 @@ export default function ReporteAtencion({
   const [actualizadoEn, setActualizadoEn] = useState(reporte.updated_at);
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
+  const [detallesFinales, setDetallesFinales] = useState(Boolean(reporte.respuesta_publica || reporte.resolucion));
   const [mensaje, setMensaje] = useState("");
   const [enviandoMensaje, setEnviandoMensaje] = useState(false);
   const [mensajeGuardado, setMensajeGuardado] = useState(false);
@@ -135,32 +136,70 @@ export default function ReporteAtencion({
     .map(([clave, valor]) => ({ clave, valor: valorContexto(valor) }))
     .filter((item): item is { clave: string; valor: string } => item.valor !== null);
 
-  async function guardar() {
-    if (cargando) return;
+  async function guardar(cambios: {
+    estado?: string;
+    prioridad?: string;
+    asignadoA?: string | null;
+    fechaLimite?: string;
+  } = {}): Promise<boolean> {
+    if (cargando) return false;
     setError(null);
     setGuardado(false);
     setCargando(true);
+    const datos = {
+      estado: cambios.estado ?? estado,
+      prioridad: cambios.prioridad ?? prioridad,
+      asignadoA: cambios.asignadoA ?? asignadoA,
+      fechaLimite: cambios.fechaLimite ?? fechaLimite,
+    };
     const resultado = await guardarAtencionReporte({
       reporteId: reporte.id,
-      estado,
-      prioridad,
+      estado: datos.estado,
+      prioridad: datos.prioridad,
       respuestaPublica,
       resolucion,
-      asignadoA,
-      fechaLimite: fechaLimite ? new Date(fechaLimite).toISOString() : null,
+      asignadoA: datos.asignadoA,
+      fechaLimite: datos.fechaLimite ? new Date(datos.fechaLimite).toISOString() : null,
       actualizadoEn,
     });
 
     if (!resultado.ok) {
       setError(resultado.error ?? "No pudimos guardar la atención. Intenta de nuevo.");
       setCargando(false);
-      return;
+      return false;
     }
 
     setActualizadoEn(resultado.actualizadoEn);
+    setEstado(datos.estado);
+    setPrioridad(datos.prioridad);
+    setAsignadoA(datos.asignadoA);
+    setFechaLimite(datos.fechaLimite);
     setCargando(false);
     setGuardado(true);
     window.setTimeout(() => setGuardado(false), 1800);
+    return true;
+  }
+
+  async function tomarCaso() {
+    await guardar({
+      estado: estado === "recibido" ? "en_revision" : estado,
+      asignadoA: administradorId,
+    });
+  }
+
+  function prepararSolicitudInformacion() {
+    setEstado("necesita_informacion");
+    setAsignadoA(administradorId);
+    setMensaje((actual) => actual.trim() || "Para continuar, necesitamos un poco más de información. ¿Puedes describir qué ocurrió, en qué pantalla y qué mensaje observaste?");
+    setError(null);
+    setErrorMensaje(null);
+  }
+
+  function prepararResolucion() {
+    setEstado("resuelto");
+    setAsignadoA(administradorId);
+    setDetallesFinales(true);
+    setError(null);
   }
 
   async function enviarMensaje() {
@@ -168,6 +207,11 @@ export default function ReporteAtencion({
     setErrorMensaje(null);
     setMensajeGuardado(false);
     setEnviandoMensaje(true);
+    const guardadoSolicitud = await guardar({ estado: "necesita_informacion", asignadoA: administradorId });
+    if (!guardadoSolicitud) {
+      setEnviandoMensaje(false);
+      return;
+    }
     const resultado = await enviarMensajeReporte(reporte.id, mensaje);
     if (!resultado.ok) {
       setErrorMensaje(resultado.error ?? "No pudimos enviar el mensaje.");
@@ -215,46 +259,61 @@ export default function ReporteAtencion({
 
       {abierto && (
         <div className="flex flex-col gap-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <Label htmlFor={`estado-${reporte.id}`}>Estado</Label>
-              <select id={`estado-${reporte.id}`} value={estado} onChange={(e) => setEstado(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-                {[reporte.estado, ...(TRANSICIONES[reporte.estado] ?? [])].filter((valor, indice, opciones) => opciones.indexOf(valor) === indice).map((valor) => <option key={valor} value={valor}>{ESTADOS_REPORTE[valor] ?? valor}</option>)}
-              </select>
-            </Field>
-            <Field>
-              <Label htmlFor={`prioridad-${reporte.id}`}>Prioridad</Label>
-              <select id={`prioridad-${reporte.id}`} value={prioridad} onChange={(e) => setPrioridad(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-                {Object.entries(PRIORIDADES_REPORTE).map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
-              </select>
-            </Field>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-sm dark:border-indigo-900/70 dark:bg-indigo-950/30">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-slate-900 dark:text-slate-50">Seguimiento operativo</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{asignadoA === administradorId ? "Este caso está asignado a ti." : asignadoA ? "Este caso está asignado a otro administrador." : "El caso todavía no tiene responsable."}</p>
+          <div className="flex flex-col gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 dark:border-indigo-900/70 dark:bg-indigo-950/30">
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-slate-50">Atender este caso</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">Elige una acción; los detalles quedan listos abajo para que solo confirmes el mensaje o la resolución.</p>
             </div>
-            {asignadoA !== administradorId && <Boton type="button" size="sm" variant="secondary" onClick={() => setAsignadoA(administradorId)}>Tomar caso</Boton>}
-            {asignadoA && <Boton type="button" size="sm" variant="ghost" onClick={() => setAsignadoA(null)}>Quitar responsable</Boton>}
+            <div className="flex flex-wrap gap-2">
+              {asignadoA !== administradorId && <Boton type="button" size="sm" variant="secondary" onClick={() => void tomarCaso()} cargando={cargando}>Tomar caso</Boton>}
+              <Boton type="button" size="sm" variant="secondary" onClick={prepararSolicitudInformacion} disabled={cargando}>Pedir información</Boton>
+              <Boton type="button" size="sm" variant="secondary" onClick={prepararResolucion} disabled={cargando}>Preparar resolución</Boton>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Responsable: {asignadoA === administradorId ? "tú" : asignadoA ? "otro administrador" : "sin asignar"}</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <Label htmlFor={`fecha-limite-${reporte.id}`}>Fecha límite</Label>
-              <input id={`fecha-limite-${reporte.id}`} type="datetime-local" value={fechaLimite} onChange={(e) => setFechaLimite(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
-            </Field>
-          </div>
-          <div className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
-            <p><span className="font-semibold">Recibido:</span> {new Date(reporte.created_at).toLocaleString("es-MX")}</p>
-            {reporte.ruta && <p className="mt-1 break-words"><span className="font-semibold">Pantalla:</span> {reporte.ruta}</p>}
-            {nombreUnidad && <p className="mt-1"><span className="font-semibold">Unidad:</span> {nombreUnidad}</p>}
-            {nombreActividad && <p className="mt-1"><span className="font-semibold">Actividad:</span> {nombreActividad}</p>}
-            {contextoVisible.length > 0 && (
-              <div className="mt-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
-                <p className="font-semibold">Contexto capturado</p>
-                {contextoVisible.map(({ clave, valor }) => <p key={clave} className="mt-1"><span className="font-medium">{etiquetaContexto(clave)}:</span> {valor}</p>)}
+
+          <details className="rounded-xl border border-slate-200 dark:border-slate-700">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200">Más opciones operativas</summary>
+            <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-700">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field>
+                  <Label htmlFor={`estado-${reporte.id}`}>Estado</Label>
+                  <select id={`estado-${reporte.id}`} value={estado} onChange={(e) => setEstado(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
+                    {[reporte.estado, ...(TRANSICIONES[reporte.estado] ?? [])].filter((valor, indice, opciones) => opciones.indexOf(valor) === indice).map((valor) => <option key={valor} value={valor}>{ESTADOS_REPORTE[valor] ?? valor}</option>)}
+                  </select>
+                </Field>
+                <Field>
+                  <Label htmlFor={`prioridad-${reporte.id}`}>Prioridad</Label>
+                  <select id={`prioridad-${reporte.id}`} value={prioridad} onChange={(e) => setPrioridad(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
+                    {Object.entries(PRIORIDADES_REPORTE).map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
+                  </select>
+                </Field>
               </div>
-            )}
-          </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {asignadoA && <Boton type="button" size="sm" variant="ghost" onClick={() => setAsignadoA(null)}>Quitar responsable</Boton>}
+              </div>
+              <Field>
+                <Label htmlFor={`fecha-limite-${reporte.id}`}>Fecha límite opcional</Label>
+                <input id={`fecha-limite-${reporte.id}`} type="datetime-local" value={fechaLimite} onChange={(e) => setFechaLimite(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
+              </Field>
+            </div>
+          </details>
+
+          <details className="rounded-xl border border-slate-200 dark:border-slate-700">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200">Ver contexto técnico</summary>
+            <div className="rounded-b-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+              <p><span className="font-semibold">Recibido:</span> {new Date(reporte.created_at).toLocaleString("es-MX")}</p>
+              {reporte.ruta && <p className="mt-1 break-words"><span className="font-semibold">Pantalla:</span> {reporte.ruta}</p>}
+              {nombreUnidad && <p className="mt-1"><span className="font-semibold">Unidad:</span> {nombreUnidad}</p>}
+              {nombreActividad && <p className="mt-1"><span className="font-semibold">Actividad:</span> {nombreActividad}</p>}
+              {contextoVisible.length > 0 && (
+                <div className="mt-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
+                  <p className="font-semibold">Contexto capturado</p>
+                  {contextoVisible.map(({ clave, valor }) => <p key={clave} className="mt-1"><span className="font-medium">{etiquetaContexto(clave)}:</span> {valor}</p>)}
+                </div>
+              )}
+            </div>
+          </details>
           {eventos.length > 0 && (
             <details className="rounded-xl border border-slate-200 dark:border-slate-700">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200">Historial de atención ({eventos.length})</summary>
@@ -290,26 +349,31 @@ export default function ReporteAtencion({
             </details>
           )}
           <Field>
-            <Label htmlFor={`mensaje-${reporte.id}`}>Mensaje para el reportante</Label>
+            <Label htmlFor={`mensaje-${reporte.id}`}>Mensaje de seguimiento</Label>
             <textarea id={`mensaje-${reporte.id}`} value={mensaje} onChange={(e) => setMensaje(e.target.value)} maxLength={2000} rows={2} placeholder="Solicita información o explica el siguiente paso" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
-            <HelpText>{mensaje.length}/2000 · Este texto será visible para quien creó el reporte.</HelpText>
+            <HelpText>{mensaje.length}/2000 · Visible para quien creó el reporte. Al enviarlo, el caso pasa a “Necesita información”.</HelpText>
             {errorMensaje && <ErrorText>{errorMensaje}</ErrorText>}
             <div className="flex justify-end">
               <Boton type="button" size="sm" variant="secondary" onClick={enviarMensaje} cargando={enviandoMensaje} disabled={!mensaje.trim()}>
-                <span aria-live="polite">{mensajeGuardado ? "Enviado" : "Enviar mensaje"}</span>
+                <span aria-live="polite">{mensajeGuardado ? "Enviado" : "Enviar seguimiento"}</span>
               </Boton>
             </div>
           </Field>
-          <Field>
-            <Label htmlFor={`respuesta-publica-${reporte.id}`}>Respuesta pública</Label>
-            <textarea id={`respuesta-publica-${reporte.id}`} value={respuestaPublica} onChange={(e) => setRespuestaPublica(e.target.value)} maxLength={2000} rows={3} placeholder="Qué debe leer la persona para continuar" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
-            <HelpText>{respuestaPublica.length}/2000 · Se mostrará en “Mis solicitudes”.</HelpText>
-          </Field>
-          <Field>
-            <Label htmlFor={`resolucion-${reporte.id}`}>Nota interna</Label>
-            <textarea id={`resolucion-${reporte.id}`} value={resolucion} onChange={(e) => setResolucion(e.target.value)} maxLength={2000} rows={3} placeholder="Qué revisaste, qué descartaste y cómo se resolvió" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
-            <HelpText>{resolucion.length}/2000 · No es una calificación. Sirve para recordar cómo se resolvió el caso.</HelpText>
-          </Field>
+          <details open={detallesFinales} onToggle={(evento) => setDetallesFinales(evento.currentTarget.open)} className="rounded-xl border border-slate-200 dark:border-slate-700">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200">Respuesta pública y cierre</summary>
+            <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-700">
+              <Field>
+                <Label htmlFor={`respuesta-publica-${reporte.id}`}>Respuesta pública</Label>
+                <textarea id={`respuesta-publica-${reporte.id}`} value={respuestaPublica} onChange={(e) => setRespuestaPublica(e.target.value)} maxLength={2000} rows={3} placeholder="Qué debe leer la persona para continuar" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
+                <HelpText>{respuestaPublica.length}/2000 · Se mostrará en “Mis solicitudes”.</HelpText>
+              </Field>
+              <Field>
+                <Label htmlFor={`resolucion-${reporte.id}`}>Nota interna</Label>
+                <textarea id={`resolucion-${reporte.id}`} value={resolucion} onChange={(e) => setResolucion(e.target.value)} maxLength={2000} rows={3} placeholder="Qué revisaste, qué descartaste y cómo se resolvió" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
+                <HelpText>{resolucion.length}/2000 · Solo sirve para recordar cómo se resolvió el caso.</HelpText>
+              </Field>
+            </div>
+          </details>
           {sugerencia && (
             <div className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-sm dark:border-indigo-900/70 dark:bg-indigo-950/30">
               <Lightbulb className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
@@ -322,9 +386,9 @@ export default function ReporteAtencion({
           )}
           {error && <ErrorText>{error}</ErrorText>}
           <div className="flex justify-end">
-            <Boton type="button" size="sm" onClick={guardar} cargando={cargando}>
+            <Boton type="button" size="sm" onClick={() => void guardar()} cargando={cargando}>
               {guardado ? <Check className="size-4" aria-hidden="true" /> : null}
-              <span aria-live="polite">{guardado ? "Guardado" : "Guardar atención"}</span>
+              <span aria-live="polite">{guardado ? "Guardado" : estado === "resuelto" ? "Guardar y marcar como resuelto" : "Guardar cambios"}</span>
             </Boton>
           </div>
         </div>

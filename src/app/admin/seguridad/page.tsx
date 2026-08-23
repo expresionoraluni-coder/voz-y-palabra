@@ -16,10 +16,9 @@ export default async function SeguridadAdministrador() {
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Seguridad de la cuenta</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Protege el acceso administrativo</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Protección del acceso</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          {administrador.nombre}, usa una aplicación autenticadora para agregar una segunda comprobación además de tu contraseña.
-          Esta protección no se aplica a estudiantes ni a docentes.
+          {administrador.nombre}, aquí solo necesitas revisar una cosa: que tu aplicación autenticadora esté activa para entrar al panel.
         </p>
       </section>
 
@@ -29,29 +28,31 @@ export default async function SeguridadAdministrador() {
           <p className="font-semibold text-slate-900 dark:text-slate-50">{mfa.tieneFactorVerificado ? "Protección activa" : "Configuración necesaria"}</p>
           <p className="mt-1">
             {mfa.tieneFactorVerificado
-              ? "Tu cuenta ya usa un segundo factor. En los siguientes ingresos se solicitará el código de tu aplicación autenticadora."
-              : "Configúrala ahora. Después de verificarla, el panel administrativo y sus datos exigirán este segundo factor."}
+              ? "Todo listo. El panel de reportes está desbloqueado y cada nuevo ingreso pedirá un código de tu aplicación autenticadora."
+              : "Es el único paso pendiente. Al verificarla, se desbloquearán el panel, los reportes y la ayuda."}
           </p>
         </div>
       </Card>
 
       <ConfigurarMfa activo={mfa.tieneFactorVerificado} />
 
-      <Card className="flex items-start gap-3 p-5">
-        <KeyRound className="mt-0.5 size-5 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-        <div className="flex flex-col gap-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-          <p className="font-semibold text-slate-900 dark:text-slate-50">Contraseña administrativa</p>
-          <p>Si necesitas reemplazarla y no recuerdas la anterior, solicita un enlace en tu correo. La sesión se cerrará al terminar y el siguiente ingreso volverá a pedir el segundo factor.</p>
-          <Link href="/ingreso/recuperar" className="w-fit font-medium text-indigo-600 underline underline-offset-2 dark:text-indigo-400">
-            Cambiar contraseña por correo
-          </Link>
+      <details className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-100">Otras opciones de seguridad</summary>
+        <div className="grid gap-4 border-t border-slate-100 p-5 dark:border-slate-800 sm:grid-cols-2">
+          <div className="flex items-start gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+            <KeyRound className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-slate-900 dark:text-slate-50">Cambiar contraseña</p>
+              <p>Usa el enlace por correo si necesitas reemplazarla.</p>
+              <Link href="/ingreso/recuperar" className="w-fit font-medium text-indigo-600 underline underline-offset-2 dark:text-indigo-400">Solicitar enlace</Link>
+            </div>
+          </div>
+          <div className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+            <p className="font-semibold text-slate-900 dark:text-slate-50">Cierre por inactividad</p>
+            <p className="mt-1">La sesión administrativa se cierra después de 30 minutos sin actividad.</p>
+          </div>
         </div>
-      </Card>
-
-      <Card className="p-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-        <p className="font-semibold text-slate-900 dark:text-slate-50">Cierre por inactividad</p>
-        <p className="mt-1">Por protección, el panel revoca las sesiones administrativas después de 30 minutos sin actividad. Si estás trabajando, cualquier interacción mantiene la sesión abierta.</p>
-      </Card>
+      </details>
     </div>
   );
 }
