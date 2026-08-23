@@ -64,25 +64,25 @@ export default async function AdminDashboard() {
     { count: estudiantesActivosCount, error: estudiantesError },
     { count: docentesCount, error: docentesError },
   ] = await Promise.all([
-    supabase
+    adminDb
       .from("reportes")
       .select("id, reportante_tipo, categoria, descripcion, estado, prioridad, grupo_id, created_at")
       .order("created_at", { ascending: false })
       .limit(20),
-    supabase
+    adminDb
       .from("reportes")
       .select("id", { count: "exact", head: true })
       .in("estado", ESTADOS_PENDIENTES),
-    supabase
+    adminDb
       .from("reportes")
       .select("id", { count: "exact", head: true })
       .gte("created_at", hace24Horas),
-    supabase
+    adminDb
       .from("reportes")
       .select("id", { count: "exact", head: true })
       .in("estado", ESTADOS_PENDIENTES)
       .in("prioridad", ["urgente", "alta"]),
-    supabase
+    adminDb
       .from("reportes")
       .select("id", { count: "exact", head: true })
       .in("estado", ESTADOS_PENDIENTES)
