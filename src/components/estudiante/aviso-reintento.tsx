@@ -1,21 +1,23 @@
 "use client";
 
 import { MAX_INTENTOS_AUTO } from "@/lib/intentos-auto";
+import Boton from "@/components/ui/button";
 
 export default function AvisoReintento({
   puntaje,
   intentos,
+  maxIntentos = MAX_INTENTOS_AUTO,
   onReintentar,
   cargando = false,
 }: {
   puntaje: number | null;
   intentos: number;
+  maxIntentos?: number;
   onReintentar: () => void;
   cargando?: boolean;
 }) {
-  void onReintentar;
-  void cargando;
   if (intentos < 1) return null;
+  const puedeReintentar = intentos < maxIntentos;
   return (
     <div
       role="status"
@@ -25,11 +27,18 @@ export default function AvisoReintento({
         {puntaje == null
           ? "Tu respuesta quedó guardada."
           : `Tu mejor resultado es ${puntaje}%.`}{" "}
-        Has usado {intentos} de {MAX_INTENTOS_AUTO} intento.
+        Has usado {intentos} de {maxIntentos} {maxIntentos === 1 ? "intento" : "intentos"}.
       </p>
       <p className="text-xs text-emerald-700 dark:text-emerald-300">
-        Tu respuesta quedó registrada y puedes continuar con la reflexión. Si detectaste un problema, repórtalo desde el botón de ayuda.
+        {puedeReintentar
+          ? "Puedes revisar tu respuesta y hacer un segundo ejercicio con un texto diferente."
+          : "Tu respuesta quedó registrada y puedes continuar con la reflexión. Si detectaste un problema, repórtalo desde el botón de ayuda."}
       </p>
+      {puedeReintentar && (
+        <Boton type="button" onClick={onReintentar} cargando={cargando} className="self-start">
+          {cargando ? "Preparando..." : "Intentar con otro texto"}
+        </Boton>
+      )}
     </div>
   );
 }

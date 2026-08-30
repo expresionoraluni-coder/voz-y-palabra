@@ -30,18 +30,32 @@ export default function Clasificacion({
   actividadId: string;
   estudianteId: string;
   contenido: ContenidoClasificacionPublico;
-  respuestaPrevia?: { elegidas: string[]; resultado?: boolean[] };
+  respuestaPrevia?: {
+    elegidas: string[];
+    resultado?: boolean[];
+    _meta?: { intentos?: number };
+  };
   dosNiveles?: boolean;
   puntajeAuto?: number | null;
 }) {
+  const intentoInicial = respuestaPrevia?._meta?.intentos ?? 1;
+  const tieneReintentoAlternativo = Boolean(contenido.reintento_alternativo);
+  const maxIntentos = tieneReintentoAlternativo ? 2 : 1;
+  const [usandoReintentoAlternativo, setUsandoReintentoAlternativo] = useState(
+    tieneReintentoAlternativo && intentoInicial >= 2,
+  );
+  const contenidoActivo = usandoReintentoAlternativo && contenido.reintento_alternativo
+    ? contenido.reintento_alternativo
+    : contenido;
   const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,
     Boolean(respuestaPrevia),
+    maxIntentos,
   );
   const [elegidas, setElegidas] = useState<string[]>(
-    respuestaPrevia?.elegidas ?? contenido.elementos.map(() => ""),
+    respuestaPrevia?.elegidas ?? contenidoActivo.elementos.map(() => ""),
   );
   const [resultado, setResultado] = useState<boolean[] | null>(respuestaPrevia?.resultado ?? null);
   const bloqueado = entregaRegistrada || resultado !== null;
@@ -51,16 +65,14 @@ export default function Clasificacion({
   // se puede memorizar "la pregunta 3 siempre es X" antes de entregar.
   const elementosOrden = useMemo(
     () => {
-      const conIndice = contenido.elementos.map((el, i) => ({ ...el, indiceOriginal: i }));
+      const conIndice = contenidoActivo.elementos.map((el, i) => ({ ...el, indiceOriginal: i }));
       return dosNiveles ? mezclar(conIndice) : conIndice;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [contenidoActivo.elementos, dosNiveles],
   );
   const categoriasOrden = useMemo(
-    () => (dosNiveles ? mezclar(contenido.categorias) : contenido.categorias),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    () => (dosNiveles ? mezclar(contenidoActivo.categorias) : contenidoActivo.categorias),
+    [contenidoActivo.categorias, dosNiveles],
   );
 
   function actualizar(indice: number, valor: string) {
@@ -86,10 +98,12 @@ export default function Clasificacion({
   }
 
   function iniciarReintento() {
+    if (!contenido.reintento_alternativo || intentos >= maxIntentos) return;
     prepararReintento();
     setError(null);
     setResultado(null);
-    setElegidas(contenido.elementos.map(() => ""));
+    setUsandoReintentoAlternativo(true);
+    setElegidas(contenido.reintento_alternativo.elementos.map(() => ""));
   }
 
   return (
@@ -138,7 +152,15 @@ export default function Clasificacion({
           </div>
         );
       })}
-      <PieEntregaAuto error={error} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} />
+      <PieEntregaAuto
+        error={error}
+        bloqueado={bloqueado}
+        cargando={cargando}
+        puntaje={mejorPuntaje}
+        intentos={intentos}
+        maxIntentos={maxIntentos}
+        onReintentar={iniciarReintento}
+      />
     </form>
   );
 }

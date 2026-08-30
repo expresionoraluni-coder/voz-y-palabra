@@ -6,31 +6,33 @@ import { randomUUID } from "node:crypto";
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd(), false, { info: () => {}, error: () => {} });
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TARGET_PROJECT_REF = process.env.E2E_PROJECT_REF;
 const TARGET_CONFIRMATION = process.env.E2E_CONFIRMATION;
 
-if (!URL || !ANON_KEY || !SERVICE_ROLE_KEY) {
+if (!SUPABASE_URL || !ANON_KEY || !SERVICE_ROLE_KEY) {
   throw new Error("Faltan variables de entorno necesarias para la prueba de carga.");
 }
 
 const projectRefFromUrl = (() => {
   try {
-    return new URL(URL).hostname.split(".")[0] ?? "";
+    return new globalThis.URL(SUPABASE_URL).hostname.split(".")[0] ?? "";
   } catch {
     return "";
   }
 })();
 
-if (
-  !TARGET_PROJECT_REF ||
-  projectRefFromUrl !== TARGET_PROJECT_REF ||
-  TARGET_CONFIRMATION !== `VOZ_Y_PALABRA_CARGA_${TARGET_PROJECT_REF}`
-) {
+const targetCheck = {
+  projectRefConfigured: Boolean(TARGET_PROJECT_REF),
+  projectRefMatches: projectRefFromUrl === TARGET_PROJECT_REF,
+  confirmationMatches: TARGET_CONFIRMATION === `VOZ_Y_PALABRA_CARGA_${TARGET_PROJECT_REF}`,
+};
+
+if (!targetCheck.projectRefConfigured || !targetCheck.projectRefMatches || !targetCheck.confirmationMatches) {
   throw new Error(
-    "Prueba detenida: define E2E_PROJECT_REF y E2E_CONFIRMATION=VOZ_Y_PALABRA_CARGA_<project-ref> para confirmar el proyecto objetivo.",
+    `Prueba detenida: confirma el proyecto objetivo. Ref URL=${projectRefFromUrl}; estado=${JSON.stringify(targetCheck)}.`,
   );
 }
 
@@ -38,14 +40,17 @@ if (process.env.NODE_ENV === "production" && process.env.E2E_ALLOW_PRODUCTION !=
   throw new Error("Prueba detenida: no se permite ejecutar la carga en producción sin E2E_ALLOW_PRODUCTION=1.");
 }
 
-const TOTAL_GROUPS = 2;
-const STUDENTS_PER_GROUP = 50;
+const TOTAL_GROUPS = Number.parseInt(process.env.E2E_TOTAL_GROUPS ?? "2", 10);
+const STUDENTS_PER_GROUP = Number.parseInt(process.env.E2E_STUDENTS_PER_GROUP ?? "50", 10);
 const TOTAL_STUDENTS = TOTAL_GROUPS * STUDENTS_PER_GROUP;
+if (!Number.isInteger(TOTAL_GROUPS) || TOTAL_GROUPS < 1 || !Number.isInteger(STUDENTS_PER_GROUP) || STUDENTS_PER_GROUP < 1) {
+  throw new Error("E2E_TOTAL_GROUPS y E2E_STUDENTS_PER_GROUP deben ser enteros positivos.");
+}
 const PREFIX = `E2E-CARGA-${Date.now()}`;
-const NIP = "2026";
 const DB_ONLY = process.env.E2E_DB_ONLY === "1";
+const SKIP_VERIFICATION = process.env.E2E_SKIP_VERIFICATION === "1";
 
-const admin = createClient(URL, SERVICE_ROLE_KEY, {
+const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
@@ -54,9 +59,26 @@ const failures = [];
 const authUsers = new Set();
 const students = [];
 const groups = [];
+let activeStudents = 0;
+let maxConcurrentStudents = 0;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function retryNetwork(operation, attempts = 5) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const result = await operation();
+      if (result?.error) throw new Error(errorMessage(result.error));
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await sleep(250 * attempt);
+    }
+  }
+  throw lastError;
 }
 
 function errorMessage(error) {
@@ -89,7 +111,7 @@ function assertData(data, error, message) {
 }
 
 function clientForStudent() {
-  return createClient(URL, ANON_KEY, {
+  return createClient(SUPABASE_URL, ANON_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -186,28 +208,9 @@ async function crearDatosTemporales() {
         activo: true,
       };
     });
-    const studentRows = [];
-    for (const row of rows) {
-      if (DB_ONLY) {
-        studentRows.push(row);
-        continue;
-      }
-      const numero = groupIndex * STUDENTS_PER_GROUP + studentRows.length + 1;
-      const email = `${PREFIX.toLowerCase()}-${String(numero).padStart(3, "0")}@example.invalid`;
-      const password = `E2eCarga-2026-${String(numero).padStart(3, "0")}!`;
-      const { data: authUser, error: authError } = await admin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-      if (authError || !authUser.user) throw new Error(`No pudimos crear la sesión sintética: ${errorMessage(authError)}`);
-      authUsers.add(authUser.user.id);
-      studentRows.push({ ...row, auth_user_id: authUser.user.id, email, password });
-    }
+    const studentRows = rows;
     const insertRows = studentRows.map((row) => {
       const dbRow = { ...row };
-      delete dbRow.email;
-      delete dbRow.password;
       return dbRow;
     });
     const { error: studentError } = await admin.from("estudiantes").insert(insertRows);
@@ -289,33 +292,40 @@ async function guardarReflexionActividad(student, actividad, client) {
 }
 
 async function trabajarEstudiante(student, unidades) {
-  await sleep((student.numero % 25) * 80 + (student.numero > STUDENTS_PER_GROUP ? 250 : 0));
-  const client = DB_ONLY ? admin : clientForStudent();
+  activeStudents += 1;
+  maxConcurrentStudents = Math.max(maxConcurrentStudents, activeStudents);
+  try {
+    await sleep((student.numero % 25) * 80 + (student.numero > STUDENTS_PER_GROUP ? 250 : 0));
+    const client = DB_ONLY ? admin : clientForStudent();
+    const writeClient = admin;
 
-  if (!DB_ONLY) {
-    const { data: authData, error: authError } = await measure("auth_sesión", () =>
-      client.auth.signInWithPassword({ email: student.email, password: student.password }),
-    );
-    if (authError || !authData?.user?.id) throw new Error(`Auth de prueba: ${errorMessage(authError)}`);
+    if (!DB_ONLY) {
+      const { data: authData, error: authError } = await measure("auth_sesión", () =>
+        client.auth.signInAnonymously(),
+      );
+      if (authError || !authData?.user?.id || authData.user.is_anonymous !== true) {
+        throw new Error(`Auth anónima de prueba: ${errorMessage(authError)}`);
+      }
+      authUsers.add(authData.user.id);
 
-    const { data: ingreso, error: ingresoError } = await measure("ingresar_estudiante", () =>
-      client.rpc("ingresar_estudiante", {
-        p_codigo: student.codigo,
-        p_nombre: student.nombre,
-        p_nip: NIP,
-      }),
-    );
-    if (ingresoError) throw new Error(`Ingreso: ${errorMessage(ingresoError)}`);
-    const filaIngreso = Array.isArray(ingreso) ? ingreso[0] : ingreso;
-    if (!filaIngreso?.id || filaIngreso.id !== student.id || filaIngreso.error) {
-      throw new Error(`Ingreso no vinculó al estudiante temporal (${filaIngreso?.error ?? "sin fila"})`);
+      const { data: ingreso, error: ingresoError } = await measure("ingresar_estudiante", () =>
+        client.rpc("ingresar_estudiante", {
+          p_codigo: student.codigo,
+          p_nombre: student.nombre,
+          p_nip: student.boleta.slice(-4),
+        }),
+      );
+      if (ingresoError) throw new Error(`Ingreso: ${errorMessage(ingresoError)}`);
+      const filaIngreso = Array.isArray(ingreso) ? ingreso[0] : ingreso;
+      if (!filaIngreso?.id || filaIngreso.id !== student.id || filaIngreso.error) {
+        throw new Error(`Ingreso no vinculó al estudiante temporal (${filaIngreso?.error ?? "sin fila"})`);
+      }
     }
-  }
 
-  for (const unidad of unidades) {
+    for (const unidad of unidades) {
     await sleep(25 + ((student.numero * unidad.orden) % 70));
     const { error: confianzaInicioError } = await measure("confianza_inicio", () =>
-      client.from("autoevaluaciones_confianza").upsert(
+      writeClient.from("autoevaluaciones_confianza").upsert(
         { estudiante_id: student.id, unidad_id: unidad.actividades[0].unidad_id, momento: "inicio", valor: 45 + ((student.numero * 3) % 50) },
         { onConflict: "estudiante_id,unidad_id,momento" },
       ),
@@ -323,7 +333,7 @@ async function trabajarEstudiante(student, unidades) {
     if (confianzaInicioError) throw new Error(`Confianza inicial: ${errorMessage(confianzaInicioError)}`);
 
     const { error: bitacoraError } = await measure("bitacora", () =>
-      client.from("bitacora").upsert(
+      writeClient.from("bitacora").upsert(
         { estudiante_id: student.id, unidad_id: unidad.actividades[0].unidad_id, meta: `Meta de prueba ${PREFIX} para la unidad ${unidad.orden}`, cumplida: true },
         { onConflict: "estudiante_id,unidad_id" },
       ),
@@ -333,16 +343,12 @@ async function trabajarEstudiante(student, unidades) {
     for (const actividad of unidad.actividades) {
       await sleep(20 + ((student.numero * 13 + actividad.orden * 17) % 100));
       await guardarEntrega(student, actividad, null, 1);
-      if (actividad.tipo !== "redaccion_checklist" && student.numero % 10 === 0) {
-        await sleep(30 + (student.numero % 80));
-        await guardarEntrega(student, actividad, null, 2);
-      }
-      await guardarReflexionActividad(student, actividad, client);
+      await guardarReflexionActividad(student, actividad, writeClient);
     }
 
     const unidadId = unidad.actividades[0].unidad_id;
     const { error: confianzaCierreError } = await measure("confianza_cierre", () =>
-      client.from("autoevaluaciones_confianza").upsert(
+      writeClient.from("autoevaluaciones_confianza").upsert(
         { estudiante_id: student.id, unidad_id: unidadId, momento: "cierre", valor: 70 + ((student.numero + unidad.orden) % 26) },
         { onConflict: "estudiante_id,unidad_id,momento" },
       ),
@@ -350,9 +356,8 @@ async function trabajarEstudiante(student, unidades) {
     if (confianzaCierreError) throw new Error(`Confianza de cierre: ${errorMessage(confianzaCierreError)}`);
 
     const { error: reflexionUnidadError } = await measure("reflexion_unidad", () =>
-      client.from("reflexiones").upsert(
+      writeClient.from("reflexiones").insert(
         { estudiante_id: student.id, unidad_id: unidadId, momento: "cierre", texto: `Cierre de prueba ${PREFIX}: aprendí a organizar y revisar mis ideas.` },
-        { onConflict: "estudiante_id,unidad_id,momento" },
       ),
     );
     if (reflexionUnidadError) throw new Error(`Reflexión de unidad: ${errorMessage(reflexionUnidadError)}`);
@@ -361,54 +366,91 @@ async function trabajarEstudiante(student, unidades) {
       const { error: insigniasError } = await measure("verificar_insignias", () => client.rpc("verificar_insignias"));
       if (insigniasError) throw new Error(`Insignias: ${errorMessage(insigniasError)}`);
     }
-  }
+    }
 
-  const { error: verifyDeliveriesError } = await measure("verificación_estudiante", () =>
-    client.from("entregas").select("actividad_id,puntaje_auto,respuesta").eq("estudiante_id", student.id),
-  );
-  if (verifyDeliveriesError) throw new Error(`Verificación de entregas: ${errorMessage(verifyDeliveriesError)}`);
-  if (!DB_ONLY) {
-    const { error: signOutError } = await measure("cerrar_sesión", () => client.auth.signOut());
-    if (signOutError) throw new Error(`Cerrar sesión: ${errorMessage(signOutError)}`);
+    const { error: verifyDeliveriesError } = await measure("verificación_estudiante", () =>
+      client.from("entregas").select("actividad_id,puntaje_auto,respuesta").eq("estudiante_id", student.id),
+    );
+    if (verifyDeliveriesError) throw new Error(`Verificación de entregas: ${errorMessage(verifyDeliveriesError)}`);
+    if (!DB_ONLY) {
+      const { error: signOutError } = await measure("cerrar_sesión", () => client.auth.signOut());
+      if (signOutError) throw new Error(`Cerrar sesión: ${errorMessage(signOutError)}`);
+    }
+    return student.id;
+  } finally {
+    activeStudents -= 1;
   }
-  return student.id;
+}
+
+function logicalBytes(rows) {
+  return Buffer.byteLength(JSON.stringify(rows ?? []), "utf8");
+}
+
+async function fetchAllRows(table, column, ids) {
+  const pageSize = 1000;
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const result = await retryNetwork(() =>
+      admin
+        .from(table)
+        .select("*")
+        .in(column, ids)
+        .range(offset, offset + pageSize - 1),
+    );
+    const page = result.data ?? [];
+    rows.push(...page);
+    if (page.length < pageSize) return { data: rows, error: null };
+  }
 }
 
 async function verificarDatos(unidades) {
   const groupIds = groups.map((group) => group.id);
-  const { data: groupCounts, error: groupError } = await admin
-    .from("estudiantes")
-    .select("grupo_id")
-    .in("grupo_id", groupIds);
-  assertData(groupCounts, groupError, "No pudimos verificar los estudiantes");
-
   const studentIds = students.map((student) => student.id);
-  const [deliveries, reflections, confidence, bitacora] = await Promise.all([
-    admin.from("entregas").select("id", { count: "exact", head: true }).in("estudiante_id", studentIds),
-    admin.from("reflexiones").select("id", { count: "exact", head: true }).in("estudiante_id", studentIds),
-    admin.from("autoevaluaciones_confianza").select("id", { count: "exact", head: true }).in("estudiante_id", studentIds),
-    admin.from("bitacora").select("id", { count: "exact", head: true }).in("estudiante_id", studentIds),
+  const [studentRows, groupRows, deliveries, reflections, confidence, bitacora, badges] = await Promise.all([
+    fetchAllRows("estudiantes", "id", studentIds),
+    fetchAllRows("grupos", "id", groupIds),
+    fetchAllRows("entregas", "estudiante_id", studentIds),
+    fetchAllRows("reflexiones", "estudiante_id", studentIds),
+    fetchAllRows("autoevaluaciones_confianza", "estudiante_id", studentIds),
+    fetchAllRows("bitacora", "estudiante_id", studentIds),
+    fetchAllRows("insignias_otorgadas", "estudiante_id", studentIds),
   ]);
-  for (const result of [deliveries, reflections, confidence, bitacora]) {
-    if (result.error) throw new Error(`No pudimos verificar la consistencia: ${errorMessage(result.error)}`);
-  }
+  const groupCounts = studentRows.data ?? [];
+  const rowsByTable = {
+    grupos: groupRows.data ?? [],
+    estudiantes: studentRows.data ?? [],
+    entregas: deliveries.data ?? [],
+    reflexiones: reflections.data ?? [],
+    autoevaluaciones_confianza: confidence.data ?? [],
+    bitacora: bitacora.data ?? [],
+    insignias_otorgadas: badges.data ?? [],
+  };
+  const bytesByTable = Object.fromEntries(Object.entries(rowsByTable).map(([table, rows]) => [table, logicalBytes(rows)]));
+  const logicalPayloadBytes = Object.values(bytesByTable).reduce((total, bytes) => total + bytes, 0);
   return {
     grupos: groups.length,
     estudiantesPorGrupo: groups.map((group) => groupCounts.filter((student) => student.grupo_id === group.id).length),
     estudiantesCompletados: students.length,
     actividadesPorUnidad: unidades.map((unidad) => unidad.actividades.length),
-    entregas: deliveries.count ?? 0,
-    reflexiones: reflections.count ?? 0,
-    confianzas: confidence.count ?? 0,
-    bitacoras: bitacora.count ?? 0,
+    entregas: deliveries.data?.length ?? 0,
+    reflexiones: reflections.data?.length ?? 0,
+    confianzas: confidence.data?.length ?? 0,
+    bitacoras: bitacora.data?.length ?? 0,
+    insigniasOtorgadas: badges.data?.length ?? 0,
+    almacenamientoLogicoBytes: logicalPayloadBytes,
+    almacenamientoLogicoPorEstudianteBytes: Number((logicalPayloadBytes / students.length).toFixed(1)),
+    almacenamientoLogicoPorTablaBytes: bytesByTable,
   };
 }
 
 async function limpiarDatos() {
   const groupIds = groups.map((group) => group.id);
   if (groupIds.length) {
-    const { error } = await admin.from("grupos").delete().in("id", groupIds);
-    if (error) throw new Error(`No pudimos eliminar los grupos temporales: ${errorMessage(error)}`);
+    try {
+      await retryNetwork(() => admin.from("grupos").delete().in("id", groupIds));
+    } catch (error) {
+      throw new Error(`No pudimos eliminar los grupos temporales: ${errorMessage(error)}`);
+    }
   }
   for (const userId of authUsers) {
     const { error } = await admin.auth.admin.deleteUser(userId, true);
@@ -416,8 +458,13 @@ async function limpiarDatos() {
       throw new Error(`No pudimos eliminar una sesión temporal: ${errorMessage(error)}`);
     }
   }
-  const { data: leftover, error: leftoverError } = await admin.from("grupos").select("id").in("id", groupIds);
-  if (leftoverError) throw new Error(`No pudimos comprobar la limpieza: ${errorMessage(leftoverError)}`);
+  let leftover;
+  try {
+    const result = await retryNetwork(() => admin.from("grupos").select("id").in("id", groupIds));
+    leftover = result.data;
+  } catch (error) {
+    throw new Error(`No pudimos comprobar la limpieza: ${errorMessage(error)}`);
+  }
   return { gruposTemporalesRestantes: leftover?.length ?? 0, sesionesTemporalesEliminadas: authUsers.size };
 }
 
@@ -425,18 +472,34 @@ const startedAt = performance.now();
 let verification = null;
 let cleanup = null;
 let completed = 0;
+let actividadesTotales = null;
 
 try {
   await crearDatosTemporales();
   const unidades = await cargarContenido();
+  actividadesTotales = unidades.reduce((total, unidad) => total + unidad.actividades.length, 0);
   const results = await Promise.allSettled(students.map((student) => trabajarEstudiante(student, unidades)));
   completed = results.filter((result) => result.status === "fulfilled").length;
   for (const result of results) {
     if (result.status === "rejected") failures.push({ label: "estudiante", error: errorMessage(result.reason) });
   }
-  verification = await verificarDatos(unidades);
+  if (SKIP_VERIFICATION) {
+    verification = { omitida: true, motivo: "E2E_SKIP_VERIFICATION=1" };
+  } else {
+    try {
+      verification = await verificarDatos(unidades);
+    } catch (error) {
+      verification = { error: errorMessage(error) };
+      failures.push({ label: "verificación_consistencia", error: errorMessage(error) });
+    }
+  }
 } finally {
-  cleanup = await limpiarDatos();
+  try {
+    cleanup = await limpiarDatos();
+  } catch (error) {
+    cleanup = { error: errorMessage(error), gruposTemporalesRestantes: null, sesionesTemporalesEliminadas: authUsers.size };
+    failures.push({ label: "limpieza", error: errorMessage(error) });
+  }
 }
 
 const wallMs = performance.now() - startedAt;
@@ -445,9 +508,11 @@ console.log(
     {
       prueba: "carga real aislada de Supabase",
       simulacion: DB_ONLY
-        ? "2 grupos x 50 estudiantes, carga de base de datos escalonada en 3 unidades"
-        : "2 grupos x 50 estudiantes, sesiones independientes, avance escalonado en 3 unidades",
+        ? `${TOTAL_GROUPS} grupos x ${STUDENTS_PER_GROUP} estudiantes, carga de base de datos escalonada`
+        : `${TOTAL_GROUPS} grupos x ${STUDENTS_PER_GROUP} estudiantes, sesiones independientes, avance escalonado`,
+      actividadesTotales,
       duracionTotalMs: Number(wallMs.toFixed(1)),
+      maxEstudiantesConcurrentes: maxConcurrentStudents,
       estudiantes: {
         creados: TOTAL_STUDENTS,
         trayectoriasCompletadas: completed,

@@ -101,7 +101,19 @@ export async function calificarClasificacionAccion(actividadId: string, elegidas
 
   const ctx = await obtenerContextoCalificacion(actividadId, "clasificacion");
   if (!ctx.ok) return ctx;
-  const contenido = ctx.contexto.contenido as ContenidoClasificacion;
+  const contenidoOriginal = ctx.contexto.contenido as ContenidoClasificacion;
+  const intentosPrevios =
+    ctx.contexto.respuestaPrevia && typeof ctx.contexto.respuestaPrevia._meta === "object" && ctx.contexto.respuestaPrevia._meta !== null
+      ? Number((ctx.contexto.respuestaPrevia._meta as { intentos?: unknown }).intentos ?? 0)
+      : 0;
+  const contenido =
+    intentosPrevios >= 1 && contenidoOriginal.reintento_alternativo
+      ? {
+          ...contenidoOriginal,
+          ...contenidoOriginal.reintento_alternativo,
+          reintento_alternativo: undefined,
+        }
+      : contenidoOriginal;
   if (!Array.isArray(contenido.elementos) || contenido.elementos.length === 0) {
     return { ok: false, error: "Esta actividad no tiene elementos configurados." };
   }

@@ -1,6 +1,8 @@
-// Cada actividad conserva una sola entrega por estudiante. El límite se aplica
-// también en Supabase para que no dependa de lo que envíe el navegador.
+// La mayoría de las actividades conserva una sola entrega por estudiante. Las
+// actividades que publican una segunda variante pueden llegar a dos; la base
+// de datos vuelve a comprobar qué actividad tiene esa excepción.
 export const MAX_INTENTOS_AUTO = 1;
+export const MAX_INTENTOS_AUTO_PERMITIDOS = 2;
 
 export type MetaEntregaAuto = {
   intentos: number;
@@ -22,7 +24,7 @@ export function metaDeEntregaAuto(respuesta: unknown): MetaEntregaAuto | null {
     typeof intentos !== "number" ||
     !Number.isInteger(intentos) ||
     intentos < 1 ||
-    intentos > MAX_INTENTOS_AUTO ||
+    intentos > MAX_INTENTOS_AUTO_PERMITIDOS ||
     typeof mejorPuntaje !== "number" ||
     !Number.isInteger(mejorPuntaje) ||
     mejorPuntaje < 0 ||

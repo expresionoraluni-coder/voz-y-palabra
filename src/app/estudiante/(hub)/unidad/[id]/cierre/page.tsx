@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import PageHeader from "@/components/ui/page-header";
 import ProgressBar from "@/components/ui/progress-bar";
 import UnidadCierre from "./unidad-cierre";
+import RespuestasCorrectas from "./respuestas-correctas";
 import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-unidad";
 
 export default async function CierreUnidadEstudiante({
@@ -31,7 +32,11 @@ export default async function CierreUnidadEstudiante({
       .select("id, nombre, orden, reto_comunicativo, unidad_competencia")
       .eq("id", id)
       .single(),
-    admin.from("actividades").select("id, orden").eq("unidad_id", id).order("orden"),
+    admin
+      .from("actividades")
+      .select("id, orden, titulo, contenido, tipos_actividad(nombre)")
+      .eq("unidad_id", id)
+      .order("orden"),
     supabase.from("entregas").select("actividad_id, puntaje_auto, respuesta").eq("estudiante_id", estudiante.id),
   ]);
   if (!unidad) notFound();
@@ -188,8 +193,10 @@ export default async function CierreUnidadEstudiante({
           <span>Recorrido completado</span>
           <span>100%</span>
         </div>
-        <ProgressBar porcentaje={100} etiqueta={`Unidad ${unidad.orden}: actividades completadas`} />
+      <ProgressBar porcentaje={100} etiqueta={`Unidad ${unidad.orden}: actividades completadas`} />
       </div>
+
+      <RespuestasCorrectas actividades={listaActividades} />
 
       <UnidadCierre
         unidadId={id}

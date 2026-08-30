@@ -36,6 +36,7 @@ export type ContextoCalificacion = {
   supabase: SupabaseServerClient;
   estudianteId: string;
   contenido: Record<string, unknown>;
+  respuestaPrevia: Record<string, unknown> | null;
 };
 
 type ActividadParaAcceso = {
@@ -319,9 +320,22 @@ export async function obtenerContextoCalificacion(
   });
   if (!acceso.ok) return acceso;
 
+  const { data: entregaPrevia, error: entregaPreviaError } = await admin
+    .from("entregas")
+    .select("respuesta")
+    .eq("actividad_id", actividadId)
+    .eq("estudiante_id", estudiante.id)
+    .maybeSingle();
+  revisarErrorConsulta(entregaPreviaError, "No pudimos comprobar tu intento anterior.");
+
   return {
     ok: true,
-    contexto: { supabase, estudianteId: estudiante.id, contenido: actividad.contenido },
+    contexto: {
+      supabase,
+      estudianteId: estudiante.id,
+      contenido: actividad.contenido,
+      respuestaPrevia: esRegistroPlano(entregaPrevia?.respuesta) ? entregaPrevia.respuesta : null,
+    },
   };
 }
 
@@ -374,9 +388,11 @@ export async function guardarEntregaInterna(
     p_estado: estado,
   });
   if (resultadoError) {
-    const mensaje = resultadoError.message?.includes("Ya registraste el único intento")
-      ? "Ya registraste el único intento de esta actividad. Se conserva tu respuesta y puedes continuar con la reflexión."
-      : mensajeError(resultadoError);
+    const mensaje = resultadoError.message?.includes("Ya usaste los 2 intentos")
+      ? "Ya usaste los 2 intentos de esta actividad. Se conserva tu respuesta y puedes continuar con la reflexión."
+      : resultadoError.message?.includes("Ya registraste el único intento")
+        ? "Ya registraste el único intento de esta actividad. Se conserva tu respuesta y puedes continuar con la reflexión."
+        : mensajeError(resultadoError);
     return { ok: false, error: mensaje };
   }
 

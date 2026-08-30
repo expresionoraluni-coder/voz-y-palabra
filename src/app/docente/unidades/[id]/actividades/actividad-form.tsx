@@ -574,6 +574,7 @@ export default function ActividadForm({
         categorias: listaCategorias,
         elementos: listaElementos.map((f) => ({ texto: f.texto.trim(), categoria_correcta: f.categoria })),
         contexto: contextoClasificacion.trim() || null,
+        ...(c.reintento_alternativo ? { reintento_alternativo: c.reintento_alternativo } : {}),
       };
     } else if (nombreTipo === "comparador") {
       const listaConceptos = lineas(conceptos);

@@ -52,9 +52,28 @@ export default function CorregirOrtografia({
       : null,
   );
   const bloqueado = entregaRegistrada || resultado !== null;
-  const soloMayusculas = (contenido.temas ?? []).length > 0 && (contenido.temas ?? []).every((tema) =>
-    ["Mayúsculas al inicio de oración", "Nombres propios", "Días y materias van en minúscula"].includes(tema),
+  const temasNormalizados = (contenido.temas ?? []).map((tema) =>
+    tema.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
   );
+  const correccionesPermitidas: string[] = [];
+  if (temasNormalizados.some((tema) => tema.includes("mayus"))) {
+    correccionesPermitidas.push("mayúsculas y minúsculas");
+  }
+  if (temasNormalizados.some((tema) => tema.includes("acent") || tema.includes("tilde"))) {
+    correccionesPermitidas.push("tildes");
+  }
+  if (temasNormalizados.some((tema) => tema.includes("b/v"))) correccionesPermitidas.push("letras b/v");
+  if (temasNormalizados.some((tema) => tema.includes("g/j"))) correccionesPermitidas.push("letras g/j");
+  if (temasNormalizados.some((tema) => tema.includes("s/c/z") || tema.includes("s/z"))) {
+    correccionesPermitidas.push("letras s/c/z");
+  }
+  if (temasNormalizados.some((tema) => /(^|[^a-z])h([^a-z]|$)/.test(tema))) {
+    correccionesPermitidas.push("letra h");
+  }
+  const listaCorrecciones = correccionesPermitidas.length > 1
+    ? `${correccionesPermitidas.slice(0, -1).join(", ")} y ${correccionesPermitidas.at(-1)}`
+    : correccionesPermitidas[0] ?? "los errores ortográficos señalados";
+  const ayudaCorreccion = `Reescribe el texto completo. Corrige únicamente ${listaCorrecciones}. No cambies el orden ni la cantidad de palabras y no modifiques los signos de puntuación. Se aceptan hasta 5 errores.`;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -119,11 +138,7 @@ export default function CorregirOrtografia({
       {!bloqueado ? (
         <Field>
           <Label htmlFor="texto-reescrito">Tu versión corregida</Label>
-          <HelpText>
-            {soloMayusculas
-              ? "Reescribe el texto completo y corrige únicamente las mayúsculas y minúsculas. No cambies tildes, letras, palabras ni signos de puntuación."
-              : "Reescribe el texto completo. Corrige solo mayúsculas, tildes y letras (b/v, s/c/z, g/j, h). No cambies el orden ni la cantidad de palabras, y no toques los signos de puntuación. Se aceptan hasta 5 errores."}
-          </HelpText>
+          <HelpText>{ayudaCorreccion}</HelpText>
           <Textarea
             id="texto-reescrito"
             required
@@ -131,6 +146,10 @@ export default function CorregirOrtografia({
             value={textoReescrito}
             onChange={(e) => setTextoReescrito(e.target.value)}
             onPaste={bloquearPegado}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
           />
           <p className="self-end text-xs text-slate-500 dark:text-slate-400">
             {contarPalabras(textoReescrito)} palabras

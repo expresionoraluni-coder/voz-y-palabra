@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mensajeError } from "@/lib/mensaje-error";
@@ -59,8 +61,20 @@ export async function eliminarEstudiante(estudianteId: string): Promise<Resultad
   const acceso = await validarDocenteYEstudiante(estudianteId);
   if (!acceso.ok) return acceso;
 
+  const grupoId = acceso.estudiante.grupo_id;
   const { error } = await acceso.admin.from("estudiantes").delete().eq("id", estudianteId);
-  return error ? { ok: false, error: mensajeError(error) } : { ok: true };
+  if (error) return { ok: false, error: mensajeError(error) };
+
+  const { count, error: verificarError } = await acceso.admin
+    .from("estudiantes")
+    .select("id", { count: "exact", head: true })
+    .eq("id", estudianteId);
+  if (verificarError) return { ok: false, error: mensajeError(verificarError) };
+  if ((count ?? 0) !== 0) return { ok: false, error: "No se pudo confirmar la eliminación del estudiante." };
+
+  revalidatePath(`/docente/grupos/${grupoId}`);
+  revalidatePath(`/docente/estudiantes/${estudianteId}`);
+  return { ok: true };
 }
 
 export async function editarEstudiante(

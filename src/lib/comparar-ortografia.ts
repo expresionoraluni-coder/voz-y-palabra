@@ -34,7 +34,10 @@ function quitarPuntuacionBorde(palabra: string): string {
 }
 
 function normalizarPalabra(palabra: string): string {
-  return quitarPuntuacionBorde(palabra).normalize("NFC").toLocaleLowerCase("es-MX");
+  // La mayúscula también forma parte del ejercicio. Solo normalizamos la
+  // composición Unicode; no pasamos a minúsculas para que "Al" y "al" no
+  // resulten iguales.
+  return quitarPuntuacionBorde(palabra).normalize("NFC");
 }
 
 export function compararPalabras(textoCorrecto: string, textoReescrito: string): ComparacionPalabra[] {

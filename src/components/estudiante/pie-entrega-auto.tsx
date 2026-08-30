@@ -8,6 +8,7 @@ export default function PieEntregaAuto({
   cargando,
   puntaje,
   intentos,
+  maxIntentos,
   onReintentar,
   textoBoton = "Guardar y revisar",
   guardado = false,
@@ -19,6 +20,7 @@ export default function PieEntregaAuto({
   cargando: boolean;
   puntaje: number | null;
   intentos: number;
+  maxIntentos?: number;
   onReintentar: () => void;
   textoBoton?: string;
   guardado?: boolean;
@@ -39,7 +41,13 @@ export default function PieEntregaAuto({
         </Boton>
       )}
       {bloqueado && (
-        <AvisoReintento puntaje={puntaje} intentos={intentos} onReintentar={onReintentar} cargando={cargando} />
+        <AvisoReintento
+          puntaje={puntaje}
+          intentos={intentos}
+          maxIntentos={maxIntentos}
+          onReintentar={onReintentar}
+          cargando={cargando}
+        />
       )}
     </>
   );
