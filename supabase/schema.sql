@@ -398,10 +398,32 @@ as $$
   select id from estudiantes where auth_user_id = auth.uid() and activo = true
 $$;
 
+-- Supabase asigna el rol `authenticated` a las sesiones anónimas de
+-- estudiantes. Este guard evita que ese rol se confunda con una cuenta
+-- docente en cualquier policy de escritura.
+create or replace function public.es_docente_activo()
+returns boolean
+language sql stable security definer
+set search_path = public, auth
+as $$
+  select (select auth.uid()) is not null
+    and coalesce((select auth.jwt() ->> 'is_anonymous'), 'false') <> 'true'
+    and exists (
+      select 1
+      from public.docentes d
+      join auth.users u on u.id = d.id
+      where d.id = (select auth.uid())
+        and u.email_confirmed_at is not null
+    )
+$$;
+
+revoke all on function public.es_docente_activo() from public, anon;
+grant execute on function public.es_docente_activo() to authenticated;
+
 -- docentes: solo ve y edita su propio perfil
 create policy "docente edita su propio perfil" on docentes
-  for update to authenticated using (id = (select auth.uid()))
-  with check (id = (select auth.uid()));
+  for update to authenticated using (public.es_docente_activo() and id = (select auth.uid()))
+  with check (public.es_docente_activo() and id = (select auth.uid()));
 create policy "docente o administrador ve perfiles docentes" on docentes
   for select to authenticated
   using (
@@ -457,12 +479,12 @@ create policy "estudiante, docente o administrador lee grupos" on grupos
     or exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true)
   );
 create policy "docente crea grupos" on grupos
-  for insert to authenticated with check (docente_id = (select auth.uid()));
+  for insert to authenticated with check (public.es_docente_activo() and docente_id = (select auth.uid()));
 create policy "docente actualiza grupos" on grupos
-  for update to authenticated using (docente_id = (select auth.uid()))
-  with check (docente_id = (select auth.uid()));
+  for update to authenticated using (public.es_docente_activo() and docente_id = (select auth.uid()))
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()));
 create policy "docente elimina grupos" on grupos
-  for delete to authenticated using (docente_id = (select auth.uid()));
+  for delete to authenticated using (public.es_docente_activo() and docente_id = (select auth.uid()));
 
 -- estudiantes: la lectura se unifica; la docente conserva sus tres escrituras.
 create policy "docente o estudiante lee estudiantes permitidos" on estudiantes
@@ -472,14 +494,14 @@ create policy "docente o estudiante lee estudiantes permitidos" on estudiantes
   );
 create policy "docente crea estudiantes de sus grupos" on estudiantes
   for insert to authenticated
-  with check (grupo_id in (select id from grupos where docente_id = (select auth.uid())));
+  with check (public.es_docente_activo() and grupo_id in (select id from grupos where docente_id = (select auth.uid())));
 create policy "docente actualiza estudiantes de sus grupos" on estudiantes
   for update to authenticated
-  using (grupo_id in (select id from grupos where docente_id = (select auth.uid())))
-  with check (grupo_id in (select id from grupos where docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and grupo_id in (select id from grupos where docente_id = (select auth.uid())))
+  with check (public.es_docente_activo() and grupo_id in (select id from grupos where docente_id = (select auth.uid())));
 create policy "docente elimina estudiantes de sus grupos" on estudiantes
   for delete to authenticated
-  using (grupo_id in (select id from grupos where docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and grupo_id in (select id from grupos where docente_id = (select auth.uid())));
 -- El panel administrativo consulta estudiantes desde el servidor con campos
 -- mínimos; no se expone una policy general que permita leer boletas por Data API.
 
@@ -507,18 +529,18 @@ grant all on public.autoevaluaciones_confianza, public.bitacora to service_role;
 drop policy if exists "cualquiera con sesión lee unidades" on unidades;
 create policy "docente o administrador lee unidades" on unidades
   for select to authenticated
-  using (exists (select 1 from docentes where id = (select auth.uid()))
+  using (public.es_docente_activo()
     or exists (select 1 from administradores where id = (select auth.uid()) and activo = true));
 create policy "docente crea unidades" on unidades
   for insert to authenticated
-  with check (exists (select 1 from docentes where id = (select auth.uid())));
+  with check (public.es_docente_activo());
 create policy "docente actualiza unidades" on unidades
   for update to authenticated
-  using (exists (select 1 from docentes where id = (select auth.uid())))
-  with check (exists (select 1 from docentes where id = (select auth.uid())));
+  using (public.es_docente_activo())
+  with check (public.es_docente_activo());
 create policy "docente elimina unidades" on unidades
   for delete to authenticated
-  using (exists (select 1 from docentes where id = (select auth.uid())));
+  using (public.es_docente_activo());
 create policy "sesión lee tipos de actividad" on tipos_actividad
   for select to authenticated using ((select auth.uid()) is not null);
 
@@ -528,18 +550,18 @@ create policy "sesión lee tipos de actividad" on tipos_actividad
 drop policy if exists "cualquiera con sesión lee actividades" on actividades;
 create policy "docente o administrador lee actividades" on actividades
   for select to authenticated
-  using (exists (select 1 from docentes where id = (select auth.uid()))
+  using (public.es_docente_activo()
     or exists (select 1 from administradores where id = (select auth.uid()) and activo = true));
 create policy "docente crea actividades" on actividades
   for insert to authenticated
-  with check (exists (select 1 from docentes where id = (select auth.uid())));
+  with check (public.es_docente_activo());
 create policy "docente actualiza actividades" on actividades
   for update to authenticated
-  using (exists (select 1 from docentes where id = (select auth.uid())))
-  with check (exists (select 1 from docentes where id = (select auth.uid())));
+  using (public.es_docente_activo())
+  with check (public.es_docente_activo());
 create policy "docente elimina actividades" on actividades
   for delete to authenticated
-  using (exists (select 1 from docentes where id = (select auth.uid())));
+  using (public.es_docente_activo());
 
 -- entregas: el estudiante, la docente de su grupo y la administración leen
 -- según su alcance; la escritura y la orientación conservan policies aparte.
@@ -555,12 +577,16 @@ create policy "estudiante, docente o administrador lee entregas" on entregas
 create policy "docente actualiza entregas de sus grupos" on entregas
   for update to authenticated
   using (
+    public.es_docente_activo()
+    and
     estudiante_id in (
       select e.id from estudiantes e join grupos g on g.id = e.grupo_id
       where g.docente_id = (select auth.uid())
     )
   )
   with check (
+    public.es_docente_activo()
+    and
     estudiante_id in (
       select e.id from estudiantes e join grupos g on g.id = e.grupo_id
       where g.docente_id = (select auth.uid())
@@ -626,7 +652,7 @@ create policy "estudiante, docente o administrador lee retroalimentación" on re
   );
 create policy "docente crea retroalimentación" on retroalimentacion_docente
   for insert to authenticated with check (
-    docente_id = (select auth.uid())
+    public.es_docente_activo() and docente_id = (select auth.uid())
     and entrega_id in (
       select en.id
       from entregas en
@@ -637,7 +663,7 @@ create policy "docente crea retroalimentación" on retroalimentacion_docente
   );
 create policy "docente actualiza retroalimentación" on retroalimentacion_docente
   for update to authenticated using (
-    docente_id = (select auth.uid())
+    public.es_docente_activo() and docente_id = (select auth.uid())
     and entrega_id in (
       select en.id
       from entregas en
@@ -646,7 +672,7 @@ create policy "docente actualiza retroalimentación" on retroalimentacion_docent
       where g.docente_id = (select auth.uid())
     )
   ) with check (
-    docente_id = (select auth.uid())
+    public.es_docente_activo() and docente_id = (select auth.uid())
     and entrega_id in (
       select en.id
       from entregas en
@@ -657,7 +683,7 @@ create policy "docente actualiza retroalimentación" on retroalimentacion_docent
   );
 create policy "docente elimina retroalimentación" on retroalimentacion_docente
   for delete to authenticated using (
-    docente_id = (select auth.uid())
+    public.es_docente_activo() and docente_id = (select auth.uid())
     and entrega_id in (
       select en.id
       from entregas en
@@ -679,12 +705,12 @@ create policy "estudiante, docente o administrador lee avisos" on avisos
     or exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true)
   );
 create policy "docente crea avisos" on avisos for insert to authenticated
-  with check (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
 create policy "docente actualiza avisos" on avisos for update to authenticated
-  using (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))))
-  with check (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))))
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
 create policy "docente elimina avisos" on avisos for delete to authenticated
-  using (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from grupos where grupos.id = avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
 
 -- eventos: la docente administra sus fechas; cada estudiante solo ve las de
 -- su grupo. Las tablas de configuración e intentos no tienen policies a
@@ -696,12 +722,12 @@ create policy "estudiante, docente o administrador lee eventos" on eventos
     or exists (select 1 from administradores a where a.id = (select auth.uid()) and a.activo = true)
   );
 create policy "docente crea eventos" on eventos for insert to authenticated
-  with check (docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())));
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())));
 create policy "docente actualiza eventos" on eventos for update to authenticated
-  using (docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())))
-  with check (docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())))
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())));
 create policy "docente elimina eventos" on eventos for delete to authenticated
-  using (docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from grupos where grupos.id = eventos.grupo_id and grupos.docente_id = (select auth.uid())));
 
 create policy "estudiante, docente o administrador lee bitácora" on bitacora
   for select to authenticated using (
@@ -3567,11 +3593,12 @@ drop policy if exists "estudiante, docente o administrador lee grupos" on public
 create policy "estudiante, docente o administrador lee grupos" on public.grupos for select to authenticated
   using (docente_id = (select auth.uid()) or id = public.grupo_del_estudiante_actual() or public.es_administrador_activo());
 create policy "docente crea grupos" on public.grupos for insert to authenticated
-  with check (docente_id = (select auth.uid()));
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()));
 create policy "docente actualiza grupos" on public.grupos for update to authenticated
-  using (docente_id = (select auth.uid())) with check (docente_id = (select auth.uid()));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()))
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()));
 create policy "docente elimina grupos" on public.grupos for delete to authenticated
-  using (docente_id = (select auth.uid()));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()));
 drop policy if exists "administrador observa estudiantes" on public.estudiantes;
 -- Sin policy administrativa directa: el cliente de servidor usa service_role y
 -- selecciona únicamente los campos necesarios para el monitoreo.
@@ -3581,12 +3608,12 @@ drop policy if exists "docente o estudiante lee estudiantes permitidos" on publi
 create policy "docente o estudiante lee estudiantes permitidos" on public.estudiantes for select to authenticated
   using (grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())) or (auth_user_id = (select auth.uid()) and activo = true));
 create policy "docente crea estudiantes de sus grupos" on public.estudiantes for insert to authenticated
-  with check (grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())));
+  with check (public.es_docente_activo() and grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())));
 create policy "docente actualiza estudiantes de sus grupos" on public.estudiantes for update to authenticated
-  using (grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())))
-  with check (grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())))
+  with check (public.es_docente_activo() and grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())));
 create policy "docente elimina estudiantes de sus grupos" on public.estudiantes for delete to authenticated
-  using (grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())));
 
 -- El administrador puede observar la operación completa, pero nunca obtiene
 -- permisos de escritura por estas policies. Todas exigen el mismo guard que
@@ -3595,26 +3622,26 @@ drop policy if exists "docente administra unidades" on public.unidades;
 drop policy if exists "administrador observa unidades" on public.unidades;
 drop policy if exists "docente o administrador lee unidades" on public.unidades;
 create policy "docente o administrador lee unidades" on public.unidades for select to authenticated
-  using (exists (select 1 from public.docentes where id = (select auth.uid())) or public.es_administrador_activo());
+  using (public.es_docente_activo() or public.es_administrador_activo());
 create policy "docente crea unidades" on public.unidades for insert to authenticated
-  with check (exists (select 1 from public.docentes where id = (select auth.uid())));
+  with check (public.es_docente_activo());
 create policy "docente actualiza unidades" on public.unidades for update to authenticated
-  using (exists (select 1 from public.docentes where id = (select auth.uid())))
-  with check (exists (select 1 from public.docentes where id = (select auth.uid())));
+  using (public.es_docente_activo())
+  with check (public.es_docente_activo());
 create policy "docente elimina unidades" on public.unidades for delete to authenticated
-  using (exists (select 1 from public.docentes where id = (select auth.uid())));
+  using (public.es_docente_activo());
 drop policy if exists "docente administra actividades" on public.actividades;
 drop policy if exists "administrador observa actividades" on public.actividades;
 drop policy if exists "docente o administrador lee actividades" on public.actividades;
 create policy "docente o administrador lee actividades" on public.actividades for select to authenticated
-  using (exists (select 1 from public.docentes where id = (select auth.uid())) or public.es_administrador_activo());
+  using (public.es_docente_activo() or public.es_administrador_activo());
 create policy "docente crea actividades" on public.actividades for insert to authenticated
-  with check (exists (select 1 from public.docentes where id = (select auth.uid())));
+  with check (public.es_docente_activo());
 create policy "docente actualiza actividades" on public.actividades for update to authenticated
-  using (exists (select 1 from public.docentes where id = (select auth.uid())))
-  with check (exists (select 1 from public.docentes where id = (select auth.uid())));
+  using (public.es_docente_activo())
+  with check (public.es_docente_activo());
 create policy "docente elimina actividades" on public.actividades for delete to authenticated
-  using (exists (select 1 from public.docentes where id = (select auth.uid())));
+  using (public.es_docente_activo());
 drop policy if exists "estudiante lee sus entregas" on public.entregas;
 drop policy if exists "docente ve entregas de sus grupos" on public.entregas;
 drop policy if exists "administrador observa entregas" on public.entregas;
@@ -3681,12 +3708,12 @@ drop policy if exists "docente elimina retroalimentación" on public.retroalimen
 create policy "estudiante, docente o administrador lee retroalimentación" on public.retroalimentacion_docente for select to authenticated
   using (((docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid()))) or entrega_id in (select id from public.entregas where estudiante_id = public.estudiante_actual()) or public.es_administrador_activo()));
 create policy "docente crea retroalimentación" on public.retroalimentacion_docente for insert to authenticated
-  with check (docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())));
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())));
 create policy "docente actualiza retroalimentación" on public.retroalimentacion_docente for update to authenticated
-  using (docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())))
-  with check (docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())))
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())));
 create policy "docente elimina retroalimentación" on public.retroalimentacion_docente for delete to authenticated
-  using (docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and entrega_id in (select en.id from public.entregas en join public.estudiantes e on e.id = en.estudiante_id join public.grupos g on g.id = e.grupo_id where g.docente_id = (select auth.uid())));
 drop policy if exists "docente administra sus avisos" on public.avisos;
 drop policy if exists "estudiante lee avisos de su grupo" on public.avisos;
 drop policy if exists "administrador observa avisos" on public.avisos;
@@ -3694,12 +3721,12 @@ drop policy if exists "estudiante, docente o administrador lee avisos" on public
 create policy "estudiante, docente o administrador lee avisos" on public.avisos for select to authenticated
   using ((docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid())))) or grupo_id is null or grupo_id = (select grupo_id from public.estudiantes where id = public.estudiante_actual()) or public.es_administrador_activo());
 create policy "docente crea avisos" on public.avisos for insert to authenticated
-  with check (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
 create policy "docente actualiza avisos" on public.avisos for update to authenticated
-  using (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))))
-  with check (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))))
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
 create policy "docente elimina avisos" on public.avisos for delete to authenticated
-  using (docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and (grupo_id is null or exists (select 1 from public.grupos where grupos.id = public.avisos.grupo_id and grupos.docente_id = (select auth.uid()))));
 drop policy if exists "docente administra sus eventos" on public.eventos;
 drop policy if exists "estudiante lee eventos de su grupo" on public.eventos;
 drop policy if exists "administrador observa eventos" on public.eventos;
@@ -3707,12 +3734,12 @@ drop policy if exists "estudiante, docente o administrador lee eventos" on publi
 create policy "estudiante, docente o administrador lee eventos" on public.eventos for select to authenticated
   using ((docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid()))) or grupo_id = (select grupo_id from public.estudiantes where id = public.estudiante_actual()) or public.es_administrador_activo());
 create policy "docente crea eventos" on public.eventos for insert to authenticated
-  with check (docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())));
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())));
 create policy "docente actualiza eventos" on public.eventos for update to authenticated
-  using (docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())))
-  with check (docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())))
+  with check (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())));
 create policy "docente elimina eventos" on public.eventos for delete to authenticated
-  using (docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())));
+  using (public.es_docente_activo() and docente_id = (select auth.uid()) and exists (select 1 from public.grupos where grupos.id = public.eventos.grupo_id and grupos.docente_id = (select auth.uid())));
 drop policy if exists "estudiante lee su bitácora" on public.bitacora;
 drop policy if exists "docente ve bitacora de sus grupos" on public.bitacora;
 drop policy if exists "administrador observa bitácora" on public.bitacora;
@@ -3781,7 +3808,8 @@ create index if not exists faq_interacciones_articulo_idx on public.faq_interacc
 create index if not exists reporte_mensajes_autor_idx on public.reporte_mensajes (autor_id);
 create index if not exists faq_articulos_creado_por_idx on public.faq_articulos (creado_por);
 create index if not exists faq_articulos_actualizado_por_idx on public.faq_articulos (actualizado_por);
-create index if not exists faq_interacciones_actor_idx on public.faq_interacciones (actor_id);
+drop index if exists public.faq_interacciones_actor_idx;
+create index if not exists faq_interacciones_actor_creado_idx on public.faq_interacciones (actor_id, creado_en desc);
 create index if not exists faq_interacciones_reporte_idx on public.faq_interacciones (reporte_id);
 
 alter table public.reporte_mensajes enable row level security;
@@ -3789,7 +3817,7 @@ alter table public.faq_articulos enable row level security;
 alter table public.faq_interacciones enable row level security;
 revoke all on public.reporte_mensajes, public.faq_articulos, public.faq_interacciones from public, anon, authenticated;
 grant select, insert, update, delete on public.faq_articulos to authenticated;
-grant select, insert on public.reporte_mensajes, public.faq_interacciones to authenticated;
+grant select on public.reporte_mensajes, public.faq_interacciones to authenticated;
 
 drop policy if exists "reportante o admin lee mensajes del reporte" on public.reporte_mensajes;
 create policy "reportante o admin lee mensajes del reporte" on public.reporte_mensajes for select to authenticated using (
@@ -3801,13 +3829,21 @@ create policy "participante agrega mensaje al reporte" on public.reporte_mensaje
   or (autor_tipo = 'administrador' and autor_id = (select auth.uid()) and public.es_administrador_activo())
 );
 drop policy if exists "todos leen faq activa" on public.faq_articulos;
-create policy "todos leen faq activa" on public.faq_articulos for select to authenticated using (activo or public.es_administrador_activo());
+create policy "todos leen faq activa" on public.faq_articulos for select to authenticated using (
+  (select public.es_administrador_activo())
+  or (
+    activo
+    and (
+      (coalesce(((select auth.jwt()) ->> 'is_anonymous'), 'false') = 'true' and audiencia in ('estudiante', 'ambos'))
+      or ((select public.es_docente_activo()) and audiencia in ('docente', 'ambos'))
+    )
+  )
+);
 drop policy if exists "admin administra faq" on public.faq_articulos;
 create policy "admin crea faq" on public.faq_articulos for insert to authenticated with check (public.es_administrador_activo());
 create policy "admin actualiza faq" on public.faq_articulos for update to authenticated using (public.es_administrador_activo()) with check (public.es_administrador_activo());
 create policy "admin elimina faq" on public.faq_articulos for delete to authenticated using (public.es_administrador_activo());
 drop policy if exists "usuario registra interacciones faq" on public.faq_interacciones;
-create policy "usuario registra interacciones faq" on public.faq_interacciones for insert to authenticated with check (actor_id = (select auth.uid()));
 drop policy if exists "admin lee interacciones faq" on public.faq_interacciones;
 create policy "admin lee interacciones faq" on public.faq_interacciones for select to authenticated using (public.es_administrador_activo());
 

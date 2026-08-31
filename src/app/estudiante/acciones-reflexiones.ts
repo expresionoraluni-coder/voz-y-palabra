@@ -63,7 +63,7 @@ export async function guardarPrediccionActividad(
 
   const actividad = await cargarActividad(acceso.admin, actividadId);
   if (!actividad) return { ok: false, error: "No encontramos esta actividad." };
-  const permitido = await validarAccesoActividad(acceso.supabase, acceso.admin, acceso.estudiante.id, {
+  const permitido = await validarAccesoActividad(acceso.admin, acceso.estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
     requiereActividadId: actividad.requiere_actividad_id,
@@ -99,7 +99,7 @@ export async function guardarReflexionActividad(
 
   const actividad = await cargarActividad(acceso.admin, actividadId);
   if (!actividad) return { ok: false, error: "No encontramos esta actividad." };
-  const permitido = await validarAccesoActividad(acceso.supabase, acceso.admin, acceso.estudiante.id, {
+  const permitido = await validarAccesoActividad(acceso.admin, acceso.estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
     requiereActividadId: actividad.requiere_actividad_id,
@@ -143,7 +143,6 @@ export async function guardarReflexionUnidad(unidadId: string, texto: string): P
   if (!unidad) return { ok: false, error: "No encontramos esta unidad." };
 
   const accesoUnidad = await validarAccesoUnidad(
-    acceso.supabase,
     acceso.admin,
     acceso.estudiante.id,
     unidadId,
@@ -205,7 +204,6 @@ export async function guardarConfianzaUnidad(
   const acceso = await obtenerEstudiante();
   if (!acceso.ok) return acceso;
   const permitido = await validarAccesoUnidad(
-    acceso.supabase,
     acceso.admin,
     acceso.estudiante.id,
     unidadId,
@@ -263,7 +261,7 @@ export async function guardarBitacoraMeta(unidadId: string, meta: string): Promi
   if (errorTexto) return { ok: false, error: errorTexto };
   const acceso = await obtenerEstudiante();
   if (!acceso.ok) return acceso;
-  const permitido = await validarAccesoUnidad(acceso.supabase, acceso.admin, acceso.estudiante.id, unidadId, false);
+  const permitido = await validarAccesoUnidad(acceso.admin, acceso.estudiante.id, unidadId, false);
   if (!permitido.ok) return { ok: false, error: permitido.error };
   const { data: existente } = await acceso.supabase
     .from("bitacora")

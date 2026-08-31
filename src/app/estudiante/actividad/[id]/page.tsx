@@ -84,7 +84,7 @@ export default async function ActividadEstudiante({
   if (!actividad) notFound();
 
   const unidadParaAcceso = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
-  const acceso = await validarAccesoActividad(supabase, admin, estudiante.id, {
+  const acceso = await validarAccesoActividad(admin, estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
     requiereActividadId: actividad.requiere_actividad_id,

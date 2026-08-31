@@ -18,7 +18,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(25);
+select plan(33);
 
 -- ============================================================
 -- Fixtures
@@ -55,6 +55,83 @@ insert into actividades (id, unidad_id, tipo_id, titulo) values
 insert into entregas (id, estudiante_id, actividad_id, respuesta, evaluacion_docente) values
   ('99999999-9999-9999-9999-999999999999', '55555555-5555-5555-5555-555555555555',
    '88888888-8888-8888-8888-888888888888', '{}'::jsonb, null);
+
+insert into faq_articulos (id, audiencia, categoria, slug, titulo, resumen)
+values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'estudiante', 'estudiante_acceso', '__test__ faq estudiante', '__test__ artículo para estudiantes'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab', 'docente', 'docente_actividad', '__test__ faq docente', '__test__ artículo solo para docentes');
+
+insert into reportes (id, reportante_id, reportante_tipo, estudiante_id, categoria, descripcion)
+values
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '33333333-3333-3333-3333-333333333333', 'estudiante', '55555555-5555-5555-5555-555555555555', 'estudiante_otro', '__test__ reporte propio para FAQ'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '22222222-2222-2222-2222-222222222222', 'estudiante', '55555555-5555-5555-5555-555555555555', 'estudiante_otro', '__test__ reporte ajeno para FAQ');
+
+-- ============================================================
+-- Auditoría: una sesión anónima no es una cuenta docente y solo recibe la
+-- audiencia estudiantil de la FAQ.
+-- ============================================================
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","is_anonymous":true}', true);
+
+select ok(not public.es_docente_activo(), 'Auditoría: el guard distingue una sesión anónima de una docente');
+
+select throws_ok(
+  $$ insert into grupos (nombre, codigo_acceso, docente_id)
+     values ('__test__ grupo anónimo', '__TEST__ANONIMO', '11111111-1111-1111-1111-111111111111') $$,
+  '42501', null,
+  'Auditoría: una sesión anónima no puede crear grupos'
+);
+
+select throws_ok(
+  $$ update entregas set evaluacion_docente = 'logrado'
+     where id = '99999999-9999-9999-9999-999999999999' $$,
+  '42501', null,
+  'Auditoría: una sesión anónima no puede actualizar entregas docentes'
+);
+
+select is_empty(
+  $$ select id from faq_articulos where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab' $$,
+  'Auditoría: una sesión anónima no puede leer artículos FAQ de docentes'
+);
+
+select ok(
+  not has_table_privilege(current_user, 'public.faq_interacciones', 'INSERT'),
+  'Auditoría: la telemetría FAQ no tiene INSERT directo para authenticated'
+);
+
+select throws_ok(
+  $$ select public.registrar_interaccion_faq(
+       'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'reporte_creado',
+       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '{}'::jsonb
+     ) $$,
+  'P0001', 'No tienes permiso para asociar este reporte.',
+  'Auditoría: la FAQ no acepta un reporte de otro actor'
+);
+
+select lives_ok(
+  $$ select public.registrar_interaccion_faq(
+       'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'reporte_creado',
+       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '{}'::jsonb
+     ) $$,
+  'Auditoría: la FAQ acepta el reporte propio del actor'
+);
+
+reset role;
+
+insert into faq_interacciones (articulo_id, actor_id, evento)
+select 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'abierto'
+from generate_series(1, 300);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","is_anonymous":true}', true);
+select throws_ok(
+  $$ select public.registrar_interaccion_faq(
+       'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'abierto', null, '{}'::jsonb
+     ) $$,
+  'P0001', 'Alcanzaste el límite temporal de interacciones de ayuda.',
+  'Auditoría: la FAQ limita la telemetría por actor y ventana temporal'
+);
+reset role;
 
 -- ============================================================
 -- VP-C1 (histórico) → reemplazado por el hardening de seguridad de la

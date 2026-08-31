@@ -61,7 +61,6 @@ export function sanitizarRespuestaParaEstudiante(valor: unknown): unknown {
 }
 
 export async function validarAccesoActividad(
-  supabase: SupabaseServerClient,
   admin: ClienteAdmin,
   estudianteId: string,
   actividad: ActividadParaAcceso,
@@ -242,7 +241,6 @@ export async function validarAccesoActividad(
 
 /** Valida la unidad anterior y devuelve el primer paso de la unidad actual. */
 export async function validarAccesoUnidad(
-  supabase: SupabaseServerClient,
   admin: ClienteAdmin,
   estudianteId: string,
   unidadId: string,
@@ -259,7 +257,6 @@ export async function validarAccesoUnidad(
   if (!actividad) return { ok: true as const };
   const unidad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   return validarAccesoActividad(
-    supabase,
     admin,
     estudianteId,
     {
@@ -312,7 +309,7 @@ export async function obtenerContextoCalificacion(
   }
 
   const unidad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
-  const acceso = await validarAccesoActividad(admin, admin, estudiante.id, {
+  const acceso = await validarAccesoActividad(admin, estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
     requiereActividadId: actividad.requiere_actividad_id,

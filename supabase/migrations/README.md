@@ -40,4 +40,12 @@ La migración `20260823170000_habilitar_campos_atencion_reportes.sql` completa e
 
 La migración `20260823173000_restringir_lectura_interna_reportes.sql` limita la lectura del Data API a los campos públicos/operativos y deja la nota interna y metadatos sensibles únicamente para la consulta administrativa de servidor.
 
+La migración `20260830010000_cerrar_hallazgos_auditoria.sql` distingue las sesiones anónimas de las cuentas docentes permanentes en las escrituras RLS y RPC, filtra la FAQ por audiencia, retira la inserción directa de telemetría, valida la pertenencia de los reportes asociados y limita las interacciones FAQ a 300 por actor y hora. También revoca el acceso directo del cliente al esquema `private`.
+
+La migración `20260830020000_optimizar_policy_faq.sql` conserva el filtro por audiencia y mueve los guards de autenticación de la policy FAQ a initplans para evitar reevaluarlos por cada fila.
+
+La migración `20260830030000_restringir_update_entregas_docente.sql` añade el mismo guard de cuenta docente permanente al único update directo de entregas.
+
+La migración `20260830040000_optimizar_initplan_faq.sql` ajusta la forma del wrapper de `auth.jwt()` para que el advisor de rendimiento reconozca el initplan.
+
 La migración `20260821232654_atomic_teacher_orientation_and_activity_lock.sql` mantiene la orientación docente y el estado de la entrega en una transacción, y evita modificar el contenido de una actividad que ya tiene entregas. La migración `20260821232748_corregir_reflexiones_por_nivel.sql` separa el índice único de cierres de unidad del índice de reflexiones por actividad. La migración `20260822030000_un_intento_por_actividad.sql` cambia el límite a un intento, también para respuestas abiertas, sin crear filas adicionales. La migración `20260821234243_restringir_policies_estudiante.sql` deja las policies directas del estudiante en solo lectura para que no exista un segundo camino de escritura que pueda saltarse las validaciones del servidor. La migración `20260821234838_indexar_auditoria_admin.sql` agrega índices a las llaves foráneas de auditoría para que el historial administrativo escale sin escaneos completos. La migración `20260821234941_optimizar_policies_perfiles_permanentes.sql` conserva el bloqueo de sesiones anónimas y ajusta el uso de `auth.jwt()` al patrón initplan de Postgres.
