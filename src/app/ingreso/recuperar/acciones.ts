@@ -49,6 +49,8 @@ function fuenteSolicitud(encabezados: Headers) {
   return (
     encabezados.get("x-nf-client-connection-ip") ??
     encabezados.get("cf-connecting-ip") ??
+    encabezados.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    encabezados.get("x-real-ip") ??
     "sin-ip"
   );
 }

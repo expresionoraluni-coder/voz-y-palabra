@@ -14,6 +14,10 @@ La migración `20260816222713_docente_y_limite_ingreso.sql` retira del Data API 
 
 La migración `20260821232542_endurecer_docente_admin_y_ingresos.sql` mueve el pre-request de rate limit al esquema `private`, elimina el RPC público heredado y crea los límites privados de ingreso, invitación y recuperación. El `authenticator` ejecuta esa función sin exponerla al Data API.
 
+La migración `20260904010000_corregir_permisos_pre_request.sql` mueve el punto de entrada del pre-request a un wrapper público controlado, como recomienda PostgREST, conserva las tablas y el helper real sin permisos para clientes, reconoce `x-forwarded-for` al limitar la validación de invitaciones y lee el rol de servicio desde `request.jwt.claims` para la recuperación de contraseña.
+
+La migración `20260904020000_corregir_rate_limit_recuperacion.sql` repite de forma idempotente la función de recuperación para instalaciones que ya tenían aplicada la corrección del pre-request antes del ajuste del claim de servicio.
+
 Antes de desplegar una migración:
 
 1. Comparar el esquema remoto y las migraciones locales.

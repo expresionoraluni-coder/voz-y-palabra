@@ -42,6 +42,7 @@ if (!lote.includes('.eq("grupo_id", grupoId)')) failures.push("acciones-estudian
 const schema = await texto("supabase/schema.sql");
 const functions = await texto("supabase/functions.sql");
 const ingresoDocente = await texto("src/app/ingreso/profesora/page.tsx");
+const confirmacionAuth = await texto("src/app/auth/confirm/route.ts");
 const verificarDocente = await texto("src/app/ingreso/profesora/verificar/page.tsx");
 const mensajeErrores = await texto("src/lib/mensaje-error.ts");
 const cambiarNip = await texto("src/components/cambiar-nip.tsx");
@@ -289,6 +290,9 @@ if (!functions.includes("Esta cuenta tiene acceso administrativo y no se puede r
 }
 if (!ingresoDocente.includes("/ingreso/recuperar") || !accionesRecuperacion.includes("resetPasswordForEmail") || !recuperacion.includes("No se informa si el correo existe")) {
   failures.push("recuperación: debe existir un restablecimiento por correo sin enumerar cuentas.");
+}
+if (!ingresoDocente.includes("emailRedirectTo") || !confirmacionAuth.includes("exchangeCodeForSession") || !confirmacionAuth.includes("verifyOtp") || !confirmacionAuth.includes("rutaLocal")) {
+  failures.push("auth docente: el enlace de confirmación debe volver a la aplicación y canjearse sin redirecciones externas.");
 }
 if (!actualizarContrasena.includes("exchangeCodeForSession") || !actualizarContrasena.includes("PASSWORD_RECOVERY") || (!actualizarContrasena.includes("updateUser({ password") && !accionesRecuperacion.includes("updateUser({ password")) || !actualizarContrasena.includes('signOut({ scope: "global" })')) {
   failures.push("recuperación: el enlace debe intercambiarse, actualizar la contraseña y revocar las sesiones.");

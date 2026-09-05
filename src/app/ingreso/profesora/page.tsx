@@ -109,6 +109,7 @@ export default function IngresoProfesora() {
       password: contrasena,
       options: {
         data: { codigo_invitacion_docente: codigoInvitacion.trim() },
+        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent("/ingreso/profesora")}`,
       },
     });
     if (authError || !data.user) {

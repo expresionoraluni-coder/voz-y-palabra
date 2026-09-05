@@ -27,8 +27,13 @@ begin
   exception when others then
     v_headers := '{}'::jsonb;
   end;
-  v_origen := btrim(coalesce(v_headers ->> 'cf-connecting-ip', v_headers ->> 'x-nf-client-connection-ip', ''));
-  if v_origen = '' then return false; end if;
+  v_origen := coalesce(
+    nullif(btrim(v_headers ->> 'cf-connecting-ip'), ''),
+    nullif(btrim(v_headers ->> 'x-nf-client-connection-ip'), ''),
+    nullif(btrim(split_part(coalesce(v_headers ->> 'x-forwarded-for', ''), ',', 1)), ''),
+    nullif(btrim(v_headers ->> 'x-real-ip'), '')
+  );
+  if v_origen is null then return false; end if;
 
   delete from private.invitacion_rate_limits where actualizado_en < now() - interval '1 day';
   insert into private.invitacion_rate_limits (clave, ventana_inicio, intentos, actualizado_en)
@@ -136,7 +141,23 @@ grant usage on schema private to authenticator;
 grant usage on schema private to service_role;
 grant execute on function private.controlar_rate_limit_ingreso() to authenticator;
 grant execute on function private.controlar_rate_limit_ingreso() to service_role;
-alter role authenticator set pgrst.db_pre_request = 'private.controlar_rate_limit_ingreso';
+
+-- PostgREST resuelve el pre-request desde el esquema expuesto. La función
+-- pública solo delega en el helper SECURITY DEFINER; las tablas y el helper
+-- real siguen en `private`, sin permisos para las cuentas del navegador.
+create or replace function public.controlar_rate_limit_ingreso()
+returns void
+language plpgsql
+security definer
+set search_path = private, pg_catalog
+as $$
+begin
+  perform private.controlar_rate_limit_ingreso();
+end;
+$$;
+revoke all on function public.controlar_rate_limit_ingreso() from public;
+grant execute on function public.controlar_rate_limit_ingreso() to anon, authenticated, authenticator, service_role;
+alter role authenticator set pgrst.db_pre_request = 'public.controlar_rate_limit_ingreso';
 notify pgrst, 'reload config';
 
 create or replace function public.estudiante_actual()
@@ -839,9 +860,14 @@ language plpgsql
 security definer
 set search_path = private, pg_catalog
 as $$
-declare v_intentos integer;
+declare v_intentos integer; v_rol text;
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  begin
+    v_rol := current_setting('request.jwt.claims', true)::jsonb ->> 'role';
+  exception when others then
+    v_rol := null;
+  end;
+  if v_rol <> 'service_role' then
     raise exception 'No autorizado.';
   end if;
   if p_clave is null or length(p_clave) > 150 or p_limite < 1 or p_ventana_minutos < 1 then
