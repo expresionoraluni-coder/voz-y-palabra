@@ -404,11 +404,13 @@ export default function ReportarProblema({
   }
 
   const ayuda = ayudas[categoria];
+  const usaNavegacionInferior = tipo === "estudiante" && navegacionInferior;
+  const claseAlturaDialogo = usaNavegacionInferior ? "max-h-[calc(100dvh-7rem)]" : "max-h-[calc(100dvh-2rem)]";
 
   return (
-    <div className={`fixed print:hidden ${tipo === "estudiante" && navegacionInferior ? "bottom-24" : "bottom-4"} right-4 z-30 sm:right-6`}>
+    <div className={`fixed print:hidden ${usaNavegacionInferior ? "bottom-24" : "bottom-4"} right-4 z-30 sm:right-6`}>
       {abierto ? (
-        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reporte-titulo" className="max-h-[calc(100dvh-2rem)] w-[min(92vw,22rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reporte-titulo" className={`${claseAlturaDialogo} w-[min(92vw,22rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 id="reporte-titulo" className="font-semibold text-slate-900 dark:text-slate-50">Ayuda</h2>
