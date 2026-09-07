@@ -117,7 +117,7 @@ export default function Bitacora({
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" size="sm" cargando={cargando} disabled={!listoParaGuardar} className="self-start">
-            {cargando ? "Guardando..." : "Guardar"}
+            {cargando ? "Guardando…" : "Guardar"}
           </Boton>
         </form>
       </Card>
@@ -131,7 +131,7 @@ export default function Bitacora({
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Lo que esperas aprender</p>
       </div>
       <p className="text-sm italic text-slate-700 dark:text-slate-300">&quot;{metaGuardada}&quot;</p>
-      <p className="text-xs text-slate-500 dark:text-slate-500">Progreso de la unidad: {avancePct}%</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">Progreso de la unidad: {avancePct}%</p>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton
         type="button"

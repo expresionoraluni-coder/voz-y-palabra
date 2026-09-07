@@ -33,15 +33,17 @@ export default async function UnidadEstudiante({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/ingreso/estudiante");
+  if (!user || user.is_anonymous !== true) redirect("/ingreso/estudiante");
 
-  const { data: estudiante, error: estudianteError } = await supabase
+  const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
     .select("id, debe_cambiar_nip")
+    .eq("auth_user_id", user.id)
+    .eq("activo", true)
     .single();
   revisarErrorConsulta(estudianteError && estudianteError.code !== "PGRST116" ? estudianteError : null, "No pudimos cargar tu sesión de estudiante.");
   if (!estudiante) redirect("/ingreso/estudiante");
-  if (estudiante.debe_cambiar_nip) redirect("/estudiante/cambiar-nip");
+  if (estudiante.debe_cambiar_nip) return null;
 
   // `unidades`/`actividades` ya no tienen policy de lectura abierta a
   // estudiantes — se traen con el cliente admin. Las entregas del propio
@@ -53,6 +55,7 @@ export default async function UnidadEstudiante({
     { data: unidad, error: unidadError },
     { data: actividadesRaw, error: actividadesError },
     { data: entregasEstudiante, error: entregasError },
+    { data: reflexionesActividad, error: reflexionesActividadError },
   ] = await Promise.all([
     admin
       .from("unidades")
@@ -61,18 +64,29 @@ export default async function UnidadEstudiante({
       .single(),
     admin
       .from("actividades")
-      .select("id, titulo, instrucciones, requiere_actividad_id")
+      .select("id, titulo, instrucciones, contenido, requiere_actividad_id")
       .eq("unidad_id", id)
       .order("orden"),
     supabase.from("entregas").select("actividad_id, puntaje_auto, respuesta").eq("estudiante_id", estudiante.id),
+    supabase
+      .from("reflexiones")
+      .select("actividad_id")
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "cierre"),
   ]);
   revisarErrorConsulta(unidadError, "No pudimos cargar esta unidad.");
   revisarErrorConsulta(actividadesError, "No pudimos cargar las actividades de esta unidad.");
   revisarErrorConsulta(entregasError, "No pudimos cargar tu avance en esta unidad.");
+  revisarErrorConsulta(reflexionesActividadError, "No pudimos cargar tus reflexiones de actividad.");
   if (!unidad) notFound();
 
   const entregasPorActividad = new Map((entregasEstudiante ?? []).map((e) => [e.actividad_id, e]));
-  const actividades = actividadesRaw?.map((a) => {
+  const actividadesConReflexion = new Set(
+    (reflexionesActividad ?? [])
+      .map((reflexion) => reflexion.actividad_id)
+      .filter((actividadId): actividadId is string => typeof actividadId === "string"),
+  );
+  const actividades = (actividadesRaw ?? []).map((a) => {
     const entrega = entregasPorActividad.get(a.id);
     return {
       ...a,
@@ -81,9 +95,9 @@ export default async function UnidadEstudiante({
   });
 
   if (unidad.orden > 1) {
-    const { data: unidadAnterior, error: unidadAnteriorError } = await admin
+      const { data: unidadAnterior, error: unidadAnteriorError } = await admin
       .from("unidades")
-      .select("id, nombre, actividades(id, orden)")
+      .select("id, nombre, actividades(id, orden, contenido)")
       .eq("orden", unidad.orden - 1)
       .single();
     revisarErrorConsulta(unidadAnteriorError, "No pudimos comprobar el avance de la unidad anterior.");
@@ -91,13 +105,16 @@ export default async function UnidadEstudiante({
     if (unidadAnterior) {
       const totalAnterior = unidadAnterior.actividades.length;
       const hechasAnterior = unidadAnterior.actividades.filter((a) =>
-        (entregasEstudiante ?? []).some((e) => e.actividad_id === a.id && entregaCuentaComoCompletada(e)),
+        (entregasEstudiante ?? []).some(
+          (e) => e.actividad_id === a.id && entregaCuentaComoCompletada(e, a.contenido),
+        ),
       ).length;
-      const ultimaActividadAnterior = unidadAnterior.actividades.slice().sort((a, b) => b.orden - a.orden)[0];
+      const reflexionadasAnterior = unidadAnterior.actividades.filter((a) =>
+        actividadesConReflexion.has(a.id),
+      ).length;
       const [
         { data: reflexionAnterior, error: reflexionAnteriorError },
         { data: confianzaAnterior, error: confianzaAnteriorError },
-        { data: reflexionUltimaActividadAnterior, error: reflexionUltimaActividadAnteriorError },
       ] = await Promise.all([
         supabase
           .from("reflexiones")
@@ -113,33 +130,17 @@ export default async function UnidadEstudiante({
           .eq("unidad_id", unidadAnterior.id)
           .eq("momento", "cierre")
           .maybeSingle(),
-        ultimaActividadAnterior
-          ? supabase
-            .from("reflexiones")
-            .select("id")
-            .eq("estudiante_id", estudiante.id)
-            .eq("actividad_id", ultimaActividadAnterior.id)
-            .eq("momento", "cierre")
-            .maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
       ]);
       revisarErrorConsulta(reflexionAnteriorError, "No pudimos comprobar el cierre de la unidad anterior.");
       revisarErrorConsulta(confianzaAnteriorError, "No pudimos comprobar la confianza final de la unidad anterior.");
-      revisarErrorConsulta(
-        reflexionUltimaActividadAnteriorError,
-        "No pudimos comprobar la reflexión de la última actividad.",
-      );
-
       const motivoUnidadAnterior = !unidadEstaCompleta(totalAnterior, hechasAnterior)
         ? "unidad_anterior_actividades"
-        : !reflexionUltimaActividadAnterior && !reflexionAnterior
-          ? "unidad_anterior_reflexiones"
-          : !reflexionUltimaActividadAnterior
-            ? "unidad_anterior_reflexion_actividad"
-            : !reflexionAnterior
-              ? "unidad_anterior_reflexion_unidad"
-              : !confianzaAnterior
-                ? "unidad_anterior_confianza"
+        : !unidadEstaCompleta(totalAnterior, reflexionadasAnterior)
+          ? "unidad_anterior_reflexion_actividad"
+          : !reflexionAnterior
+            ? "unidad_anterior_reflexion_unidad"
+            : !confianzaAnterior
+              ? "unidad_anterior_confianza"
               : null;
 
       if (motivoUnidadAnterior) {
@@ -170,7 +171,6 @@ export default async function UnidadEstudiante({
     { data: confianzas, error: confianzasError },
     { data: bitacora, error: bitacoraError },
     { data: reflexionCierre, error: reflexionCierreError },
-    { data: reflexionesActividades, error: reflexionesActividadesError },
   ] = await Promise.all([
     supabase
       .from("autoevaluaciones_confianza")
@@ -190,31 +190,23 @@ export default async function UnidadEstudiante({
       .eq("unidad_id", id)
       .eq("momento", "cierre")
       .maybeSingle(),
-    supabase
-      .from("reflexiones")
-      .select("actividad_id")
-      .eq("estudiante_id", estudiante.id)
-      .eq("momento", "cierre")
-        .in("actividad_id", (actividadesRaw ?? []).map((a) => a.id)),
   ]);
 
   revisarErrorConsulta(confianzasError, "No pudimos cargar tu nivel de seguridad.");
   revisarErrorConsulta(bitacoraError, "No pudimos cargar tu meta de unidad.");
   revisarErrorConsulta(reflexionCierreError, "No pudimos cargar tu reflexión de cierre.");
-  revisarErrorConsulta(reflexionesActividadesError, "No pudimos cargar las reflexiones de tus actividades.");
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
   const inicioUnidadCompleto = Boolean(confianzaInicio && bitacora);
-  const actividadesConReflexion = new Set((reflexionesActividades ?? []).map((reflexion) => reflexion.actividad_id));
 
-  const totalActividades = actividades?.length ?? 0;
+  const totalActividades = actividades.length;
   const completadas =
-    actividades?.filter((a) => entregaCuentaComoCompletada(a.entregas?.[0]))
-      .length ?? 0;
+    actividades.filter((a) => entregaCuentaComoCompletada(a.entregas?.[0], a.contenido)).length;
   const unidadCompleta = unidadEstaCompleta(totalActividades, completadas);
-  const ultimaActividad = actividades?.[actividades.length - 1];
-  const tieneReflexionUltimaActividad = Boolean(
-    ultimaActividad && (reflexionesActividades ?? []).some((reflexion) => reflexion.actividad_id === ultimaActividad.id),
+  const primeraReflexionPendiente = actividades.find(
+    (actividad) =>
+      entregaCuentaComoCompletada(actividad.entregas?.[0], actividad.contenido) &&
+      !actividadesConReflexion.has(actividad.id),
   );
   const pct = totalActividades > 0 ? Math.round((completadas / totalActividades) * 100) : 0;
   const tema = temaUnidad(unidad.orden);
@@ -260,7 +252,7 @@ export default async function UnidadEstudiante({
                 gradiente={tema.barra}
                 etiqueta={`Unidad: ${completadas} de ${totalActividades} actividades`}
               />
-              <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-500">
+              <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-400">
                 {completadas}/{totalActividades}
               </span>
             </div>
@@ -272,7 +264,7 @@ export default async function UnidadEstudiante({
             </Alert>
           )}
 
-          {!actividades || actividades.length === 0 ? (
+          {actividades.length === 0 ? (
             <EmptyState
               icon={TrendingUp}
               titulo="Todavía no hay actividades publicadas"
@@ -280,18 +272,30 @@ export default async function UnidadEstudiante({
             />
           ) : (
             <div className="flex flex-col gap-2">
-              {actividades.map((a) => {
-                const completada = entregaCuentaComoCompletada(a.entregas?.[0]);
-                const prerequisito = a.requiere_actividad_id
-                  ? actividades.find((p) => p.id === a.requiere_actividad_id)
-                  : null;
-                const entregaPrerequisito = prerequisito?.entregas?.[0];
-                const bloqueada = Boolean(
-                  prerequisito &&
-                    (!entregaPrerequisito ||
-                      !entregaCuentaComoCompletada(entregaPrerequisito) ||
-                      !actividadesConReflexion.has(prerequisito.id)),
+              {actividades.map((a, indice) => {
+                const completada = entregaCuentaComoCompletada(a.entregas?.[0], a.contenido);
+                const reflexionada = actividadesConReflexion.has(a.id);
+                const idsPrerequisito = Array.from(
+                  new Set(
+                    [...actividades.slice(0, indice).map((anterior) => anterior.id), a.requiere_actividad_id].filter(
+                      (actividadId): actividadId is string => typeof actividadId === "string",
+                    ),
+                  ),
                 );
+                const requisitoSinEntrega = idsPrerequisito.find((actividadId) =>
+                  !entregaCuentaComoCompletada(
+                    entregasPorActividad.get(actividadId),
+                    actividades.find((actividad) => actividad.id === actividadId)?.contenido,
+                  ),
+                );
+                const requisitoSinReflexion = idsPrerequisito.find(
+                  (actividadId) => !actividadesConReflexion.has(actividadId),
+                );
+                const requisitoBloqueado = requisitoSinEntrega ?? requisitoSinReflexion;
+                const actividadBloqueada = requisitoBloqueado
+                  ? actividades.find((actividad) => actividad.id === requisitoBloqueado)
+                  : null;
+                const bloqueada = Boolean(requisitoBloqueado);
                 if (bloqueada) {
                   return (
                     <div
@@ -299,9 +303,9 @@ export default async function UnidadEstudiante({
                       className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 px-4 py-3.5 opacity-60 dark:border-slate-800"
                     >
                       <Lock className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
-                      <span className="flex-1 font-medium text-slate-500 dark:text-slate-500">{a.titulo}</span>
+                      <span className="flex-1 font-medium text-slate-500 dark:text-slate-400">{a.titulo}</span>
                       <span className="text-xs text-slate-400 dark:text-slate-600">
-                        Primero completa: {prerequisito!.titulo}
+                        {requisitoSinEntrega ? "Primero completa" : "Primero guarda la reflexión de"}: {actividadBloqueada?.titulo ?? "la actividad anterior"}
                       </span>
                     </div>
                   );
@@ -325,7 +329,11 @@ export default async function UnidadEstudiante({
                             : "text-xs text-slate-500 dark:text-slate-400"
                         }
                       >
-                        {completada ? "Completada" : "Lista para comenzar"}
+                        {completada
+                          ? reflexionada
+                            ? "Completada"
+                            : "Reflexión pendiente"
+                          : "Lista para comenzar"}
                       </span>
                     </CardLink>
                   </Link>
@@ -341,29 +349,27 @@ export default async function UnidadEstudiante({
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Actividades terminadas</p>
                   <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                    {tieneReflexionUltimaActividad
-                      ? reflexionCierre
-                        ? "Tu cierre está guardado. Puedes volver a leerlo o continuar con la siguiente unidad."
-                        : "La última reflexión está lista. Ahora puedes cerrar la unidad con una pausa final."
-                      : "Antes del cierre, guarda la reflexión de tu última actividad para completar tu recorrido."}
+                    {primeraReflexionPendiente
+                      ? "Antes del cierre, guarda la reflexión de cada actividad pendiente."
+                      : reflexionCierre
+                      ? "Tu cierre está guardado. Puedes volver a leerlo o continuar con la siguiente unidad."
+                      : "Ahora puedes cerrar la unidad con una pausa final."}
                   </p>
                 </div>
               </div>
               <Link
                 href={
-                  tieneReflexionUltimaActividad
-                    ? `/estudiante/unidad/${id}/cierre`
-                    : ultimaActividad
-                      ? `/estudiante/actividad/${ultimaActividad.id}`
-                      : `/estudiante/unidad/${id}`
+                  primeraReflexionPendiente
+                    ? `/estudiante/actividad/${primeraReflexionPendiente.id}`
+                    : `/estudiante/unidad/${id}/cierre`
                 }
                 className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
               >
-                {tieneReflexionUltimaActividad
-                  ? reflexionCierre
+                {primeraReflexionPendiente
+                  ? "Completar reflexión pendiente"
+                  : reflexionCierre
                     ? "Ver cierre de la unidad"
-                    : "Escribir reflexión de cierre"
-                  : "Volver a la última actividad"}
+                    : "Escribir reflexión de cierre"}
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </Card>

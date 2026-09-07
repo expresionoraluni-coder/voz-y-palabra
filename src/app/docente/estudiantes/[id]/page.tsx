@@ -93,6 +93,7 @@ export default async function FichaEstudiante({
       .order("created_at", { ascending: false }),
   ]);
 
+  if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
   revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
   revisarErrorConsulta(estudianteError, "No pudimos cargar esta ficha de estudiante.");
   revisarErrorConsulta(unidadesError, "No pudimos cargar las unidades del curso.");
@@ -104,7 +105,6 @@ export default async function FichaEstudiante({
   revisarErrorConsulta(bitacorasError, "No pudimos cargar la bitácora del estudiante.");
   revisarErrorConsulta(comentariosError, "No pudimos cargar las orientaciones docentes.");
 
-  if (!user) redirect("/ingreso/profesora");
   if (!estudiante) notFound();
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
@@ -159,14 +159,14 @@ export default async function FichaEstudiante({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Avance</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">{avanceGeneral}%</p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">{entregas?.length ?? 0} de {totalActividades} actividades</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{entregas?.length ?? 0} de {totalActividades} actividades</p>
         </div>
         <div className="flex gap-2">
           <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden="true" />
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Última actividad</p>
             <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{ultimaActividad?.titulo ?? "Aún no comienza"}</p>
-            {ultimaEntrega && <p className="text-xs text-slate-500 dark:text-slate-500">{new Date(ultimaEntrega.created_at).toLocaleDateString("es-MX")}</p>}
+            {ultimaEntrega && <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(ultimaEntrega.created_at).toLocaleDateString("es-MX")}</p>}
           </div>
         </div>
         <div className="flex gap-2">
@@ -174,7 +174,7 @@ export default async function FichaEstudiante({
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Seguimiento</p>
             <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{casosPendientes ? `${casosPendientes} por revisar` : "Sin pendientes"}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-500">Orientación opcional</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Orientación opcional</p>
           </div>
         </div>
       </Card>
@@ -221,13 +221,13 @@ export default async function FichaEstudiante({
                   etiqueta={`Avance en Unidad ${u.orden}. ${u.nombre}: ${pct}%`}
                 />
                 {inicio && (
-                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-500">
-                    Confianza: {inicio.valor}% al inicio{" "}
-                    {cierre ? `→ ${cierre.valor}% al cierre` : "(sin cierre aún)"}
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    Confianza: {inicio.valor}/5 al inicio{" "}
+                    {cierre ? `→ ${cierre.valor}/5 al cierre` : "(sin cierre aún)"}
                   </p>
                 )}
                 {bitacora && (
-                  <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-500">
+                  <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                     <NotebookPen className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
                     <span>
                       Meta: &quot;{bitacora.meta}&quot;{" "}
@@ -257,7 +257,7 @@ export default async function FichaEstudiante({
                 <Card key={i} className="flex gap-2.5 p-3.5">
                   <Quote className="mt-0.5 size-3.5 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">{unidad?.nombre}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{unidad?.nombre}</p>
                     <p className="text-sm text-slate-800 dark:text-slate-200">{r.texto}</p>
                   </div>
                 </Card>
@@ -344,7 +344,7 @@ export default async function FichaEstudiante({
                         key={i}
                         className="mt-2 flex items-start gap-1.5 border-t border-slate-100 pt-2 text-sm text-slate-700 dark:border-slate-800 dark:text-slate-300"
                       >
-                        <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                        <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-slate-400 dark:text-slate-400" aria-hidden="true" />
                         <span>
                           {c.comentario}{" "}
                           <span className="text-xs text-slate-500 dark:text-slate-400">

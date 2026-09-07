@@ -1,22 +1,13 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { destinoConfirmacionSeguro } from "@/lib/auth-url";
 import { createClient } from "@/lib/supabase/server";
 
 const TIPOS_CONFIRMACION: EmailOtpType[] = ["signup", "email"];
 
-function rutaLocal(valor: string | null) {
-  if (!valor || !valor.startsWith("/") || valor.startsWith("//")) {
-    return "/ingreso/profesora";
-  }
-  return valor;
-}
-function redirigir(request: NextRequest, ruta: string) {
-  return NextResponse.redirect(new URL(ruta, request.url));
-}
-
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const next = rutaLocal(url.searchParams.get("next"));
+  const next = destinoConfirmacionSeguro(url.searchParams.get("next"), url);
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
@@ -24,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return redirigir(request, next);
+    if (!error) return NextResponse.redirect(next);
   }
 
   if (tokenHash && type && TIPOS_CONFIRMACION.includes(type as EmailOtpType)) {
@@ -32,8 +23,10 @@ export async function GET(request: NextRequest) {
       type: type as EmailOtpType,
       token_hash: tokenHash,
     });
-    if (!error) return redirigir(request, next);
+    if (!error) return NextResponse.redirect(next);
   }
 
-  return redirigir(request, "/ingreso/profesora?error=confirmacion");
+  return NextResponse.redirect(
+    destinoConfirmacionSeguro(null, url, "/ingreso/profesora?error=confirmacion"),
+  );
 }

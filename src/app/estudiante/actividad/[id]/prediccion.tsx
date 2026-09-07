@@ -73,7 +73,7 @@ export default function Prediccion({
       </div>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton type="submit" size="sm" disabled={confianza === null} cargando={cargando} className="self-start">
-        {cargando ? "Guardando..." : "Empezar la actividad"}
+        {cargando ? "Guardando…" : "Empezar la actividad"}
       </Boton>
     </form>
   );

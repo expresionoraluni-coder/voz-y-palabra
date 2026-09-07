@@ -33,7 +33,7 @@ const RECURSOS = [
     descripcion: "Pedir apoyo también forma parte de aprender.",
     icon: HelpCircle,
     color: "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
-    puntos: ["Vuelve a leer la instrucción y el ejemplo", "Usa la pista si la actividad la tiene", "Escribe en tu bitácora qué parte te costó y vuelve a intentarlo"],
+    puntos: ["Vuelve a leer la instrucción y el ejemplo", "Usa la pista si la actividad la tiene", "Anota en la reflexión de la actividad qué parte te costó y pide apoyo si lo necesitas"],
   },
   {
     titulo: "Cuida tus datos",

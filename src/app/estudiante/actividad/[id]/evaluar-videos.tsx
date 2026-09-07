@@ -7,7 +7,10 @@ import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import EmptyState from "@/components/ui/empty-state";
 import { esVideoUrlPermitida, urlEmbedYoutube } from "@/lib/video-embed";
-import type { ContenidoEvaluarVideosPublico } from "@/lib/calificacion-evaluar-videos";
+import {
+  videosEvaluarDisponibles,
+  type ContenidoEvaluarVideosPublico,
+} from "@/lib/calificacion-evaluar-videos";
 import { calificarEvaluarVideos } from "./acciones-calificacion";
 
 function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion: string; url: string | null }) {
@@ -17,7 +20,7 @@ function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion
     <div className="flex flex-col gap-2">
       <div>
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{titulo}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-500">{descripcion}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{descripcion}</p>
       </div>
       {embed ? (
         <div className="aspect-video w-full overflow-hidden rounded-xl bg-slate-900">
@@ -61,6 +64,7 @@ export default function EvaluarVideos({
   respuestaPrevia?: { marcadas_bien: string[]; marcadas_mal: string[]; resultado?: { bien: boolean[]; mal: boolean[] } };
   puntajeAuto?: number | null;
 }) {
+  const videosDisponibles = videosEvaluarDisponibles(contenido);
   const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
@@ -78,6 +82,19 @@ export default function EvaluarVideos({
     respuestaPrevia?.resultado ?? null,
   );
   const bloqueado = entregaRegistrada || resultado !== null;
+
+  if (!videosDisponibles && !respuestaPrevia) {
+    return (
+      <div className="flex flex-col gap-4">
+        {contenido.intro && <p className="text-sm text-slate-500 dark:text-slate-400">{contenido.intro}</p>}
+        <EmptyState
+          icon={Video}
+          titulo="Actividad pendiente de videos"
+          descripcion="Tu docente debe agregar los videos A y B antes de que puedas responder. No se guardará una evaluación sin haberlos visto."
+        />
+      </div>
+    );
+  }
 
   function alternar(lista: "bien" | "mal", cualidad: string) {
     if (bloqueado) return;
@@ -132,7 +149,7 @@ export default function EvaluarVideos({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {contenido.intro && <p className="text-sm text-slate-500 dark:text-slate-500">{contenido.intro}</p>}
+      {contenido.intro && <p className="text-sm text-slate-500 dark:text-slate-400">{contenido.intro}</p>}
 
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800">
         <BloqueVideo

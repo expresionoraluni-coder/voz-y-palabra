@@ -38,6 +38,7 @@ yarn-error.log*
 
 # netlify (estado local del CLI, no es código del proyecto)
 .netlify
+/supabase/.temp/
 
 # typescript
 *.tsbuildinfo

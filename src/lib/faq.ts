@@ -40,16 +40,16 @@ const PREGUNTAS_ESTUDIANTE: Partial<Record<CategoriaReporte, FaqPregunta[]>> = {
 };
 
 const PREGUNTAS_DOCENTE: Partial<Record<CategoriaReporte, FaqPregunta[]>> = {
-  docente_estudiantes: [{ id: "causa", pregunta: "¿Qué necesitas resolver?", opciones: [{ id: "carga", etiqueta: "No aparecen tras cargar el archivo" }, { id: "duplicado", etiqueta: "Hay estudiantes duplicados" }, { id: "nip", etiqueta: "Necesito reiniciar un NIP" }] }],
+  docente_estudiantes: [{ id: "causa", pregunta: "¿Qué necesitas resolver?", opciones: [{ id: "carga", etiqueta: "No aparecen tras cargar el archivo" }, { id: "duplicado", etiqueta: "Hay estudiantes duplicados" }, { id: "nip", etiqueta: "Necesito restablecer un acceso" }] }],
   docente_actividad: [{ id: "causa", pregunta: "¿Qué parte presenta el problema?", opciones: [{ id: "guardar", etiqueta: "No puedo guardar" }, { id: "contenido", etiqueta: "No sé cómo configurar el contenido" }, { id: "bloqueo", etiqueta: "No puedo editarla" }] }],
 };
 
 const PASOS_FALLBACK: Partial<Record<CategoriaReporte, string[]>> = {
-  estudiante_acceso: ["Usa el código exacto de tu grupo.", "Escribe tu nombre como aparece en la lista.", "Si olvidaste el NIP, pide a tu docente que lo reinicie."],
-  estudiante_actividad: ["Guarda tu respuesta antes de salir.", "Completa la actividad anterior y su reflexión si está pendiente.", "Cada actividad tiene un solo intento; revisa antes de guardar."],
+  estudiante_acceso: ["Usa el código exacto de tu grupo.", "Escribe tu nombre como aparece en la lista.", "Si olvidaste el NIP, pide a tu docente que restablezca tu acceso."],
+  estudiante_actividad: ["Guarda tu respuesta y la reflexión antes de avanzar.", "Si existe una dependencia, completa la actividad anterior y su reflexión.", "Sin variante hay un intento; una variante alternativa permite un segundo intento con otro ejercicio. Con 70% o más es opcional; con menos de 70% debes resolverlo antes de guardar la reflexión y continuar. Los niveles son actividades distintas y no cambian esta regla."],
   estudiante_video: ["Comprueba tu conexión.", "Actualiza una sola vez.", "Prueba otra red o dispositivo."],
-  estudiante_avance: ["Confirma que la actividad anterior esté guardada.", "Revisa si falta una reflexión o el cierre de la unidad.", "Actualiza una sola vez después de guardar."],
-  docente_estudiantes: ["Confirma nombre y boleta.", "Corrige filas incompletas o duplicadas.", "Reinicia el NIP desde la ficha del estudiante."],
+  estudiante_avance: ["Confirma que la actividad anterior y su reflexión estén guardadas.", "Si cambias de unidad, completa todas las reflexiones, la reflexión de cierre y la confianza final.", "Actualiza una sola vez después de guardar."],
+  docente_estudiantes: ["Confirma nombre y boleta.", "Corrige filas incompletas o duplicadas.", "Restablece el acceso y entrega el nuevo código de forma privada."],
   docente_actividad: ["Completa título, instrucciones, tipo y orden.", "Revisa la vista previa.", "Espera la confirmación antes de guardar otra vez."],
   docente_tecnico: ["Espera unos segundos.", "Actualiza una sola vez.", "Prueba otra red o dispositivo."],
 };

@@ -22,6 +22,7 @@ export default function GestionEstudiante({
   const [confirmando, setConfirmando] = useState<"baja" | "eliminar" | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [codigoAcceso, setCodigoAcceso] = useState<string | null>(null);
 
   async function darDeBaja() {
     if (cargando) return;
@@ -48,6 +49,7 @@ export default function GestionEstudiante({
       setCargando(false);
       return;
     }
+    setCodigoAcceso(resultado.codigoAcceso ?? null);
     setCargando(false);
     router.refresh();
   }
@@ -78,17 +80,26 @@ export default function GestionEstudiante({
     );
   }
 
+  if (codigoAcceso) {
+    return (
+      <div className="max-w-sm rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+        <p>Código personal nuevo para {nombre}: <strong className="font-mono tracking-wider">{codigoAcceso}</strong></p>
+        <p className="mt-1 text-xs">Entrégalo en privado. Se muestra una sola vez.</p>
+      </div>
+    );
+  }
+
   if (confirmando === "baja") {
     return (
       <div className="flex flex-col items-end gap-2">
-        <p className="max-w-xs text-right text-xs text-slate-500 dark:text-slate-500">
+        <p className="max-w-xs text-right text-xs text-slate-500 dark:text-slate-400">
           {nombre} ya no podrá entrar a la plataforma. Su historial se conserva y puedes reactivarla cuando
           quieras.
         </p>
         {error && <ErrorText>{error}</ErrorText>}
         <div className="flex gap-2">
           <Boton size="sm" variant="destructive" onClick={darDeBaja} cargando={cargando}>
-            {cargando ? "Dando de baja..." : "Confirmar baja"}
+            {cargando ? "Dando de baja…" : "Confirmar baja"}
           </Boton>
           <Boton size="sm" variant="ghost" onClick={() => setConfirmando(null)}>
             Cancelar
@@ -108,7 +119,7 @@ export default function GestionEstudiante({
         {error && <ErrorText>{error}</ErrorText>}
         <div className="flex gap-2">
           <Boton size="sm" variant="destructive" onClick={eliminar} cargando={cargando}>
-            {cargando ? "Eliminando..." : "Eliminar definitivamente"}
+            {cargando ? "Eliminando…" : "Eliminar definitivamente"}
           </Boton>
           <Boton size="sm" variant="ghost" onClick={() => setConfirmando(null)}>
             Cancelar

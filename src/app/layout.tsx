@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,11 +19,15 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // La CSP usa un nonce nuevo por petición; Next.js solo puede colocarlo en
+  // sus scripts cuando el HTML se genera para esa petición.
+  await connection();
+
   return (
     <html
       lang="es"

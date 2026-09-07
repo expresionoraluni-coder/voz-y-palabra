@@ -11,8 +11,8 @@ export default function UnidadCierre({
   unidadId,
   metaPrevia,
   textoPrevio,
-  confianzaInicioPct,
-  confianzaCierrePct,
+  confianzaInicio,
+  confianzaCierre,
   promedioUnidad,
   siguienteHref,
   textoSiguiente,
@@ -20,14 +20,14 @@ export default function UnidadCierre({
   unidadId: string;
   metaPrevia: string | null;
   textoPrevio: string | null;
-  confianzaInicioPct: number | null;
-  confianzaCierrePct: number | null;
+  confianzaInicio: number | null;
+  confianzaCierre: number | null;
   promedioUnidad: number | null;
   siguienteHref: string;
   textoSiguiente: string;
 }) {
   const [guardada, setGuardada] = useState(Boolean(textoPrevio));
-  const [confianzaGuardada, setConfianzaGuardada] = useState(confianzaCierrePct !== null);
+  const [confianzaGuardada, setConfianzaGuardada] = useState(confianzaCierre !== null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,17 +56,19 @@ export default function UnidadCierre({
         unidadId={unidadId}
         metaPrevia={metaPrevia}
         textoPrevio={textoPrevio}
-        confianzaInicioPct={confianzaInicioPct}
+        confianzaInicio={confianzaInicio}
         promedioUnidad={promedioUnidad}
         onGuardado={() => setGuardada(true)}
       />
 
-      <Confianza
-        unidadId={unidadId}
-        momento="cierre"
-        valorPrevio={confianzaCierrePct}
-        onGuardado={() => setConfianzaGuardada(true)}
-      />
+      {guardada && (
+        <Confianza
+          unidadId={unidadId}
+          momento="cierre"
+          valorPrevio={confianzaCierre}
+          onGuardado={() => setConfianzaGuardada(true)}
+        />
+      )}
 
       {guardada && confianzaGuardada ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
@@ -83,9 +85,13 @@ export default function UnidadCierre({
             </Boton>
           </Link>
         </div>
+      ) : guardada ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          Registra tu nivel de seguridad final para cerrar la unidad y desbloquear la siguiente.
+        </p>
       ) : (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-          Guarda tu reflexión y tu nivel de seguridad para cerrar la unidad y desbloquear la siguiente.
+          Guarda primero tu reflexión de cierre. Después registrarás tu nivel de seguridad final.
         </p>
       )}
     </div>

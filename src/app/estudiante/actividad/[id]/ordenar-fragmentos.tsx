@@ -71,7 +71,7 @@ function FragmentoOrdenado({
           {...attributes}
           {...listeners}
           aria-label="Arrastrar para reordenar"
-          className="mt-0.5 shrink-0 cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing dark:text-slate-500 dark:hover:text-slate-300"
+          className="mt-0.5 shrink-0 cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing dark:text-slate-400 dark:hover:text-slate-300"
         >
           <GripVertical className="size-4" aria-hidden="true" />
         </button>
@@ -91,7 +91,7 @@ function FragmentoOrdenado({
           type="button"
           onClick={onQuitar}
           aria-label="Quitar de la secuencia"
-          className="mt-0.5 shrink-0 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
+          className="mt-0.5 shrink-0 text-slate-400 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400"
         >
           <X className="size-4" aria-hidden="true" />
         </button>
@@ -197,7 +197,7 @@ export default function OrdenarFragmentos({
 
       {disponibles.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Fragmentos disponibles (toca para agregar a tu secuencia)
           </p>
           <div className="flex flex-wrap gap-2">
@@ -218,7 +218,7 @@ export default function OrdenarFragmentos({
       )}
 
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Tu secuencia {!bloqueado && "(arrastra para reordenar)"}
         </p>
         {secuencia.length === 0 ? (

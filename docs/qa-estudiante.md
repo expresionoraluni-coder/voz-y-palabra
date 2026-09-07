@@ -4,7 +4,7 @@ Esta lista acompaña el flujo autodirigido. La orientación de una docente es op
 
 ## Recorrido principal
 
-- Ingresar con código, nombre y NIP.
+- Ingresar con código de grupo, nombre y código de activación en el primer acceso; después, usar el NIP personal de cuatro dígitos.
 - Ver inicio y la guía de primera ruta.
 - Abrir una unidad.
 - Definir la meta y la confianza inicial.
@@ -12,9 +12,14 @@ Esta lista acompaña el flujo autodirigido. La orientación de una docente es op
 - Leer la instrucción, el aprendizaje esperado y los pasos.
 - Abrir “¿Te atoraste? Ver una pista” solo si hace falta y comprobar que orienta sin mostrar la respuesta.
 - Resolver, guardar y volver a abrir la actividad.
-- Confirmar que cada actividad solo permite un envío; después del envío se muestran el resultado y la reflexión, sin botón de reintento.
-- En una actividad de dos niveles, comprobar que el nivel 2 permanece bloqueado hasta concluir el nivel 1 y guardar su reflexión.
-- Completar todas las actividades de una unidad, guardar la reflexión de la última actividad, la reflexión de cierre y la confianza final.
+- Confirmar que una actividad sin variante permite un solo intento.
+- Confirmar que una actividad con `reintento_alternativo` permite exactamente dos intentos y muestra un ejercicio diferente en el segundo.
+- Con un resultado de 70% o más, confirmar que el segundo ejercicio es opcional; con menos de 70%, comprobar que la reflexión, el siguiente paso y el cierre permanecen bloqueados hasta resolverlo.
+- En una actividad de comparación de videos, comprobar que ambos videos abren y que no aparece una evaluación respondible si falta alguno.
+- En una secuencia de dos niveles, comprobar que el nivel 2 es otra actividad y permanece bloqueado hasta guardar la entrega y la reflexión del nivel 1. Los niveles no cambian el número de intentos.
+- Si una actividad de nivel 1 o nivel 2 también tiene `reintento_alternativo`, comprobar que el reintento se controla por separado: el nivel desbloquea la siguiente actividad y la variante controla el segundo ejercicio.
+- Después de cada entrega, guardar obligatoriamente la reflexión y comprobar que la siguiente actividad continúa bloqueada hasta hacerlo.
+- Completar todas las actividades y sus reflexiones; después, guardar la reflexión de cierre de la unidad y registrar la confianza final.
 - Confirmar que la unidad siguiente permanece bloqueada hasta terminar todos esos pasos.
 - Confirmar que el progreso y las insignias se actualicen.
 

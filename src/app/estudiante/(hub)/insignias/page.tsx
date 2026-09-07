@@ -75,17 +75,17 @@ export default async function InsigniasEstudiante() {
               <div>
                 <p
                   className={`text-sm font-semibold ${
-                    obtenida ? "text-slate-900 dark:text-slate-50" : "text-slate-500 dark:text-slate-500"
+                    obtenida ? "text-slate-900 dark:text-slate-50" : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   {insignia.nombre}
                 </p>
                 <p className={`mt-1 text-[11px] font-medium uppercase tracking-wide ${
-                  obtenida ? "text-amber-700 dark:text-amber-300" : "text-slate-400 dark:text-slate-500"
+                  obtenida ? "text-amber-700 dark:text-amber-300" : "text-slate-400 dark:text-slate-400"
                 }`}>
                   {obtenida ? "Obtenida" : "Pendiente"}
                 </p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
+                <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                   {insignia.descripcion}
                 </p>
               </div>

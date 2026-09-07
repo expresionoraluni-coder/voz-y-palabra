@@ -66,7 +66,7 @@ export default function EtiquetadoTexto({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
       {contenido.contexto && (
-        <p className="text-sm text-slate-500 dark:text-slate-500">{contenido.contexto}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{contenido.contexto}</p>
       )}
       {contenido.en_linea ? (
         // Flujo de texto normal (nada de flex): así el navegador ajusta

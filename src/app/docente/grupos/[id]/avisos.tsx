@@ -83,7 +83,7 @@ export default function Avisos({
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" variant="secondary" size="sm" cargando={cargando} className="self-start">
-            {cargando ? "Publicando..." : "Publicar aviso"}
+            {cargando ? "Publicando…" : "Publicar aviso"}
           </Boton>
         </form>
 
@@ -92,7 +92,7 @@ export default function Avisos({
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
             {avisos.map((a) => (
               <div key={a.id} className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60">
-                <Bell className="mt-0.5 size-4 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                <Bell className="mt-0.5 size-4 shrink-0 text-slate-400 dark:text-slate-400" aria-hidden="true" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{a.titulo}</p>
                   <p className="text-sm text-slate-600 dark:text-slate-400">{a.mensaje}</p>

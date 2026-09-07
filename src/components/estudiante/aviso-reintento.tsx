@@ -1,6 +1,6 @@
 "use client";
 
-import { MAX_INTENTOS_AUTO } from "@/lib/intentos-auto";
+import { MAX_INTENTOS_AUTO, PUNTAJE_MINIMO_SIN_REINTENTO } from "@/lib/intentos-auto";
 import Boton from "@/components/ui/button";
 
 export default function AvisoReintento({
@@ -9,12 +9,14 @@ export default function AvisoReintento({
   maxIntentos = MAX_INTENTOS_AUTO,
   onReintentar,
   cargando = false,
+  reintentoObligatorio = false,
 }: {
   puntaje: number | null;
   intentos: number;
   maxIntentos?: number;
   onReintentar: () => void;
   cargando?: boolean;
+  reintentoObligatorio?: boolean;
 }) {
   if (intentos < 1) return null;
   const puedeReintentar = intentos < maxIntentos;
@@ -30,13 +32,15 @@ export default function AvisoReintento({
         Has usado {intentos} de {maxIntentos} {maxIntentos === 1 ? "intento" : "intentos"}.
       </p>
       <p className="text-xs text-emerald-700 dark:text-emerald-300">
-        {puedeReintentar
-          ? "Puedes revisar tu respuesta y hacer un segundo ejercicio con un texto diferente."
+        {puedeReintentar && reintentoObligatorio
+          ? `Tu resultado es menor de ${PUNTAJE_MINIMO_SIN_REINTENTO} %. Usa el botón para resolver el ejercicio alternativo.`
+          : puedeReintentar
+            ? "Tu resultado es suficiente para continuar. Si quieres practicar más, puedes resolver un segundo ejercicio con un texto diferente."
           : "Tu respuesta quedó registrada y puedes continuar con la reflexión. Si detectaste un problema, repórtalo desde el botón de ayuda."}
       </p>
       {puedeReintentar && (
         <Boton type="button" onClick={onReintentar} cargando={cargando} className="self-start">
-          {cargando ? "Preparando..." : "Intentar con otro texto"}
+          {cargando ? "Preparando…" : reintentoObligatorio ? "Resolver ejercicio alternativo" : "Intentar con otro texto (opcional)"}
         </Boton>
       )}
     </div>

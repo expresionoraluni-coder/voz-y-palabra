@@ -1,6 +1,10 @@
 "use server";
 
-import { calificarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
+import {
+  calificarVideos,
+  videosEvaluarDisponibles,
+  type ContenidoEvaluarVideos,
+} from "@/lib/calificacion-evaluar-videos";
 import { calificarOrden, type ContenidoOrdenarFragmentos } from "@/lib/calificacion-ordenar-fragmentos";
 import { calificarComparadorChips, esModoChips, type ContenidoComparador } from "@/lib/calificacion-comparador";
 import { calificarClasificacion, type ContenidoClasificacion } from "@/lib/calificacion-clasificacion";
@@ -59,7 +63,20 @@ export async function calificarEvaluarVideos(
 
   const ctx = await obtenerContextoCalificacion(actividadId, "evaluar_videos");
   if (!ctx.ok) return ctx;
-  const { puntajeAuto, resultado } = calificarVideos(ctx.contexto.contenido as ContenidoEvaluarVideos, marcadasBien, marcadasMal);
+  const contenido = ctx.contexto.contenido as ContenidoEvaluarVideos;
+  if (
+    !videosEvaluarDisponibles(contenido) ||
+    !Array.isArray(contenido.cualidades) ||
+    contenido.cualidades.length < 3 ||
+    !Array.isArray(contenido.video_bien?.presentes) ||
+    !Array.isArray(contenido.video_mal?.ausentes)
+  ) {
+    return {
+      ok: false,
+      error: "Esta actividad todavía no tiene sus dos videos disponibles. Pide a tu docente que la complete.",
+    };
+  }
+  const { puntajeAuto, resultado } = calificarVideos(contenido, marcadasBien, marcadasMal);
   return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { marcadas_bien: marcadasBien, marcadas_mal: marcadasMal, resultado }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 

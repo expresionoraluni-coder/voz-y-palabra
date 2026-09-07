@@ -311,7 +311,7 @@ export default function OpcionJustificacion({
 
           {!bloqueado && (
             <Boton type="submit" cargando={cargando}>
-              {cargando ? "Guardando..." : "Guardar mis respuestas"}
+              {cargando ? "Guardando…" : "Guardar mis respuestas"}
             </Boton>
           )}
         </>
@@ -350,7 +350,7 @@ export default function OpcionJustificacion({
             {esUltima ? (
               !bloqueado && (
                 <Boton type="submit" cargando={cargando}>
-                  {cargando ? "Guardando..." : "Guardar mis respuestas"}
+                  {cargando ? "Guardando…" : "Guardar mis respuestas"}
                 </Boton>
               )
             ) : (

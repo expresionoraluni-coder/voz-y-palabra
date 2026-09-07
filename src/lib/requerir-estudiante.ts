@@ -17,15 +17,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function requireEstudiante<T extends { id: string } = { id: string }>(
   supabase: SupabaseClient,
   select = "id",
-): Promise<T> {
+  opciones: { permitirCambioNip?: boolean } = {},
+): Promise<T & { debe_cambiar_nip: boolean }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user || user.is_anonymous !== true) redirect("/ingreso/estudiante");
 
+  const seleccion = /(^|,)\s*debe_cambiar_nip(?:\s|,|$)/.test(select)
+    ? select
+    : `${select}, debe_cambiar_nip`;
   const { data: estudiante, error } = await createAdminClient()
     .from("estudiantes")
-    .select(select)
+    .select(seleccion)
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -38,5 +42,9 @@ export async function requireEstudiante<T extends { id: string } = { id: string 
   }
 
   if (!estudiante) redirect("/ingreso/estudiante");
-  return estudiante as unknown as T;
+  const estudianteConEstado = estudiante as unknown as T & { debe_cambiar_nip: boolean };
+  if (estudianteConEstado.debe_cambiar_nip && !opciones.permitirCambioNip) {
+    redirect("/estudiante/inicio?cambiar-nip=1");
+  }
+  return estudianteConEstado;
 }

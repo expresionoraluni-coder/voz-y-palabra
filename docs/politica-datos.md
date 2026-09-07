@@ -1,35 +1,62 @@
 # Política operativa de datos
 
-Este documento es una lista de control para que la institución responsable complete y apruebe el aviso de privacidad del curso. No sustituye asesoría jurídica ni el aviso institucional aplicable.
+Este documento separa los controles técnicos ya implementados de las decisiones que debe aprobar la institución responsable. No sustituye el aviso de privacidad institucional ni asesoría jurídica.
 
-## Datos y finalidad
+## Inventario y finalidad
 
-- [ ] Confirmar qué datos se requieren para estudiantes, docentes y administración.
-- [ ] Documentar la finalidad de cada campo: acceso, actividad, evaluación, soporte o seguridad.
-- [ ] Confirmar si existe tratamiento de datos de menores y quién ejerce la responsabilidad institucional.
-- [ ] Confirmar que no se solicitan contraseñas, NIP ni datos de terceros en los reportes de ayuda.
+| Datos | Finalidad operativa | Acceso previsto |
+| --- | --- | --- |
+| Nombre, grupo y boleta o identificador escolar | Identificar a la persona dentro de su grupo y dar seguimiento al curso | La propia persona estudiante y la docente responsable del grupo; el servidor los usa para validar el acceso |
+| Código de activación y NIP | Activar la cuenta y autenticar accesos posteriores | El código se muestra una sola vez a la docente; en la base solo se guardan hashes, nunca el valor legible |
+| Correo docente | Confirmar y recuperar una cuenta docente | La propia docente y los servicios de autenticación; no se expone en el catálogo público |
+| Respuestas, puntajes, reflexiones, confianza y avance | Conservar evidencias de aprendizaje y mostrar retroalimentación | La propia persona estudiante y la docente responsable de su grupo |
+| Avisos y calendario | Organizar la experiencia del grupo | Integrantes del grupo correspondiente y su docente |
+| Solicitudes de ayuda y su historial | Resolver incidencias y dejar trazabilidad | La persona que reporta y la cuenta administrativa autorizada, según el campo |
+| Eventos técnicos mínimos y límites de intentos | Prevenir abuso, investigar fallas y proteger cuentas | Procesos de servidor y administración autorizada |
 
-## Acceso y seguridad
+No se debe escribir una contraseña, NIP, código de activación, token ni información de terceras personas en una solicitud de ayuda.
 
-- [ ] Nombrar a la persona responsable de administrar cuentas, grupos y reportes.
-- [ ] Revisar periódicamente que docentes y administradores activos sigan autorizados.
-- [ ] Mantener MFA habilitado para la cuenta administrativa.
-- [ ] Revisar las políticas RLS y las funciones privilegiadas después de cada cambio de esquema.
-- [ ] Mantener las claves de servicio únicamente en el entorno de servidor.
+## Controles técnicos implementados
 
-## Conservación y eliminación
+- [x] La boleta funciona como identificador, no como contraseña ni como fuente del NIP inicial.
+- [x] Los códigos de activación son aleatorios, expirables, se almacenan con hash y se muestran una sola vez.
+- [x] Una sesión pendiente de crear su NIP no puede consultar respuestas, progreso ni datos del grupo.
+- [x] El correo docente debe confirmarse antes de completar el perfil.
+- [x] La invitación docente se vincula a la cuenta que la usó y no se vuelve a pedir después de confirmar el correo.
+- [x] La recuperación de contraseña no revela si un correo está registrado y limita solicitudes repetidas.
+- [x] La cuenta administrativa exige MFA TOTP para operaciones protegidas.
+- [x] Las políticas RLS separan estudiante, docente y administración; las claves de servicio permanecen en servidor.
+- [x] Las rutas sensibles envían instrucciones de no almacenamiento en caché.
+- [x] El catálogo curricular no contiene cuentas, grupos, entregas ni datos personales.
 
-- [ ] Definir el periodo de conservación de cuentas, respuestas, reflexiones, avance y reportes.
-- [ ] Definir qué ocurre al terminar el curso: exportación institucional, anonimización o eliminación.
-- [ ] Definir cómo se atienden solicitudes de acceso, corrección, exportación y eliminación.
-- [ ] Registrar quién ejecuta cada solicitud y cuándo se completó.
-- [ ] Revisar respaldos y réplicas para que respeten el mismo periodo de conservación.
+## Decisiones institucionales pendientes antes de producción
 
-## Comunicación
+- [ ] Identificar a la institución responsable y publicar su denominación y medio de contacto.
+- [ ] Confirmar la base y el aviso aplicables al tratamiento de datos de estudiantes, especialmente si participan menores.
+- [ ] Aprobar qué campos son indispensables y retirar cualquier dato que no tenga una finalidad documentada.
+- [ ] Definir plazos concretos de conservación para cuentas, grupos, evidencias, reflexiones, avance, reportes, auditoría y respaldos.
+- [ ] Definir el cierre de curso: exportación institucional, anonimización o eliminación, responsables y fecha límite.
+- [ ] Definir el procedimiento y plazo para solicitudes de acceso, corrección, exportación y eliminación.
+- [ ] Definir quién autoriza altas y bajas de docentes y administradores, y con qué periodicidad se revisan.
+- [ ] Confirmar proveedores, regiones, transferencias y acuerdos institucionales aplicables a Supabase y Netlify.
+- [ ] Aprobar un procedimiento de incidentes: detección, contención, comunicación, recuperación y registro.
 
-- [ ] Publicar el aviso institucional antes de habilitar el acceso.
-- [ ] Mantener el enlace `/privacidad` visible desde la portada y el acceso.
-- [ ] Comunicar cambios materiales en finalidades, datos, destinatarios o plazos.
-- [ ] Revisar anualmente esta lista y después de cambios relevantes en Supabase o Netlify.
+## Operación periódica
 
-Responsable institucional: ____________________  Fecha de aprobación: ____________________
+- [ ] Revisar mensualmente que docentes y administradores activos sigan autorizados.
+- [ ] Revisar trimestralmente MFA, políticas RLS, funciones privilegiadas, llaves y advisors de Supabase.
+- [ ] Probar restauración de respaldo y eliminación conforme al plazo aprobado.
+- [ ] Registrar quién atiende cada solicitud de derechos, qué verificó y cuándo la cerró.
+- [ ] Revisar este documento al menos una vez al año y después de cambios relevantes de datos, finalidades o proveedores.
+- [ ] Mantener visible `/privacidad` desde la portada y el acceso, y comunicar cambios materiales.
+
+## Aprobación
+
+La plataforma no debe presentarse como respaldada por una política institucional completa hasta llenar y aprobar estos datos:
+
+- Institución responsable: ______________________________
+- Persona o área de contacto: ___________________________
+- Medio de contacto: ___________________________________
+- Versión o fecha del aviso aplicable: __________________
+- Fecha de aprobación: _________________________________
+- Próxima revisión: ____________________________________

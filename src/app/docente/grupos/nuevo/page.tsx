@@ -100,7 +100,7 @@ export default function NuevoGrupo() {
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">
-            {cargando ? "Creando..." : "Crear grupo"}
+            {cargando ? "Creando…" : "Crear grupo"}
           </Boton>
         </form>
       </Card>

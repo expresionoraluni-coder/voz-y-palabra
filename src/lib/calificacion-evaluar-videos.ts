@@ -1,9 +1,29 @@
+import { urlEmbedYoutube } from "@/lib/video-embed";
+
 export type ContenidoEvaluarVideos = {
   intro?: string | null;
   cualidades: string[];
   video_bien: { url: string | null; presentes: string[] };
   video_mal: { url: string | null; ausentes: string[] };
 };
+
+type ContenidoConVideos = {
+  video_bien?: { url?: unknown } | null;
+  video_mal?: { url?: unknown } | null;
+};
+
+export function videosEvaluarDisponibles(contenido: unknown): boolean {
+  if (!contenido || typeof contenido !== "object") return false;
+  const videos = contenido as ContenidoConVideos;
+  const videoBien = videos.video_bien?.url;
+  const videoMal = videos.video_mal?.url;
+  return (
+    typeof videoBien === "string" &&
+    urlEmbedYoutube(videoBien) !== null &&
+    typeof videoMal === "string" &&
+    urlEmbedYoutube(videoMal) !== null
+  );
+}
 
 // Lo único que el cliente necesita para renderizar la actividad ANTES de
 // contestar — sin `presentes`/`ausentes`, que son la clave de calificación.

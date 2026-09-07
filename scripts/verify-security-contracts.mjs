@@ -43,17 +43,20 @@ const schema = await texto("supabase/schema.sql");
 const functions = await texto("supabase/functions.sql");
 const ingresoDocente = await texto("src/app/ingreso/profesora/page.tsx");
 const confirmacionAuth = await texto("src/app/auth/confirm/route.ts");
+const authUrl = await texto("src/lib/auth-url.ts");
 const verificarDocente = await texto("src/app/ingreso/profesora/verificar/page.tsx");
+const formularioVerificarDocente = await texto("src/app/ingreso/profesora/verificar/formulario-verificacion.tsx");
 const mensajeErrores = await texto("src/lib/mensaje-error.ts");
 const cambiarNip = await texto("src/components/cambiar-nip.tsx");
 const cambiarNipObligatorio = await texto("src/components/cambiar-nip-obligatorio.tsx");
-const migracionEndurecimiento = await texto("supabase/migrations/20260817000801_endurecer_alta_docente_y_nip.sql");
+const migracionCorrecciones = await texto("supabase/migrations/20260906040900_corregir_seguridad_flujos_y_catalogo.sql");
 const migracionEntregasReportes = await texto("supabase/migrations/20260821232601_proteger_entregas_y_reportes.sql");
 const migracionInvitacion = await texto("supabase/migrations/20260817002812_proteger_registro_docente_con_invitacion.sql");
 const accionesEntrega = await texto("src/app/estudiante/actividad/[id]/acciones-entrega.ts");
 const contextoEntregas = await texto("src/lib/estudiante-entregas-server.ts");
 const accionesAprendizaje = await texto("src/app/estudiante/acciones-reflexiones.ts");
 const progresoUnidad = await texto("src/lib/progreso-unidad.ts");
+const intentosAuto = await texto("src/lib/intentos-auto.ts");
 const migracionIntentoUnico = await texto("supabase/migrations/20260822030000_un_intento_por_actividad.sql");
 const migracionPoliciesRedundantes = await texto("supabase/migrations/20260822110537_eliminar_policies_redundantes_contenido.sql");
 const migracionPoliciesCatalogo = await texto("supabase/migrations/20260822110639_normalizar_policies_catalogo.sql");
@@ -70,7 +73,8 @@ const adminLayout = await texto("src/app/admin/layout.tsx");
 const reportarProblema = await texto("src/components/reportar-problema.tsx");
 const reportesConstantes = await texto("src/lib/reportes-constantes.ts");
 const migracionAdmin = await texto("supabase/migrations/20260817010000_separar_administrador_y_reportes.sql");
-const proxy = await texto("proxy.ts");
+const proxy = await texto("src/proxy.ts");
+const rootLayout = await texto("src/app/layout.tsx");
 const adminGuard = await texto("src/lib/supabase/requerir-administrador.ts");
 const adminAction = await texto("src/app/admin/reportes/acciones-atencion.ts");
 const migracionAdminProtegido = await texto("supabase/migrations/20260817012000_proteger_admin_y_reportes.sql");
@@ -78,6 +82,7 @@ const migracionMfaAdmin = await texto("supabase/migrations/20260817103542_exigir
 const migracionMfaPoliciesAdmin = await texto("supabase/migrations/20260818001000_endurecer_mfa_y_separar_admin.sql");
 const migracionAdminAuditoria = await texto("supabase/migrations/20260821232633_endurecer_admin_reportes.sql");
 const adminMfaLogin = await texto("src/app/ingreso/admin/verificar/page.tsx");
+const adminMfaFormulario = await texto("src/app/ingreso/admin/verificar/formulario-mfa.tsx");
 const adminMfaSetup = await texto("src/app/admin/seguridad/configurar-mfa.tsx");
 const adminEntryActions = await texto("src/app/ingreso/admin/acciones.ts");
 const migracionReportesOrientacion = await texto("supabase/migrations/20260817110853_orientacion_y_contexto_en_reportes.sql");
@@ -97,17 +102,45 @@ const accionesCalificacion = await texto("src/app/estudiante/actividad/[id]/acci
 const cargaE2e = await texto("scripts/e2e-carga-2-grupos.mjs");
 const netlify = await texto("netlify.toml");
 const packageJson = await texto("package.json");
+const confianzaUnidad = await texto("src/app/estudiante/(hub)/unidad/[id]/confianza.tsx");
+const inicioEstudiante = await texto("src/app/estudiante/(hub)/inicio/page.tsx");
+const unidadEstudiante = await texto("src/app/estudiante/(hub)/unidad/[id]/page.tsx");
+const catalogoSeed = await texto("supabase/seed.sql");
+const evaluarVideos = await texto("src/app/estudiante/actividad/[id]/evaluar-videos.tsx");
+const actividadForm = await texto("src/app/docente/unidades/[id]/actividades/actividad-form.tsx");
+const actividadPostEntrega = await texto("src/app/estudiante/actividad/[id]/actividad-post-entrega.tsx");
+const clasificacionEstudiante = await texto("src/app/estudiante/actividad/[id]/clasificacion.tsx");
+const cierreUnidadEstudiante = await texto("src/app/estudiante/(hub)/unidad/[id]/cierre/page.tsx");
+const requerirEstudiante = await texto("src/lib/requerir-estudiante.ts");
+const antiCopiar = await texto("src/lib/anti-copiar.ts");
+const componentesAntiCopiar = (
+  await Promise.all([
+    "src/app/estudiante/actividad/[id]/clasificacion.tsx",
+    "src/app/estudiante/actividad/[id]/comparador.tsx",
+    "src/app/estudiante/actividad/[id]/corregir-ortografia.tsx",
+    "src/app/estudiante/actividad/[id]/opcion-justificacion.tsx",
+    "src/app/estudiante/actividad/[id]/redaccion-checklist.tsx",
+    "src/app/estudiante/actividad/[id]/redaccion-lectura.tsx",
+  ].map(texto)
+  )
+).join("\n");
 if (schema.includes('create policy "estudiante edita su propia fila"')) {
   failures.push("schema: el estudiante no debe tener una policy de UPDATE sobre su fila.");
 }
-if (!schema.includes("auth_user_id = (select auth.uid()) and activo = true")) {
-  failures.push("schema: la lectura de la fila del estudiante debe exigir activo = true.");
+if (!schema.includes("auth_user_id = (select auth.uid()) and activo = true and debe_cambiar_nip = false")) {
+  failures.push("schema: la lectura estudiantil debe exigir cuenta activa y NIP permanente.");
+}
+if (/auth_user_id = \(select auth\.uid\(\)\) and activo = true\)\)/.test(schema) || /auth_user_id = \(select auth\.uid\(\)\) and activo = true\)\)/.test(functions)) {
+  failures.push("Supabase: ninguna definición final de lectura estudiantil debe omitir el cambio obligatorio de NIP.");
 }
 if (functions.includes("estudiante_tiene_nip")) {
   failures.push("functions: estudiante_tiene_nip es legado y no debe formar parte de la reconstrucción.");
 }
-if (!functions.includes("returns integer language plpgsql security definer")) {
-  failures.push("functions: el alta de estudiantes no debe devolver filas completas con datos sensibles.");
+if (!functions.includes("agregar_estudiantes_con_activacion") || !functions.includes("returns jsonb language plpgsql security definer")) {
+  failures.push("functions: el alta debe devolver únicamente códigos de activación de una sola visualización.");
+}
+if (/create(?:\s+or\s+replace)?\s+function\s+public\.agregar_estudiantes_con_boleta/i.test(functions)) {
+  failures.push("functions: la boleta no debe volver a funcionar como credencial inicial.");
 }
 if (/create\s+policy\s+"cualquiera con sesi[oó]n lee (actividades|unidades)"/i.test(schema)) {
   failures.push("supabase/schema.sql: no debe restaurar las policies de lectura abierta.");
@@ -120,10 +153,10 @@ if (mensajeErrores.includes("Este correo ya tiene una cuenta")) failures.push("a
 if (cambiarNip.includes("setError(rpcError.message)") || cambiarNipObligatorio.includes("setError(rpcError.message)")) {
   failures.push("NIP: no debe mostrar mensajes crudos del proveedor.");
 }
-if (!functions.includes("crear_perfil_docente") || !functions.includes("email_confirmed_at") || !functions.includes("Se requiere una cuenta docente confirmada.")) {
+if (!functions.includes("completar_perfil_docente") || !functions.includes("altas_docente_autorizadas") || !functions.includes("email_confirmed_at") || !functions.includes("Se requiere una cuenta docente confirmada.")) {
   failures.push("functions: el alta docente debe exigir cuenta permanente y correo confirmado.");
 }
-if (!functions.includes("v_path not like '%/rpc/crear_perfil_docente'") || !migracionEndurecimiento.includes("crear_perfil_docente")) {
+if (!functions.includes("v_path not like '%/rpc/completar_perfil_docente'") || !migracionCorrecciones.includes("completar_perfil_docente")) {
   failures.push("rate limit: falta cubrir el RPC de alta docente en la función y su migración.");
 }
 if (!ingresoDocente.includes("codigo_invitacion_docente") || !ingresoDocente.includes("codigoListo")) {
@@ -132,7 +165,7 @@ if (!ingresoDocente.includes("codigo_invitacion_docente") || !ingresoDocente.inc
 if (!accionesRecuperacion.includes("esContrasenaValida") || !accionesRecuperacion.includes("auth.updateUser")) {
   failures.push("recuperación: la contraseña debe validarse y actualizarse también en servidor.");
 }
-if (!accionesRecuperacion.includes("voz-y-palabra.netlify.app") || !accionesRecuperacion.includes("permitidos.has(origen)")) {
+if (!accionesRecuperacion.includes("origenAplicacionDesdeEncabezados") || !authUrl.includes("voz-y-palabra.netlify.app") || !authUrl.includes("permitidos.has(origen)")) {
   failures.push("recuperación: el redirect debe usar un origen permitido, no cualquier Origin del navegador.");
 }
 if (!functions.includes("proteger_cuota_reportes") || !schema.includes("proteger_cuota_reportes") || !migracionEntregasReportes.includes("proteger_cuota_reportes")) {
@@ -186,8 +219,8 @@ if (!migracionOperativas.includes('estudiante, docente o administrador lee aviso
 
 if (!contextoEntregas.includes("validarAccesoActividad")) failures.push("entregas: falta el guard server-side de prerrequisitos.");
 if (!accionesEntrega.includes("validarEntregaAbiertaPorTipo")) failures.push("entregas: faltan validaciones server-side por tipo.");
-if (!contextoEntregas.includes('rpc("guardar_entrega_auto"') || !migracionIntentoUnico.includes("Ya registraste el único intento de esta actividad.") || !migracionIntentoUnico.includes("v_intentos_previos >= 1")) {
-  failures.push("entregas: falta el límite atómico de un intento.");
+if (!contextoEntregas.includes('rpc("guardar_entrega_auto"') || !migracionIntentoUnico.includes("Ya registraste el único intento de esta actividad.") || !functions.includes("for update")) {
+  failures.push("entregas: falta el límite atómico y el bloqueo transaccional de intentos.");
 }
 if ((functions.match(/create or replace function public\.guardar_entrega_auto/g) ?? []).length !== 1) {
   failures.push("functions: guardar_entrega_auto debe tener una sola definición canónica.");
@@ -198,14 +231,14 @@ if (!schema.includes("where actividad_id is null") || !accionesAprendizaje.inclu
 if (accionesAprendizaje.includes(".upsert(") || !accionesAprendizaje.includes("debe_cambiar_nip") || !functions.includes("revoke all on public.reflexiones")) {
   failures.push("aprendizaje: las escrituras del estudiante deben ser acciones protegidas e inmutables.");
 }
-if (!progresoUnidad.includes("return true;") || !progresoUnidad.includes('"unidad_anterior_confianza"')) {
-  failures.push("avance: una entrega debe concluir la actividad y el cierre de unidad debe incluir confianza final.");
+if (!progresoUnidad.includes("return !requiereReintentoAlternativo") || !progresoUnidad.includes('"unidad_anterior_confianza"')) {
+  failures.push("avance: una entrega debe concluir la actividad salvo que requiera el segundo ejercicio, y el cierre de unidad debe incluir confianza final.");
 }
 if (!functions.includes("from public.estudiantes e where e.grupo_id = v_grupo.id and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre)\n    for update")) {
   failures.push("functions: el ingreso estudiantil debe bloquear la fila antes de actualizar intentos.");
 }
-if (!functions.includes("debe_cambiar_nip = true") || !functions.includes("extensions.gen_random_bytes(2)")) {
-  failures.push("functions: el reinicio de NIP debe emitir un temporal y forzar su cambio.");
+if (!functions.includes("debe_cambiar_nip = true") || !functions.includes("extensions.gen_random_bytes(8)") || !functions.includes("activacion_expira_en")) {
+  failures.push("functions: el reinicio debe emitir una activación aleatoria y expirable, y forzar un NIP nuevo.");
 }
 if (!schema.includes("actividades_video_url_https_check") || !videoEmbed.includes("esVideoUrlPermitida")) {
   failures.push("video: las URLs deben estar restringidas a HTTPS y hosts permitidos.");
@@ -231,7 +264,7 @@ if (!adminAction.includes('"use server"') || !adminAction.includes("obtenerAdmin
 if (!migracionAdminProtegido.includes("es_administrador_activo") || !migracionAdminProtegido.includes("proteger_reporte_atencion")) {
   failures.push("admin: Supabase debe verificar la cuenta permanente y proteger los datos originales del reporte.");
 }
-if (!proxy.includes("createServerClient") || !proxy.includes("supabase.auth.getUser()") || !proxy.includes('"/admin/:path*"')) {
+if (!proxy.includes("createServerClient") || !proxy.includes("supabase.auth.getUser()") || !proxy.includes('request.nextUrl.pathname.startsWith("/admin")')) {
   failures.push("sesión SSR: falta renovar la sesión de Supabase antes de renderizar rutas protegidas.");
 }
 if (!reportarProblema.includes('.rpc("registrar_reporte"') || reportarProblema.includes("nip:") || reportarProblema.includes("password:")) {
@@ -273,7 +306,7 @@ if (!migracionContextoReportes.includes("v_unidad_id") || !migracionContextoRepo
 if (!adminGuard.includes("listFactors") || !adminGuard.includes("getAuthenticatorAssuranceLevel") || !adminGuard.includes("/ingreso/admin/verificar")) {
   failures.push("admin: el guard server-side debe comprobar MFA y redirigir a su verificación.");
 }
-if (!adminMfaLogin.includes("challengeAndVerify") || !adminMfaLogin.includes("one-time-code") || !adminMfaLogin.includes("comprobarAdministradorProvisionado")) {
+if (!adminMfaLogin.includes("getAuthenticatorAssuranceLevel") || !adminMfaLogin.includes("listFactors") || !adminMfaFormulario.includes("challengeAndVerify") || !adminMfaFormulario.includes("one-time-code")) {
   failures.push("admin: falta el flujo de verificación TOTP en el ingreso.");
 }
 if (!adminMfaSetup.includes("mfa.enroll") || !adminMfaSetup.includes("challengeAndVerify") || !adminMfaSetup.includes("factorType: \"totp\"")) {
@@ -291,7 +324,7 @@ if (!functions.includes("Esta cuenta tiene acceso administrativo y no se puede r
 if (!ingresoDocente.includes("/ingreso/recuperar") || !accionesRecuperacion.includes("resetPasswordForEmail") || !recuperacion.includes("No se informa si el correo existe")) {
   failures.push("recuperación: debe existir un restablecimiento por correo sin enumerar cuentas.");
 }
-if (!ingresoDocente.includes("emailRedirectTo") || !confirmacionAuth.includes("exchangeCodeForSession") || !confirmacionAuth.includes("verifyOtp") || !confirmacionAuth.includes("rutaLocal")) {
+if (!ingresoDocente.includes("emailRedirectTo") || !confirmacionAuth.includes("exchangeCodeForSession") || !confirmacionAuth.includes("verifyOtp") || !confirmacionAuth.includes("destinoConfirmacionSeguro")) {
   failures.push("auth docente: el enlace de confirmación debe volver a la aplicación y canjearse sin redirecciones externas.");
 }
 if (!actualizarContrasena.includes("exchangeCodeForSession") || !actualizarContrasena.includes("PASSWORD_RECOVERY") || (!actualizarContrasena.includes("updateUser({ password") && !accionesRecuperacion.includes("updateUser({ password")) || !actualizarContrasena.includes('signOut({ scope: "global" })')) {
@@ -303,7 +336,7 @@ if (!reglasContrasena.includes("12 caracteres como mínimo") || !reglasContrasen
 if (!controlSesionAdmin.includes("30 * 60 * 1000") || !controlSesionAdmin.includes('signOut({ scope: "global" })')) {
   failures.push("admin: debe revocar las sesiones tras un periodo de inactividad.");
 }
-if (!proxy.includes('"private, no-store, max-age=0"') || !proxy.includes('"/ingreso/recuperar/:path*"')) {
+if (!proxy.includes('"private, no-store, max-age=0"') || !proxy.includes('request.nextUrl.pathname.startsWith("/ingreso/recuperar")')) {
   failures.push("admin: las pantallas sensibles deben enviar Cache-Control no-store.");
 }
 if (!adminDashboard.includes('select("id", { count: "exact", head: true })') || !adminDashboard.includes("reportes24hCount")) {
@@ -325,13 +358,16 @@ if (!adminMfaSetup.includes("mfa.unenroll") || !adminMfaSetup.includes("unverifi
   failures.push("admin: la gestión MFA debe limpiar configuraciones pendientes y permitir retirar solo factores secundarios.");
 }
 if (!workflow.includes("cp ../supabase/migrations/*.sql supabase/migrations/") || !workflow.includes("version: 2.101.0")) {
-  failures.push("CI: debe aplicar las migraciones versionadas y fijar la versiÃ³n de Supabase CLI.");
+  failures.push("CI: debe aplicar las migraciones versionadas y fijar la versión de Supabase CLI.");
 }
 if (!functions.includes("grant usage on schema private to authenticator") || !schema.includes("grant usage on schema private to authenticator")) {
   failures.push("Supabase: authenticator necesita uso explícito del esquema private para el pre-request.");
 }
 if (!functions.includes("before insert or update on public.entregas") || !functions.includes("tg_op = 'INSERT'") || !functions.includes("sanitizar_respuesta_entrega(p_respuesta - '_meta')")) {
   failures.push("Supabase: las respuestas deben sanitizarse tanto al insertar como al actualizar entregas.");
+}
+if (!functions.includes("#- '{video_bien,url}'") || !migracionCorrecciones.includes("#- '{video_mal,url}'")) {
+  failures.push("catálogo: debe ser posible reparar las dos URL de video sin alterar claves ni entregas históricas.");
 }
 if (schema.includes('create policy "administrador observa estudiantes"')) {
   failures.push("Supabase: el administrador no debe tener una policy directa para leer estudiantes y boletas.");
@@ -344,6 +380,93 @@ if (!cargaE2e.includes("E2E_PROJECT_REF") || !cargaE2e.includes("E2E_CONFIRMATIO
 }
 if (!netlify.includes('NODE_VERSION = "22"') || !packageJson.includes('"eslint-config-next": "16.3.0"')) {
   failures.push("despliegue: falta fijar Node y alinear eslint-config-next con Next.");
+}
+
+if (!formularioVerificarDocente.includes('rpc("completar_perfil_docente"') || formularioVerificarDocente.includes("codigo_invitacion_docente")) {
+  failures.push("alta docente: la invitación debe comprobarse una sola vez y no viajar de nuevo después de confirmar el correo.");
+}
+if (!authUrl.includes("destino.origin !== baseUrl.origin") || !authUrl.includes("RUTAS_CONFIRMACION.has(destino.pathname)")) {
+  failures.push("auth docente: el retorno de confirmación debe validar el origen efectivo y una ruta exacta permitida.");
+}
+if (!schema.includes("check (valor between 1 and 5)") || !accionesAprendizaje.includes("valor < 1 || valor > 5") || !confianzaUnidad.includes("de 5")) {
+  failures.push("confianza: base, servidor e interfaz deben usar exclusivamente la escala de 1 a 5.");
+}
+if (
+  !inicioEstudiante.includes("actividadesConReflexion") ||
+  !unidadEstudiante.includes("actividadesConReflexion") ||
+  !contextoEntregas.includes('motivo: "dependencia_reflexion"') ||
+  !contextoEntregas.includes('.lt("orden", actividad.orden)') ||
+  !accionesAprendizaje.includes("Guarda la reflexión de cada actividad antes de cerrar la unidad.") ||
+  !cierreUnidadEstudiante.includes("primeraReflexionPendiente") ||
+  !actividadPostEntrega.includes("entregaCompletada && reflexionGuardada")
+) {
+  failures.push("pedagogía: cada actividad debe exigir su reflexión antes del siguiente paso y del cierre de unidad.");
+}
+if (
+  !functions.includes("v_intentos_previos >= v_max_intentos") ||
+  !functions.includes("reintento_alternativo") ||
+  !functions.includes("Ya usaste los 2 intentos") ||
+  !functions.includes("'ejercicio', 2") ||
+  !clasificacionEstudiante.includes("ejercicioGuardado === 2")
+) {
+  failures.push("intentos: la base debe permitir dos solo cuando existe una variante alternativa y conservar uno en las demás actividades.");
+}
+if (
+  !intentosAuto.includes("PUNTAJE_MINIMO_SIN_REINTENTO = 70") ||
+  !intentosAuto.includes("requiereReintentoAlternativo") ||
+  !progresoUnidad.includes("requiereReintentoAlternativo(contenido") ||
+  !contextoEntregas.includes('motivo: "dependencia_reintento"') ||
+  !actividadPostEntrega.includes("reintentoObligatorio") ||
+  !clasificacionEstudiante.includes("reintentoObligatorio") ||
+  !accionesAprendizaje.includes("Resuelve primero el ejercicio alternativo")
+) {
+  failures.push("reintentos: un resultado menor de 70 debe exigir la variante antes de reflexionar o avanzar.");
+}
+if (
+  !migracionCorrecciones.includes("Inculto informal") ||
+  !migracionCorrecciones.includes("c1696cc5-128e-41b0-abac-999fecef94f4") ||
+  !migracionCorrecciones.includes("No profe, yo no quero revisar la acentuación; solo sé que algunas palabras llevan un palito.") ||
+  migracionCorrecciones.includes("set contenido = replace") ||
+  migracionCorrecciones.includes("No profe, yo no quero%")
+) {
+  failures.push("catálogo: debe corregirse únicamente el ejemplo mal marcado sin renombrar las cuatro categorías.");
+}
+if (
+  !catalogoSeed.includes('"categorias":["Culto formal","Culto informal","Inculto formal","Inculto informal"]') ||
+  !catalogoSeed.includes('"categoria_correcta":"Culto formal"') ||
+  !catalogoSeed.includes('"categoria_correcta":"Culto informal"') ||
+  !catalogoSeed.includes('"categoria_correcta":"Inculto informal"') ||
+  catalogoSeed.includes('"texto":"No profe, yo no quero revisar la acentuación; solo sé que algunas palabras llevan un palito.","categoria_correcta":"Inculto formal"')
+) {
+  failures.push("catálogo: el seed debe conservar las cuatro categorías y corregir solo la clave de «No profe…».");
+}
+if (
+  !accionesCalificacion.includes("videosEvaluarDisponibles(contenido)") ||
+  !evaluarVideos.includes("Actividad pendiente de videos") ||
+  !actividadForm.includes("Agrega los videos A y B antes de guardar esta actividad.")
+) {
+  failures.push("videos: no debe poder guardarse ni calificarse la comparación si falta alguno de los dos videos.");
+}
+if (!proxy.includes("x-nonce") || !proxy.includes("'nonce-${nonce}'") || proxy.includes("script-src 'self' 'unsafe-inline'")) {
+  failures.push("CSP: los scripts deben autorizarse con nonce y no con unsafe-inline.");
+}
+if (!rootLayout.includes('import { connection } from "next/server"') || !rootLayout.includes("await connection()")) {
+  failures.push("CSP: el árbol de rutas debe ser dinámico para recibir el nonce único de cada solicitud.");
+}
+if (
+  !antiCopiar.includes("bloquearPegado") ||
+  !antiCopiar.includes("bloquearCopiar") ||
+  !componentesAntiCopiar.includes("onPaste={bloquearPegado}") ||
+  !componentesAntiCopiar.includes("onCopy={bloquearCopiar}")
+) {
+  failures.push("actividades: debe mantenerse el freno de copiar y pegar para favorecer la lectura.");
+}
+if (
+  !requerirEstudiante.includes("debe_cambiar_nip") ||
+  !requerirEstudiante.includes("permitirCambioNip") ||
+  !inicioEstudiante.includes("<CambiarNipObligatorio />")
+) {
+  failures.push("activación: las páginas hijas no deben consultar datos antes de sustituir el código por un NIP personal.");
 }
 
 if (failures.length > 0) {

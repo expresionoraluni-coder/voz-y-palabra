@@ -116,7 +116,7 @@ export default function CambiarNip() {
           cargando={cargando}
           disabled={nipNuevo.length === 4 && nipNuevo !== nipNuevoConfirmar}
         >
-          {cargando ? "Guardando..." : "Guardar NIP nuevo"}
+          {cargando ? "Guardando…" : "Guardar NIP nuevo"}
         </Boton>
         <Boton type="button" variant="ghost" size="sm" onClick={cerrar}>
           Cancelar

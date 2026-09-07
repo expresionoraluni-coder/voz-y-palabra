@@ -18,8 +18,8 @@ export default async function LayoutDocente({ children }: { children: React.Reac
     data: { user },
     error: sesionError,
   } = await supabase.auth.getUser();
-  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
   if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
 
   const [
     { data: administrador, error: administradorError },

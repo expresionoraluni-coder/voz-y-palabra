@@ -91,9 +91,9 @@ export default async function Portafolio() {
                 Unidad {u.orden}. {u.nombre}
               </h2>
               {confInicio && (
-                <span className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-500">
+                <span className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                   <TrendingUp className="size-3.5" aria-hidden="true" />
-                  {confInicio.valor}%{confCierre ? ` → ${confCierre.valor}%` : " (en curso)"}
+                  {confInicio.valor}/5{confCierre ? ` → ${confCierre.valor}/5` : " (en curso)"}
                 </span>
               )}
             </div>

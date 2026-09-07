@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserRound, ArrowLeft, MailCheck } from "lucide-react";
@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { comprobarAdministradorProvisionado } from "../admin/acciones";
+import { callbackConfirmacionDocente } from "@/lib/auth-url";
 
 export default function IngresoProfesora() {
   const router = useRouter();
@@ -24,8 +25,36 @@ export default function IngresoProfesora() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avisoConfirmacion, setAvisoConfirmacion] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
+  const [confirmacionReenviada, setConfirmacionReenviada] = useState(false);
   const reglasContrasena = obtenerReglasContrasena(contrasena);
   const contrasenaValida = esContrasenaValida(contrasena);
+
+  useEffect(() => {
+    const motivo = new URLSearchParams(window.location.search).get("error");
+    if (motivo !== "confirmacion") return;
+
+    const avisoId = window.setTimeout(() => {
+      setError("El enlace de confirmación ya venció, ya fue utilizado o no es válido. Solicita otro desde el formulario de registro.");
+    }, 0);
+
+    return () => window.clearTimeout(avisoId);
+  }, []);
+
+  async function reenviarConfirmacion() {
+    if (reenviando || !correo) return;
+    setReenviando(true);
+    setError(null);
+    const supabase = createClient();
+    const { error: reenvioError } = await supabase.auth.resend({
+      type: "signup",
+      email: correo.trim().toLowerCase(),
+      options: { emailRedirectTo: callbackConfirmacionDocente(window.location.origin) },
+    });
+    if (reenvioError) setError("No pudimos reenviar el correo todavía. Espera un minuto e inténtalo otra vez.");
+    else setConfirmacionReenviada(true);
+    setReenviando(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -109,7 +138,7 @@ export default function IngresoProfesora() {
       password: contrasena,
       options: {
         data: { codigo_invitacion_docente: codigoInvitacion.trim() },
-        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent("/ingreso/profesora")}`,
+        emailRedirectTo: callbackConfirmacionDocente(window.location.origin),
       },
     });
     if (authError || !data.user) {
@@ -152,7 +181,28 @@ export default function IngresoProfesora() {
             <MailCheck className="size-8 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
             <p className="text-sm text-slate-700 dark:text-slate-300">
               Te enviamos un correo a <strong className="text-slate-900 dark:text-slate-50">{correo}</strong>{" "}
-              para confirmar tu cuenta. Ábrelo y luego vuelve aquí a iniciar sesión.
+              para confirmar tu cuenta. Abre el enlace en este mismo navegador; después completarás tu nombre y entrarás al panel.
+            </p>
+            {confirmacionReenviada && <p className="text-sm text-emerald-700 dark:text-emerald-300" role="status">Enviamos un enlace nuevo.</p>}
+            {error && <ErrorText>{error}</ErrorText>}
+            <Boton type="button" variant="secondary" size="sm" onClick={reenviarConfirmacion} cargando={reenviando}>
+              {reenviando ? "Reenviando…" : "Reenviar correo"}
+            </Boton>
+            <button
+              type="button"
+              className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              onClick={() => {
+                setAvisoConfirmacion(false);
+                setConfirmacionReenviada(false);
+                setCorreo("");
+                setContrasena("");
+                setContrasenaConfirmar("");
+              }}
+            >
+              Usar otro correo
+            </button>
+            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Si la dirección anterior pertenece a otra persona, no uses ese enlace y pide a la administración que retire el alta incompleta.
             </p>
           </div>
         ) : (
@@ -261,12 +311,27 @@ export default function IngresoProfesora() {
                     : "Continuar"}
             </Boton>
             {modo === "entrar" && (
-              <Link
-                href="/ingreso/recuperar"
-                className="text-center text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
+              <div className="flex flex-col items-center gap-2 text-sm">
+                <Link
+                  href="/ingreso/recuperar"
+                  className="text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+                <button
+                  type="button"
+                  disabled={!correo.trim() || reenviando}
+                  onClick={reenviarConfirmacion}
+                  className="text-slate-500 underline underline-offset-2 hover:text-slate-700 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-300"
+                >
+                  {reenviando ? "Reenviando…" : "Reenviar correo de confirmación"}
+                </button>
+                {confirmacionReenviada && (
+                  <p className="text-center text-emerald-700 dark:text-emerald-300" role="status">
+                    Si la cuenta está pendiente, enviamos un enlace nuevo. Ábrelo en este mismo navegador.
+                  </p>
+                )}
+              </div>
             )}
             {modo === "crear" && codigoListo && (
               <button
@@ -290,6 +355,7 @@ export default function IngresoProfesora() {
                 setCodigoInvitacion("");
                 setCodigoListo(false);
                 setError(null);
+                setConfirmacionReenviada(false);
               }}
               className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             >

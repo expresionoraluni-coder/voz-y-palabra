@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:contracts": "node scripts/verify-security-contracts.mjs"
+    "test:contracts": "node scripts/verify-security-contracts.mjs && node --experimental-strip-types --test scripts/auth-url.test.mts scripts/intentos-auto.test.mts",
+    "catalog:export": "node scripts/export-catalog-seed.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

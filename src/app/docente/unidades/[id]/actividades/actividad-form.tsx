@@ -8,7 +8,7 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { DESCRIPCION_TIPO, etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import { esTipoActividadActual, TIPOS_ACTIVIDAD_ACTUALES } from "@/lib/tipos-actividad-actuales";
 import { compararPalabras, tokenizar } from "@/lib/comparar-ortografia";
-import { esVideoUrlPermitida } from "@/lib/video-embed";
+import { esVideoUrlPermitida, urlEmbedYoutube } from "@/lib/video-embed";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Label, HelpText, Input, Textarea, Select } from "@/components/ui/field";
@@ -678,6 +678,10 @@ export default function ActividadForm({
         setError("Escribe al menos 3 cualidades a evaluar, una por línea.");
         return;
       }
+      if (!videoBienUrl.trim() || !videoMalUrl.trim()) {
+        setError("Agrega los videos A y B antes de guardar esta actividad.");
+        return;
+      }
       contenido = {
         intro: introVideos.trim() || null,
         cualidades: listaCualidades,
@@ -746,8 +750,8 @@ export default function ActividadForm({
       { etiqueta: "El Video B", url: videoMalUrl.trim() },
     ];
     for (const video of videosConfigurados) {
-      if (video.url && !esVideoUrlPermitida(video.url)) {
-        setError(`${video.etiqueta} debe ser un enlace HTTPS de YouTube.`);
+      if (video.url && (!esVideoUrlPermitida(video.url) || urlEmbedYoutube(video.url) === null)) {
+        setError(`${video.etiqueta} debe ser un enlace HTTPS a un video de YouTube.`);
         return;
       }
     }
@@ -772,28 +776,19 @@ export default function ActividadForm({
         return;
       }
     } else {
-      const { count, error: countError } = await supabase
-        .from("actividades")
-        .select("id", { count: "exact", head: true })
-        .eq("unidad_id", unidadId);
-      if (countError) {
-        setError("No pudimos determinar el orden de la nueva actividad. Intenta de nuevo.");
-        setCargando(false);
-        return;
-      }
-
-      const { error: insertError } = await supabase.from("actividades").insert({
-        unidad_id: unidadId,
-        tipo_id: tipoId,
-        titulo: tituloNormalizado,
-        instrucciones: instruccionesNormalizadas,
-        aprendizaje_esperado: aprendizajeNormalizado || null,
-        video_url: videoUrlNormalizada || null,
-        contenido,
-        orden: (count ?? 0) + 1,
+      const { error: insertError } = await supabase.rpc("crear_actividad_docente", {
+        p_unidad_id: unidadId,
+        p_tipo_id: tipoId,
+        p_titulo: tituloNormalizado,
+        p_instrucciones: instruccionesNormalizadas,
+        p_aprendizaje_esperado: aprendizajeNormalizado || null,
+        p_video_url: videoUrlNormalizada || null,
+        p_contenido: contenido,
       });
       if (insertError) {
-        setError(mensajeError(insertError));
+        setError(insertError.message.includes("Ya existe una actividad con ese título")
+          ? "Ya existe una actividad con ese título en la unidad. Usa un título distinto."
+          : mensajeError(insertError));
         setCargando(false);
         return;
       }
@@ -838,7 +833,7 @@ export default function ActividadForm({
               onClick={() => set(filas.filter((_, idx) => idx !== i))}
               disabled={filas.length <= 1}
               aria-label="Quitar fila"
-              className="shrink-0 text-slate-400 hover:text-red-500 disabled:opacity-30 dark:text-slate-500 dark:hover:text-red-400"
+              className="shrink-0 text-slate-400 hover:text-red-500 disabled:opacity-30 dark:text-slate-400 dark:hover:text-red-400"
             >
               <Trash2 className="size-4" aria-hidden="true" />
             </button>
@@ -1092,7 +1087,7 @@ export default function ActividadForm({
                             onClick={() => moverRonda(i, -1)}
                             disabled={i === 0}
                             aria-label="Subir pregunta"
-                            className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:text-slate-500 dark:hover:text-slate-300"
+                            className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:text-slate-400 dark:hover:text-slate-300"
                           >
                             <ChevronUp className="size-4" aria-hidden="true" />
                           </button>
@@ -1101,7 +1096,7 @@ export default function ActividadForm({
                             onClick={() => moverRonda(i, 1)}
                             disabled={i === rondasOJ.length - 1}
                             aria-label="Bajar pregunta"
-                            className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:text-slate-500 dark:hover:text-slate-300"
+                            className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:text-slate-400 dark:hover:text-slate-300"
                           >
                             <ChevronDown className="size-4" aria-hidden="true" />
                           </button>
@@ -1110,7 +1105,7 @@ export default function ActividadForm({
                             onClick={() => quitarRonda(i)}
                             disabled={rondasOJ.length <= 1}
                             aria-label="Quitar pregunta"
-                            className="text-slate-400 hover:text-red-500 disabled:opacity-30 dark:text-slate-500 dark:hover:text-red-400"
+                            className="text-slate-400 hover:text-red-500 disabled:opacity-30 dark:text-slate-400 dark:hover:text-red-400"
                           >
                             <Trash2 className="size-4" aria-hidden="true" />
                           </button>
@@ -1285,7 +1280,7 @@ export default function ActividadForm({
                             <tr key={i} className="border-t border-slate-200 dark:border-slate-800">
                               <th
                                 scope="row"
-                                className="w-1/4 p-2 text-left align-top text-xs font-medium text-slate-500 dark:text-slate-500"
+                                className="w-1/4 p-2 text-left align-top text-xs font-medium text-slate-500 dark:text-slate-400"
                               >
                                 {criterio}
                               </th>
@@ -1541,13 +1536,13 @@ export default function ActividadForm({
                       id="videoBienUrl"
                       type="url"
                       maxLength={500}
+                      required
                     value={videoBienUrl}
                     onChange={(e) => setVideoBienUrl(e.target.value)}
                     placeholder="https://youtube.com/..."
                   />
                   <HelpText>
-                    Si todavía no tienes el video, déjalo vacío. El estudiante ve &quot;Video
-                    próximamente&quot; hasta que lo agregues.
+                    Usa un video que permita observar las cualidades señaladas. Los dos videos son necesarios para publicar una evaluación válida.
                   </HelpText>
                 </Field>
                 {listaCualidadesEV.length > 0 && (
@@ -1574,6 +1569,7 @@ export default function ActividadForm({
                       id="videoMalUrl"
                       type="url"
                       maxLength={500}
+                      required
                     value={videoMalUrl}
                     onChange={(e) => setVideoMalUrl(e.target.value)}
                     placeholder="https://youtube.com/..."
@@ -1636,7 +1632,7 @@ export default function ActividadForm({
                   </HelpText>
                 </Field>
                 {textoIncorrecto.trim() && textoCorrecto.trim() && (
-                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {compararPalabras(textoCorrecto, textoIncorrecto).filter((c) => !c.correcto).length}{" "}
                     diferencia(s) detectada(s) entre ambos textos (se acepta hasta 5 como aprobatorio).
                   </p>
@@ -1666,7 +1662,7 @@ export default function ActividadForm({
           cargando={cargando}
           className="self-start"
         >
-          {cargando ? "Guardando..." : modoEdicion ? "Guardar cambios" : "Crear actividad"}
+          {cargando ? "Guardando…" : modoEdicion ? "Guardar cambios" : "Crear actividad"}
         </Boton>
         </fieldset>
       </form>

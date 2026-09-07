@@ -14,6 +14,7 @@ export default function ReflexionActividad({
   textoPrevio,
   placeholderPersonalizado,
   onGuardada,
+  bloqueadaPorReintento = false,
 }: {
   actividadId: string;
   confianza: number | null;
@@ -21,6 +22,7 @@ export default function ReflexionActividad({
   textoPrevio: string | null;
   placeholderPersonalizado?: string;
   onGuardada?: () => void;
+  bloqueadaPorReintento?: boolean;
 }) {
   const [editando, setEditando] = useState(!textoPrevio);
   const [texto, setTexto] = useState(textoPrevio ?? "");
@@ -59,7 +61,11 @@ export default function ReflexionActividad({
           <p className="text-sm text-slate-700 dark:text-slate-300">{mensaje}</p>
         </div>
       )}
-      {!editando ? (
+      {bloqueadaPorReintento ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          La reflexión se habilitará después del segundo ejercicio.
+        </p>
+      ) : !editando ? (
         // Sin botón "Cambiar" a propósito: una vez guardada, la reflexión
         // queda fija — igual que una entrega calificada, es una fotografía
         // honesta de lo que pensaste en ese momento, no algo para pulir
@@ -82,7 +88,7 @@ export default function ReflexionActividad({
           />
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" size="sm" disabled={!texto.trim()} cargando={cargando} className="self-start">
-            {cargando ? "Guardando..." : "Guardar reflexión"}
+            {cargando ? "Guardando…" : "Guardar reflexión"}
           </Boton>
         </form>
       )}

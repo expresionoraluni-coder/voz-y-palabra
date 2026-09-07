@@ -13,14 +13,14 @@ export default function ReflexionCierre({
   unidadId,
   metaPrevia,
   textoPrevio,
-  confianzaInicioPct,
+  confianzaInicio,
   promedioUnidad,
   onGuardado,
 }: {
   unidadId: string;
   metaPrevia?: string | null;
   textoPrevio?: string | null;
-  confianzaInicioPct: number | null;
+  confianzaInicio: number | null;
   promedioUnidad: number | null;
   onGuardado?: () => void;
 }) {
@@ -30,7 +30,7 @@ export default function ReflexionCierre({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mensaje = mensajeCalibracionUnidad(confianzaInicioPct, promedioUnidad);
+  const mensaje = mensajeCalibracionUnidad(confianzaInicio, promedioUnidad);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -109,11 +109,11 @@ export default function ReflexionCierre({
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           rows={3}
-          placeholder={placeholderReflexionUnidad(confianzaInicioPct, promedioUnidad)}
+          placeholder={placeholderReflexionUnidad(confianzaInicio, promedioUnidad)}
         />
         {error && <ErrorText>{error}</ErrorText>}
         <Boton type="submit" size="sm" disabled={!texto.trim()} cargando={cargando} className="self-start">
-          {cargando ? "Guardando..." : "Guardar reflexión"}
+          {cargando ? "Guardando…" : "Guardar reflexión"}
         </Boton>
       </form>
     </Card>

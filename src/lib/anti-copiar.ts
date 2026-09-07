@@ -1,8 +1,7 @@
 import type { ClipboardEvent } from "react";
 
 // Freno, no barrera real: nada del lado del cliente detiene devtools ni una
-// captura de pantalla. Solo hace más lento pegar una respuesta copiada de
-// otro sitio o de un chatbot en las actividades de respuesta abierta.
+// captura de pantalla. Solo hace más lento copiar o pegar sin leer el material.
 export function bloquearPegado(e: ClipboardEvent) {
   e.preventDefault();
 }

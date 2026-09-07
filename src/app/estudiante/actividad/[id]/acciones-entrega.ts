@@ -44,7 +44,7 @@ function validarEntregaAbiertaPorTipo(
     }
     const celdasTexto = celdas as string[][];
     if (celdasTexto.some((fila) => fila.some((celda) => contarPalabras(celda) < 2))) {
-      return "Completa todas las celdas con al menos unas palabras antes de guardar.";
+      return "Completa todas las celdas con al menos dos palabras antes de guardar.";
     }
   }
 

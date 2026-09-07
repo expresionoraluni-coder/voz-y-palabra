@@ -8,6 +8,7 @@ import EmptyState from "@/components/ui/empty-state";
 import { etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import ActividadVideoEditor from "./actividad-video-editor";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { videosEvaluarDisponibles } from "@/lib/calificacion-evaluar-videos";
 
 export default async function DetalleUnidadDocente({
   params,
@@ -31,16 +32,16 @@ export default async function DetalleUnidadDocente({
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, unidad_competencia").eq("id", id).maybeSingle(),
     supabase
       .from("actividades")
-      .select("id, titulo, orden, video_url, tipos_actividad(nombre)")
+      .select("id, titulo, orden, video_url, contenido, tipos_actividad(nombre)")
       .eq("unidad_id", id)
       .order("orden"),
   ]);
 
+  if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
   revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
   revisarErrorConsulta(unidadError, "No pudimos cargar esta unidad.");
   revisarErrorConsulta(actividadesError, "No pudimos cargar las actividades de esta unidad.");
 
-  if (!user) redirect("/ingreso/profesora");
   if (!unidad) notFound();
 
   return (
@@ -84,6 +85,7 @@ export default async function DetalleUnidadDocente({
           {actividades.map((a) => {
             const tipo = Array.isArray(a.tipos_actividad) ? a.tipos_actividad[0] : a.tipos_actividad;
             const Icono = ICONO_TIPO[tipo?.nombre ?? ""] ?? ListChecks;
+            const faltanVideos = tipo?.nombre === "evaluar_videos" && !videosEvaluarDisponibles(a.contenido);
             return (
               <Card key={a.id} className="flex flex-col gap-3 px-4 py-3.5">
                 <div className="flex items-center gap-3">
@@ -92,7 +94,7 @@ export default async function DetalleUnidadDocente({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-slate-900 dark:text-slate-50">{a.orden}. {a.titulo}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">{etiquetaTipo(tipo?.nombre)}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{etiquetaTipo(tipo?.nombre)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <Link href={`/docente/unidades/${id}/actividades/${a.id}`} className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-950/40">
@@ -103,6 +105,14 @@ export default async function DetalleUnidadDocente({
                     </Link>
                   </div>
                 </div>
+                {faltanVideos && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                    Faltan los videos A y B. La actividad no admite respuestas hasta que agregues ambos desde{" "}
+                    <Link href={`/docente/unidades/${id}/actividades/${a.id}/editar`} className="font-semibold underline underline-offset-2">
+                      Editar actividad
+                    </Link>.
+                  </div>
+                )}
                 <details className="border-t border-slate-100 pt-3 dark:border-slate-800">
                   <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400">
                     <Video className="size-4" aria-hidden="true" />

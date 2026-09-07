@@ -157,7 +157,7 @@ export default function RedaccionChecklist({
             <Sparkles className="size-3.5 text-indigo-500" aria-hidden="true" />
             Lectura automática de tu texto
           </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-slate-500 dark:text-slate-500">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-slate-500 dark:text-slate-400">
             <span>
               Variedad léxica:{" "}
               <strong
@@ -230,7 +230,7 @@ export default function RedaccionChecklist({
       )}
       {!entregado && (
         <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar mi texto"}
+          {cargando ? "Guardando…" : "Guardar mi texto"}
         </Boton>
       )}
     </form>

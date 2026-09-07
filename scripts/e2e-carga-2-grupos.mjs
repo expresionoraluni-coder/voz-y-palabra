@@ -308,25 +308,20 @@ async function trabajarEstudiante(student, unidades) {
       }
       authUsers.add(authData.user.id);
 
-      const { data: ingreso, error: ingresoError } = await measure("ingresar_estudiante", () =>
-        client.rpc("ingresar_estudiante", {
-          p_codigo: student.codigo,
-          p_nombre: student.nombre,
-          p_nip: student.boleta.slice(-4),
-        }),
-      );
-      if (ingresoError) throw new Error(`Ingreso: ${errorMessage(ingresoError)}`);
-      const filaIngreso = Array.isArray(ingreso) ? ingreso[0] : ingreso;
-      if (!filaIngreso?.id || filaIngreso.id !== student.id || filaIngreso.error) {
-        throw new Error(`Ingreso no vinculó al estudiante temporal (${filaIngreso?.error ?? "sin fila"})`);
-      }
+      // El fixture vincula explícitamente la sesión creada para la prueba. No
+      // reutiliza la boleta como secreto ni abre una excepción en el RPC real.
+      const { error: vinculoError } = await admin
+        .from("estudiantes")
+        .update({ auth_user_id: authData.user.id, debe_cambiar_nip: false })
+        .eq("id", student.id);
+      if (vinculoError) throw new Error(`Vínculo de sesión de prueba: ${errorMessage(vinculoError)}`);
     }
 
     for (const unidad of unidades) {
     await sleep(25 + ((student.numero * unidad.orden) % 70));
     const { error: confianzaInicioError } = await measure("confianza_inicio", () =>
       writeClient.from("autoevaluaciones_confianza").upsert(
-        { estudiante_id: student.id, unidad_id: unidad.actividades[0].unidad_id, momento: "inicio", valor: 45 + ((student.numero * 3) % 50) },
+        { estudiante_id: student.id, unidad_id: unidad.actividades[0].unidad_id, momento: "inicio", valor: 1 + (student.numero % 5) },
         { onConflict: "estudiante_id,unidad_id,momento" },
       ),
     );
@@ -349,7 +344,7 @@ async function trabajarEstudiante(student, unidades) {
     const unidadId = unidad.actividades[0].unidad_id;
     const { error: confianzaCierreError } = await measure("confianza_cierre", () =>
       writeClient.from("autoevaluaciones_confianza").upsert(
-        { estudiante_id: student.id, unidad_id: unidadId, momento: "cierre", valor: 70 + ((student.numero + unidad.orden) % 26) },
+        { estudiante_id: student.id, unidad_id: unidadId, momento: "cierre", valor: 1 + ((student.numero + unidad.orden) % 5) },
         { onConflict: "estudiante_id,unidad_id,momento" },
       ),
     );

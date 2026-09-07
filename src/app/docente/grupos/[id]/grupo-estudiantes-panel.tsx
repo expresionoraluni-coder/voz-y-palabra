@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckSquare, Search, UserCheck, UserMinus, Users, X } from "lucide-react";
+import { CheckSquare, KeyRound, Search, UserCheck, UserMinus, Users, X } from "lucide-react";
 import { actualizarEstudiantesLote } from "./acciones-estudiantes";
 import AgregarEstudiantes from "./agregar-estudiantes";
 import ExportarGrupo from "./exportar-grupo";
@@ -13,6 +13,7 @@ import EmptyState from "@/components/ui/empty-state";
 import ProgressBar from "@/components/ui/progress-bar";
 import Boton from "@/components/ui/button";
 import { Input, Select, ErrorText, HelpText } from "@/components/ui/field";
+import AccesosEstudiantes, { type AccesoEstudiante } from "@/components/accesos-estudiantes";
 
 export type EstudianteResumen = {
   id: string;
@@ -50,7 +51,8 @@ export default function GrupoEstudiantesPanel({
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [accionPendiente, setAccionPendiente] = useState<"dar_de_baja" | null>(null);
+  const [accionPendiente, setAccionPendiente] = useState<"dar_de_baja" | "restablecer_acceso" | null>(null);
+  const [accesosGenerados, setAccesosGenerados] = useState<AccesoEstudiante[] | null>(null);
 
   const visibles = useMemo(() => {
     const termino = busqueda.trim().toLocaleLowerCase("es-MX");
@@ -88,7 +90,7 @@ export default function GrupoEstudiantesPanel({
     setError(null);
   }
 
-  async function ejecutarAccion(accion: "dar_de_baja" | "reactivar") {
+  async function ejecutarAccion(accion: "dar_de_baja" | "reactivar" | "restablecer_acceso") {
     if (cargando) return;
     setCargando(true);
     setError(null);
@@ -98,6 +100,7 @@ export default function GrupoEstudiantesPanel({
       setCargando(false);
       return;
     }
+    if (resultado.accesos) setAccesosGenerados(resultado.accesos);
     setSeleccionados([]);
     setAccionPendiente(null);
     setCargando(false);
@@ -107,6 +110,9 @@ export default function GrupoEstudiantesPanel({
   return (
     <>
       <AgregarEstudiantes grupoId={grupoId} nombresExistentes={nombresExistentes} />
+      {accesosGenerados && (
+        <AccesosEstudiantes accesos={accesosGenerados} titulo="Códigos de acceso restablecidos" />
+      )}
 
       <section className="flex flex-col gap-3" aria-labelledby="estudiantes-activos">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -174,11 +180,25 @@ export default function GrupoEstudiantesPanel({
                       Cancelar
                     </Boton>
                   </div>
+                ) : accionPendiente === "restablecer_acceso" ? (
+                  <div className="flex flex-wrap items-center gap-2" role="alert">
+                    <span className="text-sm text-indigo-900 dark:text-indigo-100">Se cerrarán sus sesiones actuales. ¿Continuar?</span>
+                    <Boton type="button" variant="secondary" size="sm" onClick={() => ejecutarAccion("restablecer_acceso")} cargando={cargando}>
+                      Generar códigos
+                    </Boton>
+                    <Boton type="button" variant="ghost" size="sm" onClick={() => setAccionPendiente(null)} disabled={cargando}>Cancelar</Boton>
+                  </div>
                 ) : (
-                  <Boton type="button" variant="secondary" size="sm" onClick={() => setAccionPendiente("dar_de_baja")} disabled={cargando}>
-                    <UserMinus className="size-4" aria-hidden="true" />
-                    Dar de baja
-                  </Boton>
+                  <>
+                    <Boton type="button" variant="secondary" size="sm" onClick={() => setAccionPendiente("restablecer_acceso")} disabled={cargando}>
+                      <KeyRound className="size-4" aria-hidden="true" />
+                      Restablecer acceso
+                    </Boton>
+                    <Boton type="button" variant="secondary" size="sm" onClick={() => setAccionPendiente("dar_de_baja")} disabled={cargando}>
+                      <UserMinus className="size-4" aria-hidden="true" />
+                      Dar de baja
+                    </Boton>
+                  </>
                 )}
                 <Boton type="button" variant="ghost" size="sm" onClick={() => setSeleccionados([])} disabled={cargando}>
                   <X className="size-4" aria-hidden="true" />
@@ -228,7 +248,7 @@ export default function GrupoEstudiantesPanel({
 
       {estudiantesBaja.length > 0 && (
         <section className="flex flex-col gap-3" aria-labelledby="estudiantes-baja">
-          <h2 id="estudiantes-baja" className="text-sm font-medium text-slate-500 dark:text-slate-500">
+          <h2 id="estudiantes-baja" className="text-sm font-medium text-slate-500 dark:text-slate-400">
             Dados de baja ({estudiantesBaja.length})
           </h2>
           <Card className="flex flex-col gap-2 p-3">
@@ -240,7 +260,10 @@ export default function GrupoEstudiantesPanel({
                   setSeleccionados([estudiante.id]);
                   const resultado = await actualizarEstudiantesLote(grupoId, [estudiante.id], "reactivar");
                   if (!resultado.ok) setError(resultado.error);
-                  else router.refresh();
+                  else {
+                    if (resultado.accesos) setAccesosGenerados(resultado.accesos);
+                    router.refresh();
+                  }
                 }}>
                   <UserCheck className="size-4" aria-hidden="true" />
                   Reactivar

@@ -73,7 +73,7 @@ export default function EliminarGrupo({
           cargando={cargando}
           disabled={confirmacion !== nombreGrupo}
         >
-          {cargando ? "Eliminando..." : "Eliminar definitivamente"}
+          {cargando ? "Eliminando…" : "Eliminar definitivamente"}
         </Boton>
         <Boton
           size="sm"

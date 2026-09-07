@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/field";
 import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { bloquearCopiar } from "@/lib/anti-copiar";
+import { PUNTAJE_MINIMO_SIN_REINTENTO } from "@/lib/intentos-auto";
 import type { ContenidoClasificacionPublico } from "@/lib/calificacion-clasificacion";
 import { calificarClasificacionAccion } from "./acciones-calificacion";
 
@@ -33,16 +34,18 @@ export default function Clasificacion({
   respuestaPrevia?: {
     elegidas: string[];
     resultado?: boolean[];
-    _meta?: { intentos?: number };
+    _meta?: { intentos?: number; ejercicio?: 1 | 2 };
   };
   dosNiveles?: boolean;
   puntajeAuto?: number | null;
 }) {
   const intentoInicial = respuestaPrevia?._meta?.intentos ?? 1;
+  const ejercicioGuardado = respuestaPrevia?._meta?.ejercicio;
   const tieneReintentoAlternativo = Boolean(contenido.reintento_alternativo);
   const maxIntentos = tieneReintentoAlternativo ? 2 : 1;
   const [usandoReintentoAlternativo, setUsandoReintentoAlternativo] = useState(
-    tieneReintentoAlternativo && intentoInicial >= 2,
+    tieneReintentoAlternativo &&
+      (ejercicioGuardado === 2 || (ejercicioGuardado === undefined && intentoInicial >= 2)),
   );
   const contenidoActivo = usandoReintentoAlternativo && contenido.reintento_alternativo
     ? contenido.reintento_alternativo
@@ -59,6 +62,11 @@ export default function Clasificacion({
   );
   const [resultado, setResultado] = useState<boolean[] | null>(respuestaPrevia?.resultado ?? null);
   const bloqueado = entregaRegistrada || resultado !== null;
+  const reintentoObligatorio =
+    tieneReintentoAlternativo &&
+    intentos < maxIntentos &&
+    mejorPuntaje !== null &&
+    mejorPuntaje < PUNTAJE_MINIMO_SIN_REINTENTO;
 
   // En las actividades de "dos niveles" (una vez aprobadas, desbloquean su
   // nivel 2) el orden se revuelve una sola vez por carga de página — así no
@@ -160,6 +168,7 @@ export default function Clasificacion({
         intentos={intentos}
         maxIntentos={maxIntentos}
         onReintentar={iniciarReintento}
+        reintentoObligatorio={reintentoObligatorio}
       />
     </form>
   );

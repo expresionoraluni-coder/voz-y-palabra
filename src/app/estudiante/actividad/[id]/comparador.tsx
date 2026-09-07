@@ -224,7 +224,7 @@ export default function Comparador({
     for (const fila of celdas) {
       for (const celda of fila) {
         if (contarPalabras(celda) < 2) {
-          setError("Completa todas las celdas con al menos unas palabras antes de guardar.");
+          setError("Completa todas las celdas con al menos dos palabras antes de guardar.");
           return;
         }
       }
@@ -275,7 +275,7 @@ export default function Comparador({
             <tr key={criterio} className="border-t border-slate-200 dark:border-slate-800">
               <th
                 scope="row"
-                className="w-1/4 p-3 text-left align-top text-xs font-medium text-slate-500 dark:text-slate-500"
+                className="w-1/4 p-3 text-left align-top text-xs font-medium text-slate-500 dark:text-slate-400"
               >
                 {criterio}
               </th>
@@ -314,7 +314,7 @@ export default function Comparador({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {modoChips && disponibles.length > 0 && !bloqueado && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Respuestas disponibles (arrastra o toca, luego toca una celda)
           </p>
           <div className="flex flex-wrap gap-2">

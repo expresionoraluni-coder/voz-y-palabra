@@ -51,22 +51,22 @@ export function placeholderReflexion(confianza: number | null, puntajeAuto: numb
 // pregunta por estrategia de estudio (qué harás distinto la próxima unidad),
 // no por dificultad puntual de una actividad — son preguntas de naturaleza
 // distinta a propósito, para no repetir la pregunta de seguridad del inicio.
-export function mensajeCalibracionUnidad(confianzaPct: number | null, promedioUnidad: number | null): string | null {
-  switch (casoCalibracionPct(confianzaPct, promedioUnidad)) {
+export function mensajeCalibracionUnidad(confianza: number | null, promedioUnidad: number | null): string | null {
+  switch (casoCalibracion(confianza, promedioUnidad)) {
     case "sobreconfianza":
-      return `Al empezar registraste un nivel de seguridad de ${confianzaPct}%, pero tu resultado promedio en la unidad fue ${promedioUnidad}% (te confiaste de más).`;
+      return `Al empezar registraste un nivel de seguridad de ${confianza}/5, pero tu resultado promedio en la unidad fue ${promedioUnidad}% (te confiaste de más).`;
     case "subconfianza":
-      return `Al empezar registraste un nivel de seguridad de solo ${confianzaPct}%, pero tu resultado promedio fue ${promedioUnidad}% (sabes más de lo que creías).`;
+      return `Al empezar registraste un nivel de seguridad de ${confianza}/5, pero tu resultado promedio fue ${promedioUnidad}% (sabes más de lo que creías).`;
     case "bien_calibrado_alto":
     case "bien_calibrado_bajo":
-      return `Tu confianza inicial (${confianzaPct}%) estuvo bien calibrada con tu resultado promedio en la unidad (${promedioUnidad}%).`;
+      return `Tu confianza inicial (${confianza}/5) estuvo bien calibrada con tu resultado promedio en la unidad (${promedioUnidad}%).`;
     default:
       return null;
   }
 }
 
-export function placeholderReflexionUnidad(confianzaPct: number | null, promedioUnidad: number | null): string {
-  switch (casoCalibracionPct(confianzaPct, promedioUnidad)) {
+export function placeholderReflexionUnidad(confianza: number | null, promedioUnidad: number | null): string {
+  switch (casoCalibracion(confianza, promedioUnidad)) {
     case "sobreconfianza":
       return "¿Qué creías dominar al empezar la unidad y no era así? ¿Qué estrategia usarás la próxima vez para no confiarte de más?";
     case "subconfianza":

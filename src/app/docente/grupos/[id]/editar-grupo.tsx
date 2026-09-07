@@ -99,7 +99,7 @@ export default function EditarGrupo({
       {error && <ErrorText>{error}</ErrorText>}
       <div className="flex gap-2">
         <Boton type="submit" size="sm" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar"}
+          {cargando ? "Guardando…" : "Guardar"}
         </Boton>
         <Boton type="button" variant="ghost" size="sm" onClick={cancelar}>
           Cancelar

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { esUuid, validarTexto } from "@/lib/validar-entrega";
 import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { requiereReintentoAlternativo } from "@/lib/intentos-auto";
 import { validarAccesoActividad, validarAccesoUnidad } from "@/lib/estudiante-entregas-server";
 
 type Resultado = { ok: true } | { ok: false; error: string };
@@ -37,7 +38,7 @@ async function cargarActividad(
 ) {
   const { data: actividad, error } = await admin
     .from("actividades")
-    .select("id, unidad_id, requiere_actividad_id, unidades(orden)")
+    .select("id, unidad_id, orden, contenido, requiere_actividad_id, unidades(orden)")
     .eq("id", actividadId)
     .maybeSingle();
   if (error || !actividad) return null;
@@ -46,6 +47,8 @@ async function cargarActividad(
   return {
     id: actividad.id,
     unidad_id: actividad.unidad_id,
+    orden: actividad.orden,
+    contenido: actividad.contenido,
     requiere_actividad_id: actividad.requiere_actividad_id,
     unidad_orden: Number(unidad?.orden ?? 1),
   };
@@ -66,6 +69,7 @@ export async function guardarPrediccionActividad(
   const permitido = await validarAccesoActividad(acceso.admin, acceso.estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
+    orden: actividad.orden,
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: actividad.unidad_orden,
   });
@@ -102,6 +106,7 @@ export async function guardarReflexionActividad(
   const permitido = await validarAccesoActividad(acceso.admin, acceso.estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
+    orden: actividad.orden,
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: actividad.unidad_orden,
   });
@@ -112,7 +117,13 @@ export async function guardarReflexionActividad(
     .eq("estudiante_id", acceso.estudiante.id)
     .eq("actividad_id", actividadId)
     .maybeSingle();
-  if (!entrega || !entregaCuentaComoCompletada(entrega)) {
+  if (!entrega || !entregaCuentaComoCompletada(entrega, actividad.contenido)) {
+    if (entrega && requiereReintentoAlternativo(actividad.contenido, entrega.respuesta, entrega.puntaje_auto)) {
+      return {
+        ok: false,
+        error: "Tu resultado es menor de 70 %. Resuelve primero el ejercicio alternativo para guardar la reflexión.",
+      };
+    }
     return { ok: false, error: "Guarda primero tu respuesta de la actividad." };
   }
 
@@ -137,7 +148,7 @@ export async function guardarReflexionUnidad(unidadId: string, texto: string): P
 
   const { data: unidad } = await acceso.admin
     .from("unidades")
-    .select("id, orden, actividades(id, orden)")
+    .select("id, orden, actividades(id, orden, contenido)")
     .eq("id", unidadId)
     .maybeSingle();
   if (!unidad) return { ok: false, error: "No encontramos esta unidad." };
@@ -151,34 +162,48 @@ export async function guardarReflexionUnidad(unidadId: string, texto: string): P
 
   const actividades = Array.isArray(unidad.actividades) ? unidad.actividades : [];
   const ids = actividades.map((actividad: { id: string }) => actividad.id);
-  const { data: entregas } = ids.length
-    ? await acceso.supabase
-        .from("entregas")
-        .select("actividad_id, puntaje_auto, respuesta")
-        .eq("estudiante_id", acceso.estudiante.id)
-        .in("actividad_id", ids)
-    : { data: [] as { actividad_id: string; puntaje_auto: number | null; respuesta: unknown }[] };
+  const actividadesPorId = new Map(
+    actividades.map((actividad: { id: string; contenido?: unknown }) => [actividad.id, actividad]),
+  );
+  const [
+    { data: entregas, error: entregasError },
+    { data: reflexionesActividad, error: reflexionesActividadError },
+  ] = ids.length
+    ? await Promise.all([
+        acceso.supabase
+          .from("entregas")
+          .select("actividad_id, puntaje_auto, respuesta")
+          .eq("estudiante_id", acceso.estudiante.id)
+          .in("actividad_id", ids),
+        acceso.supabase
+          .from("reflexiones")
+          .select("actividad_id")
+          .eq("estudiante_id", acceso.estudiante.id)
+          .eq("momento", "cierre")
+          .in("actividad_id", ids),
+      ])
+    : [
+        { data: [] as { actividad_id: string; puntaje_auto: number | null; respuesta: unknown }[], error: null },
+        { data: [] as { actividad_id: string | null }[], error: null },
+      ];
+  if (entregasError || reflexionesActividadError) {
+    return { ok: false, error: "No pudimos comprobar el avance de la unidad. Intenta de nuevo." };
+  }
   const completadas = new Set(
-    (entregas ?? []).filter(entregaCuentaComoCompletada).map((entrega) => entrega.actividad_id),
+    (entregas ?? [])
+      .filter((entrega) => entregaCuentaComoCompletada(entrega, actividadesPorId.get(entrega.actividad_id)?.contenido))
+      .map((entrega) => entrega.actividad_id),
   ).size;
   if (!unidadEstaCompleta(ids.length, completadas)) {
     return { ok: false, error: "Completa todas las actividades antes de guardar la reflexión de la unidad." };
   }
-
-  const ultimaActividad = actividades.slice().sort(
-    (a: { orden: number }, b: { orden: number }) => b.orden - a.orden,
-  )[0];
-  if (ultimaActividad) {
-    const { data: reflexionUltima } = await acceso.supabase
-      .from("reflexiones")
-      .select("id")
-      .eq("estudiante_id", acceso.estudiante.id)
-      .eq("actividad_id", ultimaActividad.id)
-      .eq("momento", "cierre")
-      .maybeSingle();
-    if (!reflexionUltima) {
-      return { ok: false, error: "Guarda primero la reflexión de la última actividad." };
-    }
+  const reflexionadas = new Set(
+    (reflexionesActividad ?? [])
+      .map((reflexion) => reflexion.actividad_id)
+      .filter((actividadId): actividadId is string => typeof actividadId === "string"),
+  ).size;
+  if (!unidadEstaCompleta(ids.length, reflexionadas)) {
+    return { ok: false, error: "Guarda la reflexión de cada actividad antes de cerrar la unidad." };
   }
 
   const { error } = await acceso.admin.from("reflexiones").insert(
@@ -198,7 +223,7 @@ export async function guardarConfianzaUnidad(
   momento: "inicio" | "cierre",
   valor: number,
 ): Promise<Resultado> {
-  if (!esUuid(unidadId) || !["inicio", "cierre"].includes(momento) || !Number.isInteger(valor) || valor < 0 || valor > 100) {
+  if (!esUuid(unidadId) || !["inicio", "cierre"].includes(momento) || !Number.isInteger(valor) || valor < 1 || valor > 5) {
     return { ok: false, error: "El nivel de seguridad no es válido." };
   }
   const acceso = await obtenerEstudiante();
@@ -220,8 +245,12 @@ export async function guardarConfianzaUnidad(
     .maybeSingle();
   if (existente) return { ok: false, error: "Este nivel de seguridad ya quedó guardado." };
 
-  const { data: actividades } = await acceso.admin.from("actividades").select("id").eq("unidad_id", unidadId);
-  const ids = (actividades ?? []).map((actividad) => actividad.id);
+   const { data: actividades } = await acceso.admin
+     .from("actividades")
+     .select("id, contenido")
+     .eq("unidad_id", unidadId);
+   const ids = (actividades ?? []).map((actividad) => actividad.id);
+   const actividadesPorId = new Map((actividades ?? []).map((actividad) => [actividad.id, actividad]));
   if (momento === "inicio" && ids.length) {
     const { data: entregas } = await acceso.supabase
       .from("entregas")
@@ -231,18 +260,58 @@ export async function guardarConfianzaUnidad(
     if (entregas?.length) return { ok: false, error: "La confianza inicial solo se registra antes del primer intento." };
   }
   if (momento === "cierre") {
-    const { data: entregas } = ids.length
-      ? await acceso.supabase
-          .from("entregas")
-          .select("actividad_id, puntaje_auto, respuesta")
-          .eq("estudiante_id", acceso.estudiante.id)
-          .in("actividad_id", ids)
-      : { data: [] as { actividad_id: string; puntaje_auto: number | null; respuesta: unknown }[] };
+    const [
+      { data: entregas, error: entregasError },
+      { data: reflexionesActividad, error: reflexionesActividadError },
+      { data: reflexionUnidad, error: reflexionUnidadError },
+    ] = await Promise.all([
+      ids.length
+        ? acceso.supabase
+            .from("entregas")
+            .select("actividad_id, puntaje_auto, respuesta")
+            .eq("estudiante_id", acceso.estudiante.id)
+            .in("actividad_id", ids)
+        : Promise.resolve({
+            data: [] as { actividad_id: string; puntaje_auto: number | null; respuesta: unknown }[],
+            error: null,
+          }),
+      ids.length
+        ? acceso.supabase
+            .from("reflexiones")
+            .select("actividad_id")
+            .eq("estudiante_id", acceso.estudiante.id)
+            .eq("momento", "cierre")
+            .in("actividad_id", ids)
+        : Promise.resolve({ data: [] as { actividad_id: string | null }[], error: null }),
+      acceso.supabase
+        .from("reflexiones")
+        .select("id")
+        .eq("estudiante_id", acceso.estudiante.id)
+        .eq("unidad_id", unidadId)
+        .eq("momento", "cierre")
+        .maybeSingle(),
+    ]);
+    if (entregasError || reflexionesActividadError || reflexionUnidadError) {
+      return { ok: false, error: "No pudimos comprobar el cierre de la unidad. Intenta de nuevo." };
+    }
     const completadas = new Set(
-      (entregas ?? []).filter((entrega) => entregaCuentaComoCompletada(entrega)).map((entrega) => entrega.actividad_id),
+      (entregas ?? [])
+        .filter((entrega) => entregaCuentaComoCompletada(entrega, actividadesPorId.get(entrega.actividad_id)?.contenido))
+        .map((entrega) => entrega.actividad_id),
     ).size;
     if (!unidadEstaCompleta(ids.length, completadas)) {
       return { ok: false, error: "Completa todas las actividades antes de registrar tu confianza final." };
+    }
+    const reflexionadas = new Set(
+      (reflexionesActividad ?? [])
+        .map((reflexion) => reflexion.actividad_id)
+        .filter((actividadId): actividadId is string => typeof actividadId === "string"),
+    ).size;
+    if (!unidadEstaCompleta(ids.length, reflexionadas)) {
+      return { ok: false, error: "Guarda la reflexión de cada actividad antes de registrar tu confianza final." };
+    }
+    if (!reflexionUnidad) {
+      return { ok: false, error: "Guarda primero la reflexión de cierre de la unidad." };
     }
   }
 

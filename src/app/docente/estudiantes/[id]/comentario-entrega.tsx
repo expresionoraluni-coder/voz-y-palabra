@@ -116,7 +116,7 @@ export default function ComentarioEntrega({
       {error && <ErrorText>{error}</ErrorText>}
       <div className="flex gap-2">
         <Boton size="sm" onClick={enviar} cargando={cargando} disabled={!comentario.trim() && !evaluacion}>
-          {cargando ? "Guardando..." : pendienteRevision ? "Guardar y marcar atendida" : "Guardar apoyo"}
+          {cargando ? "Guardando…" : pendienteRevision ? "Guardar y marcar atendida" : "Guardar apoyo"}
         </Boton>
         <Boton size="sm" variant="ghost" onClick={() => setAbierto(false)}>
           Cancelar

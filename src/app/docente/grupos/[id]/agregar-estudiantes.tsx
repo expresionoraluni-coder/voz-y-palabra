@@ -9,6 +9,7 @@ import { mensajeErrorRpc } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Label, HelpText, ErrorText, Input } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
+import AccesosEstudiantes, { leerAccesosEstudiantes, type AccesoEstudiante } from "@/components/accesos-estudiantes";
 
 type Fila = { nombre: string; boleta: string };
 
@@ -42,7 +43,7 @@ export default function AgregarEstudiantes({
   const [filas, setFilas] = useState<Fila[]>([filaVacia()]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [agregados, setAgregados] = useState<number | null>(null);
+  const [accesosGenerados, setAccesosGenerados] = useState<AccesoEstudiante[] | null>(null);
 
   const yaEnGrupo = new Set(nombresExistentes.map(normalizarNombre));
 
@@ -60,7 +61,7 @@ export default function AgregarEstudiantes({
         ),
       ),
     );
-    setAgregados(null);
+    setAccesosGenerados(null);
   }
 
   function quitarFila(i: number) {
@@ -118,7 +119,7 @@ export default function AgregarEstudiantes({
       });
       return conFilaVaciaAlFinal(next);
     });
-    setAgregados(null);
+    setAccesosGenerados(null);
     setError(null);
   }
 
@@ -143,7 +144,7 @@ export default function AgregarEstudiantes({
     e.preventDefault();
     if (cargando) return;
     setError(null);
-    setAgregados(null);
+    setAccesosGenerados(null);
 
     if (invalidas > 0) {
       setError(`Falta el nombre o la boleta (mínimo 4 dígitos) en ${invalidas} fila(s) marcada(s). Corrígelas o quítalas antes de continuar.`);
@@ -158,7 +159,7 @@ export default function AgregarEstudiantes({
     // repiten en la misma tabla se omiten en silencio — así la docente
     // puede volver a pegar el roster completo actualizado de Excel sin que
     // todo el lote falle por los nombres que ya existían.
-    const { data: totalAgregados, error: rpcError } = await supabase.rpc("agregar_estudiantes_con_boleta", {
+    const { data: resultadoAlta, error: rpcError } = await supabase.rpc("agregar_estudiantes_con_activacion", {
       p_grupo_id: grupoId,
       p_estudiantes: nuevas,
     });
@@ -180,7 +181,14 @@ export default function AgregarEstudiantes({
       return;
     }
 
-    setAgregados(typeof totalAgregados === "number" ? totalAgregados : 0);
+    const accesos = leerAccesosEstudiantes(resultadoAlta);
+    if (!accesos) {
+      setError("Los estudiantes se guardaron, pero no pudimos mostrar sus códigos. Restablece su acceso antes de entregarlos.");
+      setCargando(false);
+      router.refresh();
+      return;
+    }
+    setAccesosGenerados(accesos);
     setFilas([filaVacia()]);
     setCargando(false);
     router.refresh();
@@ -196,8 +204,8 @@ export default function AgregarEstudiantes({
         <Label>Paso 1: pega nombre y boleta</Label>
         <HelpText>
           Escribe directamente en la tabla o pega celdas copiadas de Excel. Se reparten solas en
-          las filas y se normalizan a mayúsculas sin acentos. El NIP inicial de cada estudiante
-          son los últimos 4 dígitos de su boleta.
+          las filas y se normalizan a mayúsculas sin acentos. Al guardar se crea un código personal
+          aleatorio para el primer acceso; la boleta nunca funciona como contraseña.
         </HelpText>
 
         <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400" aria-live="polite">
@@ -211,7 +219,7 @@ export default function AgregarEstudiantes({
                 </span>
               )}
               {excluidas > 0 && (
-                <span className="ml-1.5 text-slate-400 dark:text-slate-500">
+                <span className="ml-1.5 text-slate-400 dark:text-slate-400">
                   · {excluidas} ya existe{excluidas === 1 ? "" : "n"} (se omitirá{excluidas === 1 ? "" : "n"})
                 </span>
               )}
@@ -275,7 +283,7 @@ export default function AgregarEstudiantes({
                         onPaste={(e) => manejarPegado(e, i, "nombre")}
                         placeholder={i === 0 ? "Escribe o pega aquí desde Excel" : "Nombre"}
                         aria-label={`Nombre, fila ${i + 1}`}
-                        className={excluida ? "text-slate-400 dark:text-slate-500" : undefined}
+                        className={excluida ? "text-slate-400 dark:text-slate-400" : undefined}
                       />
                     </td>
                     <td className="px-1 py-1">
@@ -294,7 +302,7 @@ export default function AgregarEstudiantes({
                           type="button"
                           onClick={() => quitarFila(i)}
                           aria-label={`Quitar fila ${i + 1}`}
-                          className="rounded-md text-slate-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-slate-500 dark:hover:text-red-400"
+                          className="rounded-md text-slate-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-slate-400 dark:hover:text-red-400"
                         >
                           <Trash2 className="size-4" aria-hidden="true" />
                         </button>
@@ -308,11 +316,11 @@ export default function AgregarEstudiantes({
         </div>
 
         {error && <ErrorText>{error}</ErrorText>}
-        {agregados !== null && (
-          <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400" role="status">
-            <CheckCircle2 className="size-4" aria-hidden="true" />
-            Paso 2 completo: {agregados} {agregados === 1 ? "estudiante agregado" : "estudiantes agregados"}. Ya puedes compartir las instrucciones de acceso.
-          </p>
+        {accesosGenerados && (
+          <AccesosEstudiantes
+            accesos={accesosGenerados}
+            titulo={`Paso 2: ${accesosGenerados.length === 1 ? "código personal generado" : "códigos personales generados"}`}
+          />
         )}
         <Boton
           type="submit"
@@ -323,7 +331,7 @@ export default function AgregarEstudiantes({
           className="mt-2 self-start"
         >
           {cargando
-            ? "Agregando..."
+            ? "Agregando…"
             : nuevas.length > 0
               ? `Agregar ${nuevas.length} estudiante${nuevas.length === 1 ? "" : "s"}`
               : "Agregar estudiantes"}

@@ -117,6 +117,7 @@ export default async function DetalleGrupo({
     supabase.from("eventos").select("id, titulo, tipo, fecha, unidad_id").eq("grupo_id", id),
   ]);
 
+  if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
   revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
   revisarErrorConsulta(grupoError, "No pudimos cargar este grupo.");
   revisarErrorConsulta(estudiantesError, "No pudimos cargar la lista de estudiantes.");
@@ -126,7 +127,6 @@ export default async function DetalleGrupo({
   revisarErrorConsulta(avisosError, "No pudimos cargar los avisos del grupo.");
   revisarErrorConsulta(eventosError, "No pudimos cargar los eventos del grupo.");
 
-  if (!user) redirect("/ingreso/profesora");
   if (!grupo) notFound();
 
   const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);
@@ -345,11 +345,11 @@ export default async function DetalleGrupo({
     if (c.momento !== "inicio") continue;
     const est = porEstudianteMap.get(c.estudiante_id);
     if (!est) continue;
-    if (c.valor >= 70 && est.totalEntregas === 0) {
+    if (c.valor >= 4 && est.totalEntregas === 0) {
       alertas.push({ estudianteId: est.id, texto: `${est.nombre} dice sentirse seguro pero no ha completado actividades.` });
       continue;
     }
-    if (c.valor >= 70 && est.totalEntregas > 0) {
+    if (c.valor >= 4 && est.totalEntregas > 0) {
       const misPuntajes = (entregasPorEstudiante.get(est.id) ?? []).filter((en) => en.puntaje_auto !== null);
       if (misPuntajes.length > 0) {
         const promedio = misPuntajes.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / misPuntajes.length;
@@ -480,7 +480,7 @@ export default async function DetalleGrupo({
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
               Precisión por tipo de actividad
             </h2>
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
+            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
               vs. semana pasada, por tipo
             </span>
           </div>
@@ -551,10 +551,10 @@ export default async function DetalleGrupo({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {confusionesTop.map((c, i) => (
               <tr key={i}>
-                <td className="px-4 py-3 text-center font-semibold text-slate-400 dark:text-slate-500">{i + 1}</td>
+                <td className="px-4 py-3 text-center font-semibold text-slate-400 dark:text-slate-400">{i + 1}</td>
                 <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-50">{c.elemento}</td>
                 <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                  {c.elegida} <span className="text-xs text-slate-400 dark:text-slate-500">(correcta: {c.correcta})</span>
+                  {c.elegida} <span className="text-xs text-slate-400 dark:text-slate-400">(correcta: {c.correcta})</span>
                 </td>
                 <td className="px-4 py-3 text-right font-semibold text-amber-700 dark:text-amber-300">{c.veces}</td>
                 <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400">{Math.round((c.veces / totalConfusiones) * 100)}%</td>
@@ -610,7 +610,7 @@ export default async function DetalleGrupo({
         />
 
       <section className="flex flex-col gap-3 border-t border-slate-200 pt-6 dark:border-slate-800">
-        <h2 className="text-sm font-medium text-slate-500 dark:text-slate-500">Zona de riesgo</h2>
+        <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400">Zona de riesgo</h2>
         <EliminarGrupo
           grupoId={grupo.id}
           nombreGrupo={grupo.nombre}

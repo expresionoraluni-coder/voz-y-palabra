@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import Boton from "@/components/ui/button";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
-import { bloquearCopiar } from "@/lib/anti-copiar";
+import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
 import { validarRespuestaComprension } from "@/lib/validar-respuesta-comprension";
 import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
 
@@ -98,7 +98,7 @@ export default function RedaccionLectura({
           id="respuesta-comprension"
           value={respuestaComprension}
           onChange={(e) => setRespuestaComprension(e.target.value)}
-          onPaste={bloquearCopiar}
+          onPaste={bloquearPegado}
           disabled={entregado}
           rows={3}
           placeholder="Explica la diferencia con tus propias palabras."
@@ -108,7 +108,7 @@ export default function RedaccionLectura({
 
       {!entregado && (
         <Boton type="submit" cargando={cargando}>
-          {cargando ? "Guardando..." : "Guardar respuesta y continuar"}
+          {cargando ? "Guardando…" : "Guardar respuesta y continuar"}
         </Boton>
       )}
     </form>

@@ -14,13 +14,13 @@ export default function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
-      <div className="flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+      <div className="flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-400">
         <Icon className="size-5" aria-hidden="true" />
       </div>
       <div className="flex flex-col gap-1">
         <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">{titulo}</h2>
         {descripcion && (
-          <p className="text-sm text-slate-500 dark:text-slate-500">{descripcion}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{descripcion}</p>
         )}
       </div>
       {accion}

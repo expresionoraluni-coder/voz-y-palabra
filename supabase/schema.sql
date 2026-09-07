@@ -52,6 +52,10 @@ create table estudiantes (
   intentos_fallidos int not null default 0,
   bloqueado_hasta timestamptz,
   debe_cambiar_nip boolean not null default false,
+  activacion_hash text,
+  activacion_expira_en timestamptz,
+  activacion_generada_en timestamptz,
+  activacion_usada_en timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -69,18 +73,24 @@ create table private.invitacion_rate_limits (
   intentos int not null default 0 check (intentos >= 0),
   actualizado_en timestamptz not null default now()
 );
+create table private.altas_docente_autorizadas (
+  usuario_id uuid primary key,
+  autorizado_en timestamptz not null default now(),
+  expira_en timestamptz not null default (now() + interval '24 hours'),
+  usado_en timestamptz
+);
 create table private.password_recovery_rate_limits (
   clave text primary key,
   ventana_inicio timestamptz not null default now(),
   intentos int not null default 0 check (intentos >= 0),
   actualizado_en timestamptz not null default now()
 );
-revoke all on private.ingreso_rate_limits_claves, private.invitacion_rate_limits, private.password_recovery_rate_limits from public, anon, authenticated;
-grant all on private.ingreso_rate_limits_claves, private.invitacion_rate_limits, private.password_recovery_rate_limits to service_role;
+revoke all on private.ingreso_rate_limits_claves, private.invitacion_rate_limits, private.password_recovery_rate_limits, private.altas_docente_autorizadas from public, anon, authenticated;
+grant all on private.ingreso_rate_limits_claves, private.invitacion_rate_limits, private.password_recovery_rate_limits, private.altas_docente_autorizadas to service_role;
 
 -- Las funciones SECURITY DEFINER que usan esta tabla viven en
 -- supabase/functions.sql y deben conservar estos límites: el pre-request
--- cubre tanto ingresar_estudiante como crear_perfil_docente; el alta docente
+-- cubre tanto ingresar_estudiante como completar_perfil_docente; el alta docente
 -- exige una cuenta permanente con correo confirmado; cambiar_nip_estudiante
 -- exige una sesión anónima activa y solo vincula estudiantes activos.
 
@@ -162,7 +172,7 @@ create table autoevaluaciones_confianza (
   estudiante_id uuid not null references estudiantes(id) on delete cascade,
   unidad_id uuid not null references unidades(id) on delete cascade,
   momento text not null check (momento in ('inicio', 'cierre')),
-  valor int not null check (valor between 0 and 100),
+  valor int not null check (valor between 1 and 5),
   created_at timestamptz not null default now(),
   unique (estudiante_id, unidad_id, momento)
 );
@@ -305,6 +315,8 @@ create table intentos_nombre_grupo (
 create index actividades_requiere_actividad_id_idx on actividades(requiere_actividad_id);
 create index actividades_tipo_id_idx on actividades(tipo_id);
 create index actividades_unidad_id_idx on actividades(unidad_id);
+create unique index actividades_orden_unico_por_unidad on actividades(unidad_id, orden);
+create unique index actividades_titulo_unico_por_unidad on actividades(unidad_id, lower(btrim(titulo)));
 create index autoevaluaciones_confianza_unidad_id_idx on autoevaluaciones_confianza(unidad_id);
 create index avisos_docente_id_idx on avisos(docente_id);
 create index avisos_grupo_id_idx on avisos(grupo_id);
@@ -336,6 +348,8 @@ create unique index estudiantes_boleta_unica_por_grupo
   where boleta is not null;
 create unique index estudiantes_nombre_unico_por_grupo
   on estudiantes(grupo_id, lower(trim(nombre)));
+create unique index tipos_actividad_nombre_unico on tipos_actividad(lower(btrim(nombre)));
+create unique index unidades_orden_unico on unidades(orden);
 create unique index reflexiones_unica_por_actividad
   on reflexiones(estudiante_id, actividad_id, momento);
 create unique index reflexiones_unica_por_unidad
@@ -395,7 +409,11 @@ language sql stable
 security definer
 set search_path = public
 as $$
-  select id from estudiantes where auth_user_id = auth.uid() and activo = true
+  select id
+  from estudiantes
+  where auth_user_id = auth.uid()
+    and activo = true
+    and debe_cambiar_nip = false
 $$;
 
 -- Supabase asigna el rol `authenticated` a las sesiones anónimas de
@@ -490,7 +508,7 @@ create policy "docente elimina grupos" on grupos
 create policy "docente o estudiante lee estudiantes permitidos" on estudiantes
   for select to authenticated using (
     grupo_id in (select id from grupos where docente_id = (select auth.uid()))
-    or (auth_user_id = (select auth.uid()) and activo = true)
+    or (auth_user_id = (select auth.uid()) and activo = true and debe_cambiar_nip = false)
   );
 create policy "docente crea estudiantes de sus grupos" on estudiantes
   for insert to authenticated
@@ -740,7 +758,8 @@ create policy "estudiante, docente o administrador lee bitácora" on bitacora
   );
 
 -- ============================================================
--- 7. DATOS INICIALES: los 8 tipos de actividad vigentes y las 3 unidades
+-- 7. DATOS INICIALES: tipos vigentes y unidades. El catálogo completo de
+-- actividades vive en supabase/seed.sql y se carga después de functions.sql.
 -- ============================================================
 
 insert into tipos_actividad (nombre, descripcion) values
@@ -754,7 +773,7 @@ insert into tipos_actividad (nombre, descripcion) values
   ('corregir_ortografia', 'Reescribe un texto y observa las diferencias con la versión correcta');
 
 insert into unidades (nombre, orden, descripcion, reto_comunicativo) values
-  ('De la lengua al texto', 1, 'Comunicación, lenguaje, lengua, habla, norma, niveles y funciones de la lengua, el texto y sus propiedades.', 'Entregar la idea central de un texto largo en 5 líneas.'),
+  ('De la lengua al texto', 1, 'Comunicación, lenguaje, lengua, habla, norma, niveles y funciones de la lengua, el texto y sus propiedades.', 'Sintetizar la idea central de un texto extenso en cinco líneas.'),
   ('Exposición escrita', 2, 'Rasgos del texto expositivo y los 5 modelos expositivos.', 'Redactar un texto expositivo bien estructurado.'),
   ('Exposición oral', 3, 'Cualidades y técnicas de la exposición oral.', 'Exponer ante el grupo con seguridad.');
 
@@ -3606,7 +3625,7 @@ drop policy if exists "docente administra estudiantes de sus grupos" on public.e
 drop policy if exists "estudiante lee su propia fila" on public.estudiantes;
 drop policy if exists "docente o estudiante lee estudiantes permitidos" on public.estudiantes;
 create policy "docente o estudiante lee estudiantes permitidos" on public.estudiantes for select to authenticated
-  using (grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())) or (auth_user_id = (select auth.uid()) and activo = true));
+  using (grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())) or (auth_user_id = (select auth.uid()) and activo = true and debe_cambiar_nip = false));
 create policy "docente crea estudiantes de sus grupos" on public.estudiantes for insert to authenticated
   with check (public.es_docente_activo() and grupo_id in (select grupos.id from public.grupos where grupos.docente_id = (select auth.uid())));
 create policy "docente actualiza estudiantes de sus grupos" on public.estudiantes for update to authenticated
@@ -3849,10 +3868,10 @@ create policy "admin lee interacciones faq" on public.faq_interacciones for sele
 
 insert into public.faq_articulos (audiencia, categoria, slug, titulo, resumen, pasos, preguntas, rutas, orden)
 values
-  ('estudiante', 'estudiante_acceso', 'estudiante-acceso', 'No puedo entrar', 'Comprueba el grupo, tu nombre y el NIP antes de pedir un reinicio.', $$["Usa el código exacto de tu grupo.","Escribe tu nombre como aparece en la lista.","Si olvidaste el NIP, pide a tu docente que lo reinicie."]$$::jsonb, $$[{"id":"causa","pregunta":"¿Qué sucede al intentar entrar?","opciones":[{"id":"grupo","etiqueta":"No encuentro mi grupo"},{"id":"nip","etiqueta":"Mi NIP no funciona"},{"id":"nombre","etiqueta":"Mi nombre no coincide"}]}]$$::jsonb, '{"\/ingreso\/estudiante"}', 10),
-  ('estudiante', 'estudiante_actividad', 'estudiante-actividad', 'No puedo completar una actividad', 'Identifica si el bloqueo es por una dependencia, un intento ya usado o un error técnico.', $$["Guarda tu respuesta antes de salir.","Completa la actividad anterior y su reflexión si está pendiente.","Cada actividad tiene un solo intento; revisa antes de guardar."]$$::jsonb, $$[{"id":"causa","pregunta":"¿Qué impide continuar?","opciones":[{"id":"bloqueo","etiqueta":"La actividad está bloqueada"},{"id":"error","etiqueta":"Aparece un error"},{"id":"intento","etiqueta":"Ya no puedo volver a intentarlo"}]}]$$::jsonb, '{"\/estudiante\/actividad"}', 20),
+  ('estudiante', 'estudiante_acceso', 'estudiante-acceso', 'No puedo entrar', 'Comprueba el grupo, tu nombre y tu credencial de acceso antes de pedir ayuda.', $$["Usa el código exacto de tu grupo.","Escribe tu nombre como aparece en la lista.","Si olvidaste el NIP, pide a tu docente que restablezca tu acceso."]$$::jsonb, $$[{"id":"causa","pregunta":"¿Qué sucede al intentar entrar?","opciones":[{"id":"grupo","etiqueta":"No encuentro mi grupo"},{"id":"nip","etiqueta":"Mi NIP no funciona"},{"id":"nombre","etiqueta":"Mi nombre no coincide"}]}]$$::jsonb, '{"\/ingreso\/estudiante"}', 10),
+  ('estudiante', 'estudiante_actividad', 'estudiante-actividad', 'No puedo completar una actividad', 'Identifica si el bloqueo es por una dependencia, un intento agotado o un error técnico.', $$["Guarda tu respuesta y la reflexión antes de avanzar.","Si existe una dependencia, completa la actividad anterior y su reflexión.","Sin variante hay un intento; una variante alternativa permite un segundo intento con otro ejercicio. Con 70% o más es opcional; con menos de 70% debes resolverlo antes de guardar la reflexión y continuar. Los niveles son actividades distintas y no cambian esta regla."]$$::jsonb, $$[{"id":"causa","pregunta":"¿Qué impide continuar?","opciones":[{"id":"bloqueo","etiqueta":"La actividad está bloqueada"},{"id":"error","etiqueta":"Aparece un error"},{"id":"intento","etiqueta":"Ya no puedo volver a intentarlo"}]}]$$::jsonb, '{"\/estudiante\/actividad"}', 20),
   ('estudiante', 'estudiante_video', 'estudiante-video', 'El video no funciona', 'Prueba una conexión o dispositivo diferente y registra el nombre de la actividad si persiste.', $$["Comprueba tu conexión.","Actualiza una sola vez.","Prueba otra red o dispositivo."]$$::jsonb, $$[{"id":"resultado","pregunta":"¿Qué ocurre con el video?","opciones":[{"id":"no_abre","etiqueta":"No abre"},{"id":"lento","etiqueta":"Carga muy lento"},{"id":"incorrecto","etiqueta":"Es otro video"}]}]$$::jsonb, '{"\/estudiante\/actividad"}', 30),
-  ('docente', 'docente_estudiantes', 'docente-estudiantes', 'Problema con estudiantes o NIP', 'Revisa la lista, duplicados y la ficha del estudiante antes de cambiar datos.', $$["Confirma nombre y boleta.","Corrige filas incompletas o duplicadas.","Reinicia el NIP desde la ficha del estudiante."]$$::jsonb, $$[{"id":"causa","pregunta":"¿Qué necesitas resolver?","opciones":[{"id":"carga","etiqueta":"No aparecen tras cargar el archivo"},{"id":"duplicado","etiqueta":"Hay estudiantes duplicados"},{"id":"nip","etiqueta":"Necesito reiniciar un NIP"}]}]$$::jsonb, '{"\/docente\/grupos"}', 40),
+  ('docente', 'docente_estudiantes', 'docente-estudiantes', 'Problema con el acceso estudiantil', 'Revisa la lista, los duplicados y la ficha del estudiante antes de cambiar datos.', $$["Confirma nombre y boleta.","Corrige filas incompletas o duplicadas.","Restablece el acceso y entrega el código nuevo de forma privada."]$$::jsonb, $$[{"id":"causa","pregunta":"¿Qué necesitas resolver?","opciones":[{"id":"carga","etiqueta":"No aparecen tras cargar el archivo"},{"id":"duplicado","etiqueta":"Hay estudiantes duplicados"},{"id":"nip","etiqueta":"Necesito restablecer un acceso"}]}]$$::jsonb, '{"\/docente\/grupos"}', 40),
   ('docente', 'docente_actividad', 'docente-actividad', 'Crear o editar una actividad', 'Valida tipo, instrucciones, orden y respuesta esperada antes de guardar.', $$["Completa título, instrucciones, tipo y orden.","Revisa la vista previa.","Espera la confirmación antes de guardar otra vez."]$$::jsonb, $$[{"id":"causa","pregunta":"¿Qué parte presenta el problema?","opciones":[{"id":"guardar","etiqueta":"No puedo guardar"},{"id":"contenido","etiqueta":"No sé cómo configurar el contenido"},{"id":"bloqueo","etiqueta":"No puedo editarla"}]}]$$::jsonb, '{"\/docente\/unidades"}', 50),
   ('ambos', 'tecnico', 'problema-tecnico', 'La página no responde', 'Descarta una falla momentánea y describe la acción exacta que no respondió.', $$["Espera unos segundos.","Actualiza una sola vez.","Prueba otra red o dispositivo."]$$::jsonb, $$[{"id":"alcance","pregunta":"¿Dónde ocurre?","opciones":[{"id":"una","etiqueta":"Solo en esta pantalla"},{"id":"varias","etiqueta":"En varias pantallas"},{"id":"guardar","etiqueta":"Al guardar cambios"}]}]$$::jsonb, '{}', 60)
 on conflict (slug) do update set titulo = excluded.titulo, resumen = excluded.resumen, pasos = excluded.pasos, preguntas = excluded.preguntas, rutas = excluded.rutas, updated_at = now();

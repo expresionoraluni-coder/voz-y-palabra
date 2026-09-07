@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Gauge, Minus, Plus } from "lucide-react";
+import { Gauge } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -20,16 +20,16 @@ export default function Confianza({
   onGuardado?: () => void;
 }) {
   const router = useRouter();
-  const [valor, setValor] = useState(valorPrevio ?? 50);
+  const [valor, setValor] = useState(valorPrevio ?? 3);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const esCierre = momento === "cierre";
   const titulo = esCierre
     ? "Al terminar: ¿qué tanta seguridad tienes sobre lo que aprendiste?"
-    : "Antes de empezar: ¿qué tanta seguridad tienes para dominar esta unidad?";
+    : "Antes de empezar: ¿qué tan preparado o preparada te sientes para trabajar estos objetivos?";
   const ariaLabel = esCierre
     ? "Qué tanta seguridad tienes al terminar la unidad"
-    : "Qué tanta seguridad tienes de dominar esta unidad";
+    : "Qué tan preparado o preparada te sientes para trabajar los objetivos de esta unidad";
 
   async function guardar() {
     if (cargando) return;
@@ -65,7 +65,7 @@ export default function Confianza({
           <Gauge className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Tu seguridad al terminar</p>
         </div>
-        <p className="text-2xl font-semibold text-emerald-700 dark:text-emerald-300">{valorPrevio}%</p>
+        <p className="text-2xl font-semibold text-emerald-700 dark:text-emerald-300">{valorPrevio}/5</p>
         <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
           Esta respuesta quedó guardada como parte de tu cierre.
         </p>
@@ -79,41 +79,30 @@ export default function Confianza({
         <Gauge className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{titulo}</p>
       </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setValor((v) => Math.max(0, v - 5))}
-          disabled={valor <= 0}
-          aria-label="Bajar 5%"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
-        >
-          <Minus className="size-4" aria-hidden="true" />
-        </button>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={5}
-          value={valor}
-          onChange={(e) => setValor(Number(e.target.value))}
-          aria-label={ariaLabel}
-          aria-valuetext={`${valor} por ciento`}
-          className="h-2 flex-1 cursor-pointer accent-indigo-600"
-        />
-        <button
-          type="button"
-          onClick={() => setValor((v) => Math.min(100, v + 5))}
-          disabled={valor >= 100}
-          aria-label="Subir 5%"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-        </button>
-        <span className="w-12 text-right text-sm font-semibold text-slate-700 dark:text-slate-300">{valor}%</span>
+      <div role="group" aria-label={ariaLabel} className="grid grid-cols-5 gap-2">
+        {[1, 2, 3, 4, 5].map((nivel) => (
+          <button
+            key={nivel}
+            type="button"
+            onClick={() => setValor(nivel)}
+            aria-pressed={valor === nivel}
+            aria-label={`${nivel} de 5`}
+            className={`min-h-11 rounded-xl border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              valor === nivel
+                ? "border-indigo-600 bg-indigo-600 text-white"
+                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            {nivel}
+          </button>
+        ))}
       </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        {esCierre ? "1 = nada seguro/a · 5 = muy seguro/a" : "1 = nada preparado/a · 5 = muy preparado/a"}
+      </p>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton onClick={guardar} cargando={cargando} size="sm" className="self-start">
-        {cargando ? "Guardando..." : esCierre ? "Guardar nivel" : "Guardar"}
+        {cargando ? "Guardando…" : esCierre ? "Guardar nivel" : "Guardar"}
       </Boton>
     </Card>
   );

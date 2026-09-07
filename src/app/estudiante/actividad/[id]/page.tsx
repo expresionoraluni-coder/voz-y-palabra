@@ -38,6 +38,7 @@ import { sanitizarContenidoEtiquetadoTexto, type ContenidoEtiquetadoTexto } from
 import { sanitizarContenidoOrtografia, type ContenidoOrtografia } from "@/lib/comparar-ortografia";
 import { sanitizarRespuestaParaEstudiante, validarAccesoActividad } from "@/lib/estudiante-entregas-server";
 import { entregaCuentaComoCompletada } from "@/lib/progreso-unidad";
+import { tieneReintentoAlternativo } from "@/lib/intentos-auto";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 import { instruccionesMomentosDeContenido } from "@/lib/instrucciones-momentos";
 
@@ -59,34 +60,34 @@ export default async function ActividadEstudiante({
   // a estudiantes (RLS cerrado) — el contenido, incluida la clave de
   // calificación, solo se trae del lado del servidor con el cliente admin,
   // nunca con el JWT de sesión del estudiante.
-  const [
-    { data: estudiante, error: estudianteError },
-    { data: actividad, error: actividadError },
-  ] = await Promise.all([
-    admin
-      .from("estudiantes")
-      .select("id, grupo_id, debe_cambiar_nip")
-      .eq("auth_user_id", user.id)
-      .eq("activo", true)
-      .single(),
-    admin
-      .from("actividades")
-      .select(
-        "id, unidad_id, orden, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, requiere_actividad_id, tipos_actividad(nombre), unidades(orden, unidad_competencia)",
-      )
-      .eq("id", id)
-      .single(),
-  ]);
+  // Primero se resuelve el estado del estudiante. No se consulta contenido
+  // curricular con el cliente administrativo mientras el código de
+  // activación siga pendiente de sustituirse por un NIP personal.
+  const { data: estudiante, error: estudianteError } = await admin
+    .from("estudiantes")
+    .select("id, grupo_id, debe_cambiar_nip")
+    .eq("auth_user_id", user.id)
+    .eq("activo", true)
+    .single();
   revisarErrorConsulta(estudianteError && estudianteError.code !== "PGRST116" ? estudianteError : null, "No pudimos cargar tu sesión de estudiante.");
-  revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
   if (!estudiante) redirect("/ingreso/estudiante");
   if (estudiante.debe_cambiar_nip) return <CambiarNipObligatorio />;
+
+  const { data: actividad, error: actividadError } = await admin
+    .from("actividades")
+    .select(
+      "id, unidad_id, orden, titulo, instrucciones, contenido, aprendizaje_esperado, video_url, requiere_actividad_id, tipos_actividad(nombre), unidades(orden, unidad_competencia)",
+    )
+    .eq("id", id)
+    .single();
+  revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
   if (!actividad) notFound();
 
   const unidadParaAcceso = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const acceso = await validarAccesoActividad(admin, estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
+    orden: actividad.orden,
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: Number(unidadParaAcceso?.orden ?? 1),
   });
@@ -131,7 +132,7 @@ export default async function ActividadEstudiante({
       .maybeSingle(),
     admin
       .from("actividades")
-      .select("id, orden, requiere_actividad_id")
+      .select("id, orden, contenido, requiere_actividad_id, tipos_actividad(nombre)")
       .eq("unidad_id", actividad.unidad_id)
       .order("orden"),
     // Las entregas de las actividades hermanas se traen aparte y se filtran
@@ -159,6 +160,7 @@ export default async function ActividadEstudiante({
   );
   const hermanas = actividadesDeUnidad?.map((a) => ({
     ...a,
+    tipoNombre: (Array.isArray(a.tipos_actividad) ? a.tipos_actividad[0] : a.tipos_actividad)?.nombre,
     entregas: entregasPorActividad.has(a.id)
       ? [{
           puntaje_auto: entregasPorActividad.get(a.id)!.puntaje_auto,
@@ -177,27 +179,35 @@ export default async function ActividadEstudiante({
     siguiente &&
       (!siguiente.requiere_actividad_id ||
         siguiente.requiere_actividad_id === actividad.id ||
-        (entregaSiguientePrerequisito && entregaCuentaComoCompletada(entregaSiguientePrerequisito))),
+        (entregaSiguientePrerequisito &&
+          entregaCuentaComoCompletada(entregaSiguientePrerequisito, siguientePrerequisito?.contenido))),
   );
   const entregaActual = entregaExistente
     ? { puntaje_auto: entregaExistente.puntaje_auto, respuesta }
     : null;
-  const actividadActualLista = entregaCuentaComoCompletada(entregaActual);
-  const reflexionActualGuardada = Boolean(reflexionExistente?.texto?.trim());
+  const actividadActualLista = entregaCuentaComoCompletada(entregaActual, actividad.contenido);
+  const reflexionActualGuardada = Boolean(reflexionExistente);
   const siguienteDisponible = Boolean(
     siguiente &&
       actividadActualLista &&
       reflexionActualGuardada &&
       (!siguiente.requiere_actividad_id ||
         (entregaSiguientePrerequisito &&
-          entregaCuentaComoCompletada(entregaSiguientePrerequisito))),
+          entregaCuentaComoCompletada(entregaSiguientePrerequisito, siguientePrerequisito?.contenido))),
   );
   // "Dos niveles": esta actividad requiere a otra (es el nivel 2) o alguna
-  // otra la requiere a ella (es el nivel 1 que la desbloquea) — en ambos
-  // casos se oculta la respuesta correcta y se permite reiniciar, para que
-  // el par siga siendo un filtro real y no algo que se memoriza una vez.
-  const esDosNiveles =
-    !!actividad.requiere_actividad_id || !!hermanas?.some((h) => h.requiere_actividad_id === actividad.id);
+  // otra la requiere a ella (es el nivel 1 que la desbloquea). Esto solo
+  // cambia el orden visual de las opciones; no concede intentos adicionales.
+  // Los dos intentos existen únicamente si hay un ejercicio alternativo.
+  const esDosNiveles = Boolean(
+    nombreTipo === "clasificacion" &&
+      hermanas?.some(
+        (h) =>
+          h.id !== actividad.id &&
+          h.tipoNombre === "clasificacion" &&
+          (h.requiere_actividad_id === actividad.id || actividad.requiere_actividad_id === h.id),
+      ),
+  );
 
   // Navegación anterior/siguiente entre actividades de la unidad, visible
   // desde que se entra (no solo tras entregar, a diferencia del botón de
@@ -372,6 +382,7 @@ export default async function ActividadEstudiante({
               ? "Reflexiona sobre cómo cambió tu seguridad inicial después de comparar los tres textos."
               : undefined
           }
+          reintentoAlternativoDisponible={tieneReintentoAlternativo(actividad.contenido)}
         />
       </>
     </MomentoActividad>
@@ -400,7 +411,7 @@ export default async function ActividadEstudiante({
                   <ChevronLeft className="size-4" aria-hidden="true" />
                 </span>
               )}
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-500">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {indiceActual + 1} de {hermanas.length}
               </span>
               {siguienteDisponible ? (

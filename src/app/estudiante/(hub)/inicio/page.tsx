@@ -21,6 +21,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import CerrarSesion from "@/components/cerrar-sesion";
 import CambiarNip from "@/components/cambiar-nip";
+import CambiarNipObligatorio from "@/components/cambiar-nip-obligatorio";
 import Avatar from "@/components/ui/avatar";
 import { CardLink } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
@@ -63,7 +64,12 @@ export default async function InicioEstudiante({
     nombre: string;
     grupo_id: string;
     grupos: Grupo;
-  }>(supabase, "id, nombre, grupo_id, grupos(nombre)");
+  }>(supabase, "id, nombre, grupo_id, grupos(nombre)", { permitirCambioNip: true });
+
+  // Los layouts y las páginas pueden resolverse en paralelo. Este guard en
+  // la propia página evita consultar datos del curso mientras el código de
+  // activación todavía no se ha sustituido por un NIP personal.
+  if (estudiante.debe_cambiar_nip) return <CambiarNipObligatorio />;
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
@@ -86,7 +92,7 @@ export default async function InicioEstudiante({
   ] = await Promise.all([
     admin
       .from("unidades")
-      .select("id, nombre, orden, reto_comunicativo, actividades(id, titulo, orden, requiere_actividad_id)")
+      .select("id, nombre, orden, reto_comunicativo, actividades(id, titulo, orden, contenido, requiere_actividad_id)")
       .order("orden"),
     // Revisa y otorga insignias nuevas cada vez que el estudiante visita su inicio.
     // Vía admin porque embebe `actividades` (ya sin lectura abierta); el
@@ -129,6 +135,10 @@ export default async function InicioEstudiante({
   revisarErrorConsulta(eventosError, "No pudimos cargar el calendario del grupo.");
   revisarErrorConsulta(insigniasError, "No pudimos cargar tus insignias.");
 
+  const contenidoPorActividad = new globalThis.Map<string, unknown>(
+    (unidades ?? []).flatMap((unidad) => unidad.actividades.map((actividad) => [actividad.id, actividad.contenido] as const)),
+  );
+
   const idsEntregas = (entregas ?? []).map((e) => e.id);
   let totalRetroalimentaciones = 0;
   if (idsEntregas.length) {
@@ -141,13 +151,17 @@ export default async function InicioEstudiante({
   }
 
   const idsCompletadas = new Set(
-    (entregas ?? []).filter((e) => entregaCuentaComoCompletada(e)).map((e) => e.actividad_id),
+    (entregas ?? [])
+      .filter((e) => entregaCuentaComoCompletada(e, contenidoPorActividad.get(e.actividad_id)))
+      .map((e) => e.actividad_id),
   );
   const unidadesConReflexion = new Set(
     (reflexionesCierre ?? []).filter((r) => r.unidad_id !== null).map((r) => r.unidad_id),
   );
   const actividadesConReflexion = new Set(
-    (reflexionesCierre ?? []).filter((r) => r.actividad_id !== null).map((r) => r.actividad_id),
+    (reflexionesCierre ?? [])
+      .map((reflexion) => reflexion.actividad_id)
+      .filter((actividadId): actividadId is string => typeof actividadId === "string"),
   );
   const unidadesConConfianzaCierre = new Set((confianzasCierre ?? []).map((c) => c.unidad_id));
   const puntos = idsCompletadas.size * 10 + unidadesConReflexion.size * 5;
@@ -172,15 +186,21 @@ export default async function InicioEstudiante({
   const unidadesConProgreso = (unidades ?? []).map((u) => {
     const total = u.actividades.length;
     const hechas = u.actividades.filter((a) => idsCompletadas.has(a.id)).length;
+    const reflexionadas = u.actividades.filter((a) => actividadesConReflexion.has(a.id)).length;
     const pct = total > 0 ? Math.round((hechas / total) * 100) : 0;
-    const ultimaActividad = u.actividades.slice().sort((a, b) => b.orden - a.orden)[0];
-    const tieneReflexionUltimaActividad = Boolean(ultimaActividad && actividadesConReflexion.has(ultimaActividad.id));
-    return { ...u, total, hechas, pct, tieneReflexionUltimaActividad };
+    return {
+      ...u,
+      total,
+      hechas,
+      reflexionadas,
+      reflexionesCompletas: unidadEstaCompleta(total, reflexionadas),
+      pct,
+    };
   });
   const indiceActiva = unidadesConProgreso.findIndex(
     (u) =>
       !unidadEstaCompleta(u.total, u.hechas) ||
-      !u.tieneReflexionUltimaActividad ||
+      !u.reflexionesCompletas ||
       !unidadesConReflexion.has(u.id) ||
       !unidadesConConfianzaCierre.has(u.id),
   );
@@ -207,27 +227,35 @@ export default async function InicioEstudiante({
 
   const confianzaInicioActiva = (confianzaActiva ?? []).some((confianza) => confianza.momento === "inicio");
   const confianzaCierreActiva = (confianzaActiva ?? []).some((confianza) => confianza.momento === "cierre");
+  const faltaReflexionCierreActiva = Boolean(
+    unidadActiva && !unidadesConReflexion.has(unidadActiva.id),
+  );
 
   const actividadesActiva = (unidadActiva?.actividades ?? []).slice().sort((a, b) => a.orden - b.orden);
-  const primeraActividadAccesible = actividadesActiva.find((actividad) => {
+  const primeraReflexionPendiente = actividadesActiva.find(
+    (actividad) => idsCompletadas.has(actividad.id) && !actividadesConReflexion.has(actividad.id),
+  );
+  const primeraActividadAccesible = actividadesActiva.find((actividad, indice) => {
     if (idsCompletadas.has(actividad.id)) return false;
-    if (!actividad.requiere_actividad_id) return true;
-    const entregaPrerequisito = (entregas ?? []).find(
-      (entrega) => entrega.actividad_id === actividad.requiere_actividad_id,
+    const idsPrerequisito = Array.from(
+      new Set(
+        [...actividadesActiva.slice(0, indice).map((anterior) => anterior.id), actividad.requiere_actividad_id].filter(
+          (actividadId): actividadId is string => typeof actividadId === "string",
+        ),
+      ),
     );
-    return entregaCuentaComoCompletada(entregaPrerequisito) && actividadesConReflexion.has(actividad.requiere_actividad_id);
+    return idsPrerequisito.every(
+      (actividadId) => idsCompletadas.has(actividadId) && actividadesConReflexion.has(actividadId),
+    );
   });
 
   const faltaCerrarUnidad = Boolean(
     unidadActiva &&
       unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) &&
-      (!unidadActiva.tieneReflexionUltimaActividad ||
-        !unidadesConReflexion.has(unidadActiva.id) ||
-        !confianzaCierreActiva),
+      unidadActiva.reflexionesCompletas &&
+      (faltaReflexionCierreActiva || !confianzaCierreActiva),
   );
-  const faltaReflexionUltimaActividad = Boolean(
-    unidadActiva && unidadEstaCompleta(unidadActiva.total, unidadActiva.hechas) && !unidadActiva.tieneReflexionUltimaActividad,
-  );
+  const actividadPendienteGuia = primeraReflexionPendiente ?? primeraActividadAccesible;
 
   const recordatorios: { texto: string; href: string }[] = [];
   for (const ev of eventosProximos ?? []) {
@@ -254,25 +282,32 @@ export default async function InicioEstudiante({
       : !confianzaInicioActiva
         ? {
             etiqueta: "Antes de empezar",
-            titulo: `Indica qué tanta seguridad tienes de la Unidad ${unidadActiva.orden}`,
+            titulo: `Indica qué tan preparado o preparada te sientes para la Unidad ${unidadActiva.orden}`,
             descripcion: "Tu respuesta inicial te ayudará a comparar cómo avanzaste.",
             href: `/estudiante/unidad/${unidadActiva.id}`,
             cta: "Continuar",
             icon: Target,
           }
+        : primeraReflexionPendiente
+          ? {
+              etiqueta: `Unidad ${unidadActiva.orden}`,
+              titulo: `Guarda tu reflexión de “${primeraReflexionPendiente.titulo}”`,
+              descripcion: "La reflexión de cada actividad es necesaria antes de abrir el siguiente paso.",
+              href: `/estudiante/actividad/${primeraReflexionPendiente.id}`,
+              cta: "Completar reflexión",
+              icon: Target,
+            }
         : faltaCerrarUnidad
           ? {
               etiqueta: "Cierre de unidad",
-              titulo: faltaReflexionUltimaActividad
-                ? "Reflexiona sobre la última actividad"
-                : `Guarda tu reflexión de la Unidad ${unidadActiva.orden}`,
-              descripcion: faltaReflexionUltimaActividad
-                ? "Es el paso que prepara tu cierre de unidad."
+              titulo: faltaReflexionCierreActiva
+                ? `Guarda tu reflexión de la Unidad ${unidadActiva.orden}`
+                : `Registra tu confianza final de la Unidad ${unidadActiva.orden}`,
+              descripcion: faltaReflexionCierreActiva
+                ? "Después registrarás tu confianza final para cerrar la unidad."
                 : "Es el último paso antes de continuar con la siguiente unidad.",
-              href: faltaReflexionUltimaActividad
-                ? `/estudiante/actividad/${unidadActiva.actividades.slice().sort((a, b) => b.orden - a.orden)[0]?.id}`
-                : `/estudiante/unidad/${unidadActiva.id}/cierre`,
-              cta: faltaReflexionUltimaActividad ? "Ir a la última actividad" : "Cerrar unidad",
+              href: `/estudiante/unidad/${unidadActiva.id}/cierre`,
+              cta: "Cerrar unidad",
               icon: Target,
             }
           : primeraActividadAccesible
@@ -366,8 +401,8 @@ export default async function InicioEstudiante({
         <GuiaBienvenida
           estudianteId={estudiante.id}
           unidadHref={`/estudiante/unidad/${unidadActiva.id}`}
-          actividadHref={primeraActividadAccesible ? `/estudiante/actividad/${primeraActividadAccesible.id}` : `/estudiante/unidad/${unidadActiva.id}`}
-          actividadDisponible={Boolean(primeraActividadAccesible)}
+          actividadHref={actividadPendienteGuia ? `/estudiante/actividad/${actividadPendienteGuia.id}` : `/estudiante/unidad/${unidadActiva.id}`}
+          actividadDisponible={Boolean(actividadPendienteGuia)}
         />
       )}
 
@@ -419,7 +454,7 @@ export default async function InicioEstudiante({
                 </Badge>
               ))}
               {insignias.length > 4 && (
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-500">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   +{insignias.length - 4} más
                 </span>
               )}
@@ -469,7 +504,11 @@ export default async function InicioEstudiante({
           />
           {unidadesConProgreso.map((u, idx) => {
             const tema = temaUnidad(u.orden);
-            const completa = u.pct === 100;
+            const completa =
+              u.pct === 100 &&
+              u.reflexionesCompletas &&
+              unidadesConReflexion.has(u.id) &&
+              unidadesConConfianzaCierre.has(u.id);
             const activa = idx === indiceActiva || (indiceActiva === -1 && idx === unidadesConProgreso.length - 1);
             return (
               <Link key={u.id} href={`/estudiante/unidad/${u.id}`} className="relative">
@@ -507,7 +546,7 @@ export default async function InicioEstudiante({
                         <p className="font-semibold text-slate-900 dark:text-slate-50">
                           Unidad {u.orden}. {u.nombre}
                         </p>
-                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-500">{u.reto_comunicativo}</p>
+                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{u.reto_comunicativo}</p>
                       </div>
                       <ChevronRight
                         className="mt-1 size-4 shrink-0 text-slate-300 dark:text-slate-600"
@@ -521,7 +560,7 @@ export default async function InicioEstudiante({
                           gradiente={tema.barra}
                           etiqueta={`Unidad ${u.orden}: ${u.hechas} de ${u.total} actividades`}
                         />
-                        <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-500">
+                        <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
                           {u.hechas}/{u.total}
                         </span>
                       </div>

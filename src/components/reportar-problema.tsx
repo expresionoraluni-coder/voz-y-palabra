@@ -20,15 +20,15 @@ type AyudaRapida = { titulo: string; pasos: string[] };
 const AYUDAS_ESTUDIANTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
   estudiante_acceso: {
     titulo: "Comprueba tus datos",
-    pasos: ["Usa el código exacto de tu grupo y escribe tu nombre como aparece en la lista.", "Si olvidaste tu NIP, pide a la docente que lo reinicie desde tu grupo."],
+    pasos: ["Usa el código exacto de tu grupo y escribe tu nombre como aparece en la lista.", "Si olvidaste tu NIP, pide a la docente que restablezca tu acceso y te entregue un código nuevo."],
   },
   estudiante_actividad: {
     titulo: "Antes de pedir ayuda",
-    pasos: ["Guarda tu respuesta antes de salir.", "Si depende de otra actividad, termina la anterior y guarda su reflexión.", "Cada actividad tiene un solo intento; revisa tu respuesta antes de guardarla y repórtalo aquí si algo no funciona."],
+    pasos: ["Guarda tu respuesta y la reflexión antes de avanzar.", "Si depende de otra actividad, termina la anterior y su reflexión.", "Sin variante hay un intento; una variante alternativa ofrece un segundo ejercicio. Con 70% o más es opcional; con menos de 70% debes resolverlo antes de guardar la reflexión y continuar. Los niveles son actividades distintas y no cambian esta regla."],
   },
   estudiante_avance: {
     titulo: "Revisa qué falta",
-    pasos: ["Confirma que la actividad anterior esté guardada y aprobada.", "Revisa si falta una reflexión o el cierre de la unidad.", "Actualiza una sola vez después de guardar."],
+    pasos: ["Confirma que la actividad anterior y su reflexión estén guardadas.", "Si cambias de unidad, completa todas las reflexiones, la reflexión de cierre y la confianza final.", "Actualiza una sola vez después de guardar."],
   },
   estudiante_instruccion: {
     titulo: "Encuentra la indicación",
@@ -51,7 +51,7 @@ const AYUDAS_ESTUDIANTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
 const AYUDAS_DOCENTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
   docente_acceso: {
     titulo: "Comprueba tu cuenta",
-    pasos: ["Usa el correo confirmado con el que registraste tu cuenta.", "Si es tu primer ingreso, termina la verificación con el código de invitación."],
+    pasos: ["Usa el correo confirmado con el que registraste tu cuenta.", "Si es tu primer ingreso, abre el enlace del correo y completa tu nombre para mostrar."],
   },
   docente_grupo: {
     titulo: "Ubica el grupo correcto",
@@ -59,7 +59,7 @@ const AYUDAS_DOCENTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
   },
   docente_estudiantes: {
     titulo: "Revisa la lista",
-    pasos: ["Usa el archivo de Excel con nombre y boleta en sus columnas.", "Corrige duplicados o filas incompletas antes de cargarlo.", "Para un NIP olvidado, usa Reiniciar NIP desde la ficha del estudiante."],
+    pasos: ["Usa el archivo de Excel con nombre y boleta en sus columnas.", "Corrige duplicados o filas incompletas antes de cargarlo.", "Para un NIP olvidado, restablece el acceso y entrega el código nuevo de forma privada."],
   },
   docente_actividad: {
     titulo: "Antes de guardar",
@@ -442,7 +442,7 @@ export default function ReportarProblema({
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">{reporte.descripcion}</p>
                       {reporte.respuesta_publica && <p className="mt-2 rounded-lg bg-emerald-50 p-2 text-xs leading-relaxed text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{reporte.respuesta_publica}</p>}
-                      <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">Folio {folioReporte(reporte.id)} · Actualizado {reporte.updated_at.slice(0, 10)}</p>
+                      <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-400">Folio {folioReporte(reporte.id)} · Actualizado {reporte.updated_at.slice(0, 10)}</p>
                       {(mensajesPropios[reporte.id] ?? []).length > 0 && (
                         <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                           <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Conversación</p>
@@ -460,7 +460,7 @@ export default function ReportarProblema({
                           <label htmlFor={`respuesta-${reporte.id}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">El administrador necesita más información</label>
                           <textarea id={`respuesta-${reporte.id}`} value={mensajesReporte[reporte.id] ?? ""} onChange={(e) => setMensajesReporte((actual) => ({ ...actual, [reporte.id]: e.target.value }))} maxLength={2000} rows={2} placeholder="Explica qué ocurrió o qué probaste" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] text-slate-400 dark:text-slate-500">{mensajeEnviadoId === reporte.id ? "Información enviada." : "No incluyas contraseñas ni NIP."}</span>
+                            <span className="text-[11px] text-slate-400 dark:text-slate-400">{mensajeEnviadoId === reporte.id ? "Información enviada." : "No incluyas contraseñas ni NIP."}</span>
                             <Boton type="button" size="sm" variant="secondary" onClick={() => enviarMensajeEnSolicitud(reporte.id)} cargando={enviandoMensajeId === reporte.id} disabled={(mensajesReporte[reporte.id] ?? "").trim().length < 2}>Enviar información</Boton>
                           </div>
                         </div>

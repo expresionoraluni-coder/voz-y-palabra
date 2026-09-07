@@ -20,7 +20,7 @@ export default async function ProgresoEstudiante() {
 
   const [{ data: unidades }, { data: entregas }, { data: predicciones }, { data: bitacoras }, { data: reflexionesCierre }] =
     await Promise.all([
-      admin.from("unidades").select("id, nombre, orden, actividades(id)").order("orden"),
+      admin.from("unidades").select("id, nombre, orden, actividades(id, contenido)").order("orden"),
       supabase
         .from("entregas")
         .select("actividad_id, puntaje_auto, created_at, respuesta")
@@ -41,7 +41,12 @@ export default async function ProgresoEstudiante() {
     ]);
 
   const idsCompletadas = new Set(
-    (entregas ?? []).filter((e) => entregaCuentaComoCompletada(e)).map((e) => e.actividad_id),
+    (entregas ?? [])
+      .filter((e) => {
+        const actividad = (unidades ?? []).flatMap((unidad) => unidad.actividades).find((item) => item.id === e.actividad_id);
+        return entregaCuentaComoCompletada(e, actividad?.contenido);
+      })
+      .map((e) => e.actividad_id),
   );
   const unidadesConProgreso = (unidades ?? []).map((u) => {
     const total = u.actividades.length;

@@ -21,7 +21,7 @@ export default function MetricCard({
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-500">{etiqueta}</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{etiqueta}</p>
         {Icon && (
           <div className={`flex size-7 items-center justify-center rounded-lg ${tonos[tono]}`}>
             <Icon className="size-4" aria-hidden="true" />

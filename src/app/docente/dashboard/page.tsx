@@ -188,27 +188,27 @@ export default async function DashboardDocente() {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-slate-900 dark:text-slate-50">{g.nombre}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Identificador del grupo{g.ciclo_escolar ? ` · ${g.ciclo_escolar}` : ""}
                     </p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">{metrica.estudiantes} estudiantes activos</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{metrica.estudiantes} estudiantes activos</p>
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
                           Código de acceso: <span className="font-mono font-semibold tracking-wide text-slate-700 dark:text-slate-300">{g.codigo_acceso}</span>
                         </p>
                         <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                           <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">Avance</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Avance</p>
                             <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-50">{avance}%</p>
                           </div>
                           <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">Activos 7 días</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Activos 7 días</p>
                             <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-50">{metrica.activosSemana}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">Sin comenzar</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Sin comenzar</p>
                             <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-50">{metrica.sinEmpezar}</p>
                           </div>
                         </div>
@@ -237,7 +237,7 @@ export default async function DashboardDocente() {
                   <p className="font-medium text-slate-900 dark:text-slate-50">
                     Unidad {u.orden}. {u.nombre}
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-500">{Array.isArray(u.actividades) ? u.actividades.length : 0} actividades</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{Array.isArray(u.actividades) ? u.actividades.length : 0} actividades</p>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
               </CardLink>

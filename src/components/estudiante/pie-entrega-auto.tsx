@@ -14,6 +14,7 @@ export default function PieEntregaAuto({
   guardado = false,
   textoGuardado,
   className,
+  reintentoObligatorio = false,
 }: {
   error: string | null;
   bloqueado: boolean;
@@ -26,6 +27,7 @@ export default function PieEntregaAuto({
   guardado?: boolean;
   textoGuardado?: string;
   className?: string;
+  reintentoObligatorio?: boolean;
 }) {
   return (
     <>
@@ -37,7 +39,7 @@ export default function PieEntregaAuto({
       )}
       {!bloqueado && (
         <Boton type="submit" cargando={cargando} className={className}>
-          {cargando ? "Guardando..." : textoBoton}
+          {cargando ? "Guardando…" : textoBoton}
         </Boton>
       )}
       {bloqueado && (
@@ -47,6 +49,7 @@ export default function PieEntregaAuto({
           maxIntentos={maxIntentos}
           onReintentar={onReintentar}
           cargando={cargando}
+          reintentoObligatorio={reintentoObligatorio}
         />
       )}
     </>

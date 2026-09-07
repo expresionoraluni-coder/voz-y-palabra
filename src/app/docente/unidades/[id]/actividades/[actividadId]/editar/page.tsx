@@ -32,11 +32,11 @@ export default async function EditarActividad({
       .eq("actividad_id", actividadId),
   ]);
 
+  if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
   revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
   revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
   revisarErrorConsulta(entregasError, "No pudimos comprobar si esta actividad ya tiene entregas.");
 
-  if (!user) redirect("/ingreso/profesora");
   if (!actividad) notFound();
 
   const tipo = Array.isArray(actividad.tipos_actividad) ? actividad.tipos_actividad[0] : actividad.tipos_actividad;

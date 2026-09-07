@@ -107,7 +107,7 @@ export default async function CalendarioEstudiante() {
                     </div>
                     <Badge tono="indigo">{TIPOS_EVENTO[item.tipoEvento].etiqueta}</Badge>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {textoFaltan(dias)} · Unidad {item.unidad?.orden}
                   </p>
                   {item.recomendaciones.length > 0 && (
@@ -121,10 +121,10 @@ export default async function CalendarioEstudiante() {
             return (
               <Link key={`rp-${i}`} href={`/estudiante/actividad/${item.actividadId}`}>
                 <CardLink className="flex items-center gap-3 px-4 py-3">
-                  <RotateCcw className="size-4 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                  <RotateCcw className="size-4 shrink-0 text-slate-400 dark:text-slate-400" aria-hidden="true" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{item.titulo}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Repaso sugerido · {item.vencido ? "atrasado" : textoFaltan(diasFaltantes(item.fecha))}
                     </p>
                   </div>

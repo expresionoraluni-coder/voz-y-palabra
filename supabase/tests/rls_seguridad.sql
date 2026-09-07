@@ -1,5 +1,6 @@
 -- Pruebas de regresión para los hallazgos de la auditoría de seguridad
--- (VP-C1, VP-C2, VP-A1, VP-A2, VP-B4) y para cambiar_nip_estudiante. Corre
+-- (VP-C1, VP-C2, VP-A1, VP-A2, VP-B4), activación segura, intentos y
+-- cambiar_nip_estudiante. Corre
 -- con `supabase test db`
 -- (requiere `supabase init` + Docker) o pegando el contenido completo en
 -- el SQL Editor del dashboard de Supabase.
@@ -18,18 +19,18 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(33);
+select plan(40);
 
 -- ============================================================
 -- Fixtures
 -- ============================================================
 alter table auth.users disable trigger validar_invitacion_alta_docente;
-insert into auth.users (id, email) values
-  ('11111111-1111-1111-1111-111111111111', '__test__docente@example.com'),
-  ('22222222-2222-2222-2222-222222222222', '__test__estudiante-boleta@example.com'),
-  ('33333333-3333-3333-3333-333333333333', '__test__estudiante@example.com'),
-  ('99999999-0000-0000-0000-000000000001', '__test__sesion-login@example.com'),
-  ('99999999-0000-0000-0000-000000000002', '__test__sesion-invitacion@example.com');
+insert into auth.users (id, email, email_confirmed_at) values
+  ('11111111-1111-1111-1111-111111111111', '__test__docente@example.com', now()),
+  ('22222222-2222-2222-2222-222222222222', '__test__estudiante-activacion@example.com', now()),
+  ('33333333-3333-3333-3333-333333333333', '__test__estudiante@example.com', now()),
+  ('99999999-0000-0000-0000-000000000001', '__test__sesion-login@example.com', now()),
+  ('99999999-0000-0000-0000-000000000002', '__test__sesion-invitacion@example.com', now());
 alter table auth.users enable trigger validar_invitacion_alta_docente;
 
 insert into docentes (id, nombre, correo) values
@@ -55,6 +56,62 @@ insert into actividades (id, unidad_id, tipo_id, titulo) values
 insert into entregas (id, estudiante_id, actividad_id, respuesta, evaluacion_docente) values
   ('99999999-9999-9999-9999-999999999999', '55555555-5555-5555-5555-555555555555',
    '88888888-8888-8888-8888-888888888888', '{}'::jsonb, null);
+
+-- El límite de intentos se decide con el catálogo dentro de la misma
+-- transacción: uno normalmente y dos solo con variante alternativa.
+select throws_ok(
+  $$ select * from guardar_entrega_auto(
+       '55555555-5555-5555-5555-555555555555',
+       '88888888-8888-8888-8888-888888888888',
+       '{"respuesta":"otra"}'::jsonb, 80, 'completada'
+     ) $$,
+  '23514', 'Ya registraste el único intento de esta actividad.',
+  'intentos: una actividad normal conserva un solo intento'
+);
+
+insert into actividades (id, unidad_id, tipo_id, titulo, orden, contenido) values
+  ('88888888-8888-8888-8888-888888888889', '66666666-6666-6666-6666-666666666666',
+   '77777777-7777-7777-7777-777777777777', '__test__ actividad con variante', 1,
+   '{"reintento_alternativo":{"elementos":[]}}'::jsonb);
+
+select lives_ok(
+  $$ select * from guardar_entrega_auto(
+       '55555555-5555-5555-5555-555555555555',
+       '88888888-8888-8888-8888-888888888889',
+       '{"respuesta":"primera"}'::jsonb, 80, 'completada'
+     ) $$,
+  'intentos: la variante alternativa admite el primer envío'
+);
+
+select lives_ok(
+  $$ select * from guardar_entrega_auto(
+       '55555555-5555-5555-5555-555555555555',
+       '88888888-8888-8888-8888-888888888889',
+       '{"respuesta":"segunda"}'::jsonb, 40, 'completada'
+     ) $$,
+  'intentos: la variante alternativa admite exactamente un segundo envío'
+);
+
+select throws_ok(
+  $$ select * from guardar_entrega_auto(
+       '55555555-5555-5555-5555-555555555555',
+       '88888888-8888-8888-8888-888888888889',
+       '{"respuesta":"tercera"}'::jsonb, 100, 'completada'
+     ) $$,
+  '23514', 'Ya usaste los 2 intentos de esta actividad.',
+  'intentos: la variante alternativa rechaza un tercer envío'
+);
+
+select ok(
+  (select (respuesta -> '_meta' ->> 'intentos')::int = 2
+          and (respuesta -> '_meta' ->> 'ejercicio')::int = 1
+          and respuesta ->> 'respuesta' = 'primera'
+          and puntaje_auto = 80
+   from entregas
+   where estudiante_id = '55555555-5555-5555-5555-555555555555'
+     and actividad_id = '88888888-8888-8888-8888-888888888889'),
+  'intentos: conserva juntos el mejor puntaje, su ejercicio y el contador global'
+);
 
 insert into faq_articulos (id, audiencia, categoria, slug, titulo, resumen)
 values
@@ -151,7 +208,7 @@ select is_empty(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","is_anonymous":true}', true);
 
 update entregas set respuesta = '{"forjado":true}'::jsonb, puntaje_auto = 100
   where id = '99999999-9999-9999-9999-999999999999';
@@ -198,7 +255,7 @@ select is(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","is_anonymous":true}', true);
 
 -- El estudiante de prueba se guardó como "__test__ Estudiante" (sin
 -- acento); entrar con acento y minúsculas de todos modos debe emparejar.
@@ -210,40 +267,63 @@ select ok(
 reset role;
 
 -- ============================================================
--- agregar_estudiantes_con_boleta: siembra el NIP inicial desde la boleta
--- y marca debe_cambiar_nip para forzar que lo cambie en su primer ingreso.
+-- Activación segura: la boleta es solo un identificador. La docente recibe
+-- un código aleatorio de una sola visualización y, hasta elegir un NIP, la
+-- sesión temporal no puede leer datos estudiantiles.
 -- ============================================================
+create temporary table __test_accesos_estudiantes (codigo text not null);
+grant select, insert, delete on __test_accesos_estudiantes to authenticated;
+
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 
-select ok(
-  (select agregar_estudiantes_con_boleta(
+insert into __test_accesos_estudiantes (codigo)
+select acceso ->> 'codigo_activacion'
+from jsonb_array_elements(
+  (agregar_estudiantes_con_activacion(
     '44444444-4444-4444-4444-444444444444',
-    '[{"nombre":"__test__ Estudiante Boleta","boleta":"20260099"}]'::jsonb
-  )) = 1
-  and (select debe_cambiar_nip from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Boleta')),
-  'agregar_estudiantes_con_boleta: marca debe_cambiar_nip = true'
+    '[{"nombre":"__test__ Estudiante Activación","boleta":"20260099"}]'::jsonb
+  )) -> 'accesos'
+) as accesos(acceso);
+
+select ok(
+  (select codigo ~ '^[0-9A-F]{16}$' from __test_accesos_estudiantes limit 1)
+  and (select debe_cambiar_nip and nip_hash is null and activacion_hash is not null
+       from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Activación')),
+  'alta estudiantil: emite un código aleatorio y no deriva una credencial de la boleta'
 );
 
 reset role;
 
--- Simula que ya inició sesión por primera vez (agregar_estudiantes_con_boleta
--- no liga auth_user_id; eso solo pasa en el primer ingreso real). El nombre
--- guardado ya quedó normalizado (mayúsculas, sin acentos) por la función.
-update estudiantes set auth_user_id = '22222222-2222-2222-2222-222222222222'
-  where nombre = normalizar_nombre('__test__ Estudiante Boleta');
-
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","is_anonymous":true}', true);
 
 select ok(
-  cambiar_nip_estudiante('0099', '4321') is null,
-  'cambiar_nip: acepta el NIP sembrado desde la boleta como NIP actual'
+  (select nip_nuevo and error is null
+   from ingresar_estudiante(
+     '__TEST__GRUPO', '__test__ éstudiánte activación',
+     (select codigo from __test_accesos_estudiantes limit 1)
+   ) limit 1),
+  'ingresar_estudiante: acepta el código de activación y vincula la sesión correcta'
 );
 
 select ok(
-  not (select debe_cambiar_nip from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Boleta')),
-  'cambiar_nip: apaga debe_cambiar_nip tras el cambio'
+  public.estudiante_actual() is null
+  and not exists (
+    select 1 from estudiantes
+    where nombre = normalizar_nombre('__test__ Estudiante Activación')
+  ),
+  'activación: la sesión pendiente no puede leer datos antes de crear su NIP'
+);
+
+select cambiar_nip_estudiante((select codigo from __test_accesos_estudiantes limit 1), '4321');
+
+select ok(
+  (select not debe_cambiar_nip
+          and activacion_hash is null
+          and nip_hash = extensions.crypt('4321', nip_hash)
+   from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Activación')),
+  'cambiar_nip: consume la activación y guarda un NIP permanente de cuatro dígitos'
 );
 
 reset role;
@@ -251,18 +331,21 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 
-do $$
-declare
-  v_id uuid;
-begin
-  select id into v_id from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Boleta');
-  perform reiniciar_nip_estudiante(v_id);
-end $$;
+delete from __test_accesos_estudiantes;
+insert into __test_accesos_estudiantes (codigo)
+select reiniciar_nip_estudiante(id)
+from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Activación');
 
 select ok(
-  (select nip_hash is null and auth_user_id is null and not debe_cambiar_nip
-   from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Boleta')),
-  'reiniciar_nip_estudiante: limpia nip_hash, auth_user_id y debe_cambiar_nip'
+  (select nip_hash is null
+          and auth_user_id is null
+          and debe_cambiar_nip
+          and activacion_expira_en > now()
+          and activacion_hash = extensions.crypt(
+            (select codigo from __test_accesos_estudiantes limit 1), activacion_hash
+          )
+   from estudiantes where nombre = normalizar_nombre('__test__ Estudiante Activación')),
+  'reiniciar acceso: invalida la sesión y emite una activación nueva y expirable'
 );
 
 reset role;
@@ -273,10 +356,10 @@ reset role;
 -- para usar el estudiante de prueba antes de que ese bloque lo bloquee).
 -- ============================================================
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","is_anonymous":true}', true);
 
 select ok(
-  cambiar_nip_estudiante('0000', '5678') = 'Tu NIP actual no es correcto.',
+  cambiar_nip_estudiante('0000', '5678') = 'Tu NIP o código de acceso no es correcto.',
   'cambiar_nip: rechaza si el NIP actual no coincide'
 );
 
@@ -318,7 +401,7 @@ reset role;
 -- intento trae el NIP correcto.
 -- ============================================================
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"99999999-0000-0000-0000-000000000001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"99999999-0000-0000-0000-000000000001","role":"authenticated","is_anonymous":true}', true);
 
 do $$
 begin
@@ -342,31 +425,41 @@ select ok(
 reset role;
 
 -- ============================================================
--- VP-A2: mismo bloqueo para el código de invitación docente. Se
--- sustituye temporalmente el hash real (se revierte con el ROLLBACK
--- final) para no depender de conocer el código verdadero.
+-- Alta docente en dos fases: la invitación se valida una sola vez antes de
+-- crear auth.users; después de confirmar el correo solo se consume la
+-- autorización privada asociada a esa misma cuenta.
 -- ============================================================
-update configuracion_plataforma
-  set valor = extensions.crypt('CODIGO-DE-PRUEBA', extensions.gen_salt('bf'))
-  where clave = 'codigo_invitacion_docente_hash';
+insert into private.altas_docente_autorizadas (usuario_id, expira_en)
+values ('99999999-0000-0000-0000-000000000002', now() + interval '1 hour');
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"99999999-0000-0000-0000-000000000002","role":"authenticated"}', true);
 
-do $$
-begin
-  for i in 1..5 loop
-    begin
-      perform crear_perfil_docente('__test__ Nueva Docente', 'codigo-incorrecto');
-    exception when others then null;
-    end;
-  end loop;
-end $$;
+select completar_perfil_docente('__test__ Nueva Docente');
 
--- mismo cambio de contrato que ingresar_estudiante.
 select ok(
-  crear_perfil_docente('__test__ Nueva Docente', 'CODIGO-DE-PRUEBA') like 'Demasiados intentos%',
-  'VP-A2: bloqueado tras 5 intentos fallidos del código de invitación'
+  exists (select 1 from docentes where id = '99999999-0000-0000-0000-000000000002')
+  and exists (
+    select 1 from private.altas_docente_autorizadas
+    where usuario_id = '99999999-0000-0000-0000-000000000002' and usado_en is not null
+  ),
+  'alta docente: consume la autorización de la misma cuenta confirmada'
+);
+
+reset role;
+
+alter table auth.users disable trigger validar_invitacion_alta_docente;
+insert into auth.users (id, email, email_confirmed_at)
+values ('99999999-0000-0000-0000-000000000004', '__test__sin-invitacion@example.com', now());
+alter table auth.users enable trigger validar_invitacion_alta_docente;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"99999999-0000-0000-0000-000000000004","role":"authenticated"}', true);
+
+select throws_ok(
+  $$ select completar_perfil_docente('__test__ Sin invitación') $$,
+  'P0001', 'La invitación de esta cuenta ya no es válida. Crea una cuenta nueva con una invitación vigente.',
+  'alta docente: una cuenta confirmada sin autorización privada no crea perfil'
 );
 
 reset role;
@@ -377,8 +470,10 @@ reset role;
 -- auth.uid()`, sin validar que la FK secundaria (grupo_id/entrega_id)
 -- perteneciera a esa misma docente.
 -- ============================================================
-insert into auth.users (id, email) values
-  ('11111111-1111-1111-1111-111111111112', '__test__docenteB@example.com');
+alter table auth.users disable trigger validar_invitacion_alta_docente;
+insert into auth.users (id, email, email_confirmed_at) values
+  ('11111111-1111-1111-1111-111111111112', '__test__docenteB@example.com', now());
+alter table auth.users enable trigger validar_invitacion_alta_docente;
 insert into docentes (id, nombre, correo) values
   ('11111111-1111-1111-1111-111111111112', '__test__ Docente B', '__test__docenteB@example.com');
 insert into grupos (id, nombre, codigo_acceso, docente_id) values
@@ -423,11 +518,13 @@ reset role;
 -- varios nombres dentro de un código de grupo conocido no tenía
 -- ningún límite.
 -- ============================================================
+alter table auth.users disable trigger validar_invitacion_alta_docente;
 insert into auth.users (id, email) values
   ('99999999-0000-0000-0000-000000000003', '__test__sesion-nombre@example.com');
+alter table auth.users enable trigger validar_invitacion_alta_docente;
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"99999999-0000-0000-0000-000000000003","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"99999999-0000-0000-0000-000000000003","role":"authenticated","is_anonymous":true}', true);
 
 do $$
 begin
@@ -462,7 +559,7 @@ select is_empty(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","is_anonymous":true}', true);
 
 select is_empty(
   $$ select id from actividades where id = '88888888-8888-8888-8888-888888888888' $$,

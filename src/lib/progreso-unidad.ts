@@ -1,12 +1,17 @@
-import { intentosDeEntregaAuto, puedeAbrirDependiente } from "@/lib/intentos-auto";
+import {
+  intentosDeEntregaAuto,
+  puedeAbrirDependiente,
+  requiereReintentoAlternativo,
+} from "@/lib/intentos-auto";
 
 export type MotivoBloqueoActividad =
   | "dependencia"
   | "dependencia_reflexion"
+  | "dependencia_reintento"
   | "unidad_anterior_actividades"
+  | "unidad_anterior_reintento"
   | "unidad_anterior_reflexion_actividad"
   | "unidad_anterior_reflexion_unidad"
-  | "unidad_anterior_reflexiones"
   | "unidad_anterior_confianza"
   | "unidad_inicio";
 
@@ -17,13 +22,19 @@ export function detalleBloqueoActividad(motivo: string | null | undefined) {
       return {
         titulo: "Completa la actividad anterior",
         descripcion:
-          "Esta actividad depende de otra que todavía no está lista. Completa la actividad anterior y, si necesitas mejorarla, vuelve a intentarlo antes de continuar.",
+          "Esta actividad depende de otra que todavía no está lista. Completa y guarda la actividad anterior antes de continuar.",
       };
     case "dependencia_reflexion":
       return {
-        titulo: "Guarda la reflexión de la actividad anterior",
+        titulo: "Guarda las reflexiones pendientes",
         descripcion:
-          "La actividad anterior ya tiene una respuesta guardada, pero falta guardar su reflexión. Escríbela y guárdala para abrir esta actividad.",
+          "Antes de avanzar, guarda la reflexión pendiente de las actividades anteriores. Esta pausa es parte obligatoria del recorrido.",
+      };
+    case "dependencia_reintento":
+      return {
+        titulo: "Mejora tu resultado antes de continuar",
+        descripcion:
+          "Tu resultado es menor de 70 %. Resuelve el ejercicio alternativo y guarda ese segundo intento antes de avanzar.",
       };
     case "unidad_inicio":
       return {
@@ -36,28 +47,28 @@ export function detalleBloqueoActividad(motivo: string | null | undefined) {
         descripcion:
           "Antes de continuar, completa todas las actividades de la unidad anterior. La siguiente unidad se abrirá cuando termines ese recorrido.",
       };
+    case "unidad_anterior_reintento":
+      return {
+        titulo: "Mejora las actividades pendientes",
+        descripcion:
+          "En la unidad anterior hay una actividad con menos de 70 %. Resuelve su ejercicio alternativo antes de abrir esta unidad.",
+      };
     case "unidad_anterior_reflexion_actividad":
       return {
-        titulo: "Guarda la reflexión de la última actividad",
+        titulo: "Completa las reflexiones pendientes",
         descripcion:
-          "Terminaste las actividades de la unidad anterior, pero todavía falta guardar la reflexión de su última actividad para continuar.",
+          "Antes de abrir la siguiente unidad, guarda la reflexión de cada actividad terminada en la unidad anterior.",
       };
     case "unidad_anterior_reflexion_unidad":
       return {
         titulo: "Escribe la reflexión de cierre",
         descripcion:
-          "La última actividad ya tiene su reflexión. Ahora completa la reflexión final de la unidad anterior para abrir la siguiente.",
+          "Las actividades ya están terminadas. Ahora completa la reflexión final de la unidad anterior para abrir la siguiente.",
       };
     case "unidad_anterior_confianza":
       return {
         titulo: "Completa la confianza final",
         descripcion: "La unidad anterior todavía necesita tu nivel de seguridad al terminar para desbloquear la siguiente.",
-      };
-    case "unidad_anterior_reflexiones":
-      return {
-        titulo: "Completa las reflexiones de la unidad anterior",
-        descripcion:
-          "Antes de continuar, guarda la reflexión de la última actividad y la reflexión final de la unidad anterior.",
       };
     default:
       return null;
@@ -73,12 +84,13 @@ export function unidadEstaCompleta(totalActividades: number, actividadesCompleta
 
 export function entregaCuentaComoCompletada(
   entrega: { puntaje_auto: number | null; respuesta?: unknown } | null | undefined,
+  contenido?: unknown,
 ): boolean {
   if (!entrega) return false;
   // La entrega ya representa un trabajo guardado. El puntaje no puede volver
   // a bloquear la ruta ni convertir una fila existente en una actividad
   // incompleta; los intentos se controlan al guardar la actividad.
-  return true;
+  return !requiereReintentoAlternativo(contenido, entrega.respuesta, entrega.puntaje_auto);
 }
 
 export { intentosDeEntregaAuto, puedeAbrirDependiente };

@@ -111,7 +111,7 @@ export default function CorregirOrtografia({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {contenido.contexto && (
-        <p className="text-sm text-slate-500 dark:text-slate-500">{contenido.contexto}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{contenido.contexto}</p>
       )}
 
       <div
@@ -176,7 +176,7 @@ export default function CorregirOrtografia({
                 <span className={c.correcto ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}>
                   {c.escrita || "(faltó)"}
                 </span>
-                {!c.correcto && <span className="text-xs text-slate-500 dark:text-slate-500"> (revisa esta palabra)</span>}{" "}
+                {!c.correcto && <span className="text-xs text-slate-500 dark:text-slate-400"> (revisa esta palabra)</span>}{" "}
               </span>
             ))}
           </p>

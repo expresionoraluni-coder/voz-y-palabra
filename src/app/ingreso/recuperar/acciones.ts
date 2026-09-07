@@ -2,47 +2,13 @@
 
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
+import { origenAplicacionDesdeEncabezados } from "@/lib/auth-url";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { esContrasenaValida } from "@/lib/validar-contrasena";
 
 function huella(valor: string) {
   return createHash("sha256").update(valor).digest("hex");
-}
-
-function normalizarOrigen(valor: string | null | undefined) {
-  if (!valor) return null;
-  try {
-    const url = new URL(valor);
-    if (!["http:", "https:"].includes(url.protocol)) return null;
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return null;
-  }
-}
-
-function origenesPermitidos() {
-  return new Set(
-    [
-      "https://voz-y-palabra.netlify.app",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      process.env.NEXT_PUBLIC_SITE_URL,
-    ]
-      .map(normalizarOrigen)
-      .filter((origen): origen is string => Boolean(origen)),
-  );
-}
-
-function origenSolicitud(encabezados: Headers) {
-  const permitidos = origenesPermitidos();
-  const origen = normalizarOrigen(encabezados.get("origin"));
-  if (origen && permitidos.has(origen)) return origen;
-  const host = encabezados.get("host");
-  if (!host) return null;
-  const protocolo = encabezados.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
-  const origenDerivado = normalizarOrigen(`${protocolo}://${host}`);
-  return origenDerivado && permitidos.has(origenDerivado) ? origenDerivado : null;
 }
 
 function fuenteSolicitud(encabezados: Headers) {
@@ -62,7 +28,7 @@ export async function solicitarRecuperacion(correo: string): Promise<{ ok: true 
   }
 
   const encabezados = await headers();
-  const origen = origenSolicitud(encabezados);
+  const origen = origenAplicacionDesdeEncabezados(encabezados);
   if (!origen) return { ok: false };
 
   const admin = createAdminClient();

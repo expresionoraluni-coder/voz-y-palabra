@@ -246,7 +246,7 @@ export default function ReporteAtencion({
             <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
               <span className={`rounded-full px-2 py-0.5 ${ESTILOS_ESTADO[reporte.estado] ?? ESTILOS_ESTADO.cerrado}`}>{ESTADOS_REPORTE[reporte.estado] ?? reporte.estado}</span>
               <span className={`rounded-full px-2 py-0.5 ${ESTILOS_PRIORIDAD[reporte.prioridad] ?? ESTILOS_PRIORIDAD.normal}`}>{PRIORIDADES_REPORTE[reporte.prioridad] ?? reporte.prioridad}</span>
-              <span className="font-normal text-slate-400 dark:text-slate-500">{reporte.antiguedad}</span>
+              <span className="font-normal text-slate-400 dark:text-slate-400">{reporte.antiguedad}</span>
             </span>
             <span className="mt-2 block text-[11px] text-slate-500 dark:text-slate-400">
               {asignadoA === administradorId ? "Asignado a ti" : asignadoA ? "Asignado a otro administrador" : "Sin asignar"}
@@ -322,7 +322,7 @@ export default function ReporteAtencion({
                   <li key={evento.id} className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-semibold text-slate-800 dark:text-slate-100">{evento.actor_nombre}</span>
-                      <time dateTime={evento.creado_en} className="text-slate-400 dark:text-slate-500">{new Date(evento.creado_en).toLocaleString("es-MX")}</time>
+                      <time dateTime={evento.creado_en} className="text-slate-400 dark:text-slate-400">{new Date(evento.creado_en).toLocaleString("es-MX")}</time>
                     </div>
                     <p className="mt-1">{evento.estado_anterior ? (ESTADOS_REPORTE[evento.estado_anterior] ?? evento.estado_anterior) : "Sin estado"} → {evento.estado_nuevo ? (ESTADOS_REPORTE[evento.estado_nuevo] ?? evento.estado_nuevo) : "Sin estado"} · {evento.prioridad_nueva ? (PRIORIDADES_REPORTE[evento.prioridad_nueva] ?? evento.prioridad_nueva) : "Sin prioridad"}</p>
                     {evento.respuesta_publica_nueva && <p className="mt-1 rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/30">Respuesta pública: {evento.respuesta_publica_nueva}</p>}

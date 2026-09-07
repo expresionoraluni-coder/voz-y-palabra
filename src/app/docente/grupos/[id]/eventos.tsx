@@ -129,7 +129,7 @@ export default function Eventos({
             disabled={!unidadId}
             className="self-start"
           >
-            {cargando ? "Guardando..." : "Agregar fecha"}
+            {cargando ? "Guardando…" : "Agregar fecha"}
           </Boton>
         </form>
 
@@ -144,10 +144,10 @@ export default function Eventos({
                   key={ev.id}
                   className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800/60"
                 >
-                  <CalendarDays className="size-4 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+                  <CalendarDays className="size-4 shrink-0 text-slate-400 dark:text-slate-400" aria-hidden="true" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{ev.titulo}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {unidad ? `Unidad ${unidad.orden}` : ""} · {textoFaltan(dias)}
                     </p>
                   </div>
