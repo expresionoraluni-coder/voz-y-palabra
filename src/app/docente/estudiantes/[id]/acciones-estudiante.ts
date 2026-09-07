@@ -8,7 +8,7 @@ import { mensajeError } from "@/lib/mensaje-error";
 import { normalizarNombre } from "@/lib/normalizar-nombre";
 import { esUuid } from "@/lib/validar-entrega";
 
-type Resultado = { ok: true; codigoAcceso?: string } | { ok: false; error: string };
+type Resultado = { ok: true } | { ok: false; error: string };
 
 async function validarDocenteYEstudiante(estudianteId: string) {
   if (!esUuid(estudianteId)) return { ok: false as const, error: "El estudiante no es válido." };
@@ -35,7 +35,7 @@ async function validarDocenteYEstudiante(estudianteId: string) {
     .maybeSingle();
   if (!grupo) return { ok: false as const, error: "No tienes permiso sobre este estudiante." };
 
-  return { ok: true as const, admin, estudiante, supabase };
+  return { ok: true as const, admin, estudiante };
 }
 
 export async function darDeBajaEstudiante(estudianteId: string): Promise<Resultado> {
@@ -44,16 +44,7 @@ export async function darDeBajaEstudiante(estudianteId: string): Promise<Resulta
 
   const { error } = await acceso.admin
     .from("estudiantes")
-    .update({
-      activo: false,
-      auth_user_id: null,
-      nip_hash: null,
-      debe_cambiar_nip: true,
-      activacion_hash: null,
-      activacion_expira_en: null,
-      activacion_generada_en: null,
-      activacion_usada_en: null,
-    })
+    .update({ activo: false, auth_user_id: null, debe_cambiar_nip: true })
     .eq("id", estudianteId);
   return error ? { ok: false, error: mensajeError(error) } : { ok: true };
 }
@@ -62,16 +53,8 @@ export async function reactivarEstudiante(estudianteId: string): Promise<Resulta
   const acceso = await validarDocenteYEstudiante(estudianteId);
   if (!acceso.ok) return acceso;
 
-  const { data, error } = await acceso.supabase.rpc("restablecer_accesos_estudiantes", {
-    p_grupo_id: acceso.estudiante.grupo_id,
-    p_estudiante_ids: [estudianteId],
-  });
-  if (error) return { ok: false, error: mensajeError(error) };
-  const codigoAcceso = (data as { accesos?: Array<{ codigo_activacion?: unknown }> } | null)?.accesos?.[0]?.codigo_activacion;
-  if (typeof codigoAcceso !== "string" || !/^[0-9A-F]{16}$/.test(codigoAcceso)) {
-    return { ok: false, error: "Se reactivó al estudiante, pero no pudimos mostrar el código. Restablece el acceso antes de compartirlo." };
-  }
-  return { ok: true, codigoAcceso };
+  const { error } = await acceso.admin.from("estudiantes").update({ activo: true }).eq("id", estudianteId);
+  return error ? { ok: false, error: mensajeError(error) } : { ok: true };
 }
 
 export async function eliminarEstudiante(estudianteId: string): Promise<Resultado> {
@@ -117,3 +100,4 @@ export async function editarEstudiante(
     .eq("id", estudianteId);
   return error ? { ok: false, error: mensajeError(error) } : { ok: true };
 }
+

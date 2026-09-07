@@ -7,19 +7,19 @@ Este documento separa los controles técnicos ya implementados de las decisiones
 | Datos | Finalidad operativa | Acceso previsto |
 | --- | --- | --- |
 | Nombre, grupo y boleta o identificador escolar | Identificar a la persona dentro de su grupo y dar seguimiento al curso | La propia persona estudiante y la docente responsable del grupo; el servidor los usa para validar el acceso |
-| Código de activación y NIP | Activar la cuenta y autenticar accesos posteriores | El código se muestra una sola vez a la docente; en la base solo se guardan hashes, nunca el valor legible |
+| Últimos cuatro dígitos de la boleta y NIP | Validar el primer acceso y autenticar accesos posteriores | Los últimos cuatro dígitos solo se comprueban contra la boleta; después se guarda únicamente el hash del NIP personal |
 | Correo docente | Confirmar y recuperar una cuenta docente | La propia docente y los servicios de autenticación; no se expone en el catálogo público |
 | Respuestas, puntajes, reflexiones, confianza y avance | Conservar evidencias de aprendizaje y mostrar retroalimentación | La propia persona estudiante y la docente responsable de su grupo |
 | Avisos y calendario | Organizar la experiencia del grupo | Integrantes del grupo correspondiente y su docente |
 | Solicitudes de ayuda y su historial | Resolver incidencias y dejar trazabilidad | La persona que reporta y la cuenta administrativa autorizada, según el campo |
 | Eventos técnicos mínimos y límites de intentos | Prevenir abuso, investigar fallas y proteger cuentas | Procesos de servidor y administración autorizada |
 
-No se debe escribir una contraseña, NIP, código de activación, token ni información de terceras personas en una solicitud de ayuda.
+No se debe escribir una contraseña, NIP, token ni información de terceras personas en una solicitud de ayuda.
 
 ## Controles técnicos implementados
 
 - [x] La boleta funciona como identificador, no como contraseña ni como fuente del NIP inicial.
-- [x] Los códigos de activación son aleatorios, expirables, se almacenan con hash y se muestran una sola vez.
+- [x] El primer acceso estudiantil comprueba los últimos cuatro dígitos de la boleta y, después, conserva únicamente el hash del NIP personal.
 - [x] Una sesión pendiente de crear su NIP no puede consultar respuestas, progreso ni datos del grupo.
 - [x] El correo docente debe confirmarse antes de completar el perfil.
 - [x] La invitación docente se vincula a la cuenta que la usó y no se vuelve a pedir después de confirmar el correo.

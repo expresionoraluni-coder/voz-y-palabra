@@ -7,14 +7,15 @@ import { createClient } from "@/lib/supabase/client";
 import { mensajeErrorRpc } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import Alert from "@/components/ui/alert";
-import { ErrorText, Field, Input, Label, HelpText } from "@/components/ui/field";
+import { ErrorText } from "@/components/ui/field";
 import CampoNip from "@/components/ui/campo-nip";
 import Boton from "@/components/ui/button";
 
 /**
  * Se muestra en vez de todo el contenido del hub (ver layout.tsx) cuando
- * estudiantes.debe_cambiar_nip es true. El código de activación solo abre
- * esta pantalla y debe sustituirse por un NIP personal antes de leer datos.
+ * estudiantes.debe_cambiar_nip es true: el NIP con el que entró es un dato
+ * conocible (últimos dígitos de su boleta), no un secreto que haya elegido
+ * él mismo. No tiene opción de "cancelar" ni "más tarde" a propósito.
  */
 export default function CambiarNipObligatorio() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function CambiarNipObligatorio() {
       return;
     }
     if (nipNuevo === nipActual) {
-      setError("Tu NIP nuevo debe ser distinto al código con el que entraste.");
+      setError("Tu NIP nuevo debe ser distinto al de tu boleta.");
       return;
     }
 
@@ -72,15 +73,16 @@ export default function CambiarNipObligatorio() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           Antes de continuar, cambia tu NIP
         </h1>
-        <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-          Entraste con un código personal de un solo uso. Ahora crea un NIP de cuatro números que solo tú conozcas.
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-500 dark:text-slate-500">
+          Entraste con el NIP que te asignamos desde tu boleta escolar (un compañero podría
+          conocerlo). Cámbialo por uno que solo tú sepas.
         </p>
       </div>
 
       <div className="w-full max-w-sm">
         <Alert tono="info" titulo="Cómo empezar en este ingreso">
           <ol className="list-decimal space-y-1 pl-4">
-            <li>Cambia el código de activación por un NIP de cuatro números que solo tú conozcas.</li>
+            <li>Cambia el NIP temporal por uno de cuatro números que solo tú conozcas.</li>
             <li>Al guardar, volverás a Inicio y verás tu primer paso.</li>
             <li>Define tu meta y avanza por las actividades en el orden indicado.</li>
           </ol>
@@ -93,21 +95,14 @@ export default function CambiarNipObligatorio() {
             <KeyRound className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
             Cambiar mi NIP
           </p>
-          <Field>
-            <Label htmlFor="codigo-actual">Código personal de acceso</Label>
-            <Input
-              id="codigo-actual"
-              required
-              type={visible ? "text" : "password"}
-              inputMode="text"
-              pattern="[0-9A-Fa-f]{16}"
-              maxLength={16}
-              value={nipActual}
-              onChange={(e) => setNipActual(e.target.value.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 16))}
-              autoComplete="off"
-            />
-            <HelpText>Es el código de 16 caracteres que te entregó tu profesora.</HelpText>
-          </Field>
+          <CampoNip
+            id="nip-actual"
+            etiqueta="Tu NIP actual (los últimos 4 dígitos de tu boleta)"
+            valor={nipActual}
+            onChange={setNipActual}
+            visible={visible}
+            onToggleVisible={() => setVisible((v) => !v)}
+          />
           <CampoNip
             id="nip-nuevo"
             etiqueta="Tu NIP nuevo"
@@ -131,13 +126,14 @@ export default function CambiarNipObligatorio() {
           <Boton
             type="submit"
             cargando={cargando}
-            disabled={nipActual.length !== 16 || nipNuevo.length !== 4 || nipNuevo !== nipNuevoConfirmar}
+            disabled={nipNuevo.length === 4 && nipNuevo !== nipNuevoConfirmar}
             className="w-full"
           >
-            {cargando ? "Guardando…" : "Guardar y continuar"}
+            {cargando ? "Guardando..." : "Guardar y continuar"}
           </Boton>
         </form>
       </Card>
     </div>
   );
 }
+

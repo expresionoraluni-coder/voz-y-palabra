@@ -62,7 +62,7 @@ export default async function ActividadEstudiante({
   // nunca con el JWT de sesión del estudiante.
   // Primero se resuelve el estado del estudiante. No se consulta contenido
   // curricular con el cliente administrativo mientras el código de
-  // activación siga pendiente de sustituirse por un NIP personal.
+  // el NIP inicial siga pendiente de sustituirse por uno personal.
   const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
     .select("id, grupo_id, debe_cambiar_nip")

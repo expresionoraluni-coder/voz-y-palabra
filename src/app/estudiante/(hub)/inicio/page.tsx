@@ -68,7 +68,7 @@ export default async function InicioEstudiante({
 
   // Los layouts y las páginas pueden resolverse en paralelo. Este guard en
   // la propia página evita consultar datos del curso mientras el código de
-  // activación todavía no se ha sustituido por un NIP personal.
+  // el NIP inicial todavía no se ha sustituido por uno personal.
   if (estudiante.debe_cambiar_nip) return <CambiarNipObligatorio />;
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;

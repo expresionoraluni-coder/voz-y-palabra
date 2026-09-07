@@ -203,8 +203,6 @@ returns table(id uuid, nombre text, grupo_id uuid, grupo_nombre text, nip_nuevo 
 language plpgsql security definer set search_path = public, extensions
 as $$
 declare v_grupo record; v_estudiante record; v_intentos_nombre record; v_intentos_grupo int;
-  v_credencial text := upper(regexp_replace(coalesce(p_nip, ''), '[^0-9A-F]', '', 'g'));
-  v_es_activacion boolean;
   v_error_datos constant text := 'No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.';
   v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
@@ -218,10 +216,7 @@ begin
   if p_nombre is null or length(trim(p_nombre)) = 0 or length(p_nombre) > 200 then
     raise exception 'Escribe tu nombre completo.';
   end if;
-  v_es_activacion := v_credencial ~ '^[0-9A-F]{16}$';
-  if not v_es_activacion and v_credencial !~ '^[0-9]{4}$' then
-    raise exception 'Escribe tu NIP de 4 dígitos o el código de acceso de 16 caracteres.';
-  end if;
+  if coalesce(p_nip, '') !~ '^[0-9]{4}$' then raise exception 'Tu NIP debe ser de 4 dígitos.'; end if;
   select g.id, g.nombre into v_grupo from public.grupos g where g.codigo_acceso = trim(p_codigo) and g.activo = true;
   if v_grupo.id is null then perform pg_sleep(0.2); return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return; end if;
   insert into public.intentos_nombre_grupo (grupo_id, intentos, ventana_inicio)
@@ -241,7 +236,7 @@ begin
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_intentos_nombre.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
   select e.id, e.nombre, e.boleta, e.nip_hash, e.activo, e.auth_user_id, e.debe_cambiar_nip,
-         e.activacion_hash, e.activacion_expira_en, e.intentos_fallidos, e.bloqueado_hasta into v_estudiante
+         e.intentos_fallidos, e.bloqueado_hasta into v_estudiante
     from public.estudiantes e where e.grupo_id = v_grupo.id and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre)
     for update;
   if v_estudiante.id is null then
@@ -258,32 +253,25 @@ begin
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_estudiante.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
   delete from public.intentos_nombre_estudiante where usuario_id = auth.uid();
-  if v_estudiante.debe_cambiar_nip then
-    if not v_es_activacion
-       or v_estudiante.activacion_hash is null
-       or v_estudiante.activacion_expira_en is null
-       or v_estudiante.activacion_expira_en <= now()
-       or extensions.crypt(v_credencial, v_estudiante.activacion_hash) <> v_estudiante.activacion_hash
-       or (v_estudiante.auth_user_id is not null and v_estudiante.auth_user_id <> auth.uid()) then
-      update public.estudiantes
-         set intentos_fallidos = v_estudiante.intentos_fallidos + 1,
-             bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end
-       where public.estudiantes.id = v_estudiante.id;
+  if v_estudiante.nip_hash is null then
+    if v_estudiante.boleta is null or right(regexp_replace(v_estudiante.boleta, '\D', '', 'g'), 4) <> p_nip then
       perform pg_sleep(0.2);
-      return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos;
-      return;
+      return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
+    end if;
+    if v_estudiante.auth_user_id is not null and v_estudiante.auth_user_id <> auth.uid() then
+      perform pg_sleep(0.2);
+      return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
     end if;
     update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
-    update public.estudiantes
-       set auth_user_id = auth.uid(), activacion_usada_en = coalesce(activacion_usada_en, now()),
-           intentos_fallidos = 0, bloqueado_hasta = null
-     where public.estudiantes.id = v_estudiante.id;
-    return query select v_estudiante.id, v_estudiante.nombre, v_grupo.id, v_grupo.nombre, true, null::text;
-    return;
+    update public.estudiantes set auth_user_id = auth.uid(), nip_hash = extensions.crypt(p_nip, extensions.gen_salt('bf')), intentos_fallidos = 0, bloqueado_hasta = null where public.estudiantes.id = v_estudiante.id;
+    return query select v_estudiante.id, v_estudiante.nombre, v_grupo.id, v_grupo.nombre, true, null::text; return;
   end if;
-  if v_es_activacion or v_estudiante.nip_hash is null
-     or extensions.crypt(v_credencial, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
+  if extensions.crypt(p_nip, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
     update public.estudiantes set intentos_fallidos = v_estudiante.intentos_fallidos + 1, bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end where public.estudiantes.id = v_estudiante.id;
+    perform pg_sleep(0.2);
+    return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
+  end if;
+  if v_estudiante.debe_cambiar_nip and v_estudiante.auth_user_id is not null and v_estudiante.auth_user_id <> auth.uid() then
     perform pg_sleep(0.2);
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
   end if;
@@ -293,18 +281,10 @@ begin
 end;
 $$;
 
-drop function if exists public.agregar_estudiantes_con_boleta(uuid, jsonb);
-create or replace function public.agregar_estudiantes_con_activacion(p_grupo_id uuid, p_estudiantes jsonb)
-returns jsonb language plpgsql security definer set search_path = public, extensions
+create or replace function public.agregar_estudiantes_con_boleta(p_grupo_id uuid, p_estudiantes jsonb)
+returns integer language plpgsql security definer set search_path = public, extensions
 as $$
-declare
-  v_item jsonb;
-  v_nombre text;
-  v_boleta text;
-  v_codigo text;
-  v_estudiante_id uuid;
-  v_creados integer := 0;
-  v_accesos jsonb := '[]'::jsonb;
+declare v_item jsonb; v_nombre text; v_boleta text; v_creados integer := 0;
 begin
   if not public.es_docente_activo() then raise exception 'Se requiere una cuenta docente confirmada.'; end if;
   if not exists (select 1 from public.grupos where id = p_grupo_id and docente_id = auth.uid()) then raise exception 'No tienes permiso sobre este grupo.'; end if;
@@ -313,72 +293,35 @@ begin
     v_nombre := public.normalizar_nombre(coalesce(v_item->>'nombre', '')); v_boleta := regexp_replace(coalesce(v_item->>'boleta', ''), '\D', '', 'g');
     if v_nombre = '' then raise exception 'Falta el nombre de un estudiante.'; end if;
     if length(v_boleta) < 4 or length(v_boleta) > 20 then raise exception 'La boleta de "%" no es válida.', v_nombre; end if;
-    v_codigo := upper(encode(extensions.gen_random_bytes(8), 'hex'));
-    insert into public.estudiantes (
-      nombre, grupo_id, boleta, nip_hash, auth_user_id, debe_cambiar_nip,
-      activacion_hash, activacion_generada_en, activacion_expira_en, activacion_usada_en
-    ) values (
-      v_nombre, p_grupo_id, v_boleta, null, null, true,
-      extensions.crypt(v_codigo, extensions.gen_salt('bf')), now(), now() + interval '30 days', null
-    ) returning id into v_estudiante_id;
+    insert into public.estudiantes (nombre, grupo_id, boleta, nip_hash, debe_cambiar_nip) values (v_nombre, p_grupo_id, v_boleta, extensions.crypt(right(v_boleta, 4), extensions.gen_salt('bf')), true);
     v_creados := v_creados + 1;
-    v_accesos := v_accesos || jsonb_build_array(jsonb_build_object(
-      'id', v_estudiante_id,
-      'nombre', v_nombre,
-      'codigo_activacion', v_codigo
-    ));
   end loop;
-  return jsonb_build_object('total', v_creados, 'accesos', v_accesos);
+  return v_creados;
 end;
 $$;
 
 create or replace function public.cambiar_nip_estudiante(p_nip_actual text, p_nip_nuevo text)
 returns text language plpgsql security definer set search_path = public, extensions
 as $$
-declare
-  v_estudiante record;
-  v_credencial text := upper(regexp_replace(coalesce(p_nip_actual, ''), '[^0-9A-F]', '', 'g'));
-  v_credencial_valida boolean := false;
-  v_max_intentos constant int := 5;
-  v_minutos_bloqueo constant int := 15;
+declare v_estudiante record; v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida, intenta de nuevo'; end if;
   if coalesce(auth.jwt() ->> 'is_anonymous', 'false') <> 'true' then
     raise exception 'Este cambio requiere una sesión de estudiante.';
   end if;
-  if v_credencial !~ '^[0-9]{4}$' and v_credencial !~ '^[0-9A-F]{16}$' then return 'Tu NIP o código de acceso no es correcto.'; end if;
+  if coalesce(p_nip_actual, '') !~ '^[0-9]{4}$' then return 'Tu NIP actual no es correcto.'; end if;
   if coalesce(p_nip_nuevo, '') !~ '^[0-9]{4}$' then raise exception 'Tu nuevo NIP debe ser de 4 dígitos.'; end if;
-  select id, nip_hash, debe_cambiar_nip, activacion_hash, activacion_expira_en,
-         intentos_fallidos, bloqueado_hasta into v_estudiante
+  select id, nip_hash, intentos_fallidos, bloqueado_hasta into v_estudiante
     from public.estudiantes
     where auth_user_id = auth.uid() and activo = true
     for update;
   if v_estudiante.id is null then raise exception 'No encontramos tu sesión de estudiante, intenta entrar de nuevo.'; end if;
   if v_estudiante.bloqueado_hasta is not null and v_estudiante.bloqueado_hasta > now() then return format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_estudiante.bloqueado_hasta - now())) / 60))); end if;
-  if v_estudiante.debe_cambiar_nip then
-    v_credencial_valida := v_credencial ~ '^[0-9A-F]{16}$'
-      and v_estudiante.activacion_hash is not null
-      and v_estudiante.activacion_expira_en > now()
-      and extensions.crypt(v_credencial, v_estudiante.activacion_hash) = v_estudiante.activacion_hash;
-  else
-    v_credencial_valida := v_credencial ~ '^[0-9]{4}$'
-      and v_estudiante.nip_hash is not null
-      and extensions.crypt(v_credencial, v_estudiante.nip_hash) = v_estudiante.nip_hash;
-  end if;
-  if not coalesce(v_credencial_valida, false) then
+  if extensions.crypt(p_nip_actual, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
     update public.estudiantes set intentos_fallidos = v_estudiante.intentos_fallidos + 1, bloqueado_hasta = case when v_estudiante.intentos_fallidos + 1 >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else bloqueado_hasta end where id = v_estudiante.id;
-    perform pg_sleep(0.5); return 'Tu NIP o código de acceso no es correcto.';
+    perform pg_sleep(0.5); return 'Tu NIP actual no es correcto.';
   end if;
-  update public.estudiantes
-     set nip_hash = extensions.crypt(p_nip_nuevo, extensions.gen_salt('bf')),
-         intentos_fallidos = 0,
-         bloqueado_hasta = null,
-         debe_cambiar_nip = false,
-         activacion_hash = null,
-         activacion_expira_en = null,
-         activacion_generada_en = null,
-         activacion_usada_en = null
-   where id = v_estudiante.id;
+  update public.estudiantes set nip_hash = extensions.crypt(p_nip_nuevo, extensions.gen_salt('bf')), intentos_fallidos = 0, bloqueado_hasta = null, debe_cambiar_nip = false where id = v_estudiante.id;
   return null;
 end;
 $$;
@@ -388,69 +331,21 @@ create function public.reiniciar_nip_estudiante(p_estudiante_id uuid)
 returns text language plpgsql security definer set search_path = public, extensions
 as $$
 declare
-  v_codigo_activacion text;
+  v_nip_temporal text;
+  v_bytes bytea;
 begin
   if not public.es_docente_activo() then raise exception 'Se requiere una cuenta docente confirmada.'; end if;
   if not exists (select 1 from public.estudiantes e join public.grupos g on g.id = e.grupo_id where e.id = p_estudiante_id and g.docente_id = auth.uid()) then raise exception 'No tienes permiso sobre este estudiante.'; end if;
-  v_codigo_activacion := upper(encode(extensions.gen_random_bytes(8), 'hex'));
+  v_bytes := extensions.gen_random_bytes(2);
+  v_nip_temporal := (1000 + (get_byte(v_bytes, 0) * 256 + get_byte(v_bytes, 1)) % 9000)::text;
   update public.estudiantes
-     set nip_hash = null,
+     set nip_hash = extensions.crypt(v_nip_temporal, extensions.gen_salt('bf')),
          auth_user_id = null,
          intentos_fallidos = 0,
          bloqueado_hasta = null,
-         debe_cambiar_nip = true,
-         activacion_hash = extensions.crypt(v_codigo_activacion, extensions.gen_salt('bf')),
-         activacion_generada_en = now(),
-         activacion_expira_en = now() + interval '30 days',
-         activacion_usada_en = null
+         debe_cambiar_nip = true
    where id = p_estudiante_id;
-  if not found then raise exception 'No encontramos este estudiante.'; end if;
-  return v_codigo_activacion;
-end;
-$$;
-
-create or replace function public.restablecer_accesos_estudiantes(p_grupo_id uuid, p_estudiante_ids uuid[])
-returns jsonb language plpgsql security definer set search_path = public, extensions, pg_catalog
-as $$
-declare
-  v_id uuid;
-  v_nombre text;
-  v_codigo text;
-  v_total int := 0;
-  v_accesos jsonb := '[]'::jsonb;
-  v_ids uuid[];
-begin
-  if not public.es_docente_activo() then raise exception 'Se requiere una cuenta docente confirmada.'; end if;
-  if not exists (select 1 from public.grupos where id = p_grupo_id and docente_id = auth.uid()) then raise exception 'No tienes permiso sobre este grupo.'; end if;
-  select array_agg(distinct valor) into v_ids
-  from unnest(coalesce(p_estudiante_ids, '{}'::uuid[])) as ids(valor);
-  if coalesce(cardinality(v_ids), 0) not between 1 and 100 then raise exception 'La selección de estudiantes no es válida.'; end if;
-
-  for v_id, v_nombre in
-    select e.id, e.nombre
-    from public.estudiantes e
-    where e.grupo_id = p_grupo_id and e.id = any(v_ids)
-    order by e.nombre
-    for update
-  loop
-    v_codigo := upper(encode(extensions.gen_random_bytes(8), 'hex'));
-    update public.estudiantes
-       set activo = true,
-           auth_user_id = null,
-           nip_hash = null,
-           debe_cambiar_nip = true,
-           intentos_fallidos = 0,
-           bloqueado_hasta = null,
-           activacion_hash = extensions.crypt(v_codigo, extensions.gen_salt('bf')),
-           activacion_generada_en = now(),
-           activacion_expira_en = now() + interval '30 days',
-           activacion_usada_en = null
-     where id = v_id;
-    v_total := v_total + 1;
-    v_accesos := v_accesos || jsonb_build_array(jsonb_build_object('id', v_id, 'nombre', v_nombre, 'codigo_activacion', v_codigo));
-  end loop;
-  if v_total <> cardinality(v_ids) then raise exception 'Uno de los estudiantes no pertenece a este grupo.'; end if;
-  return jsonb_build_object('total', v_total, 'accesos', v_accesos);
+  return v_nip_temporal;
 end;
 $$;
 
@@ -491,9 +386,8 @@ begin
 end;
 $$;
 
--- No se reinterpreta una respuesta histórica al cambiar el contenido de una
--- actividad que ya tiene entregas. El video de apoyo y las URL de una
--- comparación de videos siguen siendo editables porque no alteran la clave.
+-- Las respuestas históricas conservan su clave, pero una docente puede
+-- reparar las dos URL de una comparación de videos sin alterar entregas.
 create or replace function public.proteger_actividad_con_entregas()
 returns trigger language plpgsql security definer set search_path = public
 as $$
@@ -842,14 +736,10 @@ grant all on table public.configuracion_plataforma,
   public.intentos_nombre_grupo
 to service_role;
 
-revoke execute on function public.agregar_estudiantes_con_activacion(uuid, jsonb) from public, anon;
-grant execute on function public.agregar_estudiantes_con_activacion(uuid, jsonb) to authenticated;
+revoke execute on function public.agregar_estudiantes_con_boleta(uuid, jsonb) from public, anon;
+grant execute on function public.agregar_estudiantes_con_boleta(uuid, jsonb) to authenticated;
 revoke execute on function public.reiniciar_nip_estudiante(uuid) from public, anon;
 grant execute on function public.reiniciar_nip_estudiante(uuid) to authenticated;
-revoke execute on function public.restablecer_accesos_estudiantes(uuid, uuid[]) from public, anon;
-grant execute on function public.restablecer_accesos_estudiantes(uuid, uuid[]) to authenticated;
-revoke execute on function public.crear_actividad_docente(uuid, uuid, text, text, text, text, jsonb) from public, anon;
-grant execute on function public.crear_actividad_docente(uuid, uuid, text, text, text, text, jsonb) to authenticated;
 revoke execute on function public.registrar_orientacion_docente(uuid, text, text, boolean) from public, anon;
 grant execute on function public.registrar_orientacion_docente(uuid, text, text, boolean) to authenticated;
 revoke execute on function public.proteger_actividad_con_entregas() from public, anon, authenticated;
@@ -1595,3 +1485,4 @@ $$;
 drop trigger if exists trg_registrar_evento_reporte_atencion on public.reportes;
 create trigger trg_registrar_evento_reporte_atencion after update on public.reportes for each row execute function public.registrar_evento_reporte_atencion();
 revoke execute on function public.registrar_evento_reporte_atencion() from public, anon, authenticated;
+

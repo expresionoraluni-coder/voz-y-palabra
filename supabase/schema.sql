@@ -52,10 +52,6 @@ create table estudiantes (
   intentos_fallidos int not null default 0,
   bloqueado_hasta timestamptz,
   debe_cambiar_nip boolean not null default false,
-  activacion_hash text,
-  activacion_expira_en timestamptz,
-  activacion_generada_en timestamptz,
-  activacion_usada_en timestamptz,
   created_at timestamptz not null default now()
 );
 

@@ -4,7 +4,7 @@ Esta lista acompaña el flujo autodirigido. La orientación de una docente es op
 
 ## Recorrido principal
 
-- Ingresar con código de grupo, nombre y código de activación en el primer acceso; después, usar el NIP personal de cuatro dígitos.
+- Ingresar con código de grupo, nombre y los últimos cuatro dígitos de la boleta en el primer acceso; después, usar el NIP personal de cuatro dígitos.
 - Ver inicio y la guía de primera ruta.
 - Abrir una unidad.
 - Definir la meta y la confianza inicial.

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  CheckCircle2,
   Eye,
   EyeOff,
   GraduationCap,
@@ -20,7 +21,7 @@ function mensajeErrorIngreso(mensaje: string): string {
   const texto = mensaje.toLowerCase();
   if (texto.includes("demasiados intentos")) return mensaje;
   if (texto.includes("demasiadas solicitudes")) return "Hay muchos intentos desde esta red. Espera unos minutos y vuelve a intentarlo.";
-  if (texto.includes("código de acceso de 16")) return "Escribe el código personal de 16 caracteres o tu NIP de 4 números.";
+  if (texto.includes("nip debe ser de 4 dígitos")) return "Tu NIP debe tener exactamente 4 números.";
   if (texto.includes("sesión inválida")) return "Tu sesión caducó. Intenta entrar de nuevo.";
   return "No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.";
 }
@@ -52,8 +53,8 @@ export default function IngresoEstudiante() {
       setError("Escribe tu nombre tal como aparece en la lista del grupo.");
       return;
     }
-    if (!/^\d{4}$/.test(nip) && !/^[0-9A-F]{16}$/.test(nip)) {
-      setError("Escribe el código personal de 16 caracteres o tu NIP de 4 números.");
+    if (!/^\d{4}$/.test(nip)) {
+      setError("Tu NIP debe tener exactamente 4 números.");
       return;
     }
 
@@ -71,6 +72,13 @@ export default function IngresoEstudiante() {
     // la cuenta de la docente en vez de una identidad propia — heredando
     // sin querer sus permisos.
     const { data: usuario, error: usuarioError } = await supabase.auth.getUser();
+    if (usuario?.user?.is_anonymous && !usuarioError) {
+      const { data: estudianteLigado, error: estudianteLigadoError } = await supabase
+        .from("estudiantes")
+        .select("id")
+        .maybeSingle();
+      limpiarSesionAnonimaSiFalla = !estudianteLigado && !estudianteLigadoError;
+    }
     if (usuarioError || !usuario.user || !usuario.user.is_anonymous) {
       if (usuario?.user && !usuario.user.is_anonymous) {
         await supabase.auth.signOut();
@@ -144,8 +152,8 @@ export default function IngresoEstudiante() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           Entrar como estudiante
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          No necesitas correo ni contraseña. Usa tu nombre, el código del grupo y tu credencial personal.
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
+          No necesitas correo ni contraseña. Solo tu nombre, el código de tu grupo y tu NIP.
         </p>
       </div>
 
@@ -184,18 +192,18 @@ export default function IngresoEstudiante() {
             <HelpText id="nombre-ayuda">Apellidos primero, después nombres, tal como aparece en la lista. Sin abreviaturas. Mayúsculas, minúsculas y acentos no cambian el resultado.</HelpText>
           </Field>
           <Field>
-            <Label htmlFor="nip">Código personal o NIP</Label>
+            <Label htmlFor="nip">Tu NIP (4 dígitos)</Label>
             <div className="relative">
               <Input
                 id="nip"
                 required
                 type={nipVisible ? "text" : "password"}
-                inputMode="text"
-                pattern="(?:[0-9]{4}|[0-9A-Fa-f]{16})"
-                maxLength={16}
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
                 value={nip}
-                onChange={(e) => setNip(e.target.value.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 16))}
-                placeholder="Código de 16 caracteres o NIP"
+                onChange={(e) => setNip(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="••••"
                 autoComplete="off"
                 className="pr-11"
                 aria-describedby="nip-ayuda"
@@ -209,11 +217,11 @@ export default function IngresoEstudiante() {
                 {nipVisible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
               </button>
             </div>
-            <HelpText id="nip-ayuda">Primera vez: usa el código personal que te entregó tu profesora. Después usa el NIP de cuatro números que tú elegiste.</HelpText>
+            <HelpText id="nip-ayuda">Primera vez: últimos 4 dígitos de tu boleta. Después de entrar tendrás que cambiarlo por uno propio de cuatro números.</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">
-            {cargando ? "Entrando…" : "Entrar"}
+            {cargando ? "Entrando..." : "Entrar"}
           </Boton>
         </form>
       </Card>
@@ -222,12 +230,17 @@ export default function IngresoEstudiante() {
         <Alert tono="info" titulo="¿Olvidaste tu NIP?">
           <span className="flex items-start gap-1.5">
             <LifeBuoy className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            Pídele a tu profesora que restablezca tu acceso desde tu ficha. Te dará un código personal;
-            después la plataforma te pedirá crear un NIP nuevo. No compartas el código en el chat del grupo.
+            Pídele a tu profesora que lo reinicie desde tu ficha. Te dará un NIP temporal para entrar;
+            después la plataforma te pedirá crear uno nuevo. No lo compartas en el chat del grupo.
           </span>
         </Alert>
       </div>
 
+      <p className="flex items-center gap-1.5 text-center text-xs text-slate-500 dark:text-slate-400">
+        <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+        No necesitas correo ni contraseña para entrar como estudiante.
+      </p>
     </main>
   );
 }
+

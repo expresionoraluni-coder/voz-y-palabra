@@ -136,11 +136,8 @@ if (/auth_user_id = \(select auth\.uid\(\)\) and activo = true\)\)/.test(schema)
 if (functions.includes("estudiante_tiene_nip")) {
   failures.push("functions: estudiante_tiene_nip es legado y no debe formar parte de la reconstrucción.");
 }
-if (!functions.includes("agregar_estudiantes_con_activacion") || !functions.includes("returns jsonb language plpgsql security definer")) {
-  failures.push("functions: el alta debe devolver únicamente códigos de activación de una sola visualización.");
-}
-if (/create(?:\s+or\s+replace)?\s+function\s+public\.agregar_estudiantes_con_boleta/i.test(functions)) {
-  failures.push("functions: la boleta no debe volver a funcionar como credencial inicial.");
+if (!functions.includes("agregar_estudiantes_con_boleta") || !functions.includes("extensions.crypt(right(v_boleta, 4), extensions.gen_salt('bf'))")) {
+  failures.push("functions: el alta debe guardar los últimos cuatro dígitos de la boleta como credencial inicial.");
 }
 if (/create\s+policy\s+"cualquiera con sesi[oó]n lee (actividades|unidades)"/i.test(schema)) {
   failures.push("supabase/schema.sql: no debe restaurar las policies de lectura abierta.");
@@ -237,8 +234,8 @@ if (!progresoUnidad.includes("return !requiereReintentoAlternativo") || !progres
 if (!functions.includes("from public.estudiantes e where e.grupo_id = v_grupo.id and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre)\n    for update")) {
   failures.push("functions: el ingreso estudiantil debe bloquear la fila antes de actualizar intentos.");
 }
-if (!functions.includes("debe_cambiar_nip = true") || !functions.includes("extensions.gen_random_bytes(8)") || !functions.includes("activacion_expira_en")) {
-  failures.push("functions: el reinicio debe emitir una activación aleatoria y expirable, y forzar un NIP nuevo.");
+if (!functions.includes("debe_cambiar_nip = true") || !functions.includes("v_nip_temporal") || !functions.includes("get_byte(v_bytes")) {
+  failures.push("functions: el reinicio debe emitir un NIP temporal y forzar un NIP nuevo.");
 }
 if (!schema.includes("actividades_video_url_https_check") || !videoEmbed.includes("esVideoUrlPermitida")) {
   failures.push("video: las URLs deben estar restringidas a HTTPS y hosts permitidos.");
@@ -466,7 +463,7 @@ if (
   !requerirEstudiante.includes("permitirCambioNip") ||
   !inicioEstudiante.includes("<CambiarNipObligatorio />")
 ) {
-  failures.push("activación: las páginas hijas no deben consultar datos antes de sustituir el código por un NIP personal.");
+  failures.push("acceso inicial: las páginas hijas no deben consultar datos antes de sustituir el NIP inicial por uno personal.");
 }
 
 if (failures.length > 0) {

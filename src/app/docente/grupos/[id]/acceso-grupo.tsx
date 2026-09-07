@@ -31,7 +31,7 @@ export default function AccesoGrupo({ codigo, nombreGrupo }: { codigo: string; n
     const texto =
       tipo === "codigo"
         ? codigo
-        : `Grupo: ${nombreGrupo}\nCódigo de grupo: ${codigo}\n\nPara entrar a Voz y Palabra:\n1. Abre ${window.location.origin}/ingreso/estudiante\n2. Escribe el código de grupo tal como aparece aquí: ${codigo}\n3. Escribe tu nombre completo igual que en la lista: apellidos primero y después nombres, sin abreviaturas. Puedes escribirlo sin acentos. Ejemplo: GARCIA LOPEZ MARIA.\n4. La primera vez, usa el código personal de 16 caracteres que te entregará la profesora en privado.\n5. Crea un NIP propio de cuatro números y guárdalo en privado. Si lo olvidas, pide a la profesora que restablezca tu acceso.`;
+        : `Grupo: ${nombreGrupo}\nCódigo de acceso: ${codigo}\n\nPara entrar a Voz y Palabra:\n1. Abre ${window.location.origin}/ingreso/estudiante\n2. Escribe el código de acceso tal como aparece aquí: ${codigo}\n3. Escribe tu nombre completo igual que en la lista: apellidos primero y después nombres, sin abreviaturas. Puedes escribirlo sin acentos. Ejemplo: GARCIA LOPEZ MARIA.\n4. La primera vez, usa como NIP los últimos 4 dígitos de tu boleta.\n5. Al entrar, cambia ese NIP por uno propio y guárdalo en privado. Si lo olvidas, pide a la profesora que lo reinicie.`;
 
     setError(false);
     try {
@@ -54,12 +54,12 @@ export default function AccesoGrupo({ codigo, nombreGrupo }: { codigo: string; n
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Acceso al grupo</h2>
           <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
             Comparte estas instrucciones con tu grupo. El nombre debe ir como en la lista: apellidos primero,
-            después nombres y sin abreviaturas. Entrega además a cada estudiante su código personal en privado.
+            después nombres y sin abreviaturas. El NIP inicial son los últimos 4 dígitos de la boleta.
           </p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2.5 dark:border-indigo-800 dark:bg-slate-900">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Código de grupo</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Código de acceso</span>
         <code className="mr-auto font-mono text-lg font-bold tracking-widest text-indigo-700 dark:text-indigo-300">{codigo}</code>
         <Boton type="button" variant="secondary" size="sm" onClick={() => copiar("codigo")}>
           {copiado === "codigo" ? <Check className="size-4" aria-hidden="true" /> : <Clipboard className="size-4" aria-hidden="true" />}
@@ -78,3 +78,4 @@ export default function AccesoGrupo({ codigo, nombreGrupo }: { codigo: string; n
     </Card>
   );
 }
+
