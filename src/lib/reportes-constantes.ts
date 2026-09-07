@@ -61,7 +61,7 @@ export const PRIORIDADES_REPORTE: Record<string, string> = {
 // Son ayudas para quien atiende el caso, no respuestas automáticas. La
 // resolución siempre debe confirmar lo que se revisó realmente.
 export const SUGERENCIAS_ATENCION: Record<string, string> = {
-  estudiante_acceso: "Confirma que el código, el nombre y el NIP coincidan con la lista del grupo. Si el problema continúa, restablece el acceso y entrega el código nuevo de forma privada.",
+  estudiante_acceso: "Confirma que el código y el nombre coincidan con la lista del grupo; en el primer ingreso usa los últimos cuatro dígitos de la boleta y después el NIP personal. Si el problema continúa, restablece el acceso y entrega el NIP temporal de forma privada.",
   estudiante_actividad: "Revisa el intento guardado, la actividad anterior y si la respuesta quedó pendiente de mejorar antes de continuar.",
   estudiante_avance: "Verifica la actividad que mantiene bloqueado el avance y confirma que la reflexión de la unidad esté guardada.",
   estudiante_instruccion: "Aclara el objetivo de la actividad con una indicación breve y señala qué debe guardar para continuar.",

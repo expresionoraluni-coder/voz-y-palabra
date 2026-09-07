@@ -18,7 +18,7 @@ No se debe escribir una contraseña, NIP, token ni información de terceras pers
 
 ## Controles técnicos implementados
 
-- [x] La boleta funciona como identificador, no como contraseña ni como fuente del NIP inicial.
+- [x] La boleta funciona como identificador y sus últimos cuatro dígitos sirven únicamente para el primer ingreso; no sustituyen el NIP personal posterior.
 - [x] El primer acceso estudiantil comprueba los últimos cuatro dígitos de la boleta y, después, conserva únicamente el hash del NIP personal.
 - [x] Una sesión pendiente de crear su NIP no puede consultar respuestas, progreso ni datos del grupo.
 - [x] El correo docente debe confirmarse antes de completar el perfil.
@@ -38,6 +38,7 @@ No se debe escribir una contraseña, NIP, token ni información de terceras pers
 - [ ] Definir el cierre de curso: exportación institucional, anonimización o eliminación, responsables y fecha límite.
 - [ ] Definir el procedimiento y plazo para solicitudes de acceso, corrección, exportación y eliminación.
 - [ ] Definir quién autoriza altas y bajas de docentes y administradores, y con qué periodicidad se revisan.
+- [ ] Definir si el alta docente debe limitarse a dominios institucionales o a correos previamente autorizados; el código de invitación y la confirmación de correo prueban autorización y control del buzón, pero no por sí solos que la persona sea docente.
 - [ ] Confirmar proveedores, regiones, transferencias y acuerdos institucionales aplicables a Supabase y Netlify.
 - [ ] Aprobar un procedimiento de incidentes: detección, contención, comunicación, recuperación y registro.
 

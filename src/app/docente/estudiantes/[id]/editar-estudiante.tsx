@@ -77,7 +77,8 @@ export default function EditarEstudiante({
           id="edit-nombre"
           required
           value={nombre}
-          onChange={(e) => setNombre(normalizarNombre(e.target.value))}
+          onChange={(e) => setNombre(e.target.value)}
+          onBlur={(e) => setNombre(normalizarNombre(e.target.value))}
         />
         <HelpText>Se guarda en mayúsculas y sin acentos. Es el nombre con el que entra.</HelpText>
       </Field>

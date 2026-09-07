@@ -1,7 +1,7 @@
 // Mismo criterio que normalizar_nombre() en la base de datos: mayúsculas,
-// sin acentos, sin espacios de más. Se aplica también aquí (no solo en el
-// servidor) para que la docente vea en la tabla exactamente lo que se va a
-// guardar, antes de enviar.
+// sin acentos, sin espacios de más. Se aplica al pegar, comparar y guardar;
+// mientras la docente escribe se conserva el texto tal como lo tecleó para
+// no borrar el espacio que necesita antes de la siguiente palabra.
 export function normalizarNombre(nombre: string): string {
   return nombre
     .normalize("NFD")

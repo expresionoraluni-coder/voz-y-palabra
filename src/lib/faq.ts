@@ -45,11 +45,11 @@ const PREGUNTAS_DOCENTE: Partial<Record<CategoriaReporte, FaqPregunta[]>> = {
 };
 
 const PASOS_FALLBACK: Partial<Record<CategoriaReporte, string[]>> = {
-  estudiante_acceso: ["Usa el código exacto de tu grupo.", "Escribe tu nombre como aparece en la lista.", "Si olvidaste el NIP, pide a tu docente que restablezca tu acceso."],
+  estudiante_acceso: ["Usa el código exacto de tu grupo y escribe tu nombre como aparece en la lista.", "En tu primer ingreso, usa los últimos cuatro dígitos de tu boleta; después entra con el NIP que tú creaste.", "Si olvidaste el NIP, pide a tu docente que restablezca tu acceso y te entregue un NIP temporal."],
   estudiante_actividad: ["Guarda tu respuesta y la reflexión antes de avanzar.", "Si existe una dependencia, completa la actividad anterior y su reflexión.", "Sin variante hay un intento; una variante alternativa permite un segundo intento con otro ejercicio. Con 70% o más es opcional; con menos de 70% debes resolverlo antes de guardar la reflexión y continuar. Los niveles son actividades distintas y no cambian esta regla."],
   estudiante_video: ["Comprueba tu conexión.", "Actualiza una sola vez.", "Prueba otra red o dispositivo."],
   estudiante_avance: ["Confirma que la actividad anterior y su reflexión estén guardadas.", "Si cambias de unidad, completa todas las reflexiones, la reflexión de cierre y la confianza final.", "Actualiza una sola vez después de guardar."],
-  docente_estudiantes: ["Confirma nombre y boleta.", "Corrige filas incompletas o duplicadas.", "Restablece el acceso y entrega el nuevo código de forma privada."],
+  docente_estudiantes: ["Confirma nombre y boleta.", "Corrige filas incompletas o duplicadas.", "Restablece el acceso y entrega el NIP temporal de forma privada."],
   docente_actividad: ["Completa título, instrucciones, tipo y orden.", "Revisa la vista previa.", "Espera la confirmación antes de guardar otra vez."],
   docente_tecnico: ["Espera unos segundos.", "Actualiza una sola vez.", "Prueba otra red o dispositivo."],
 };

@@ -74,8 +74,8 @@ where id = 'c1696cc5-128e-41b0-abac-999fecef94f4'::uuid
   );
 
 update public.faq_articulos
-set resumen = 'Comprueba el grupo, tu nombre y tu credencial de acceso antes de pedir ayuda.',
-    pasos = '["Usa el código exacto de tu grupo.","Escribe tu nombre como aparece en la lista.","Si olvidaste el NIP, pide a tu docente que restablezca tu acceso."]'::jsonb,
+set resumen = 'Comprueba el grupo, tu nombre y el NIP antes de pedir ayuda.',
+    pasos = '["Usa el código exacto de tu grupo y escribe tu nombre como aparece en la lista.","En tu primer ingreso, usa los últimos cuatro dígitos de tu boleta; después entra con el NIP que tú creaste.","Si olvidaste el NIP, pide a tu docente que restablezca tu acceso y te entregue un NIP temporal."]'::jsonb,
     updated_at = now()
 where slug = 'estudiante-acceso';
 
@@ -88,7 +88,7 @@ where slug = 'estudiante-actividad';
 update public.faq_articulos
 set titulo = 'Problema con el acceso estudiantil',
     resumen = 'Revisa la lista, los duplicados y la ficha del estudiante antes de cambiar datos.',
-    pasos = '["Confirma nombre y boleta.","Corrige filas incompletas o duplicadas.","Restablece el acceso y entrega el código nuevo de forma privada."]'::jsonb,
+    pasos = '["Confirma nombre y boleta.","Corrige filas incompletas o duplicadas.","Restablece el acceso y entrega el NIP temporal de forma privada."]'::jsonb,
     preguntas = '[{"id":"causa","pregunta":"¿Qué necesitas resolver?","opciones":[{"id":"carga","etiqueta":"No aparecen tras cargar el archivo"},{"id":"duplicado","etiqueta":"Hay estudiantes duplicados"},{"id":"nip","etiqueta":"Necesito restablecer un acceso"}]}]'::jsonb,
     updated_at = now()
 where slug = 'docente-estudiantes';
@@ -619,5 +619,4 @@ grant execute on function public.reiniciar_nip_estudiante(uuid) to authenticated
 revoke all on function public.validar_invitacion_alta_docente() from public, anon, authenticated;
 
 commit;
-
 

@@ -51,11 +51,7 @@ export default function AgregarEstudiantes({
       conFilaVaciaAlFinal(
         prev.map((f, idx) =>
           idx === i
-            ? {
-                ...f,
-                ...cambios,
-                ...(cambios.nombre !== undefined ? { nombre: normalizarNombre(cambios.nombre) } : {}),
-              }
+            ? { ...f, ...cambios }
             : f,
         ),
       ),
@@ -126,15 +122,16 @@ export default function AgregarEstudiantes({
   // de más) — solo la primera aparición cuenta como nueva.
   function esRepetidaEnLote(fila: Fila, i: number) {
     if (!fila.nombre.trim()) return false;
-    return filas.findIndex((f) => f.nombre.trim() === fila.nombre.trim()) < i;
+    const nombre = normalizarNombre(fila.nombre);
+    return filas.findIndex((f) => normalizarNombre(f.nombre) === nombre) < i;
   }
 
   const invalidas = filas.filter((f) => conContenido(f) && !filaValida(f)).length;
   const excluidas = filas.filter(
-    (f, i) => filaValida(f) && (yaEnGrupo.has(f.nombre) || esRepetidaEnLote(f, i)),
+    (f, i) => filaValida(f) && (yaEnGrupo.has(normalizarNombre(f.nombre)) || esRepetidaEnLote(f, i)),
   ).length;
   const nuevas = filas.filter(
-    (f, i) => filaValida(f) && !yaEnGrupo.has(f.nombre) && !esRepetidaEnLote(f, i),
+    (f, i) => filaValida(f) && !yaEnGrupo.has(normalizarNombre(f.nombre)) && !esRepetidaEnLote(f, i),
   );
   const conAlgunContenido = filas.some(conContenido);
   const listoParaEnviar = invalidas === 0 && nuevas.length > 0;
@@ -196,8 +193,8 @@ export default function AgregarEstudiantes({
         <Label>Paso 1: pega nombre y boleta</Label>
         <HelpText>
           Escribe directamente en la tabla o pega celdas copiadas de Excel. Se reparten solas en
-          las filas y se normalizan a mayúsculas sin acentos. El NIP inicial de cada estudiante
-          son los últimos 4 dígitos de su boleta.
+          las filas. Al guardar, los nombres se normalizan a mayúsculas sin acentos. El NIP
+          inicial de cada estudiante son los últimos 4 dígitos de su boleta.
         </HelpText>
 
         <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400" aria-live="polite">
@@ -244,7 +241,7 @@ export default function AgregarEstudiantes({
               {filas.map((fila, i) => {
                 const llena = conContenido(fila);
                 const valida = filaValida(fila);
-                const excluida = valida && (yaEnGrupo.has(fila.nombre) || esRepetidaEnLote(fila, i));
+                const excluida = valida && (yaEnGrupo.has(normalizarNombre(fila.nombre)) || esRepetidaEnLote(fila, i));
                 return (
                   <tr key={i} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800">
                     <td className="px-2 py-1.5 text-center">
@@ -272,6 +269,7 @@ export default function AgregarEstudiantes({
                       <Input
                         value={fila.nombre}
                         onChange={(e) => actualizarFila(i, { nombre: e.target.value })}
+                        onBlur={(e) => actualizarFila(i, { nombre: normalizarNombre(e.target.value) })}
                         onPaste={(e) => manejarPegado(e, i, "nombre")}
                         placeholder={i === 0 ? "Escribe o pega aquí desde Excel" : "Nombre"}
                         aria-label={`Nombre, fila ${i + 1}`}
@@ -332,4 +330,3 @@ export default function AgregarEstudiantes({
     </Card>
   );
 }
-

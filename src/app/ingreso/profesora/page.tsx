@@ -27,8 +27,18 @@ export default function IngresoProfesora() {
   const [avisoConfirmacion, setAvisoConfirmacion] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [confirmacionReenviada, setConfirmacionReenviada] = useState(false);
+  const [correoPendienteConfirmacion, setCorreoPendienteConfirmacion] = useState(false);
+  const [segundosReenvio, setSegundosReenvio] = useState(0);
   const reglasContrasena = obtenerReglasContrasena(contrasena);
   const contrasenaValida = esContrasenaValida(contrasena);
+
+  useEffect(() => {
+    if (segundosReenvio <= 0) return;
+    const temporizador = window.setInterval(() => {
+      setSegundosReenvio((actual) => Math.max(0, actual - 1));
+    }, 1000);
+    return () => window.clearInterval(temporizador);
+  }, [segundosReenvio]);
 
   useEffect(() => {
     const motivo = new URLSearchParams(window.location.search).get("error");
@@ -42,7 +52,7 @@ export default function IngresoProfesora() {
   }, []);
 
   async function reenviarConfirmacion() {
-    if (reenviando || !correo) return;
+    if (reenviando || segundosReenvio > 0 || !correo.trim()) return;
     setReenviando(true);
     setError(null);
     const supabase = createClient();
@@ -53,6 +63,7 @@ export default function IngresoProfesora() {
     });
     if (reenvioError) setError("No pudimos reenviar el correo todavía. Espera un minuto e inténtalo otra vez.");
     else setConfirmacionReenviada(true);
+    setSegundosReenvio(60);
     setReenviando(false);
   }
 
@@ -82,10 +93,14 @@ export default function IngresoProfesora() {
         password: contrasena,
       });
       if (authError || !data.user) {
+        const codigoError = authError?.code ?? "";
+        const mensajeError = authError?.message?.toLowerCase() ?? "";
+        setCorreoPendienteConfirmacion(codigoError === "email_not_confirmed" || mensajeError.includes("email not confirmed"));
         setError(mensajeErrorAuth(authError, "entrar"));
         setCargando(false);
         return;
       }
+      setCorreoPendienteConfirmacion(false);
 
       const esAdministrador = await comprobarAdministradorProvisionado();
       if (esAdministrador) {
@@ -183,10 +198,13 @@ export default function IngresoProfesora() {
               Te enviamos un correo a <strong className="text-slate-900 dark:text-slate-50">{correo}</strong>{" "}
               para confirmar tu cuenta. Abre el enlace en este mismo navegador; después completarás tu nombre y entrarás al panel.
             </p>
+            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Reenviar solo manda otro enlace a esta dirección; no crea una cuenta ni sustituye el código de invitación.
+            </p>
             {confirmacionReenviada && <p className="text-sm text-emerald-700 dark:text-emerald-300" role="status">Enviamos un enlace nuevo.</p>}
             {error && <ErrorText>{error}</ErrorText>}
-            <Boton type="button" variant="secondary" size="sm" onClick={reenviarConfirmacion} cargando={reenviando}>
-              {reenviando ? "Reenviando…" : "Reenviar correo"}
+            <Boton type="button" variant="secondary" size="sm" onClick={reenviarConfirmacion} cargando={reenviando} disabled={segundosReenvio > 0}>
+              {reenviando ? "Reenviando…" : segundosReenvio > 0 ? `Reenviar en ${segundosReenvio} s` : "Reenviar correo"}
             </Boton>
             <button
               type="button"
@@ -197,6 +215,7 @@ export default function IngresoProfesora() {
                 setCorreo("");
                 setContrasena("");
                 setContrasenaConfirmar("");
+                setSegundosReenvio(0);
               }}
             >
               Usar otro correo
@@ -241,7 +260,11 @@ export default function IngresoProfesora() {
                     required
                     type="email"
                     value={correo}
-                    onChange={(e) => setCorreo(e.target.value)}
+                    onChange={(e) => {
+                      setCorreo(e.target.value);
+                      setCorreoPendienteConfirmacion(false);
+                      setConfirmacionReenviada(false);
+                    }}
                     autoComplete="email"
                   />
                 </Field>
@@ -318,18 +341,25 @@ export default function IngresoProfesora() {
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
-                <button
-                  type="button"
-                  disabled={!correo.trim() || reenviando}
-                  onClick={reenviarConfirmacion}
-                  className="text-slate-500 underline underline-offset-2 hover:text-slate-700 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-300"
-                >
-                  {reenviando ? "Reenviando…" : "Reenviar correo de confirmación"}
-                </button>
-                {confirmacionReenviada && (
-                  <p className="text-center text-emerald-700 dark:text-emerald-300" role="status">
-                    Si la cuenta está pendiente, enviamos un enlace nuevo. Ábrelo en este mismo navegador.
-                  </p>
+                {correoPendienteConfirmacion && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={!correo.trim() || reenviando || segundosReenvio > 0}
+                      onClick={reenviarConfirmacion}
+                      className="text-slate-500 underline underline-offset-2 hover:text-slate-700 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-300"
+                    >
+                      {reenviando ? "Reenviando…" : segundosReenvio > 0 ? `Reenviar en ${segundosReenvio} s` : "Reenviar correo de confirmación"}
+                    </button>
+                    <p className="text-center text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                      Solo se puede reenviar a una cuenta que ya inició su registro y debes tener acceso a ese correo.
+                    </p>
+                    {confirmacionReenviada && (
+                      <p className="text-center text-emerald-700 dark:text-emerald-300" role="status">
+                        Si la cuenta está pendiente, enviamos un enlace nuevo. Ábrelo en este mismo navegador.
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -356,6 +386,8 @@ export default function IngresoProfesora() {
                 setCodigoListo(false);
                 setError(null);
                 setConfirmacionReenviada(false);
+                setCorreoPendienteConfirmacion(false);
+                setSegundosReenvio(0);
               }}
               className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             >

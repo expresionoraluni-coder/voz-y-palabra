@@ -20,7 +20,7 @@ type AyudaRapida = { titulo: string; pasos: string[] };
 const AYUDAS_ESTUDIANTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
   estudiante_acceso: {
     titulo: "Comprueba tus datos",
-    pasos: ["Usa el código exacto de tu grupo y escribe tu nombre como aparece en la lista.", "Si olvidaste tu NIP, pide a la docente que restablezca tu acceso y te entregue un código nuevo."],
+    pasos: ["Usa el código exacto de tu grupo y escribe tu nombre como aparece en la lista.", "En tu primer ingreso, usa los últimos cuatro dígitos de tu boleta; después entra con el NIP que tú creaste.", "Si olvidaste tu NIP, pide a la docente que restablezca tu acceso y te entregue un NIP temporal."],
   },
   estudiante_actividad: {
     titulo: "Antes de pedir ayuda",
@@ -59,7 +59,7 @@ const AYUDAS_DOCENTE: Partial<Record<CategoriaReporte, AyudaRapida>> = {
   },
   docente_estudiantes: {
     titulo: "Revisa la lista",
-    pasos: ["Usa el archivo de Excel con nombre y boleta en sus columnas.", "Corrige duplicados o filas incompletas antes de cargarlo.", "Para un NIP olvidado, restablece el acceso y entrega el código nuevo de forma privada."],
+    pasos: ["Usa el archivo de Excel con nombre y boleta en sus columnas.", "Corrige duplicados o filas incompletas antes de cargarlo.", "Para un NIP olvidado, restablece el acceso y entrega el NIP temporal de forma privada."],
   },
   docente_actividad: {
     titulo: "Antes de guardar",
