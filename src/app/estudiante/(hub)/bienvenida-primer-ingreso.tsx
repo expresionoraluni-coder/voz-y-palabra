@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowRight, BookOpen, Lightbulb, Sparkles, Target } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Boton from "@/components/ui/button";
@@ -11,7 +10,6 @@ function primerNombre(nombre: string): string {
 }
 
 export default function BienvenidaPrimerIngreso({ nombre }: { nombre: string }) {
-  const router = useRouter();
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +25,9 @@ export default function BienvenidaPrimerIngreso({ nombre }: { nombre: string }) 
       return;
     }
 
-    router.refresh();
+    // La marca ya quedó guardada en Supabase. Una navegación completa evita
+    // que el layout conserve en caché la bienvenida durante el primer ingreso.
+    window.location.replace("/estudiante/inicio");
   }
 
   return (
