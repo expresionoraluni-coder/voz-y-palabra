@@ -429,7 +429,7 @@ export default async function InicioEstudiante({
               <Bell className="mt-0.5 size-4 shrink-0 text-indigo-500 dark:text-indigo-400" aria-hidden="true" />
               <div>
                 <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{a.titulo}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{a.mensaje}</p>
+                <p className="whitespace-pre-line text-sm text-slate-600 dark:text-slate-400">{a.mensaje}</p>
               </div>
             </div>
           ))}
