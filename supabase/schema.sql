@@ -52,6 +52,9 @@ create table estudiantes (
   intentos_fallidos int not null default 0,
   bloqueado_hasta timestamptz,
   debe_cambiar_nip boolean not null default false,
+  -- Se completa al terminar la bienvenida del primer ingreso; NULL significa
+  -- que todavía debe mostrarse al estudiante.
+  bienvenida_estudiante_completada_at timestamptz,
   created_at timestamptz not null default now()
 );
 

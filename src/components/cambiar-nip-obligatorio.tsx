@@ -83,7 +83,7 @@ export default function CambiarNipObligatorio() {
         <Alert tono="info" titulo="Cómo empezar en este ingreso">
           <ol className="list-decimal space-y-1 pl-4">
             <li>Cambia el NIP temporal por uno de cuatro números que solo tú conozcas.</li>
-            <li>Al guardar, volverás a Inicio y verás tu primer paso.</li>
+            <li>Al guardar, verás una bienvenida breve y después tu primer paso.</li>
             <li>Define tu meta y avanza por las actividades en el orden indicado.</li>
           </ol>
         </Alert>
@@ -136,4 +136,3 @@ export default function CambiarNipObligatorio() {
     </div>
   );
 }
-

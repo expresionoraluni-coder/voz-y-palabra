@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCheck, HelpCircle, Lightbulb, Mic2, PenLine, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCheck, HelpCircle, Lightbulb, Mic2, PenLine, ShieldCheck, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
-import RestablecerGuia from "../restablecer-guia";
 
 const RECURSOS = [
   {
@@ -46,7 +45,7 @@ const RECURSOS = [
 
 export default async function RecursosEstudiante() {
   const supabase = await createClient();
-  const estudiante = await requireEstudiante<{ id: string }>(supabase, "id");
+  await requireEstudiante(supabase, "id");
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
@@ -56,6 +55,38 @@ export default async function RecursosEstudiante() {
         titulo="Recursos para aprender"
         descripcion="Ideas breves que puedes consultar cuando quieras estudiar, escribir o preparar una exposición."
       />
+
+      <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-white to-violet-50/70 p-5 dark:border-indigo-900/70 dark:from-indigo-950/50 dark:via-slate-900 dark:to-violet-950/30">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-200">
+            <Sparkles className="size-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Guía para comenzar</h2>
+            <p className="mt-0.5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              Puedes volver aquí cuando necesites recordar cómo aprovechar tu ruta de aprendizaje.
+            </p>
+          </div>
+        </div>
+        <ol className="mt-4 flex flex-col gap-3 text-sm text-slate-700 dark:text-slate-300">
+          <li className="flex items-start gap-3">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">1</span>
+            <span>Explora las unidades disponibles y sigue el orden de tu ruta.</span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">2</span>
+            <span>Lee con atención las instrucciones y piensa tu respuesta antes de comenzar.</span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">3</span>
+            <span>Guarda tu reflexión antes de cada actividad; es parte necesaria de tu proceso.</span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">4</span>
+            <span>Revisa tus resultados y aprovecha el segundo nivel o el intento alternativo cuando la actividad lo indique.</span>
+          </li>
+        </ol>
+      </Card>
 
       <div className="flex flex-col gap-3">
         {RECURSOS.map(({ titulo, descripcion, icon: Icon, color, puntos }) => (
@@ -88,7 +119,6 @@ export default async function RecursosEstudiante() {
         <ArrowLeft className="size-4" aria-hidden="true" />
         Volver a mi inicio
       </Link>
-      <RestablecerGuia estudianteId={estudiante.id} />
     </div>
   );
 }

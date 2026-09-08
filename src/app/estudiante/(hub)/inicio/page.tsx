@@ -30,7 +30,7 @@ import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
 import EmptyState from "@/components/ui/empty-state";
 import CelebracionInsignia from "@/app/estudiante/celebracion-insignia";
-import GuiaBienvenida from "../guia-bienvenida";
+import BienvenidaPrimerIngreso from "../bienvenida-primer-ingreso";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
 import { diasFaltantes, textoFaltan } from "@/lib/eventos";
@@ -63,13 +63,17 @@ export default async function InicioEstudiante({
     id: string;
     nombre: string;
     grupo_id: string;
+    bienvenida_estudiante_completada_at: string | null;
     grupos: Grupo;
-  }>(supabase, "id, nombre, grupo_id, grupos(nombre)", { permitirCambioNip: true });
+  }>(supabase, "id, nombre, grupo_id, bienvenida_estudiante_completada_at, grupos(nombre)", { permitirCambioNip: true });
 
   // Los layouts y las páginas pueden resolverse en paralelo. Este guard en
   // la propia página evita consultar datos del curso mientras el código de
   // el NIP inicial todavía no se ha sustituido por uno personal.
   if (estudiante.debe_cambiar_nip) return <CambiarNipObligatorio />;
+  if (!estudiante.bienvenida_estudiante_completada_at) {
+    return <BienvenidaPrimerIngreso nombre={estudiante.nombre} />;
+  }
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
@@ -255,8 +259,6 @@ export default async function InicioEstudiante({
       unidadActiva.reflexionesCompletas &&
       (faltaReflexionCierreActiva || !confianzaCierreActiva),
   );
-  const actividadPendienteGuia = primeraReflexionPendiente ?? primeraActividadAccesible;
-
   const recordatorios: { texto: string; href: string }[] = [];
   for (const ev of eventosProximos ?? []) {
     const dias = diasFaltantes(ev.fecha);
@@ -395,15 +397,6 @@ export default async function InicioEstudiante({
             </span>
           </div>
         </Link>
-      )}
-
-      {unidadActiva && (
-        <GuiaBienvenida
-          estudianteId={estudiante.id}
-          unidadHref={`/estudiante/unidad/${unidadActiva.id}`}
-          actividadHref={actividadPendienteGuia ? `/estudiante/actividad/${actividadPendienteGuia.id}` : `/estudiante/unidad/${unidadActiva.id}`}
-          actividadDisponible={Boolean(actividadPendienteGuia)}
-        />
       )}
 
       {recordatorios.length > 0 && (

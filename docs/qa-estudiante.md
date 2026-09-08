@@ -5,7 +5,9 @@ Esta lista acompaña el flujo autodirigido. La orientación de una docente es op
 ## Recorrido principal
 
 - Ingresar con código de grupo, nombre y los últimos cuatro dígitos de la boleta en el primer acceso; después, usar el NIP personal de cuatro dígitos.
-- Ver inicio y la guía de primera ruta.
+- Después de guardar el NIP permanente, ver la bienvenida cálida de primer ingreso y entrar con “Comenzar mi ruta”.
+- Confirmar que la bienvenida se guarda en el servidor, aparece una sola vez y bloquea el resto del hub hasta completarse, incluso si se intenta abrir otra ruta directamente.
+- Abrir “Recursos” y comprobar que la guía detallada para comenzar está disponible allí.
 - Abrir una unidad.
 - Definir la meta y la confianza inicial.
 - Abrir una actividad disponible.

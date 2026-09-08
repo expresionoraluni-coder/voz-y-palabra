@@ -326,6 +326,31 @@ begin
 end;
 $$;
 
+create or replace function public.marcar_bienvenida_estudiante()
+returns boolean language plpgsql security definer set search_path = public
+as $$
+declare
+  v_marcada boolean;
+begin
+  if auth.uid() is null or coalesce(auth.jwt() ->> 'is_anonymous', 'false') <> 'true' then
+    raise exception 'Esta bienvenida requiere una sesión de estudiante.';
+  end if;
+
+  update public.estudiantes
+     set bienvenida_estudiante_completada_at = coalesce(bienvenida_estudiante_completada_at, now())
+   where auth_user_id = auth.uid()
+     and activo = true
+     and debe_cambiar_nip = false
+   returning true into v_marcada;
+
+  if v_marcada is null then
+    raise exception 'No encontramos tu sesión de estudiante.';
+  end if;
+
+  return v_marcada;
+end;
+$$;
+
 drop function if exists public.reiniciar_nip_estudiante(uuid);
 create function public.reiniciar_nip_estudiante(p_estudiante_id uuid)
 returns text language plpgsql security definer set search_path = public, extensions
@@ -749,6 +774,8 @@ revoke execute on function public.ingresar_estudiante(text, text, text) from pub
 grant execute on function public.ingresar_estudiante(text, text, text) to authenticated;
 revoke execute on function public.cambiar_nip_estudiante(text, text) from public, anon;
 grant execute on function public.cambiar_nip_estudiante(text, text) to authenticated;
+revoke execute on function public.marcar_bienvenida_estudiante() from public, anon;
+grant execute on function public.marcar_bienvenida_estudiante() to authenticated;
 revoke execute on function public.completar_perfil_docente(text) from public, anon;
 grant execute on function public.completar_perfil_docente(text) to authenticated;
 -- El perfil administrativo es independiente del perfil docente. La cuenta
@@ -1485,4 +1512,3 @@ $$;
 drop trigger if exists trg_registrar_evento_reporte_atencion on public.reportes;
 create trigger trg_registrar_evento_reporte_atencion after update on public.reportes for each row execute function public.registrar_evento_reporte_atencion();
 revoke execute on function public.registrar_evento_reporte_atencion() from public, anon, authenticated;
-

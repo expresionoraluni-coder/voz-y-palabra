@@ -5,6 +5,7 @@ import CambiarNipObligatorio from "@/components/cambiar-nip-obligatorio";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import BottomNav from "./bottom-nav";
 import ReportarProblema from "@/components/reportar-problema";
+import BienvenidaPrimerIngreso from "./bienvenida-primer-ingreso";
 
 export default async function HubLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
 
   const { data: estudiante } = await createAdminClient()
     .from("estudiantes")
-    .select("id, grupo_id, debe_cambiar_nip")
+    .select("id, nombre, grupo_id, debe_cambiar_nip, bienvenida_estudiante_completada_at")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -24,6 +25,17 @@ export default async function HubLayout({ children }: { children: React.ReactNod
 
   if (estudiante.debe_cambiar_nip) {
     return <CambiarNipObligatorio />;
+  }
+
+  // La bienvenida se resuelve en el layout para que tampoco pueda evitarse
+  // navegando directamente a otra sección del hub.
+  if (!estudiante.bienvenida_estudiante_completada_at) {
+    return (
+      <main id="contenido-principal" className="min-h-dvh">
+        <AvisoSinConexion />
+        <BienvenidaPrimerIngreso nombre={estudiante.nombre} />
+      </main>
+    );
   }
 
   return (
