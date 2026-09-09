@@ -37,6 +37,7 @@ import { diasFaltantes, textoFaltan } from "@/lib/eventos";
 import { proximoRepaso } from "@/lib/calendario-repaso";
 import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-unidad";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { hoyMexico } from "@/lib/fecha-mexico";
 
 type Grupo = { nombre: string } | { nombre: string }[] | null;
 
@@ -125,7 +126,7 @@ export default async function InicioEstudiante({
       .from("eventos")
       .select("id, titulo, fecha")
       .eq("grupo_id", estudiante.grupo_id)
-      .gte("fecha", new Date().toISOString().slice(0, 10))
+      .gte("fecha", hoyMexico())
       .order("fecha")
       .limit(3),
   ]);

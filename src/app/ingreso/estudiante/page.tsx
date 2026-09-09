@@ -26,6 +26,43 @@ function mensajeErrorIngreso(mensaje: string): string {
   return "No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.";
 }
 
+function mensajeErrorSesion(mensaje: string, status?: number): string {
+  const texto = mensaje.toLowerCase();
+  if (
+    status === 429 ||
+    texto.includes("rate limit") ||
+    texto.includes("too many requests") ||
+    texto.includes("over_request_rate_limit")
+  ) {
+    return "Hay muchos intentos desde esta red. Espera unos minutos y vuelve a intentarlo.";
+  }
+  if (texto.includes("captcha")) {
+    return "El acceso necesita una verificación del navegador. Recarga la página e inténtalo de nuevo.";
+  }
+  if (texto.includes("anonymous") && (texto.includes("disabled") || texto.includes("not enabled"))) {
+    return "El acceso estudiantil está temporalmente deshabilitado. Avísale a tu profesora.";
+  }
+  if (texto.includes("network") || texto.includes("fetch") || texto.includes("failed to fetch")) {
+    return "No pudimos conectar con el servicio. Revisa tu conexión e inténtalo de nuevo.";
+  }
+  return "No pudimos iniciar tu sesión. Recarga la página e inténtalo de nuevo.";
+}
+
+function esErrorDeSesion(mensaje: string): boolean {
+  const texto = mensaje.toLowerCase();
+  return [
+    "foreign key constraint",
+    "jwt",
+    "token",
+    "sesión inválida",
+    "session",
+    "not authenticated",
+    "unauthorized",
+    "no autorizado",
+    "pgrst301",
+  ].some((fragmento) => texto.includes(fragmento));
+}
+
 export default function IngresoEstudiante() {
   const router = useRouter();
   const [codigo, setCodigo] = useState("");
@@ -61,7 +98,16 @@ export default function IngresoEstudiante() {
     setCargando(true);
 
     const supabase = createClient();
-    let limpiarSesionAnonimaSiFalla = false;
+
+    async function crearSesionAnonima(): Promise<boolean> {
+      const { error: authError } = await supabase.auth.signInAnonymously();
+      if (authError) {
+        setError(mensajeErrorSesion(authError.message, authError.status));
+        setCargando(false);
+        return false;
+      }
+      return true;
+    }
 
     // Se valida contra el servidor (no solo lo guardado localmente): si la
     // sesión ya no existe de verdad (por ejemplo, quedó "fantasma" en el
@@ -73,23 +119,23 @@ export default function IngresoEstudiante() {
     // sin querer sus permisos.
     const { data: usuario, error: usuarioError } = await supabase.auth.getUser();
     if (usuario?.user?.is_anonymous && !usuarioError) {
-      const { data: estudianteLigado, error: estudianteLigadoError } = await supabase
+      // Si la sesión anónima quedó ligada a un estudiante, se conserva para
+      // no cerrar su recorrido actual. Si la consulta falla, se renueva la
+      // sesión antes de intentar el RPC y se evita reutilizar un token roto.
+      const { error: estudianteLigadoError } = await supabase
         .from("estudiantes")
         .select("id")
         .maybeSingle();
-      limpiarSesionAnonimaSiFalla = !estudianteLigado && !estudianteLigadoError;
+      if (estudianteLigadoError) {
+        await supabase.auth.signOut({ scope: "local" });
+        if (!(await crearSesionAnonima())) return;
+      }
     }
     if (usuarioError || !usuario.user || !usuario.user.is_anonymous) {
       if (usuario?.user && !usuario.user.is_anonymous) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "local" });
       }
-      const { error: authError } = await supabase.auth.signInAnonymously();
-      if (authError) {
-        setError("No pudimos iniciar tu sesión, intenta de nuevo.");
-        setCargando(false);
-        return;
-      }
-      limpiarSesionAnonimaSiFalla = true;
+      if (!(await crearSesionAnonima())) return;
     }
 
     let { data: resultado, error: rpcError } = await supabase.rpc("ingresar_estudiante", {
@@ -100,10 +146,9 @@ export default function IngresoEstudiante() {
 
     // Segundo intento de seguridad: si la sesión resultó inválida justo al
     // usarla, se descarta, se crea una nueva y se reintenta una sola vez.
-    if (rpcError?.message.includes("foreign key constraint")) {
-      await supabase.auth.signOut();
-      const { error: retryAuthError } = await supabase.auth.signInAnonymously();
-      if (!retryAuthError) {
+    if (rpcError && esErrorDeSesion(rpcError.message)) {
+      await supabase.auth.signOut({ scope: "local" });
+      if (await crearSesionAnonima()) {
         ({ data: resultado, error: rpcError } = await supabase.rpc("ingresar_estudiante", {
           p_codigo: codigo.trim(),
           p_nombre: nombreLimpio,
@@ -113,7 +158,6 @@ export default function IngresoEstudiante() {
     }
 
     if (rpcError) {
-      if (limpiarSesionAnonimaSiFalla) await supabase.auth.signOut();
       setError(mensajeErrorIngreso(rpcError.message));
       setCargando(false);
       return;
@@ -124,7 +168,6 @@ export default function IngresoEstudiante() {
     // quede guardado (una excepción deshace todo lo hecho en esa llamada).
     const fila = resultado?.[0];
     if (fila?.error) {
-      if (limpiarSesionAnonimaSiFalla) await supabase.auth.signOut();
       setError(mensajeErrorIngreso(fila.error));
       setCargando(false);
       return;
@@ -243,4 +286,3 @@ export default function IngresoEstudiante() {
     </main>
   );
 }
-
