@@ -116,21 +116,12 @@ export default function IngresoEstudiante() {
     // abierta la sesión real de una docente (p. ej. una demo en un equipo
     // compartido que no cerró sesión), reusarla ligaría al estudiante con
     // la cuenta de la docente en vez de una identidad propia — heredando
-    // sin querer sus permisos.
+    // sin querer sus permisos. La pertenencia del estudiante no se consulta
+    // aquí: el RPC la valida y la vincula de forma atómica después de
+    // comprobar los datos. Así un permiso RLS o una sesión pendiente no
+    // provoca otra alta anónima y no consume innecesariamente el límite de
+    // Supabase.
     const { data: usuario, error: usuarioError } = await supabase.auth.getUser();
-    if (usuario?.user?.is_anonymous && !usuarioError) {
-      // Si la sesión anónima quedó ligada a un estudiante, se conserva para
-      // no cerrar su recorrido actual. Si la consulta falla, se renueva la
-      // sesión antes de intentar el RPC y se evita reutilizar un token roto.
-      const { error: estudianteLigadoError } = await supabase
-        .from("estudiantes")
-        .select("id")
-        .maybeSingle();
-      if (estudianteLigadoError) {
-        await supabase.auth.signOut({ scope: "local" });
-        if (!(await crearSesionAnonima())) return;
-      }
-    }
     if (usuarioError || !usuario.user || !usuario.user.is_anonymous) {
       if (usuario?.user && !usuario.user.is_anonymous) {
         await supabase.auth.signOut({ scope: "local" });

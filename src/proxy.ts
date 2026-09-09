@@ -69,6 +69,7 @@ export async function proxy(request: NextRequest) {
   // deben quedar en caché del navegador ni de una capa intermedia.
   if (
     request.nextUrl.pathname.startsWith("/admin") ||
+    request.nextUrl.pathname.startsWith("/ingreso/estudiante") ||
     request.nextUrl.pathname.startsWith("/ingreso/profesora") ||
     request.nextUrl.pathname.startsWith("/ingreso/admin") ||
     request.nextUrl.pathname.startsWith("/ingreso/recuperar")
