@@ -20,7 +20,7 @@ npm run dev
 
 La aplicación queda disponible en `http://localhost:3000`.
 
-Crea un archivo `.env.local` con estas variables. No compartas sus valores ni los guardes en Git:
+Copia `.env.example` como `.env.local` y sustituye los valores por credenciales de un proyecto/rama de pruebas. No compartas sus valores ni los guardes en Git:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...

@@ -51,9 +51,16 @@ async function cargarEntregasPaginadas<T>(
   actividadIds?: string[],
 ): Promise<{ data: T[]; error: ErrorDeConsultaLocal }> {
   if (estudianteIds.length === 0) return { data: [], error: null };
-  const filas: T[] = [];
+  let conteo = supabase
+    .from("entregas")
+    .select("id", { count: "exact", head: true })
+    .in("estudiante_id", estudianteIds);
+  if (actividadIds?.length) conteo = conteo.in("actividad_id", actividadIds);
+  const { count, error: conteoError } = await conteo;
+  if (conteoError) return { data: [], error: conteoError };
 
-  for (let desde = 0; ; desde += TAMANO_PAGINA_ENTREGAS) {
+  const paginas = Array.from({ length: Math.ceil((count ?? 0) / TAMANO_PAGINA_ENTREGAS) }, (_, indice) => indice * TAMANO_PAGINA_ENTREGAS);
+  const resultados = await Promise.all(paginas.map(async (desde) => {
     let consulta = supabase
       .from("entregas")
       .select(select)
@@ -67,14 +74,11 @@ async function cargarEntregasPaginadas<T>(
     if (actividadIds?.length) consulta = consulta.in("actividad_id", actividadIds);
 
     const { data, error } = await consulta;
-    if (error) return { data: filas, error };
-
-    const pagina = (data ?? []) as T[];
-    filas.push(...pagina);
-    if (pagina.length < TAMANO_PAGINA_ENTREGAS) break;
-  }
-
-  return { data: filas, error: null };
+    return { data: (data ?? []) as T[], error };
+  }));
+  const resultadoConError = resultados.find((resultado) => resultado.error);
+  if (resultadoConError?.error) return { data: [], error: resultadoConError.error };
+  return { data: resultados.flatMap((resultado) => resultado.data), error: null };
 }
 
 export default async function DetalleGrupo({

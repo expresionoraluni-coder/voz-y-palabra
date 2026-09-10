@@ -541,6 +541,20 @@ grant select on public.autoevaluaciones_confianza, public.bitacora to authentica
 revoke insert, update, delete on public.autoevaluaciones_confianza, public.bitacora from public, anon, authenticated;
 grant all on public.autoevaluaciones_confianza, public.bitacora to service_role;
 
+-- Defensa en profundidad para el catálogo y las operaciones docentes: RLS
+-- decide qué filas pueden tocarse; estos grants limitan las operaciones
+-- disponibles al Data API y eliminan TRUNCATE heredado.
+revoke all on public.actividades, public.avisos, public.entregas, public.eventos, public.grupos,
+  public.insignias, public.insignias_otorgadas, public.retroalimentacion_docente,
+  public.tipos_actividad, public.unidades from public, anon, authenticated;
+grant select, insert, update, delete on public.actividades, public.grupos, public.eventos, public.unidades to authenticated;
+grant select, update on public.entregas to authenticated;
+grant select on public.avisos, public.insignias, public.insignias_otorgadas, public.retroalimentacion_docente, public.tipos_actividad to authenticated;
+grant insert, update, delete on public.avisos, public.retroalimentacion_docente to authenticated;
+grant all on public.actividades, public.avisos, public.entregas, public.eventos, public.grupos,
+  public.insignias, public.insignias_otorgadas, public.retroalimentacion_docente,
+  public.tipos_actividad, public.unidades to service_role;
+
 -- unidades: los estudiantes las reciben solo desde Server Components que ya
 -- validaron su sesión; no se expone lectura directa por el Data API.
 drop policy if exists "cualquiera con sesión lee unidades" on unidades;

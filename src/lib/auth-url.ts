@@ -1,4 +1,4 @@
-const ORIGEN_PRODUCCION = "https://voz-y-palabra.netlify.app";
+const ORIGEN_PRODUCCION = process.env.NEXT_PUBLIC_SITE_URL ?? "https://voz-y-palabra.netlify.app";
 
 const RUTAS_CONFIRMACION = new Set([
   "/ingreso/profesora",

@@ -6,11 +6,15 @@ export const metadata: Metadata = {
   title: "Voz y Palabra · Expresión Oral y Escrita I",
   description: "Plataforma de práctica para Expresión Oral y Escrita I. CECyT 1, IPN",
   applicationName: "Voz y Palabra",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://voz-y-palabra.netlify.app"),
+  alternates: { canonical: "/" },
   openGraph: {
     title: "Voz y Palabra · Expresión Oral y Escrita I",
     description: "Plataforma de práctica para Expresión Oral y Escrita I.",
     type: "website",
     locale: "es_MX",
+    url: "/",
+    images: [{ url: "/og-image.svg", width: 1200, height: 630, type: "image/svg+xml" }],
   },
 };
 

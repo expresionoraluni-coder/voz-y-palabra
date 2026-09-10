@@ -5,6 +5,7 @@ import { Check, ExternalLink, Trash2, Video } from "lucide-react";
 import Boton from "@/components/ui/button";
 import { ErrorText, HelpText, Input, Label } from "@/components/ui/field";
 import { guardarVideoActividad } from "./acciones-actividad";
+import { esVideoUrlPermitida } from "@/lib/video-embed";
 
 export default function ActividadVideoEditor({
   actividadId,
@@ -80,9 +81,9 @@ export default function ActividadVideoEditor({
         </Boton>
         {(videoUrl.trim() || tieneVideoGuardado) && (
           <>
-            {videoUrl.trim() && (
+            {esVideoUrlPermitida(videoUrl) && (
               <a
-                href={videoUrl}
+                href={videoUrl.trim()}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-indigo-600 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-slate-900"

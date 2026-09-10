@@ -21,6 +21,22 @@ function fuenteSolicitud(encabezados: Headers) {
   );
 }
 
+function sesionEsDeRecuperacion(accessToken: string | undefined) {
+  if (!accessToken) return false;
+  try {
+    const parte = accessToken.split(".")[1];
+    if (!parte) return false;
+    const claims = JSON.parse(Buffer.from(parte, "base64url").toString("utf8")) as {
+      amr?: Array<{ method?: string } | string>;
+    };
+    return (claims.amr ?? []).some((metodo) =>
+      typeof metodo === "string" ? metodo === "recovery" : metodo?.method === "recovery",
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function solicitarRecuperacion(correo: string): Promise<{ ok: true } | { ok: false; limitado?: boolean }> {
   const correoNormalizado = correo.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoNormalizado) || correoNormalizado.length > 320) {
@@ -60,8 +76,11 @@ export async function actualizarContrasenaNueva(
   }
 
   const supabase = await createClient();
-  const { data: usuario } = await supabase.auth.getUser();
-  if (!usuario.user) {
+  const [{ data: usuario }, { data: sesion }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.auth.getSession(),
+  ]);
+  if (!usuario.user || !sesionEsDeRecuperacion(sesion.session?.access_token)) {
     return { ok: false, error: "El enlace ya venció o no es válido. Solicita uno nuevo." };
   }
 

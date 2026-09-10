@@ -783,6 +783,13 @@ grant all on public.reflexiones to service_role;
 
 revoke all on public.autoevaluaciones_confianza, public.bitacora from public, anon, authenticated;
 grant select on public.autoevaluaciones_confianza, public.bitacora to authenticated;
+revoke all on public.actividades, public.avisos, public.entregas, public.eventos, public.grupos,
+  public.insignias, public.insignias_otorgadas, public.retroalimentacion_docente,
+  public.tipos_actividad, public.unidades from public, anon, authenticated;
+grant select, insert, update, delete on public.actividades, public.grupos, public.eventos, public.unidades to authenticated;
+grant select, update on public.entregas to authenticated;
+grant select on public.avisos, public.insignias, public.insignias_otorgadas, public.retroalimentacion_docente, public.tipos_actividad to authenticated;
+grant insert, update, delete on public.avisos, public.retroalimentacion_docente to authenticated;
 revoke insert, update, delete on public.autoevaluaciones_confianza, public.bitacora from public, anon, authenticated;
 grant all on public.autoevaluaciones_confianza, public.bitacora to service_role;
 
