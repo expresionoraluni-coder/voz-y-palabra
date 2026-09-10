@@ -110,13 +110,14 @@ export default async function DashboardDocente() {
 
   // eslint-disable-next-line react-hooks/purity
   const hoy = Date.now();
-  const metricasPorGrupo = new Map<string, { estudiantes: number; sinEmpezar: number; activosSemana: number; avanceTotal: number }>();
+  const metricasPorGrupo = new Map<string, { estudiantes: number; sinEmpezar: number; activosSemana: number; avanceTotal: number; primerIngresoPendiente: number }>();
   for (const estudiante of estudiantesActivos) {
     const actual = metricasPorGrupo.get(estudiante.grupo_id) ?? {
       estudiantes: 0,
       sinEmpezar: 0,
       activosSemana: 0,
       avanceTotal: 0,
+      primerIngresoPendiente: 0,
     };
     const entregasEstudiante = entregasPorEstudiante.get(estudiante.id);
     const avance = totalActividades > 0 ? Math.min(100, Math.round(((entregasEstudiante?.total ?? 0) / totalActividades) * 100)) : 0;
@@ -127,12 +128,11 @@ export default async function DashboardDocente() {
     actual.sinEmpezar += entregasEstudiante?.total ? 0 : 1;
     actual.activosSemana += diasDesdeUltima !== null && diasDesdeUltima <= 7 ? 1 : 0;
     actual.avanceTotal += avance;
+    actual.primerIngresoPendiente += estudiante.debe_cambiar_nip ? 1 : 0;
     metricasPorGrupo.set(estudiante.grupo_id, actual);
   }
 
   const totalEstudiantes = estudiantesActivos.length;
-  const estudiantesConNipPersonalizado = estudiantesActivos.filter((estudiante) => !estudiante.debe_cambiar_nip).length;
-  const estudiantesSinPrimerIngreso = estudiantesActivos.filter((estudiante) => estudiante.debe_cambiar_nip).length;
   const estudiantesSinEmpezar = estudiantesActivos.filter((estudiante) => !(entregasPorEstudiante.get(estudiante.id)?.total ?? 0)).length;
   const estudiantesActivosSemana = estudiantesActivos.filter((estudiante) => {
     const ultima = entregasPorEstudiante.get(estudiante.id)?.ultima;
@@ -165,17 +165,12 @@ export default async function DashboardDocente() {
           <h2 id="resumen-curso" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Resumen del curso</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">Una vista rápida para decidir dónde conviene mirar primero.</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MetricCard etiqueta="Estudiantes activos" valor={totalEstudiantes} icon={Users} tono="slate" />
           <MetricCard etiqueta="Activos esta semana" valor={estudiantesActivosSemana} icon={Activity} tono="emerald" />
           <MetricCard etiqueta="Sin comenzar" valor={estudiantesSinEmpezar} icon={CircleAlert} tono="amber" />
           <MetricCard etiqueta="Avance promedio" valor={`${avanceGeneral}%`} icon={BookOpen} tono="indigo" />
-          <MetricCard etiqueta="NIP personalizado" valor={estudiantesConNipPersonalizado} icon={Users} tono="emerald" />
-          <MetricCard etiqueta="Primer ingreso pendiente" valor={estudiantesSinPrimerIngreso} icon={CircleAlert} tono="amber" />
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          “Primer ingreso pendiente” corresponde a estudiantes cuyo NIP aún requiere cambio; incluye también a quienes recibieron un reinicio de NIP.
-        </p>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -201,7 +196,7 @@ export default async function DashboardDocente() {
               <Link key={g.id} href={`/docente/grupos/${g.id}`}>
                 <CardLink className="flex h-full flex-col gap-4 px-5 py-4">
                   {(() => {
-                    const metrica = metricasPorGrupo.get(g.id) ?? { estudiantes: 0, sinEmpezar: 0, activosSemana: 0, avanceTotal: 0 };
+                    const metrica = metricasPorGrupo.get(g.id) ?? { estudiantes: 0, sinEmpezar: 0, activosSemana: 0, avanceTotal: 0, primerIngresoPendiente: 0 };
                     const avance = metrica.estudiantes > 0 ? Math.round(metrica.avanceTotal / metrica.estudiantes) : 0;
                     return (
                       <>
@@ -221,7 +216,7 @@ export default async function DashboardDocente() {
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Código de acceso: <span className="font-mono font-semibold tracking-wide text-slate-700 dark:text-slate-300">{g.codigo_acceso}</span>
                         </p>
-                        <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                        <div className="grid grid-cols-4 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                           <div>
                             <p className="text-xs text-slate-500 dark:text-slate-400">Avance</p>
                             <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-50">{avance}%</p>
@@ -233,6 +228,10 @@ export default async function DashboardDocente() {
                           <div>
                             <p className="text-xs text-slate-500 dark:text-slate-400">Sin comenzar</p>
                             <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-50">{metrica.sinEmpezar}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Primer ingreso pendiente</p>
+                            <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-50">{metrica.primerIngresoPendiente}</p>
                           </div>
                         </div>
                         <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Abrir seguimiento del grupo</p>
