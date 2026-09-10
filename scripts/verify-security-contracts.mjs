@@ -113,6 +113,10 @@ const clasificacionEstudiante = await texto("src/app/estudiante/actividad/[id]/c
 const cierreUnidadEstudiante = await texto("src/app/estudiante/(hub)/unidad/[id]/cierre/page.tsx");
 const requerirEstudiante = await texto("src/lib/requerir-estudiante.ts");
 const antiCopiar = await texto("src/lib/anti-copiar.ts");
+const ingresoEstudiante = await texto("src/app/ingreso/estudiante/page.tsx");
+const borradorLocal = await texto("src/hooks/use-borrador-local.ts");
+const portada = await texto("src/app/page.tsx");
+const cierreInteractivoUnidad = await texto("src/app/estudiante/(hub)/unidad/[id]/cierre/unidad-cierre.tsx");
 const componentesAntiCopiar = (
   await Promise.all([
     "src/app/estudiante/actividad/[id]/clasificacion.tsx",
@@ -375,7 +379,7 @@ if (!accionesCalificacion.includes("elegidas.length !== contenido.elementos.leng
 if (!cargaE2e.includes("E2E_PROJECT_REF") || !cargaE2e.includes("E2E_CONFIRMATION") || !cargaE2e.includes("E2E_ALLOW_PRODUCTION")) {
   failures.push("carga E2E: falta confirmar el proyecto objetivo y bloquear producción por defecto.");
 }
-if (!netlify.includes('NODE_VERSION = "22"') || !packageJson.includes('"eslint-config-next": "16.3.0"')) {
+if (!netlify.includes('NODE_VERSION = "22"') || !packageJson.includes('"eslint-config-next": "^16.3.4"')) {
   failures.push("despliegue: falta fijar Node y alinear eslint-config-next con Next.");
 }
 
@@ -464,6 +468,19 @@ if (
   !inicioEstudiante.includes("<CambiarNipObligatorio />")
 ) {
   failures.push("acceso inicial: las páginas hijas no deben consultar datos antes de sustituir el NIP inicial por uno personal.");
+}
+if (!ingresoEstudiante.includes("pareceCorreo") || !ingresoEstudiante.includes("nombre_completo_estudiante")) {
+  failures.push("acceso estudiantil: el autocompletado de un correo debe detectarse antes de solicitar una sesión.");
+}
+if (
+  !borradorLocal.includes("window.localStorage") ||
+  !borradorLocal.includes("MAXIMO_CARACTERES_BORRADOR") ||
+  !borradorLocal.includes("limpiarBorradoresLocales")
+) {
+  failures.push("borradores: deben guardarse localmente, con límite y limpieza al cerrar sesión.");
+}
+if (portada.includes("<Link href=\"/ingreso\">\n          <Boton") || cierreInteractivoUnidad.includes("<Link href={siguienteHref}>\n            <Boton")) {
+  failures.push("accesibilidad: no debe anidarse un botón dentro de un enlace.");
 }
 
 if (failures.length > 0) {

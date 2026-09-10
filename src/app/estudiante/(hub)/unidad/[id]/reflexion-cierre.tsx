@@ -8,9 +8,11 @@ import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { mensajeCalibracionUnidad, placeholderReflexionUnidad } from "@/lib/calibracion-confianza";
 import { guardarReflexionUnidad } from "../../../acciones-reflexiones";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 
 export default function ReflexionCierre({
   unidadId,
+  estudianteId,
   metaPrevia,
   textoPrevio,
   confianzaInicio,
@@ -18,6 +20,7 @@ export default function ReflexionCierre({
   onGuardado,
 }: {
   unidadId: string;
+  estudianteId: string;
   metaPrevia?: string | null;
   textoPrevio?: string | null;
   confianzaInicio: number | null;
@@ -26,7 +29,13 @@ export default function ReflexionCierre({
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(!textoPrevio);
-  const [texto, setTexto] = useState(textoPrevio ?? "");
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<string>({
+    estudianteId,
+    tipo: "reflexion-unidad",
+    recursoId: unidadId,
+    habilitado: !textoPrevio,
+  });
+  const [texto, setTexto] = useState(textoPrevio ?? (typeof borrador === "string" ? borrador : ""));
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +64,7 @@ export default function ReflexionCierre({
       }
 
       setEditando(false);
+      borrarBorrador();
       onGuardado?.();
       router.refresh();
     } catch {
@@ -107,10 +117,17 @@ export default function ReflexionCierre({
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <Textarea
           value={texto}
-          onChange={(e) => setTexto(e.target.value)}
+          onChange={(e) => {
+            const siguiente = e.target.value;
+            setTexto(siguiente);
+            guardarBorrador(siguiente);
+          }}
           rows={3}
           placeholder={placeholderReflexionUnidad(confianzaInicio, promedioUnidad)}
         />
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Tu borrador se guarda solo en este dispositivo hasta que entregues.
+        </p>
         {error && <ErrorText>{error}</ErrorText>}
         <Boton type="submit" size="sm" disabled={!texto.trim()} cargando={cargando} className="self-start">
           {cargando ? "Guardando…" : "Guardar reflexión"}

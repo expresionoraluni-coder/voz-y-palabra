@@ -3,12 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Heart } from "lucide-react";
-import Boton from "@/components/ui/button";
 import ReflexionCierre from "../reflexion-cierre";
 import Confianza from "../confianza";
 
 export default function UnidadCierre({
   unidadId,
+  estudianteId,
   metaPrevia,
   textoPrevio,
   confianzaInicio,
@@ -18,6 +18,7 @@ export default function UnidadCierre({
   textoSiguiente,
 }: {
   unidadId: string;
+  estudianteId: string;
   metaPrevia: string | null;
   textoPrevio: string | null;
   confianzaInicio: number | null;
@@ -54,6 +55,7 @@ export default function UnidadCierre({
 
       <ReflexionCierre
         unidadId={unidadId}
+        estudianteId={estudianteId}
         metaPrevia={metaPrevia}
         textoPrevio={textoPrevio}
         confianzaInicio={confianzaInicio}
@@ -78,11 +80,12 @@ export default function UnidadCierre({
               ¡Muy bien! Tu reflexión quedó guardada. Ya cerraste esta unidad y puedes continuar cuando quieras.
             </p>
           </div>
-          <Link href={siguienteHref}>
-            <Boton type="button" className="w-full">
-              {textoSiguiente}
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Boton>
+          <Link
+            href={siguienteHref}
+            className="inline-flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 text-sm font-medium text-white transition-[color,background-color,border-color,transform] duration-150 hover:bg-indigo-700 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+          >
+            {textoSiguiente}
+            <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
         </div>
       ) : guardada ? (

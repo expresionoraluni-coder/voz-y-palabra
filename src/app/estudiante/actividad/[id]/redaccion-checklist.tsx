@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ListChecks, Lightbulb, Sparkles } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { analizarTexto, overlapConFuente } from "@/lib/analisis-texto";
@@ -32,12 +33,26 @@ export default function RedaccionChecklist({
     estudianteId,
     Boolean(respuestaPrevia),
   );
-  const [texto, setTexto] = useState(respuestaPrevia?.texto ?? "");
+  const [entregado, setEntregado] = useState(Boolean(respuestaPrevia));
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<{
+    texto: string;
+    marcado: boolean[];
+  }>({
+    estudianteId,
+    tipo: "redaccion-checklist",
+    recursoId: actividadId,
+    habilitado: !respuestaPrevia,
+  });
+  const [texto, setTexto] = useState(
+    respuestaPrevia?.texto ?? (typeof borrador?.texto === "string" ? borrador.texto : ""),
+  );
   const [marcado, setMarcado] = useState<boolean[]>(
-    respuestaPrevia?.checklist_marcado ?? contenido.checklist.map(() => false),
+    respuestaPrevia?.checklist_marcado ??
+      (Array.isArray(borrador?.marcado) && borrador.marcado.length === contenido.checklist.length
+        ? borrador.marcado.map(Boolean)
+        : contenido.checklist.map(() => false)),
   );
   const [mostrarEjemplos, setMostrarEjemplos] = useState(false);
-  const [entregado, setEntregado] = useState(Boolean(respuestaPrevia));
 
   const palabras = contarPalabras(texto);
   const excedido = palabras > contenido.limite_palabras;
@@ -50,7 +65,11 @@ export default function RedaccionChecklist({
   );
 
   function alternar(i: number) {
-    setMarcado((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+    setMarcado((prev) => {
+      const siguiente = prev.map((v, idx) => (idx === i ? !v : v));
+      guardarBorrador({ texto, marcado: siguiente });
+      return siguiente;
+    });
     marcarSinGuardar();
   }
 
@@ -86,7 +105,10 @@ export default function RedaccionChecklist({
         "pendiente_revision",
       ),
     );
-    if (guardada) setEntregado(true);
+    if (guardada) {
+      borrarBorrador();
+      setEntregado(true);
+    }
   }
 
   return (
@@ -133,7 +155,9 @@ export default function RedaccionChecklist({
         <Textarea
           value={texto}
           onChange={(e) => {
-            setTexto(e.target.value);
+            const siguiente = e.target.value;
+            setTexto(siguiente);
+            guardarBorrador({ texto: siguiente, marcado });
             marcarSinGuardar();
           }}
           onPaste={bloquearPegado}
@@ -223,6 +247,11 @@ export default function RedaccionChecklist({
       </div>
 
       {error && <ErrorText>{error}</ErrorText>}
+      {!entregado && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Tu borrador se guarda solo en este dispositivo hasta que entregues.
+        </p>
+      )}
       {guardado && !entregado && (
         <p role="status" aria-live="polite" className="text-sm text-emerald-600 dark:text-emerald-400">
           Guardado. Puedes seguir puliendo tu texto cuando quieras.

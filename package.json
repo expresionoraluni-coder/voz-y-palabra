@@ -12,6 +12,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:contracts": "node scripts/verify-security-contracts.mjs && node --experimental-strip-types --test scripts/auth-url.test.mts scripts/intentos-auto.test.mts",
+    "test:e2e": "playwright test",
     "catalog:export": "node scripts/export-catalog-seed.mjs"
   },
   "dependencies": {
@@ -21,22 +22,26 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.1",
     "lucide-react": "^1.24.0",
-    "next": "16.3.0",
+    "next": "^16.3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "^16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "overrides": {
-    "postcss": "^8.5.16"
+    "postcss": "^8.5.16",
+    "baseline-browser-mapping": "2.11.21",
+    "browserslist": "4.28.9",
+    "js-yaml": "4.3.2"
   }
 }

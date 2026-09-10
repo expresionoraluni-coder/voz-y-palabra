@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Check, CheckCircle2, ChevronLeft, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
@@ -24,6 +25,25 @@ import {
 import { calificarOpcionJustificacionAccion } from "./acciones-calificacion";
 
 type ItemResultado = { correcta: boolean };
+
+type BorradorOpcionJustificacion = {
+  indiceActual: number;
+  respuestas: RondaRespuesta[];
+};
+
+function esBorradorOpcionJustificacion(
+  valor: BorradorOpcionJustificacion | null,
+  totalRondas: number,
+): valor is BorradorOpcionJustificacion {
+  return Boolean(
+    valor &&
+      Array.isArray(valor.respuestas) &&
+      valor.respuestas.length === totalRondas &&
+      valor.respuestas.every(
+        (respuesta) => typeof respuesta?.opcion === "string" && typeof respuesta?.justificacion === "string",
+      ),
+  );
+}
 
 function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
   if (mensajes.length === 0) return null;
@@ -198,9 +218,20 @@ export default function OpcionJustificacion({
     Boolean(respuestaPrevia),
   );
 
-  const [indiceActual, setIndiceActual] = useState(0);
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<BorradorOpcionJustificacion>({
+    estudianteId,
+    tipo: "opcion-justificacion",
+    recursoId: actividadId,
+    habilitado: !respuestaPrevia,
+  });
+  const borradorInicial = esBorradorOpcionJustificacion(borrador, rondas.length) ? borrador : null;
+  const [indiceActual, setIndiceActual] = useState(
+    borradorInicial && Number.isInteger(borradorInicial.indiceActual) && borradorInicial.indiceActual >= 0 && borradorInicial.indiceActual < rondas.length
+      ? borradorInicial.indiceActual
+      : 0,
+  );
   const [respuestas, setRespuestas] = useState<RondaRespuesta[]>(() =>
-    rondas.map((_, i) => rondasPrevias[i] ?? { opcion: "", justificacion: "" }),
+    borradorInicial ? borradorInicial.respuestas : rondas.map((_, i) => rondasPrevias[i] ?? { opcion: "", justificacion: "" }),
   );
   // El detalle de aciertos (con el texto de la opción correcta) ya se
   // calificó en el servidor al entregar (ver acciones-calificacion.ts) —
@@ -217,7 +248,11 @@ export default function OpcionJustificacion({
 
   function actualizarRespuestaEn(indice: number, cambios: Partial<RondaRespuesta>) {
     if (bloqueado) return;
-    setRespuestas((prev) => prev.map((r, i) => (i === indice ? { ...r, ...cambios } : r)));
+    setRespuestas((prev) => {
+      const siguientes = prev.map((r, i) => (i === indice ? { ...r, ...cambios } : r));
+      guardarBorrador({ indiceActual, respuestas: siguientes });
+      return siguientes;
+    });
   }
 
   function validarActual(): boolean {
@@ -242,12 +277,20 @@ export default function OpcionJustificacion({
 
   function irASiguiente() {
     if (!bloqueado && !validarActual()) return;
-    setIndiceActual((i) => i + 1);
+    setIndiceActual((i) => {
+      const siguiente = i + 1;
+      guardarBorrador({ indiceActual: siguiente, respuestas });
+      return siguiente;
+    });
   }
 
   function irAAnterior() {
     setError(null);
-    setIndiceActual((i) => i - 1);
+    setIndiceActual((i) => {
+      const anterior = i - 1;
+      guardarBorrador({ indiceActual: anterior, respuestas });
+      return anterior;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -259,6 +302,7 @@ export default function OpcionJustificacion({
     if (guardada) {
       setResultado(guardada.resultado as ItemResultado[]);
       registrarEntrega(guardada);
+      borrarBorrador();
     }
   }
 
@@ -268,6 +312,7 @@ export default function OpcionJustificacion({
     setResultado(null);
     setIndiceActual(0);
     setRespuestas(rondas.map(() => ({ opcion: "", justificacion: "" })));
+    borrarBorrador();
   }
 
   return (
@@ -360,6 +405,11 @@ export default function OpcionJustificacion({
             )}
           </div>
         </>
+      )}
+      {!bloqueado && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Tu borrador se guarda solo en este dispositivo hasta que entregues.
+        </p>
       )}
       <PieEntregaAuto error={null} bloqueado={bloqueado} cargando={cargando} puntaje={mejorPuntaje} intentos={intentos} onReintentar={iniciarReintento} />
     </form>

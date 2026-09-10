@@ -16,6 +16,12 @@ Este documento separa los controles técnicos ya implementados de las decisiones
 
 No se debe escribir una contraseña, NIP, token ni información de terceras personas en una solicitud de ayuda.
 
+## Alcance docente y educativo
+
+La responsable académica del curso y primer punto de contacto es **M. en C. Monserrat Nieto Cuevas**. Los datos se usan con fines educativos para dar acceso, organizar actividades, conservar evidencias y orientar el aprendizaje. Podrán analizarse de forma agregada o anonimizada para investigación pedagógica y mejora del curso; no se emplearán nombres, identificadores ni respuestas atribuibles para ese fin sin la autorización institucional y, cuando corresponda, las autorizaciones aplicables.
+
+Los borradores de respuestas abiertas se conservan solamente en el navegador y dispositivo que la persona estudiante está usando. No se envían a Supabase, no se califican y se eliminan al entregar la respuesta o cerrar sesión.
+
 ## Controles técnicos implementados
 
 - [x] La boleta funciona como identificador y sus últimos cuatro dígitos sirven únicamente para el primer ingreso; no sustituyen el NIP personal posterior.

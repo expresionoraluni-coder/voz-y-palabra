@@ -63,6 +63,10 @@ function esErrorDeSesion(mensaje: string): boolean {
   ].some((fragmento) => texto.includes(fragmento));
 }
 
+function pareceCorreo(valor: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor);
+}
+
 export default function IngresoEstudiante() {
   const router = useRouter();
   const [codigo, setCodigo] = useState("");
@@ -88,6 +92,10 @@ export default function IngresoEstudiante() {
     }
     if (nombreLimpio.length === 0) {
       setError("Escribe tu nombre tal como aparece en la lista del grupo.");
+      return;
+    }
+    if (pareceCorreo(nombreLimpio)) {
+      setError("En “Tu nombre completo” aparece un correo. Bórralo y escribe tu nombre y apellidos tal como están en la lista.");
       return;
     }
     if (!/^\d{4}$/.test(nip)) {
@@ -202,7 +210,10 @@ export default function IngresoEstudiante() {
               value={codigo}
               onChange={(e) => setCodigo(e.target.value.toUpperCase())}
               placeholder="Ej. 1IM4-2026"
+              name="codigo_grupo_estudiante"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
               autoCapitalize="characters"
               spellCheck={false}
               aria-describedby="codigo-ayuda"
@@ -218,7 +229,10 @@ export default function IngresoEstudiante() {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               placeholder="Ej. GARCIA LOPEZ MARIA"
+              name="nombre_completo_estudiante"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
               autoCapitalize="words"
               spellCheck={false}
               aria-describedby="nombre-ayuda"
@@ -238,7 +252,10 @@ export default function IngresoEstudiante() {
                 value={nip}
                 onChange={(e) => setNip(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 placeholder="••••"
+                name="nip_estudiante"
                 autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
                 className="pr-11"
                 aria-describedby="nip-ayuda"
               />

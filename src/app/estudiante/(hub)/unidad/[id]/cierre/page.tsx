@@ -232,6 +232,7 @@ export default async function CierreUnidadEstudiante({
 
       <UnidadCierre
         unidadId={id}
+        estudianteId={estudiante.id}
         metaPrevia={bitacora?.meta ?? null}
         textoPrevio={reflexionCierre?.texto ?? null}
         confianzaInicio={confianzaInicio?.valor ?? null}

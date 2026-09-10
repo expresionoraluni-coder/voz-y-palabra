@@ -22,7 +22,7 @@ export default function Privacidad() {
         <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Información para la comunidad</p>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Uso y privacidad</h1>
         <p className="max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-400">
-          Voz y Palabra usa los datos mínimos necesarios para que el curso funcione, mostrar el avance y atender problemas de acceso o actividades.
+          Voz y Palabra usa los datos mínimos necesarios para que el curso funcione, mostrar el avance y atender problemas de acceso o actividades. La docente responsable del curso y primer punto de contacto es M. en C. Monserrat Nieto Cuevas.
         </p>
       </header>
 
@@ -33,7 +33,11 @@ export default function Privacidad() {
         </section>
         <section>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Para qué se usan</h2>
-          <p className="mt-2">Se utilizan para autenticar el acceso, mostrar las actividades correspondientes, conservar evidencias del aprendizaje, orientar a la docente y resolver incidencias técnicas. No escribas contraseñas, NIP ni datos de otras personas en una solicitud de ayuda.</p>
+          <p className="mt-2">Se utilizan con fines educativos: autenticar el acceso, mostrar las actividades correspondientes, conservar evidencias del aprendizaje, orientar a la docente y resolver incidencias técnicas. También pueden analizarse de forma agregada o anonimizada para investigación pedagógica y mejora del curso; no se usarán nombres, identificadores ni respuestas atribuibles para ese fin sin la autorización institucional y, cuando corresponda, las autorizaciones aplicables. No escribas contraseñas, NIP ni datos de otras personas en una solicitud de ayuda.</p>
+        </section>
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Borradores antes de entregar</h2>
+          <p className="mt-2">Antes de entregar una respuesta abierta, la plataforma puede guardar un borrador solo en el navegador y dispositivo que estás usando. Ese borrador no se envía a la base de datos, no se califica y se elimina al guardar la entrega o cerrar sesión. Si usas un equipo compartido, cierra sesión al terminar.</p>
         </section>
         <section>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Quién puede consultarlos</h2>
@@ -41,7 +45,7 @@ export default function Privacidad() {
         </section>
         <section>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Conservación y solicitudes</h2>
-          <p className="mt-2">La conservación, corrección, exportación y eliminación deben seguir la política institucional aplicable al curso. Para solicitar revisión de tus datos o reportar un uso incorrecto, comunícate con la docente o con la persona administradora de la plataforma.</p>
+          <p className="mt-2">La conservación, corrección, exportación y eliminación deben seguir la política institucional aplicable al curso. Para solicitar revisión de tus datos o reportar un uso incorrecto, comunícate con M. en C. Monserrat Nieto Cuevas por el canal institucional del curso o con la persona administradora de la plataforma.</p>
         </section>
         <aside className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
           Esta página explica el funcionamiento de la plataforma en lenguaje sencillo. Debe complementarse con el aviso de privacidad y las reglas de conservación aprobadas por la institución responsable del curso.

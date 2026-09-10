@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import { Field, Label, HelpText, Textarea } from "@/components/ui/field";
 import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
@@ -38,7 +39,15 @@ export default function CorregirOrtografia({
     puntajeAuto ?? null,
     Boolean(respuestaPrevia),
   );
-  const [textoReescrito, setTextoReescrito] = useState(respuestaPrevia?.texto_reescrito ?? "");
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<string>({
+    estudianteId,
+    tipo: "corregir-ortografia",
+    recursoId: actividadId,
+    habilitado: !respuestaPrevia,
+  });
+  const [textoReescrito, setTextoReescrito] = useState(
+    respuestaPrevia?.texto_reescrito ?? (typeof borrador === "string" ? borrador : ""),
+  );
   // El servidor devuelve únicamente la palabra escrita y el resultado; la
   // palabra correcta nunca se guarda en la respuesta visible al estudiante.
   const [resultado, setResultado] = useState<ResultadoOrtografia | null>(
@@ -52,6 +61,7 @@ export default function CorregirOrtografia({
       : null,
   );
   const bloqueado = entregaRegistrada || resultado !== null;
+
   const temasNormalizados = (contenido.temas ?? []).map((tema) =>
     tema.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
   );
@@ -98,6 +108,7 @@ export default function CorregirOrtografia({
         aprobado: guardada.aprobado as boolean,
       });
       registrarEntrega(guardada);
+      borrarBorrador();
     }
   }
 
@@ -106,6 +117,7 @@ export default function CorregirOrtografia({
     setError(null);
     setResultado(null);
     setTextoReescrito("");
+    borrarBorrador();
   }
 
   return (
@@ -144,7 +156,11 @@ export default function CorregirOrtografia({
             required
             rows={6}
             value={textoReescrito}
-            onChange={(e) => setTextoReescrito(e.target.value)}
+            onChange={(e) => {
+              const siguiente = e.target.value;
+              setTextoReescrito(siguiente);
+              guardarBorrador(siguiente);
+            }}
             onPaste={bloquearPegado}
             autoComplete="off"
             autoCorrect="off"
@@ -153,6 +169,9 @@ export default function CorregirOrtografia({
           />
           <p className="self-end text-xs text-slate-500 dark:text-slate-400">
             {contarPalabras(textoReescrito)} palabras
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Tu borrador se guarda solo en este dispositivo hasta que entregues.
           </p>
         </Field>
       ) : (

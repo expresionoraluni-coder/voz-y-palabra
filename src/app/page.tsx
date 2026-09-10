@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import Boton from "@/components/ui/button";
 
 const ALTURAS_ONDA = [18, 34, 52, 30, 44, 60, 38, 26, 48, 20, 36, 56, 32, 22, 40];
 
@@ -46,11 +45,12 @@ export default function Home() {
           3 unidades del curso.
         </p>
 
-        <Link href="/ingreso">
-          <Boton size="md" className="mt-2 !bg-white !text-slate-900 shadow-xl shadow-violet-950/50 hover:!bg-violet-50">
-            Entrar
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Boton>
+        <Link
+          href="/ingreso"
+          className="mt-2 inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-medium text-slate-900 shadow-xl shadow-violet-950/50 transition-[color,background-color,border-color,transform] duration-150 hover:bg-violet-50 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-950"
+        >
+          Entrar
+          <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
 

@@ -6,9 +6,11 @@ import { Textarea, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { mensajeCalibracion, placeholderReflexion } from "@/lib/calibracion-confianza";
 import { guardarReflexionActividad } from "../../acciones-reflexiones";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 
 export default function ReflexionActividad({
   actividadId,
+  estudianteId,
   confianza,
   puntajeAuto,
   textoPrevio,
@@ -17,6 +19,7 @@ export default function ReflexionActividad({
   bloqueadaPorReintento = false,
 }: {
   actividadId: string;
+  estudianteId: string;
   confianza: number | null;
   puntajeAuto: number | null;
   textoPrevio: string | null;
@@ -25,7 +28,13 @@ export default function ReflexionActividad({
   bloqueadaPorReintento?: boolean;
 }) {
   const [editando, setEditando] = useState(!textoPrevio);
-  const [texto, setTexto] = useState(textoPrevio ?? "");
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<string>({
+    estudianteId,
+    tipo: "reflexion-actividad",
+    recursoId: actividadId,
+    habilitado: !textoPrevio,
+  });
+  const [texto, setTexto] = useState(textoPrevio ?? (typeof borrador === "string" ? borrador : ""));
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +54,7 @@ export default function ReflexionActividad({
       }
 
       setEditando(false);
+      borrarBorrador();
       onGuardada?.();
     } catch {
       setError("No pudimos guardar tu reflexión. Revisa tu conexión e inténtalo de nuevo.");
@@ -82,10 +92,17 @@ export default function ReflexionActividad({
           </div>
           <Textarea
             value={texto}
-            onChange={(e) => setTexto(e.target.value)}
+            onChange={(e) => {
+              const siguiente = e.target.value;
+              setTexto(siguiente);
+              guardarBorrador(siguiente);
+            }}
             rows={2}
-          placeholder={placeholderPersonalizado ?? placeholderReflexion(confianza, puntajeAuto)}
+            placeholder={placeholderPersonalizado ?? placeholderReflexion(confianza, puntajeAuto)}
           />
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Tu borrador se guarda solo en este dispositivo hasta que entregues.
+          </p>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" size="sm" disabled={!texto.trim()} cargando={cargando} className="self-start">
             {cargando ? "Guardando…" : "Guardar reflexión"}

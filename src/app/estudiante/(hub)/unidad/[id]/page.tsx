@@ -237,6 +237,7 @@ export default async function UnidadEstudiante({
           )}
           <Bitacora
             unidadId={id}
+            estudianteId={estudiante.id}
             metaPrevia={bitacora?.meta ?? null}
             cumplidaPrevia={bitacora?.cumplida ?? false}
             avancePct={pct}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import Boton from "@/components/ui/button";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
 import { bloquearCopiar, bloquearPegado } from "@/lib/anti-copiar";
@@ -28,7 +29,15 @@ export default function RedaccionLectura({
   const { cargando, guardarConAccion } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
   const respuestaPreviaTexto =
     typeof respuestaPrevia?.respuesta_comprension === "string" ? respuestaPrevia.respuesta_comprension : "";
-  const [respuestaComprension, setRespuestaComprension] = useState(respuestaPreviaTexto);
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<string>({
+    estudianteId,
+    tipo: "redaccion-lectura",
+    recursoId: actividadId,
+    habilitado: !respuestaPrevia,
+  });
+  const [respuestaComprension, setRespuestaComprension] = useState(
+    respuestaPreviaTexto || (typeof borrador === "string" ? borrador : ""),
+  );
   const [error, setError] = useState<string | null>(null);
   const [entregado, setEntregado] = useState(Boolean(respuestaPrevia));
 
@@ -55,7 +64,10 @@ export default function RedaccionLectura({
         "completada",
       ),
     );
-    if (guardada) setEntregado(true);
+    if (guardada) {
+      borrarBorrador();
+      setEntregado(true);
+    }
   }
 
   return (
@@ -97,7 +109,11 @@ export default function RedaccionLectura({
         <Textarea
           id="respuesta-comprension"
           value={respuestaComprension}
-          onChange={(e) => setRespuestaComprension(e.target.value)}
+          onChange={(e) => {
+            const siguiente = e.target.value;
+            setRespuestaComprension(siguiente);
+            guardarBorrador(siguiente);
+          }}
           onPaste={bloquearPegado}
           disabled={entregado}
           rows={3}
@@ -105,6 +121,12 @@ export default function RedaccionLectura({
         />
         {error && <ErrorText>{error}</ErrorText>}
       </Field>
+
+      {!entregado && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Tu borrador se guarda solo en este dispositivo hasta que entregues.
+        </p>
+      )}
 
       {!entregado && (
         <Boton type="submit" cargando={cargando}>

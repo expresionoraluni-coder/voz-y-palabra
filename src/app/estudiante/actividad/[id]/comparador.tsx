@@ -14,6 +14,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { CheckCircle2, GripVertical, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import { similitudTexto } from "@/lib/similitud-texto";
@@ -22,6 +23,17 @@ import { bloquearPegado } from "@/lib/anti-copiar";
 import { esModoChips, type ContenidoComparadorPublico } from "@/lib/calificacion-comparador";
 import { calificarComparadorChipsAccion } from "./acciones-calificacion";
 import { guardarEntregaAbiertaAccion } from "./acciones-entrega";
+
+function esMatrizDeBorrador(valor: unknown, filas: number, columnas: number): valor is string[][] {
+  return (
+    Array.isArray(valor) &&
+    valor.length === filas &&
+    valor.every(
+      (fila) =>
+        Array.isArray(fila) && fila.length === columnas && fila.every((celda) => typeof celda === "string"),
+    )
+  );
+}
 
 function ChipArrastrable({
   chip,
@@ -146,7 +158,16 @@ export default function Comparador({
   );
 
   const vacio = () => contenido.criterios.map(() => contenido.conceptos.map(() => ""));
-  const [celdas, setCeldas] = useState<string[][]>(respuestaPrevia?.celdas ?? vacio());
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<string[][]>({
+    estudianteId,
+    tipo: "comparador-texto",
+    recursoId: actividadId,
+    habilitado: !modoChips && !respuestaPrevia,
+  });
+  const [celdas, setCeldas] = useState<string[][]>(
+    respuestaPrevia?.celdas ??
+      (esMatrizDeBorrador(borrador, contenido.criterios.length, contenido.conceptos.length) ? borrador : vacio()),
+  );
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   // El detalle por celda ya se calificó en el servidor al entregar (ver
   // acciones-calificacion.ts) — aquí solo se lee, nunca se recalcula.
@@ -199,7 +220,11 @@ export default function Comparador({
   }
 
   function actualizarTexto(fila: number, columna: number, valor: string) {
-    setCeldas((prev) => prev.map((f, i) => (i === fila ? f.map((c, j) => (j === columna ? valor : c)) : f)));
+    setCeldas((prev) => {
+      const siguiente = prev.map((f, i) => (i === fila ? f.map((c, j) => (j === columna ? valor : c)) : f));
+      guardarBorrador(siguiente);
+      return siguiente;
+    });
     marcarSinGuardar();
   }
 
@@ -243,7 +268,8 @@ export default function Comparador({
       }
     }
 
-    await guardarConAccion(() => guardarEntregaAbiertaAccion(actividadId, "comparador", { celdas }, "pendiente_revision"));
+    const guardada = await guardarConAccion(() => guardarEntregaAbiertaAccion(actividadId, "comparador", { celdas }, "pendiente_revision"));
+    if (guardada) borrarBorrador();
   }
 
   function iniciarReintento() {
@@ -252,6 +278,7 @@ export default function Comparador({
     setResultado(null);
     setSeleccionado(null);
     setCeldas(vacio());
+    borrarBorrador();
   }
 
   const tabla = (
@@ -336,6 +363,12 @@ export default function Comparador({
         </DndContext>
       ) : (
         tabla
+      )}
+
+      {!modoChips && !bloqueado && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Tu borrador se guarda solo en este dispositivo hasta que entregues.
+        </p>
       )}
 
       <PieEntregaAuto

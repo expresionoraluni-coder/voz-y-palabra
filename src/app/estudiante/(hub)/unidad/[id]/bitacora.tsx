@@ -7,14 +7,17 @@ import { Card } from "@/components/ui/card";
 import { Field, Label, Input, HelpText, ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { alternarBitacoraCumplida, guardarBitacoraMeta } from "../../../acciones-reflexiones";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 
 export default function Bitacora({
   unidadId,
+  estudianteId,
   metaPrevia,
   cumplidaPrevia,
   avancePct,
 }: {
   unidadId: string;
+  estudianteId: string;
   metaPrevia: string | null;
   cumplidaPrevia: boolean;
   avancePct: number;
@@ -22,9 +25,19 @@ export default function Bitacora({
   const router = useRouter();
   const [metaGuardada, setMetaGuardada] = useState(metaPrevia);
   const [editando, setEditando] = useState(!metaPrevia);
-  const [verbo, setVerbo] = useState("");
-  const [que, setQue] = useState("");
-  const [como, setComo] = useState("");
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<{
+    verbo: string;
+    que: string;
+    como: string;
+  }>({
+    estudianteId,
+    tipo: "meta-unidad",
+    recursoId: unidadId,
+    habilitado: !metaPrevia,
+  });
+  const [verbo, setVerbo] = useState(typeof borrador?.verbo === "string" ? borrador.verbo : "");
+  const [que, setQue] = useState(typeof borrador?.que === "string" ? borrador.que : "");
+  const [como, setComo] = useState(typeof borrador?.como === "string" ? borrador.como : "");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +60,7 @@ export default function Bitacora({
       // intervalo entre la respuesta de Supabase y el refresco del servidor.
       setMetaGuardada(meta);
       setEditando(false);
+      borrarBorrador();
       router.refresh();
     } catch {
       setError("No pudimos guardar tu meta. Revisa tu conexión e inténtalo de nuevo.");
@@ -89,7 +103,11 @@ export default function Bitacora({
               id="verbo"
               required
               value={verbo}
-              onChange={(e) => setVerbo(e.target.value)}
+              onChange={(e) => {
+                const siguiente = e.target.value;
+                setVerbo(siguiente);
+                guardarBorrador({ verbo: siguiente, que, como });
+              }}
               placeholder='Ej. "Identificar"'
             />
             <HelpText>En infinitivo (termina en -ar, -er o -ir).</HelpText>
@@ -100,7 +118,11 @@ export default function Bitacora({
               id="que"
               required
               value={que}
-              onChange={(e) => setQue(e.target.value)}
+              onChange={(e) => {
+                const siguiente = e.target.value;
+                setQue(siguiente);
+                guardarBorrador({ verbo, que: siguiente, como });
+              }}
               placeholder='Ej. "los elementos del circuito de la comunicación"'
             />
           </Field>
@@ -110,11 +132,18 @@ export default function Bitacora({
               id="como"
               required
               value={como}
-              onChange={(e) => setComo(e.target.value)}
+              onChange={(e) => {
+                const siguiente = e.target.value;
+                setComo(siguiente);
+                guardarBorrador({ verbo, que, como: siguiente });
+              }}
               placeholder='Ej. "analizando conversaciones reales"'
             />
             <HelpText>Verbo + qué + cómo (algo concreto, no &quot;esforzarme más&quot;).</HelpText>
           </Field>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Tu borrador se guarda solo en este dispositivo hasta que entregues.
+          </p>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" size="sm" cargando={cargando} disabled={!listoParaGuardar} className="self-start">
             {cargando ? "Guardando…" : "Guardar"}

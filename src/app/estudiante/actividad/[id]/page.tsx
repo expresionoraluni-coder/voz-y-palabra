@@ -357,6 +357,7 @@ export default async function ActividadEstudiante({
 
         <ActividadPostEntrega
           actividadId={actividad.id}
+          estudianteId={estudiante.id}
           confianza={prediccionExistente?.confianza ?? null}
           textoReflexionPrevio={reflexionExistente?.texto ?? null}
           siguienteHref={
