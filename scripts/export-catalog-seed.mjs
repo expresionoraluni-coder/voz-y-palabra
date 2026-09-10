@@ -16,6 +16,17 @@ const supabase = createClient(url, serviceRole, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+const TIPOS_ACTIVIDAD_ACTUALES = new Set([
+  "opcion_justificacion",
+  "clasificacion",
+  "comparador",
+  "redaccion_checklist",
+  "etiquetado_texto",
+  "ordenar_fragmentos",
+  "evaluar_videos",
+  "corregir_ortografia",
+]);
+
 function literal(valor) {
   if (valor === null || valor === undefined) return "null";
   return `'${String(valor).replaceAll("'", "''")}'`;
@@ -62,6 +73,8 @@ const [tipos, unidadesOriginales, actividadesOriginales, insignias] = await Prom
   consultar("insignias", "id,nombre,descripcion,icono"),
 ]);
 
+const tiposVigentes = tipos.filter((tipo) => TIPOS_ACTIVIDAD_ACTUALES.has(tipo.nombre));
+const idsTiposVigentes = new Set(tiposVigentes.map((tipo) => tipo.id));
 const unidades = unidadesOriginales
   .map((unidad) => ({
     ...unidad,
@@ -73,6 +86,7 @@ const unidades = unidadesOriginales
   .sort((a, b) => a.orden - b.orden);
 const ordenUnidad = new Map(unidades.map((unidad) => [unidad.id, unidad.orden]));
 const actividades = actividadesOriginales
+  .filter((actividad) => idsTiposVigentes.has(actividad.tipo_id))
   .map((actividad) => ({
     ...actividad,
     titulo: actividad.titulo.replace(
@@ -87,10 +101,10 @@ const actividades = actividadesOriginales
       a.orden - b.orden ||
       a.titulo.localeCompare(b.titulo, "es"),
   );
-tipos.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+tiposVigentes.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 insignias.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
-if (unidades.length === 0 || actividades.length === 0 || tipos.length === 0) {
+if (unidades.length === 0 || actividades.length === 0 || tiposVigentes.length === 0) {
   throw new Error("El catálogo remoto está vacío; no se generó el seed.");
 }
 
@@ -101,7 +115,7 @@ const sql = `-- Catálogo curricular completo y reproducible.
 begin;
 
 insert into public.tipos_actividad (id, nombre, descripcion) values
-${listaValores(tipos, [
+${listaValores(tiposVigentes, [
   { nombre: "id", valor: literal },
   { nombre: "nombre", valor: literal },
   { nombre: "descripcion", valor: literal },
@@ -182,4 +196,4 @@ commit;
 
 const destino = resolve(process.cwd(), "supabase", "seed.sql");
 await writeFile(destino, sql, "utf8");
-console.log(`Seed generado: ${tipos.length} tipos, ${unidades.length} unidades, ${actividades.length} actividades y ${insignias.length} insignias.`);
+console.log(`Seed generado: ${tiposVigentes.length} tipos, ${unidades.length} unidades, ${actividades.length} actividades y ${insignias.length} insignias.`);

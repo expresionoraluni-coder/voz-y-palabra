@@ -22,14 +22,12 @@ function mezclar<T>(arr: T[]): T[] {
 
 export default function Clasificacion({
   actividadId,
-  estudianteId,
   contenido,
   respuestaPrevia,
   dosNiveles,
   puntajeAuto,
 }: {
   actividadId: string;
-  estudianteId: string;
   contenido: ContenidoClasificacionPublico;
   respuestaPrevia?: {
     elegidas: string[];
@@ -50,7 +48,7 @@ export default function Clasificacion({
   const contenidoActivo = usandoReintentoAlternativo && contenido.reintento_alternativo
     ? contenido.reintento_alternativo
     : contenido;
-  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,

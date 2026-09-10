@@ -11,18 +11,16 @@ import { calificarEtiquetadoTextoAccion } from "./acciones-calificacion";
 
 export default function EtiquetadoTexto({
   actividadId,
-  estudianteId,
   contenido,
   respuestaPrevia,
   puntajeAuto,
 }: {
   actividadId: string;
-  estudianteId: string;
   contenido: ContenidoEtiquetadoTextoPublico;
   respuestaPrevia?: { elegidas: string[]; resultado?: boolean[] };
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,

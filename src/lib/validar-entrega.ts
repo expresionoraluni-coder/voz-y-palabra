@@ -1,11 +1,7 @@
 import "server-only";
+export { esUuid } from "@/lib/uuid";
 
 export const MAX_BYTES_RESPUESTA = 18_000;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export function esUuid(valor: unknown): valor is string {
-  return typeof valor === "string" && UUID_RE.test(valor);
-}
 
 export function esRegistroPlano(valor: unknown): valor is Record<string, unknown> {
   if (valor === null || typeof valor !== "object" || Array.isArray(valor)) return false;

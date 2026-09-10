@@ -7,16 +7,12 @@ begin;
 insert into public.tipos_actividad (id, nombre, descripcion) values
   ('4b36a5f1-6efc-42d0-af47-ecf3d26c6ea3', 'clasificacion', 'Arrastra elementos a la categoría correcta'),
   ('9022a3dc-77f3-48ca-b493-a63f4aaedcbf', 'comparador', 'Analiza dos textos u opciones lado a lado'),
-  ('ae8c3934-5d23-4dfd-bf99-9d97a98b37be', 'constructor_ramificado', 'Elige una estructura y llena un esqueleto de párrafos'),
   ('9320ca3b-9c19-4b49-a720-26551b3ae444', 'corregir_ortografia', 'Reescribe un texto corrigiendo mayúsculas, tildes y letras que se confunden (b/v, s/c/z, g/j, h) — se aceptan hasta 5 errores.'),
-  ('65e9b5bc-1fcf-4c84-b8f5-3441624f3fbc', 'encontrar_corregir', 'Detecta errores marcados en un texto y los reescribe'),
   ('1d9694c4-a078-428a-92dc-896febce11bd', 'etiquetado_texto', 'Selecciona un fragmento de texto y le asigna una etiqueta'),
   ('b98b891f-f800-4a81-988a-67b26bf1b2a7', 'evaluar_videos', 'Evalúa dos videos: uno que respeta las cualidades de la exposición oral y otro que no, marcando cuáles identifica en cada uno.'),
-  ('63801d4e-3eef-40ae-b65d-b40b3532448b', 'grabacion_rubrica', 'Graba su voz y se autoevalúa con una rúbrica'),
   ('d453abcd-d7ab-4355-af1f-70f76c57fb54', 'opcion_justificacion', 'Elige una opción y justifica en 1-2 líneas'),
   ('9f444642-c253-4872-9764-b58cd1cb274c', 'ordenar_fragmentos', 'Selecciona y ordena fragmentos para armar un texto coherente'),
-  ('b2cd1704-0875-44ad-a9bc-890f988c7d82', 'redaccion_checklist', 'Redacta con un límite y autorrevisa con checklist'),
-  ('5bab9608-08a2-4208-b41f-e52551531c48', 'reflexion_confianza', 'Responde una reflexión o mueve un control de confianza')
+  ('b2cd1704-0875-44ad-a9bc-890f988c7d82', 'redaccion_checklist', 'Redacta con un límite y autorrevisa con checklist')
 on conflict (id) do update set
   nombre = excluded.nombre,
   descripcion = excluded.descripcion;

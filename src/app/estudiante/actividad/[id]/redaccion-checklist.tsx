@@ -28,11 +28,7 @@ export default function RedaccionChecklist({
   };
   respuestaPrevia?: { texto: string; checklist_marcado: boolean[] };
 }) {
-  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(
-    actividadId,
-    estudianteId,
-    Boolean(respuestaPrevia),
-  );
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar } = useEntregaActividad(Boolean(respuestaPrevia));
   const [entregado, setEntregado] = useState(Boolean(respuestaPrevia));
   const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<{
     texto: string;

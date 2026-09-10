@@ -26,6 +26,7 @@ Crea un archivo `.env.local` con estas variables. No compartas sus valores ni lo
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 La clave `SUPABASE_SERVICE_ROLE_KEY` solo se usa en componentes y acciones de servidor. Nunca debe exponerse en el navegador.
@@ -58,7 +59,11 @@ El esquema base está en `supabase/schema.sql` y `supabase/functions.sql`. Las c
 
 ## Despliegue
 
-Netlify usa `npm run build` y el plugin oficial de Next.js configurado en `netlify.toml`. Define las tres variables de entorno en el sitio de Netlify antes de publicar.
+Netlify usa `npm run build` y el plugin oficial de Next.js configurado en `netlify.toml`. Define las variables de entorno (incluida `NEXT_PUBLIC_SITE_URL` con el dominio activo) en el sitio de Netlify antes de publicar.
+
+La separación de entornos y el procedimiento de limpieza segura están documentados en [docs/entornos-y-despliegue.md](docs/entornos-y-despliegue.md). No apuntes pruebas de carga ni scripts de mantenimiento a la base productiva.
+
+Las rutas públicas conservan `connection()` en el layout raíz porque la CSP genera un nonce distinto por respuesta y Next.js lo necesita para inyectarlo en sus scripts; cambiarlo por cacheado estático requiere primero una CSP pública separada y una verificación de cabeceras en producción.
 
 ## Datos y privacidad
 

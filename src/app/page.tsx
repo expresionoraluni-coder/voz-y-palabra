@@ -54,7 +54,7 @@ export default function Home() {
         </Link>
       </div>
 
-      <div className="absolute bottom-5 flex flex-wrap justify-center gap-x-2 gap-y-1 px-6 text-center text-xs text-indigo-200/40">
+      <div className="absolute bottom-5 flex flex-wrap justify-center gap-x-2 gap-y-1 px-6 text-center text-xs text-indigo-200/70">
         CECyT 1 &ldquo;Gonzalo Vázquez Vela&rdquo; · IPN
         <span aria-hidden="true">·</span>
         <Link href="/privacidad" className="underline underline-offset-2 hover:text-indigo-100/70">Uso y privacidad</Link>

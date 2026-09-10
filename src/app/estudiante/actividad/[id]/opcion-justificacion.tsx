@@ -205,7 +205,7 @@ export default function OpcionJustificacion({
   respuestaPrevia?: Record<string, unknown>;
   puntajeAuto?: number | null;
 }) {
-  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(Boolean(respuestaPrevia));
 
   const rondas = useMemo(() => rondasDeContenido(contenido), [contenido]);
   const intro = introDeContenido(contenido);

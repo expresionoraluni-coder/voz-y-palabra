@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { obtenerAdministrador } from "@/lib/supabase/requerir-administrador";
+import { esUuid } from "@/lib/uuid";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function texto(valor: unknown, maximo: number) {
   if (typeof valor !== "string") return null;
@@ -19,7 +19,7 @@ export async function guardarArticuloFaq(input: {
 }) {
   const acceso = await obtenerAdministrador();
   if (!acceso) return { ok: false, error: "Tu sesión administrativa ya no está activa." };
-  if (!UUID.test(input.id)) return { ok: false, error: "El artículo no es válido." };
+  if (!esUuid(input.id)) return { ok: false, error: "El artículo no es válido." };
   const titulo = texto(input.titulo, 160);
   const resumen = texto(input.resumen, 500);
   const pasos = input.pasos.map((paso) => texto(paso, 500)).filter((paso): paso is string => paso !== null).slice(0, 8);
@@ -40,7 +40,7 @@ export async function guardarArticuloFaq(input: {
 export async function cambiarEstadoArticuloFaq(id: string, activo: boolean) {
   const acceso = await obtenerAdministrador();
   if (!acceso) return { ok: false, error: "Tu sesión administrativa ya no está activa." };
-  if (!UUID.test(id)) return { ok: false, error: "El artículo no es válido." };
+  if (!esUuid(id)) return { ok: false, error: "El artículo no es válido." };
 
   const { error } = await acceso.supabase.from("faq_articulos").update({ activo, actualizado_por: acceso.user.id, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) return { ok: false, error: "No pudimos cambiar el estado del artículo." };

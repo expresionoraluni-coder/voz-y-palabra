@@ -346,7 +346,7 @@ create unique index estudiantes_boleta_unica_por_grupo
   on estudiantes(grupo_id, boleta)
   where boleta is not null;
 create unique index estudiantes_nombre_unico_por_grupo
-  on estudiantes(grupo_id, lower(trim(nombre)));
+  on estudiantes(grupo_id, public.normalizar_nombre(nombre));
 create unique index tipos_actividad_nombre_unico on tipos_actividad(lower(btrim(nombre)));
 create unique index unidades_orden_unico on unidades(orden);
 create unique index reflexiones_unica_por_actividad

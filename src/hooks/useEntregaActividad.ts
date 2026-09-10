@@ -12,9 +12,7 @@ import type { ResultadoCalificacion } from "@/app/estudiante/actividad/[id]/acci
  * hardening de seguridad, sub-fase 5), así que un upsert directo desde el
  * cliente fallaría de todas formas.
  */
-export function useEntregaActividad(actividadId: string, estudianteId: string, tieneEntregaInicial = false) {
-  void actividadId;
-  void estudianteId;
+export function useEntregaActividad(tieneEntregaInicial = false) {
   const { marcarGuardada } = useEntregaReciente();
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);

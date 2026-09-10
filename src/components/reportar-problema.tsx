@@ -14,6 +14,7 @@ import {
 import Boton from "@/components/ui/button";
 import { ErrorText, Field, HelpText, Label } from "@/components/ui/field";
 import { faqFallback, idFaqValido, normalizarFaqArticulo, type FaqArticulo } from "@/lib/faq";
+import { UUID_FRAGMENT } from "@/lib/uuid";
 
 type AyudaRapida = { titulo: string; pasos: string[] };
 
@@ -97,7 +98,6 @@ type MensajePropio = {
   creado_en: string;
 };
 
-const UUID_FRAGMENT = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 
 function capturarId(pathname: string, segmentos: string) {
   return pathname.match(new RegExp(`/(?:${segmentos})/(${UUID_FRAGMENT})(?:/|$)`, "i"))?.[1] ?? null;

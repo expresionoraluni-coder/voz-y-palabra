@@ -176,6 +176,7 @@ as $$
   select grupo_id
   from public.estudiantes
   where id = public.estudiante_actual()
+    and activo = true
 $$;
 
 -- Guard único para cualquier operación propia de una docente. Supabase asigna
@@ -202,7 +203,7 @@ create or replace function public.ingresar_estudiante(p_codigo text, p_nombre te
 returns table(id uuid, nombre text, grupo_id uuid, grupo_nombre text, nip_nuevo boolean, error text)
 language plpgsql security definer set search_path = public, extensions
 as $$
-declare v_grupo record; v_estudiante record; v_intentos_nombre record; v_intentos_grupo int;
+declare v_grupo record; v_estudiante record; v_intentos_nombre record; v_intentos_grupo int; v_coincidencias int;
   v_error_datos constant text := 'No pudimos validar tus datos. Revisa el código, tu nombre y tu NIP.';
   v_max_intentos constant int := 5; v_minutos_bloqueo constant int := 15;
 begin
@@ -235,6 +236,19 @@ begin
   if v_intentos_nombre.bloqueado_hasta is not null and v_intentos_nombre.bloqueado_hasta > now() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_intentos_nombre.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
+  select count(*) into v_coincidencias
+    from public.estudiantes e
+   where e.grupo_id = v_grupo.id
+     and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre);
+  if v_coincidencias <> 1 then
+    if v_coincidencias > 1 then perform pg_sleep(0.2); end if;
+    insert into public.intentos_nombre_estudiante (usuario_id, intentos, bloqueado_hasta, actualizado_en) values (auth.uid(), 1, null, now())
+      on conflict (usuario_id) do update set
+        intentos = case when public.intentos_nombre_estudiante.actualizado_en < now() - interval '1 day' then 1 else public.intentos_nombre_estudiante.intentos + 1 end,
+        bloqueado_hasta = case when (case when public.intentos_nombre_estudiante.actualizado_en < now() - interval '1 day' then 1 else public.intentos_nombre_estudiante.intentos + 1 end) >= v_max_intentos then now() + (v_minutos_bloqueo || ' minutes')::interval else public.intentos_nombre_estudiante.bloqueado_hasta end,
+        actualizado_en = now();
+    return query select null::uuid, null::text, null::uuid, null::text, null::boolean, v_error_datos; return;
+  end if;
   select e.id, e.nombre, e.boleta, e.nip_hash, e.activo, e.auth_user_id, e.debe_cambiar_nip,
          e.intentos_fallidos, e.bloqueado_hasta into v_estudiante
     from public.estudiantes e where e.grupo_id = v_grupo.id and public.normalizar_nombre(e.nombre) = public.normalizar_nombre(p_nombre)
@@ -252,7 +266,6 @@ begin
   if v_estudiante.bloqueado_hasta is not null and v_estudiante.bloqueado_hasta > now() then
     return query select null::uuid, null::text, null::uuid, null::text, null::boolean, format('Demasiados intentos. Espera %s minutos e intenta de nuevo.', greatest(1, ceil(extract(epoch from (v_estudiante.bloqueado_hasta - now())) / 60)))::text; return;
   end if;
-  delete from public.intentos_nombre_estudiante where usuario_id = auth.uid();
   if v_estudiante.nip_hash is null then
     if v_estudiante.boleta is null or right(regexp_replace(v_estudiante.boleta, '\D', '', 'g'), 4) <> p_nip then
       perform pg_sleep(0.2);
@@ -264,6 +277,7 @@ begin
     end if;
     update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
     update public.estudiantes set auth_user_id = auth.uid(), nip_hash = extensions.crypt(p_nip, extensions.gen_salt('bf')), intentos_fallidos = 0, bloqueado_hasta = null where public.estudiantes.id = v_estudiante.id;
+    delete from public.intentos_nombre_estudiante where usuario_id = auth.uid();
     return query select v_estudiante.id, v_estudiante.nombre, v_grupo.id, v_grupo.nombre, true, null::text; return;
   end if;
   if extensions.crypt(p_nip, v_estudiante.nip_hash) <> v_estudiante.nip_hash then
@@ -277,6 +291,7 @@ begin
   end if;
   update public.estudiantes set auth_user_id = null where auth_user_id = auth.uid() and public.estudiantes.id <> v_estudiante.id;
   update public.estudiantes set auth_user_id = auth.uid(), intentos_fallidos = 0, bloqueado_hasta = null where public.estudiantes.id = v_estudiante.id;
+  delete from public.intentos_nombre_estudiante where usuario_id = auth.uid();
   return query select v_estudiante.id, v_estudiante.nombre, v_grupo.id, v_grupo.nombre, false, null::text;
 end;
 $$;
@@ -358,11 +373,16 @@ as $$
 declare
   v_nip_temporal text;
   v_bytes bytea;
+  v_valor integer;
 begin
   if not public.es_docente_activo() then raise exception 'Se requiere una cuenta docente confirmada.'; end if;
   if not exists (select 1 from public.estudiantes e join public.grupos g on g.id = e.grupo_id where e.id = p_estudiante_id and g.docente_id = auth.uid()) then raise exception 'No tienes permiso sobre este estudiante.'; end if;
-  v_bytes := extensions.gen_random_bytes(2);
-  v_nip_temporal := (1000 + (get_byte(v_bytes, 0) * 256 + get_byte(v_bytes, 1)) % 9000)::text;
+  loop
+    v_bytes := extensions.gen_random_bytes(2);
+    v_valor := get_byte(v_bytes, 0) * 256 + get_byte(v_bytes, 1);
+    exit when v_valor < 63000;
+  end loop;
+  v_nip_temporal := (1000 + v_valor % 9000)::text;
   update public.estudiantes
      set nip_hash = extensions.crypt(v_nip_temporal, extensions.gen_salt('bf')),
          auth_user_id = null,
@@ -626,6 +646,23 @@ begin
 end;
 $$;
 
+create or replace function public.entrega_cuenta_como_completada(
+  p_contenido jsonb,
+  p_puntaje_auto integer,
+  p_respuesta jsonb
+)
+returns boolean
+language sql immutable
+set search_path = public
+as $$
+  select (
+    (p_contenido -> 'reintento_alternativo') is null
+    or p_puntaje_auto is null
+    or p_puntaje_auto >= 70
+    or coalesce((p_respuesta -> '_meta' ->> 'intentos') ~ '^[2-9][0-9]*$', false)
+  );
+$$;
+
 create or replace function public.verificar_insignias()
 returns table(nombre text, descripcion text)
 language plpgsql security definer set search_path = public
@@ -642,7 +679,7 @@ begin
     having count(distinct a.id) > 0
        and count(distinct a.id) filter (
          where e.id is not null
-           and e.id is not null
+           and public.entrega_cuenta_como_completada(a.contenido, e.puntaje_auto, e.respuesta)
        ) = count(distinct a.id)
   )
   select count(distinct r.unidad_id) into v_total_reflexiones
@@ -652,10 +689,11 @@ begin
      and r.unidad_id is not null
      and exists (select 1 from unidades_completas uc where uc.id = r.unidad_id);
   select count(*) into v_total_actividades from public.actividades;
-  select count(*) into v_total_hechas
-    from public.entregas
-   where estudiante_id = v_estudiante
-     and id is not null;
+  select count(distinct e.activity_id) into v_total_hechas
+    from public.entregas e
+    join public.actividades a on a.id = e.activity_id
+   where e.estudiante_id = v_estudiante
+     and public.entrega_cuenta_como_completada(a.contenido, e.puntaje_auto, e.respuesta);
   with unidades_completas as (
     select u.id
       from public.unidades u
@@ -665,7 +703,7 @@ begin
     having count(distinct a.id) > 0
        and count(distinct a.id) filter (
          where e.id is not null
-           and e.id is not null
+           and public.entrega_cuenta_como_completada(a.contenido, e.puntaje_auto, e.respuesta)
        ) = count(distinct a.id)
   )
   select count(*) into v_unidades_con_ambas_confianzas
@@ -683,7 +721,9 @@ begin
   for v_orden, v_unidad_total, v_unidad_hechas in
     select u.orden,
            count(a.id),
-           count(distinct e.actividad_id)
+           count(distinct e.actividad_id) filter (
+             where public.entrega_cuenta_como_completada(a.contenido, e.puntaje_auto, e.respuesta)
+           )
     from public.unidades u
     left join public.actividades a on a.unidad_id = u.id
     left join public.entregas e on e.actividad_id = a.id and e.estudiante_id = v_estudiante
@@ -794,6 +834,7 @@ grant all on public.reporte_eventos to service_role;
 revoke all on function public.validar_invitacion_alta_docente() from public, anon, authenticated;
 revoke execute on function public.verificar_insignias() from public, anon;
 grant execute on function public.verificar_insignias() to authenticated;
+revoke execute on function public.entrega_cuenta_como_completada(jsonb, integer, jsonb) from public, anon, authenticated;
 revoke execute on function public.estudiante_actual() from public, anon;
 grant execute on function public.estudiante_actual() to authenticated;
 revoke execute on function public.grupo_del_estudiante_actual() from public, anon;

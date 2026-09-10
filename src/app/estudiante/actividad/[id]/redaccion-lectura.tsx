@@ -26,7 +26,7 @@ export default function RedaccionLectura({
   };
   respuestaPrevia?: Record<string, unknown>;
 }) {
-  const { cargando, guardarConAccion } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
+  const { cargando, guardarConAccion } = useEntregaActividad(Boolean(respuestaPrevia));
   const respuestaPreviaTexto =
     typeof respuestaPrevia?.respuesta_comprension === "string" ? respuestaPrevia.respuesta_comprension : "";
   const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<string>({

@@ -145,11 +145,7 @@ export default function Comparador({
   respuestaPrevia?: { celdas: string[][]; resultadoCeldas?: boolean[][] };
   puntajeAuto?: number | null;
 }) {
-  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar, prepararReintento, entregaRegistrada } = useEntregaActividad(
-    actividadId,
-    estudianteId,
-    Boolean(respuestaPrevia),
-  );
+  const { cargando, guardado, error, setError, guardarConAccion, marcarSinGuardar, prepararReintento, entregaRegistrada } = useEntregaActividad(Boolean(respuestaPrevia));
   const modoChips = esModoChips(contenido);
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,

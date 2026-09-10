@@ -13,6 +13,12 @@ const GENERICO = "No pudimos guardar tu cambio. Intenta de nuevo.";
  */
 export function mensajeError(error: ErrorConCodigo, mapa: Record<string, string> = {}): string {
   if (!error) return GENERICO;
+  if (typeof window === "undefined") {
+    console.error("[supabase.mutation]", {
+      code: error.code ?? null,
+      message: error.message,
+    });
+  }
   if (error.code && mapa[error.code]) return mapa[error.code];
   return GENERICO;
 }

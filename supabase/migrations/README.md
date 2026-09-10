@@ -2,7 +2,9 @@
 
 Las migraciones son el registro ejecutable de los cambios aplicados a producción. `schema.sql` y `functions.sql` forman la reconstrucción canónica actual para una base nueva; no deben depender de que se repita toda la historia de migraciones remotas.
 
-Para una reconstrucción nueva, ejecutar `schema.sql`, después `functions.sql` y finalmente `seed.sql`. El seed conserva los identificadores del catálogo compartido e incluye los 12 tipos, 3 unidades, 31 actividades y 7 insignias actuales; no contiene cuentas, grupos, entregas ni datos personales.
+Para una reconstrucción nueva, ejecutar `schema.sql`, después `functions.sql` y finalmente `seed.sql`. El seed conserva los identificadores del catálogo compartido e incluye únicamente los 8 tipos de actividad actualmente implementados, 3 unidades, 31 actividades y 7 insignias; no contiene cuentas, grupos, entregas ni datos personales.
+
+El historial remoto de Supabase y este directorio estuvieron divergentes durante la auditoría. Hasta completar la reconciliación con la CLI enlazada y un respaldo comprobable, no ejecutes `supabase db push` contra producción: prueba cada migración en una rama/proyecto separado y registra cualquier reparación de historial.
 
 La migración `20260906040900_corregir_seguridad_flujos_y_catalogo.sql` conserva el primer acceso estudiantil con los últimos cuatro dígitos de la boleta y el NIP permanente que crea cada estudiante, unifica la confianza en la escala 1–5, protege el alta docente entre la invitación y la confirmación del correo, evita colisiones al crear actividades y alinea los cierres pedagógicos. El código de la aplicación incluido en la misma versión corrige además el retorno de autenticación. Se conserva el catálogo global para todas las docentes y las cuatro categorías de registro; únicamente se corrige el ejemplo que estaba marcado en la categoría equivocada.
 
@@ -55,5 +57,7 @@ La migración `20260830020000_optimizar_policy_faq.sql` conserva el filtro por a
 La migración `20260830030000_restringir_update_entregas_docente.sql` añade el mismo guard de cuenta docente permanente al único update directo de entregas.
 
 La migración `20260830040000_optimizar_initplan_faq.sql` ajusta la forma del wrapper de `auth.jwt()` para que el advisor de rendimiento reconozca el initplan.
+
+Las migraciones `20260910020000_endurecer_identidad_y_nip.sql`, `20260910020100_unificar_contador_ingreso_estudiante.sql` y `20260910020200_alinear_insignias_con_avance_actual.sql` corrigen, respectivamente, la normalización única de nombres (con abortado seguro ante colisiones), el contador de intentos del ingreso junto con el NIP temporal sin sesgo de módulo y la regla compartida de actividad completada. La primera también retira del Data API el RPC docente heredado sin uso.
 
 La migración `20260821234243_restringir_policies_estudiante.sql` deja las policies directas del estudiante en solo lectura para que no exista un segundo camino de escritura que pueda saltarse las validaciones del servidor. La migración `20260821234838_indexar_auditoria_admin.sql` agrega índices a las llaves foráneas de auditoría para que el historial administrativo escale sin escaneos completos. La migración `20260821234941_optimizar_policies_perfiles_permanentes.sql` conserva el bloqueo de sesiones anónimas y ajusta el uso de `auth.jwt()` al patrón initplan de Postgres.

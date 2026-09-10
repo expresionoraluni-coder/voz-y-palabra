@@ -53,19 +53,17 @@ function BloqueVideo({ titulo, descripcion, url }: { titulo: string; descripcion
 
 export default function EvaluarVideos({
   actividadId,
-  estudianteId,
   contenido,
   respuestaPrevia,
   puntajeAuto,
 }: {
   actividadId: string;
-  estudianteId: string;
   contenido: ContenidoEvaluarVideosPublico;
   respuestaPrevia?: { marcadas_bien: string[]; marcadas_mal: string[]; resultado?: { bien: boolean[]; mal: boolean[] } };
   puntajeAuto?: number | null;
 }) {
   const videosDisponibles = videosEvaluarDisponibles(contenido);
-  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(actividadId, estudianteId, Boolean(respuestaPrevia));
+  const { cargando, error, setError, guardarConAccion, prepararReintento, entregaRegistrada } = useEntregaActividad(Boolean(respuestaPrevia));
   const { intentos, mejorPuntaje, registrarEntrega } = useIntentosAuto(
     respuestaPrevia,
     puntajeAuto ?? null,

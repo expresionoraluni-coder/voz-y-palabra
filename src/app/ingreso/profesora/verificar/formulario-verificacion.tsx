@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { mensajeError } from "@/lib/mensaje-error";
+import { mensajeErrorRpc } from "@/lib/mensaje-error";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
@@ -25,9 +25,31 @@ export default function FormularioVerificacionDocente() {
       p_nombre: nombre.trim(),
     });
     if (rpcError) {
-      setError(mensajeError(rpcError, {
-        "42501": "No pudimos comprobar la autorización de esta cuenta. Inicia el registro de nuevo.",
-      }));
+      const mensaje = rpcError.code === "42501"
+        ? "No pudimos comprobar la autorización de esta cuenta. Inicia el registro de nuevo."
+        : mensajeErrorRpc(rpcError, [
+          {
+            contiene: "La invitación de esta cuenta ya no es válida",
+            mensaje: "La autorización de esta cuenta venció o no quedó registrada. Regresa al registro y crea la cuenta con una invitación vigente.",
+          },
+          {
+            contiene: "Confirma tu correo",
+            mensaje: "Confirma tu correo antes de completar el perfil docente.",
+          },
+          {
+            contiene: "Se requiere una cuenta docente confirmada",
+            mensaje: "Confirma tu correo y vuelve a abrir el enlace de acceso docente.",
+          },
+          {
+            contiene: "Sesión inválida",
+            mensaje: "La sesión de confirmación terminó. Regresa al registro e inicia sesión de nuevo.",
+          },
+          {
+            contiene: "acceso administrativo",
+            mensaje: "Esta cuenta tiene acceso administrativo y no puede registrarse como docente.",
+          },
+        ], "No pudimos completar el perfil docente. Regresa al registro e inténtalo de nuevo.");
+      setError(mensaje);
       setCargando(false);
       return;
     }

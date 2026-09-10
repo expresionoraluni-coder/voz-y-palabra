@@ -247,7 +247,6 @@ export default async function ActividadEstudiante({
       {nombreTipo === "clasificacion" && (
         <Clasificacion
           actividadId={actividad.id}
-          estudianteId={estudiante.id}
           contenido={sanitizarContenidoClasificacion(actividad.contenido as ContenidoClasificacion)}
           respuestaPrevia={
             respuesta as { elegidas: string[]; resultado?: boolean[] } | undefined
@@ -304,7 +303,6 @@ export default async function ActividadEstudiante({
       {nombreTipo === "etiquetado_texto" && (
         <EtiquetadoTexto
           actividadId={actividad.id}
-          estudianteId={estudiante.id}
           contenido={sanitizarContenidoEtiquetadoTexto(actividad.contenido as ContenidoEtiquetadoTexto)}
           respuestaPrevia={
             respuesta as { elegidas: string[]; resultado?: boolean[] } | undefined
@@ -315,7 +313,6 @@ export default async function ActividadEstudiante({
       {nombreTipo === "ordenar_fragmentos" && (
         <OrdenarFragmentos
           actividadId={actividad.id}
-          estudianteId={estudiante.id}
           contenido={sanitizarContenidoOrdenarFragmentos(actividad.contenido as ContenidoOrdenarFragmentos)}
           respuestaPrevia={respuesta as { orden: number[]; resultadoPorPosicion?: boolean[] } | undefined}
           puntajeAuto={entregaExistente?.puntaje_auto ?? null}
@@ -324,7 +321,6 @@ export default async function ActividadEstudiante({
       {nombreTipo === "evaluar_videos" && (
         <EvaluarVideos
           actividadId={actividad.id}
-          estudianteId={estudiante.id}
           contenido={sanitizarContenidoEvaluarVideos(actividad.contenido as ContenidoEvaluarVideos)}
           respuestaPrevia={
             respuesta as

@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { obtenerAdministrador } from "@/lib/supabase/requerir-administrador";
+import { esUuid } from "@/lib/uuid";
 
 const ESTADOS = new Set(["recibido", "en_revision", "necesita_informacion", "resuelto", "cerrado"]);
 const PRIORIDADES = new Set(["baja", "normal", "alta", "urgente"]);
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TRANSICIONES: Record<string, Set<string>> = {
   recibido: new Set(["en_revision", "necesita_informacion", "resuelto", "cerrado"]),
   en_revision: new Set(["necesita_informacion", "resuelto", "cerrado"]),
@@ -26,7 +26,7 @@ export async function guardarAtencionReporte(input: {
 }) {
   const acceso = await obtenerAdministrador();
   if (!acceso) return { ok: false, error: "Tu sesión administrativa ya no está activa." };
-  if (!UUID.test(input.reporteId) || !ESTADOS.has(input.estado) || !PRIORIDADES.has(input.prioridad)) {
+  if (!esUuid(input.reporteId) || !ESTADOS.has(input.estado) || !PRIORIDADES.has(input.prioridad)) {
     return { ok: false, error: "Los datos de atención no son válidos." };
   }
 
@@ -38,13 +38,13 @@ export async function guardarAtencionReporte(input: {
   if (respuestaPublica.length > 2000) {
     return { ok: false, error: "La respuesta pública es demasiado larga." };
   }
-  if (input.asignadoA !== null && !UUID.test(input.asignadoA)) {
+  if (input.asignadoA !== null && !esUuid(input.asignadoA)) {
     return { ok: false, error: "La cuenta asignada no es válida." };
   }
   if (input.fechaLimite !== null && (!input.fechaLimite || Number.isNaN(Date.parse(input.fechaLimite)))) {
     return { ok: false, error: "La fecha límite no es válida." };
   }
-  if (!UUID.test(input.reporteId) || !input.actualizadoEn || Number.isNaN(Date.parse(input.actualizadoEn))) {
+  if (!input.actualizadoEn || Number.isNaN(Date.parse(input.actualizadoEn))) {
     return { ok: false, error: "La versión del reporte ya no es válida. Recarga la bandeja." };
   }
   if (["resuelto", "cerrado"].includes(input.estado) && !resolucion) {
@@ -90,7 +90,7 @@ export async function guardarAtencionReporte(input: {
 export async function enviarMensajeReporte(reporteId: string, mensaje: string) {
   const acceso = await obtenerAdministrador();
   if (!acceso) return { ok: false, error: "Tu sesión administrativa ya no está activa." };
-  if (!UUID.test(reporteId)) return { ok: false, error: "El reporte no es válido." };
+  if (!esUuid(reporteId)) return { ok: false, error: "El reporte no es válido." };
   const texto = mensaje.trim();
   if (texto.length < 2 || texto.length > 2000) {
     return { ok: false, error: "El mensaje debe tener entre 2 y 2000 caracteres." };

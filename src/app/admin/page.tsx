@@ -68,7 +68,7 @@ export default async function AdminDashboard() {
       .from("reportes")
       .select("id, reportante_tipo, categoria, descripcion, estado, prioridad, grupo_id, created_at")
       .order("created_at", { ascending: false })
-      .limit(20),
+      .limit(5),
     adminDb
       .from("reportes")
       .select("id", { count: "exact", head: true })

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import ReportarProblema from "@/components/reportar-problema";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { obtenerUsuarioActual } from "@/lib/supabase/usuario-actual";
 
 // Sin esto, cualquier sesión con "authenticated" (incluida la de un
 // estudiante, cuyo login también pasa por auth.signInAnonymously()) podía
@@ -17,7 +18,7 @@ export default async function LayoutDocente({ children }: { children: React.Reac
   const {
     data: { user },
     error: sesionError,
-  } = await supabase.auth.getUser();
+  } = await obtenerUsuarioActual();
   if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
   revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
 

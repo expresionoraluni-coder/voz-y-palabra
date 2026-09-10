@@ -8,12 +8,14 @@ import { CardLink } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
 import MetricCard from "@/components/ui/metric-card";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { obtenerUsuarioActual } from "@/lib/supabase/usuario-actual";
 
 type EstudianteDashboard = {
   id: string;
   grupo_id: string;
   created_at: string;
   activo: boolean;
+  debe_cambiar_nip: boolean;
 };
 
 type EntregaDashboard = {
@@ -27,8 +29,10 @@ export default async function DashboardDocente() {
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+    error: sesionError,
+  } = await obtenerUsuarioActual();
 
+  revisarErrorConsulta(sesionError, "No pudimos validar tu sesión docente.");
   if (!user) redirect("/ingreso/profesora");
 
   const [
@@ -47,27 +51,39 @@ export default async function DashboardDocente() {
       .eq("docente_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, actividades(id)").order("orden"),
-    supabase.from("estudiantes").select("id, grupo_id, created_at, activo").eq("activo", true),
+    supabase.from("estudiantes").select("id, grupo_id, created_at, activo, debe_cambiar_nip").eq("activo", true),
   ]);
 
   const entregasResumen: EntregaDashboard[] = [];
   let entregasError: { message?: string; code?: string } | null = null;
   const estudianteIds = (estudiantes ?? []).map((estudiante) => estudiante.id);
-  for (let desde = 0; estudianteIds.length > 0; desde += TAMANO_PAGINA_ENTREGAS) {
-    const { data, error } = await supabase
+  if (estudianteIds.length > 0) {
+    const { count, error: conteoError } = await supabase
       .from("entregas")
-      .select("estudiante_id, created_at")
-      .in("estudiante_id", estudianteIds)
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true })
-      .range(desde, desde + TAMANO_PAGINA_ENTREGAS - 1);
-    if (error) {
-      entregasError = error;
-      break;
+      .select("id", { count: "exact", head: true })
+      .in("estudiante_id", estudianteIds);
+    if (conteoError) {
+      entregasError = conteoError;
+    } else {
+      const paginas = Array.from({ length: Math.ceil((count ?? 0) / TAMANO_PAGINA_ENTREGAS) }, (_, indice) => indice * TAMANO_PAGINA_ENTREGAS);
+      const resultados = await Promise.all(
+        paginas.map((desde) =>
+          supabase
+            .from("entregas")
+            .select("estudiante_id, created_at")
+            .in("estudiante_id", estudianteIds)
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(desde, desde + TAMANO_PAGINA_ENTREGAS - 1),
+        ),
+      );
+      const resultadoConError = resultados.find((resultado) => resultado.error);
+      if (resultadoConError?.error) {
+        entregasError = resultadoConError.error;
+      } else {
+        resultados.forEach((resultado) => entregasResumen.push(...((resultado.data ?? []) as EntregaDashboard[])));
+      }
     }
-    const pagina = (data ?? []) as EntregaDashboard[];
-    entregasResumen.push(...pagina);
-    if (pagina.length < TAMANO_PAGINA_ENTREGAS) break;
   }
 
   revisarErrorConsulta(docenteError, "No pudimos cargar tu perfil docente.");
@@ -115,6 +131,8 @@ export default async function DashboardDocente() {
   }
 
   const totalEstudiantes = estudiantesActivos.length;
+  const estudiantesConNipPersonalizado = estudiantesActivos.filter((estudiante) => !estudiante.debe_cambiar_nip).length;
+  const estudiantesSinPrimerIngreso = estudiantesActivos.filter((estudiante) => estudiante.debe_cambiar_nip).length;
   const estudiantesSinEmpezar = estudiantesActivos.filter((estudiante) => !(entregasPorEstudiante.get(estudiante.id)?.total ?? 0)).length;
   const estudiantesActivosSemana = estudiantesActivos.filter((estudiante) => {
     const ultima = entregasPorEstudiante.get(estudiante.id)?.ultima;
@@ -147,12 +165,17 @@ export default async function DashboardDocente() {
           <h2 id="resumen-curso" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Resumen del curso</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">Una vista rápida para decidir dónde conviene mirar primero.</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
           <MetricCard etiqueta="Estudiantes activos" valor={totalEstudiantes} icon={Users} tono="slate" />
           <MetricCard etiqueta="Activos esta semana" valor={estudiantesActivosSemana} icon={Activity} tono="emerald" />
           <MetricCard etiqueta="Sin comenzar" valor={estudiantesSinEmpezar} icon={CircleAlert} tono="amber" />
           <MetricCard etiqueta="Avance promedio" valor={`${avanceGeneral}%`} icon={BookOpen} tono="indigo" />
+          <MetricCard etiqueta="NIP personalizado" valor={estudiantesConNipPersonalizado} icon={Users} tono="emerald" />
+          <MetricCard etiqueta="Primer ingreso pendiente" valor={estudiantesSinPrimerIngreso} icon={CircleAlert} tono="amber" />
         </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          “Primer ingreso pendiente” corresponde a estudiantes cuyo NIP aún requiere cambio; incluye también a quienes recibieron un reinicio de NIP.
+        </p>
       </section>
 
       <section className="flex flex-col gap-3">
