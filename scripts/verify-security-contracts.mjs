@@ -64,6 +64,7 @@ const migracionPolicyEntregas = await texto("supabase/migrations/20260822110903_
 const migracionCorreccionInsignias = await texto("supabase/migrations/20260910040000_corregir_insignias_y_endurecer_docentes.sql");
 const migracionOrientacionFinal = await texto("supabase/migrations/20260910020400_corregir_bloqueo_orientacion_docente.sql");
 const migracionRpcInvitacion = await texto("supabase/migrations/20260910040100_retirar_rpc_publico_invitacion.sql");
+const migracionPreRequest = await texto("supabase/migrations/20260910040200_restaurar_permisos_pre_request.sql");
 const migracionIngresoAnonimo = await texto("supabase/migrations/20260822114546_restringir_rpc_ingreso_estudiante_anonimo.sql");
 const migracionPerfilDocente = await texto("supabase/migrations/20260822114552_unificar_select_perfil_docente.sql");
 const migracionLecturasOperativas = await texto("supabase/migrations/20260822114557_unificar_select_lecturas_operativas.sql");
@@ -383,7 +384,10 @@ if (functions.includes("create or replace function public.validar_codigo_invitac
   failures.push("invitación: la validación no debe quedar expuesta como RPC SECURITY DEFINER público.");
 }
 if (!migracionRpcInvitacion.includes("drop function if exists public.validar_codigo_invitacion(text)") || !migracionRpcInvitacion.includes("grant execute on function public.controlar_rate_limit_ingreso() to authenticator, service_role")) {
-  failures.push("invitación: debe retirarse el RPC público y conservarse el pre-request solo para authenticator.");
+  failures.push("invitación: debe retirarse el RPC público y mantener el wrapper del pre-request cerrado como endpoint directo.");
+}
+if (!migracionPreRequest.includes("grant execute on function public.controlar_rate_limit_ingreso() to anon, authenticated, authenticator, service_role")) {
+  failures.push("Supabase: PostgREST debe poder ejecutar el pre-request con los roles anon y authenticated.");
 }
 if (!functions.includes("before insert or update on public.entregas") || !functions.includes("tg_op = 'INSERT'") || !functions.includes("sanitizar_respuesta_entrega(p_respuesta - '_meta')")) {
   failures.push("Supabase: las respuestas deben sanitizarse tanto al insertar como al actualizar entregas.");

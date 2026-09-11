@@ -5,8 +5,8 @@ create or replace function public.normalizar_nombre(p_nombre text)
 returns text language sql immutable set search_path = public, extensions
 as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, '')), '\s+', ' ', 'g'))) $$;
 
--- Rate limit previo para ingreso. La función vive en `private` y solo el rol
--- authenticator puede ejecutarla como pre-request; no es un RPC público.
+-- Rate limit previo para ingreso. El helper vive en `private`; el wrapper
+-- expuesto solo permite ejecutar el pre-request y no recibe parámetros.
 create or replace function private.controlar_rate_limit_ingreso()
 returns void
 language plpgsql
@@ -104,7 +104,7 @@ begin
 end;
 $$;
 revoke all on function public.controlar_rate_limit_ingreso() from public, anon, authenticated;
-grant execute on function public.controlar_rate_limit_ingreso() to authenticator, service_role;
+grant execute on function public.controlar_rate_limit_ingreso() to anon, authenticated, authenticator, service_role;
 alter role authenticator set pgrst.db_pre_request = 'public.controlar_rate_limit_ingreso';
 notify pgrst, 'reload config';
 
