@@ -61,6 +61,9 @@ const migracionIntentoUnico = await texto("supabase/migrations/20260822030000_un
 const migracionPoliciesRedundantes = await texto("supabase/migrations/20260822110537_eliminar_policies_redundantes_contenido.sql");
 const migracionPoliciesCatalogo = await texto("supabase/migrations/20260822110639_normalizar_policies_catalogo.sql");
 const migracionPolicyEntregas = await texto("supabase/migrations/20260822110903_unificar_policy_update_entregas.sql");
+const migracionCorreccionInsignias = await texto("supabase/migrations/20260910040000_corregir_insignias_y_endurecer_docentes.sql");
+const migracionOrientacionFinal = await texto("supabase/migrations/20260910020400_corregir_bloqueo_orientacion_docente.sql");
+const migracionRpcInvitacion = await texto("supabase/migrations/20260910040100_retirar_rpc_publico_invitacion.sql");
 const migracionIngresoAnonimo = await texto("supabase/migrations/20260822114546_restringir_rpc_ingreso_estudiante_anonimo.sql");
 const migracionPerfilDocente = await texto("supabase/migrations/20260822114552_unificar_select_perfil_docente.sql");
 const migracionLecturasOperativas = await texto("supabase/migrations/20260822114557_unificar_select_lecturas_operativas.sql");
@@ -358,11 +361,29 @@ if (!schema.includes("create table reporte_eventos") || !functions.includes("reg
 if (!adminMfaSetup.includes("mfa.unenroll") || !adminMfaSetup.includes("unverified")) {
   failures.push("admin: la gestión MFA debe limpiar configuraciones pendientes y permitir retirar solo factores secundarios.");
 }
-if (!workflow.includes("cp ../supabase/migrations/*.sql supabase/migrations/") || !workflow.includes("version: 2.101.0")) {
-  failures.push("CI: debe aplicar las migraciones versionadas y fijar la versión de Supabase CLI.");
+if (!workflow.includes("cat ../supabase/schema.sql ../supabase/functions.sql > supabase/migrations/20260101000000_initial.sql") || workflow.includes("cp ../supabase/migrations/*.sql supabase/migrations/") || !workflow.includes("version: 2.101.0")) {
+  failures.push("CI: debe probar el snapshot canónico sin duplicar el estado final con migraciones históricas y fijar la versión de Supabase CLI.");
 }
 if (!functions.includes("grant usage on schema private to authenticator") || !schema.includes("grant usage on schema private to authenticator")) {
   failures.push("Supabase: authenticator necesita uso explícito del esquema private para el pre-request.");
+}
+if (/\be\.activity_id\b/.test(functions) || /\be\.activity_id\b/.test(migracionCorreccionInsignias)) {
+  failures.push("insignias: las entregas deben usar la columna actividad_id, no activity_id.");
+}
+if (!functions.includes("count(distinct e.actividad_id)") || !migracionCorreccionInsignias.includes("count(distinct e.actividad_id)")) {
+  failures.push("insignias: verificar_insignias debe contar entregas por actividad_id.");
+}
+if (!functions.includes("for update of en;") || !migracionOrientacionFinal.includes("for update of en;")) {
+  failures.push("orientación: el bloqueo debe limitarse a la tabla entregas.");
+}
+if (!functions.includes("revoke all on public.docentes from public, anon, authenticated;")) {
+  failures.push("docentes: el Data API no debe conservar grants DML heredados.");
+}
+if (functions.includes("create or replace function public.validar_codigo_invitacion") || functions.includes('rpc("validar_codigo_invitacion"')) {
+  failures.push("invitación: la validación no debe quedar expuesta como RPC SECURITY DEFINER público.");
+}
+if (!migracionRpcInvitacion.includes("drop function if exists public.validar_codigo_invitacion(text)") || !migracionRpcInvitacion.includes("grant execute on function public.controlar_rate_limit_ingreso() to authenticator, service_role")) {
+  failures.push("invitación: debe retirarse el RPC público y conservarse el pre-request solo para authenticator.");
 }
 if (!functions.includes("before insert or update on public.entregas") || !functions.includes("tg_op = 'INSERT'") || !functions.includes("sanitizar_respuesta_entrega(p_respuesta - '_meta')")) {
   failures.push("Supabase: las respuestas deben sanitizarse tanto al insertar como al actualizar entregas.");

@@ -135,14 +135,6 @@ export default function IngresoProfesora() {
         setCargando(false);
         return;
       }
-      const { data: codigoValido, error: codigoError } = await supabase.rpc("validar_codigo_invitacion", {
-        p_codigo: codigoInvitacion.trim(),
-      });
-      if (codigoError || codigoValido !== true) {
-        setError("El código de invitación no es correcto o ya alcanzó el límite de intentos.");
-        setCargando(false);
-        return;
-      }
       setCodigoListo(true);
       setCargando(false);
       return;
@@ -230,7 +222,7 @@ export default function IngresoProfesora() {
               <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-3 text-sm text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
                 <p className="font-semibold text-slate-900 dark:text-slate-50">Antes de comenzar</p>
                 <p className="mt-1 leading-relaxed">
-                  Primero comprueba tu código de invitación. Después podrás registrar el correo y la contraseña con los que entrarás al panel.
+                  Primero escribe tu código de invitación. Se comprobará de forma segura al crear la cuenta; después registrarás el correo y la contraseña con los que entrarás al panel.
                 </p>
               </div>
             )}

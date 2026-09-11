@@ -5,58 +5,6 @@ create or replace function public.normalizar_nombre(p_nombre text)
 returns text language sql immutable set search_path = public, extensions
 as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, '')), '\s+', ' ', 'g'))) $$;
 
--- Comprueba el código antes de crear una cuenta. El trigger de auth sigue
--- validándolo al insertar para que una llamada directa a signUp tampoco pueda
--- saltarse la invitación. Esta comprobación pública solo devuelve boolean y
--- tiene un límite por origen en una tabla no expuesta.
-create or replace function public.validar_codigo_invitacion(p_codigo text)
-returns boolean
-language plpgsql
-security definer
-set search_path = public, extensions, private, pg_catalog
-as $$
-declare
-  v_headers jsonb := '{}'::jsonb;
-  v_origen text;
-  v_intentos int;
-  v_hash text;
-begin
-  if p_codigo is null or length(trim(p_codigo)) not between 4 and 64 then return false; end if;
-  begin
-    v_headers := coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb;
-  exception when others then
-    v_headers := '{}'::jsonb;
-  end;
-  v_origen := coalesce(
-    nullif(btrim(v_headers ->> 'cf-connecting-ip'), ''),
-    nullif(btrim(v_headers ->> 'x-nf-client-connection-ip'), ''),
-    nullif(btrim(split_part(coalesce(v_headers ->> 'x-forwarded-for', ''), ',', 1)), ''),
-    nullif(btrim(v_headers ->> 'x-real-ip'), '')
-  );
-  if v_origen is null then return false; end if;
-
-  delete from private.invitacion_rate_limits where actualizado_en < now() - interval '1 day';
-  insert into private.invitacion_rate_limits (clave, ventana_inicio, intentos, actualizado_en)
-  values (v_origen, now(), 1, now())
-  on conflict (clave) do update set
-    intentos = case when private.invitacion_rate_limits.actualizado_en < now() - interval '15 minutes' then 1 else private.invitacion_rate_limits.intentos + 1 end,
-    ventana_inicio = case when private.invitacion_rate_limits.actualizado_en < now() - interval '15 minutes' then now() else private.invitacion_rate_limits.ventana_inicio end,
-    actualizado_en = now()
-  returning intentos into v_intentos;
-  if v_intentos > 10 then return false; end if;
-
-  select valor into v_hash from public.configuracion_plataforma where clave = 'codigo_invitacion_docente_hash';
-  if v_hash is null or extensions.crypt(trim(p_codigo), v_hash) <> v_hash then
-    perform pg_sleep(0.3);
-    return false;
-  end if;
-  return true;
-end;
-$$;
-
-revoke all on function public.validar_codigo_invitacion(text) from public, authenticated;
-grant execute on function public.validar_codigo_invitacion(text) to anon, authenticated;
-
 -- Rate limit previo para ingreso. La función vive en `private` y solo el rol
 -- authenticator puede ejecutarla como pre-request; no es un RPC público.
 create or replace function private.controlar_rate_limit_ingreso()
@@ -155,8 +103,8 @@ begin
   perform private.controlar_rate_limit_ingreso();
 end;
 $$;
-revoke all on function public.controlar_rate_limit_ingreso() from public;
-grant execute on function public.controlar_rate_limit_ingreso() to anon, authenticated, authenticator, service_role;
+revoke all on function public.controlar_rate_limit_ingreso() from public, anon, authenticated;
+grant execute on function public.controlar_rate_limit_ingreso() to authenticator, service_role;
 alter role authenticator set pgrst.db_pre_request = 'public.controlar_rate_limit_ingreso';
 notify pgrst, 'reload config';
 
@@ -418,7 +366,7 @@ begin
     join public.estudiantes e on e.id = en.estudiante_id
     join public.grupos g on g.id = e.grupo_id
    where en.id = p_entrega_id and g.docente_id = auth.uid()
-   for update;
+   for update of en;
   if not found then raise exception 'No tienes permiso para acompañar esta entrega.'; end if;
   if btrim(coalesce(p_comentario, '')) <> '' then
     insert into public.retroalimentacion_docente (entrega_id, docente_id, comentario)
@@ -440,9 +388,9 @@ begin
   if (
        new.tipo_id is distinct from old.tipo_id
        or (
-         ((new.contenido - 'instrucciones_momentos') #- '{video_bien,url}') #- '{video_mal,url}'
+         ((new.contenido - 'instrucciones_momentos' - 'reintento_alternativo') #- '{video_bien,url}') #- '{video_mal,url}'
        ) is distinct from (
-         ((old.contenido - 'instrucciones_momentos') #- '{video_bien,url}') #- '{video_mal,url}'
+         ((old.contenido - 'instrucciones_momentos' - 'reintento_alternativo') #- '{video_bien,url}') #- '{video_mal,url}'
        )
      )
      and exists (select 1 from public.entregas where actividad_id = old.id) then
@@ -689,9 +637,9 @@ begin
      and r.unidad_id is not null
      and exists (select 1 from unidades_completas uc where uc.id = r.unidad_id);
   select count(*) into v_total_actividades from public.actividades;
-  select count(distinct e.activity_id) into v_total_hechas
+  select count(distinct e.actividad_id) into v_total_hechas
     from public.entregas e
-    join public.actividades a on a.id = e.activity_id
+    join public.actividades a on a.id = e.actividad_id
    where e.estudiante_id = v_estudiante
      and public.entrega_cuenta_como_completada(a.contenido, e.puntaje_auto, e.respuesta);
   with unidades_completas as (
@@ -763,7 +711,7 @@ revoke execute on function public.normalizar_nombre(text) from public, anon, aut
 -- El correo de la docente no se expone por el Data API. Solo se leen las
 -- columnas necesarias para pintar el panel; las funciones internas y
 -- service_role conservan acceso completo.
-revoke select on public.docentes from public, anon, authenticated;
+revoke all on public.docentes from public, anon, authenticated;
 grant select (id, nombre, created_at) on public.docentes to authenticated;
 grant all on public.docentes to service_role;
 

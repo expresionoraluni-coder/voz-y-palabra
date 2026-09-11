@@ -47,7 +47,6 @@ jobs:
           cd .ci-supabase
           supabase init
           cat ../supabase/schema.sql ../supabase/functions.sql > supabase/migrations/20260101000000_initial.sql
-          cp ../supabase/migrations/*.sql supabase/migrations/
           cp ../supabase/tests/rls_seguridad.sql supabase/tests/rls_seguridad.sql
           cp ../supabase/tests/admin_rls.sql supabase/tests/admin_rls.sql
       - name: Iniciar base local
