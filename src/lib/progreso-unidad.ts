@@ -5,6 +5,8 @@ import {
 } from "@/lib/intentos-auto";
 
 export type MotivoBloqueoActividad =
+  | "actividad_no_programada"
+  | "actividad_no_abierta"
   | "dependencia"
   | "dependencia_reflexion"
   | "dependencia_reintento"
@@ -17,6 +19,16 @@ export type MotivoBloqueoActividad =
 
 export function detalleBloqueoActividad(motivo: string | null | undefined) {
   switch (motivo) {
+    case "actividad_no_programada":
+      return {
+        titulo: "Actividad sin fecha de apertura",
+        descripcion: "Tu docente todavía no programa cuándo podrás comenzar esta actividad.",
+      };
+    case "actividad_no_abierta":
+      return {
+        titulo: "Esta actividad aún no está disponible",
+        descripcion: "Podrás realizarla a partir de la fecha que aparece en el calendario.",
+      };
     case "dependencia":
     case "1":
       return {

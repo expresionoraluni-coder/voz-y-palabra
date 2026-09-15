@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Bell,
   BookOpen,
+  CalendarDays,
   BarChart3,
   Check,
   ChevronRight,
@@ -33,11 +34,11 @@ import CelebracionInsignia from "@/app/estudiante/celebracion-insignia";
 import BienvenidaPrimerIngreso from "../bienvenida-primer-ingreso";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { calcularRacha } from "@/lib/racha";
-import { diasFaltantes, textoFaltan } from "@/lib/eventos";
+import { actividadAbierta, diasFaltantes, fechaLarga, textoFaltan } from "@/lib/eventos";
 import { proximoRepaso } from "@/lib/calendario-repaso";
 import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-unidad";
+import { esDependenciaDosNiveles } from "@/lib/dependencias-actividades";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
-import { hoyMexico } from "@/lib/fecha-mexico";
 
 type Grupo = { nombre: string } | { nombre: string }[] | null;
 
@@ -78,7 +79,7 @@ export default async function InicioEstudiante({
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
 
-  // avisos y eventosProximos solo dependen de estudiante.grupo_id, ya
+  // Los avisos y eventos del grupo solo dependen de estudiante.grupo_id, ya
   // conocido en cuanto resuelve requireEstudiante, así que van en este
   // mismo Promise.all en vez de esperar a un segundo lote — el único que
   // sigue aparte es bitacoraActiva, porque necesita unidadActiva, que se
@@ -97,7 +98,7 @@ export default async function InicioEstudiante({
   ] = await Promise.all([
     admin
       .from("unidades")
-      .select("id, nombre, orden, reto_comunicativo, actividades(id, titulo, orden, contenido, requiere_actividad_id)")
+      .select("id, nombre, orden, reto_comunicativo, actividades(id, titulo, orden, contenido, requiere_actividad_id, tipos_actividad(nombre))")
       .order("orden"),
     // Revisa y otorga insignias nuevas cada vez que el estudiante visita su inicio.
     // Vía admin porque embebe `actividades` (ya sin lectura abierta); el
@@ -124,11 +125,9 @@ export default async function InicioEstudiante({
       .limit(5),
     supabase
       .from("eventos")
-      .select("id, titulo, fecha")
+      .select("id, titulo, fecha, tipo, actividad_id, unidad_id")
       .eq("grupo_id", estudiante.grupo_id)
-      .gte("fecha", hoyMexico())
-      .order("fecha")
-      .limit(3),
+      .order("fecha"),
   ]);
   const { data: insignias, error: insigniasError } = await insigniasPromise;
 
@@ -240,19 +239,50 @@ export default async function InicioEstudiante({
   const primeraReflexionPendiente = actividadesActiva.find(
     (actividad) => idsCompletadas.has(actividad.id) && !actividadesConReflexion.has(actividad.id),
   );
-  const primeraActividadAccesible = actividadesActiva.find((actividad, indice) => {
+  const aperturasPorActividad = new globalThis.Map(
+    (eventosProximos ?? [])
+      .filter((evento) => evento.tipo === "apertura_actividad" && evento.actividad_id)
+      .map((evento) => [evento.actividad_id!, evento.fecha]),
+  );
+  const requisitoDosNiveles = (actividad: (typeof actividadesActiva)[number]) => {
+    if (!actividad.requiere_actividad_id) return null;
+    const requisito = actividadesActiva.find((candidata) => candidata.id === actividad.requiere_actividad_id);
+    const tipoActividad = Array.isArray(actividad.tipos_actividad)
+      ? actividad.tipos_actividad[0]
+      : actividad.tipos_actividad;
+    const tipoRequisito = Array.isArray(requisito?.tipos_actividad)
+      ? requisito.tipos_actividad[0]
+      : requisito?.tipos_actividad;
+    return esDependenciaDosNiveles(tipoActividad?.nombre, tipoRequisito?.nombre)
+      ? actividad.requiere_actividad_id
+      : null;
+  };
+  const primeraActividadAccesible = actividadesActiva.find((actividad) => {
     if (idsCompletadas.has(actividad.id)) return false;
-    const idsPrerequisito = Array.from(
-      new Set(
-        [...actividadesActiva.slice(0, indice).map((anterior) => anterior.id), actividad.requiere_actividad_id].filter(
-          (actividadId): actividadId is string => typeof actividadId === "string",
-        ),
-      ),
-    );
-    return idsPrerequisito.every(
-      (actividadId) => idsCompletadas.has(actividadId) && actividadesConReflexion.has(actividadId),
+    if (!actividadAbierta(aperturasPorActividad.get(actividad.id))) return false;
+    const requisito = requisitoDosNiveles(actividad);
+    return (
+      !requisito ||
+      (idsCompletadas.has(requisito) && actividadesConReflexion.has(requisito))
     );
   });
+  const proximaActividadProgramada = actividadesActiva
+    .filter((actividad) => {
+      if (idsCompletadas.has(actividad.id)) return false;
+      const requisito = requisitoDosNiveles(actividad);
+      if (
+        requisito &&
+        (!idsCompletadas.has(requisito) || !actividadesConReflexion.has(requisito))
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const fechaA = aperturasPorActividad.get(a.id) ?? "9999-12-31";
+      const fechaB = aperturasPorActividad.get(b.id) ?? "9999-12-31";
+      return fechaA.localeCompare(fechaB) || a.orden - b.orden;
+    })[0];
 
   const faltaCerrarUnidad = Boolean(
     unidadActiva &&
@@ -263,7 +293,16 @@ export default async function InicioEstudiante({
   const recordatorios: { texto: string; href: string }[] = [];
   for (const ev of eventosProximos ?? []) {
     const dias = diasFaltantes(ev.fecha);
-    if (dias <= 7) recordatorios.push({ texto: `${ev.titulo} (${textoFaltan(dias)})`, href: "/estudiante/calendario" });
+    if (dias < 0 || dias > 7) continue;
+    if (ev.tipo === "apertura_actividad") {
+      const yaAbierta = actividadAbierta(ev.fecha);
+      recordatorios.push({
+        texto: yaAbierta ? `Ya puedes iniciar “${ev.titulo}”` : `“${ev.titulo}” abre ${textoFaltan(dias)}`,
+        href: yaAbierta && ev.actividad_id ? `/estudiante/actividad/${ev.actividad_id}` : "/estudiante/calendario",
+      });
+    } else {
+      recordatorios.push({ texto: `${ev.titulo} (${textoFaltan(dias)})`, href: "/estudiante/calendario" });
+    }
   }
   if (unidadActiva && !bitacoraActiva) {
     recordatorios.push({
@@ -290,12 +329,21 @@ export default async function InicioEstudiante({
             href: `/estudiante/unidad/${unidadActiva.id}`,
             cta: "Continuar",
             icon: Target,
-          }
+        }
+        : primeraActividadAccesible
+          ? {
+              etiqueta: `Unidad ${unidadActiva.orden}`,
+              titulo: primeraActividadAccesible.titulo,
+              descripcion: "Continúa con una actividad que ya está disponible para ti.",
+              href: `/estudiante/actividad/${primeraActividadAccesible.id}`,
+              cta: "Continuar actividad",
+              icon: PlayCircle,
+            }
         : primeraReflexionPendiente
           ? {
               etiqueta: `Unidad ${unidadActiva.orden}`,
               titulo: `Guarda tu reflexión de “${primeraReflexionPendiente.titulo}”`,
-              descripcion: "La reflexión de cada actividad es necesaria antes de abrir el siguiente paso.",
+              descripcion: "Puedes guardar esta reflexión y continuar con las actividades disponibles.",
               href: `/estudiante/actividad/${primeraReflexionPendiente.id}`,
               cta: "Completar reflexión",
               icon: Target,
@@ -313,14 +361,16 @@ export default async function InicioEstudiante({
               cta: "Cerrar unidad",
               icon: Target,
             }
-          : primeraActividadAccesible
+          : proximaActividadProgramada
           ? {
               etiqueta: `Unidad ${unidadActiva.orden}`,
-              titulo: primeraActividadAccesible.titulo,
-              descripcion: "Continúa con la siguiente actividad de tu ruta.",
-              href: `/estudiante/actividad/${primeraActividadAccesible.id}`,
-              cta: "Continuar actividad",
-              icon: PlayCircle,
+              titulo: proximaActividadProgramada.titulo,
+              descripcion: aperturasPorActividad.has(proximaActividadProgramada.id)
+                ? `Se abrirá el ${fechaLarga(aperturasPorActividad.get(proximaActividadProgramada.id)!)}.`
+                : "Tu docente todavía no indica cuándo se abrirá esta actividad.",
+              href: `/estudiante/unidad/${unidadActiva.id}`,
+              cta: "Ver mi unidad",
+              icon: CalendarDays,
             }
           : {
               etiqueta: "Ruta completa",

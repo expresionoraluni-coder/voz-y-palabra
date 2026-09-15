@@ -7,11 +7,11 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:contracts": "node scripts/verify-security-contracts.mjs && node --experimental-strip-types --test scripts/auth-url.test.mts scripts/intentos-auto.test.mts",
+    "test:contracts": "node scripts/verify-security-contracts.mjs && node --experimental-strip-types --test scripts/auth-url.test.mts scripts/intentos-auto.test.mts scripts/eventos.test.mts scripts/dependencias-actividades.test.mts",
     "test:e2e": "playwright test",
     "catalog:export": "node scripts/export-catalog-seed.mjs"
   },

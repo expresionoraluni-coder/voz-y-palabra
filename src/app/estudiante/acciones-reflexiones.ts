@@ -38,12 +38,13 @@ async function cargarActividad(
 ) {
   const { data: actividad, error } = await admin
     .from("actividades")
-    .select("id, unidad_id, orden, contenido, requiere_actividad_id, unidades(orden)")
+    .select("id, unidad_id, orden, contenido, requiere_actividad_id, unidades(orden), tipos_actividad(nombre)")
     .eq("id", actividadId)
     .maybeSingle();
   if (error || !actividad) return null;
 
   const unidad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
+  const tipo = Array.isArray(actividad.tipos_actividad) ? actividad.tipos_actividad[0] : actividad.tipos_actividad;
   return {
     id: actividad.id,
     unidad_id: actividad.unidad_id,
@@ -51,6 +52,7 @@ async function cargarActividad(
     contenido: actividad.contenido,
     requiere_actividad_id: actividad.requiere_actividad_id,
     unidad_orden: Number(unidad?.orden ?? 1),
+    tipo_nombre: tipo?.nombre ?? null,
   };
 }
 
@@ -72,6 +74,8 @@ export async function guardarPrediccionActividad(
     orden: actividad.orden,
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: actividad.unidad_orden,
+    grupoId: acceso.estudiante.grupo_id,
+    tipoNombre: actividad.tipo_nombre,
   });
   if (!permitido.ok) return { ok: false, error: permitido.error };
 
@@ -109,6 +113,8 @@ export async function guardarReflexionActividad(
     orden: actividad.orden,
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: actividad.unidad_orden,
+    grupoId: acceso.estudiante.grupo_id,
+    tipoNombre: actividad.tipo_nombre,
   });
   if (!permitido.ok) return { ok: false, error: permitido.error };
   const { data: entrega } = await acceso.supabase

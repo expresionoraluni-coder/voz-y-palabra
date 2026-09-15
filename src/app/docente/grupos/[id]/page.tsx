@@ -109,7 +109,11 @@ export default async function DetalleGrupo({
       .select("id, nombre, codigo_acceso, ciclo_escolar")
       .eq("id", id)
       .single(),
-    supabase.from("estudiantes").select("id, nombre, created_at, activo").eq("grupo_id", id).order("nombre"),
+    supabase
+      .from("estudiantes")
+      .select("id, nombre, created_at, activo, debe_cambiar_nip")
+      .eq("grupo_id", id)
+      .order("nombre"),
     supabase.from("unidades").select("id, nombre, orden").order("orden"),
     supabase.from("actividades").select("id, unidad_id, titulo, contenido, tipos_actividad(nombre)"),
     supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor"),
@@ -118,7 +122,7 @@ export default async function DetalleGrupo({
       .select("id, titulo, mensaje, created_at")
       .eq("grupo_id", id)
       .order("created_at", { ascending: false }),
-    supabase.from("eventos").select("id, titulo, tipo, fecha, unidad_id").eq("grupo_id", id),
+    supabase.from("eventos").select("id, titulo, tipo, fecha, unidad_id, actividad_id").eq("grupo_id", id),
   ]);
 
   if (!user || user.is_anonymous === true) redirect("/ingreso/profesora");
@@ -135,6 +139,7 @@ export default async function DetalleGrupo({
 
   const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);
   const estudiantesBaja = (estudiantesTodos ?? []).filter((e) => !e.activo);
+  const primerIngresoPendiente = estudiantes.filter((e) => e.debe_cambiar_nip).length;
   // Las métricas del grupo representan al roster activo. Las entregas de una
   // persona dada de baja se conservan para su ficha, pero no deben inflar el
   // avance ni aparecer como casos sin nombre en este panel.
@@ -431,11 +436,11 @@ export default async function DetalleGrupo({
               <p className="text-sm text-slate-600 dark:text-slate-400">Más de {DIAS_INACTIVIDAD} días</p>
             </CardLink>
           </Link>
-          <Link href="#apoyo">
-            <CardLink className="flex h-full flex-col gap-2 border-indigo-100 px-4 py-4 dark:border-indigo-900/60">
-              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Casos de apoyo</p>
-              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{entregasPorRevisar.length}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Orientación opcional</p>
+          <Link href="#estudiantes">
+            <CardLink className="flex h-full flex-col gap-2 border-amber-100 px-4 py-4 dark:border-amber-900/60">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Primer ingreso pendiente</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{primerIngresoPendiente}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Revisar estudiantes con NIP inicial</p>
             </CardLink>
           </Link>
         </div>
@@ -600,7 +605,16 @@ export default async function DetalleGrupo({
       </section>
 
       <div id="avisos" className="scroll-mt-16 flex flex-col gap-8">
-        <Eventos grupoId={grupo.id} unidades={unidades ?? []} eventos={eventos ?? []} />
+        <Eventos
+          grupoId={grupo.id}
+          unidades={unidades ?? []}
+          eventos={eventos ?? []}
+          actividades={(actividades ?? []).map((actividad) => ({
+            id: actividad.id,
+            unidad_id: actividad.unidad_id,
+            titulo: actividad.titulo,
+          }))}
+        />
         <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
       </div>
 

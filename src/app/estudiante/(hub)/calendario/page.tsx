@@ -7,7 +7,7 @@ import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
 import EmptyState from "@/components/ui/empty-state";
-import { TIPOS_EVENTO, TipoEvento, diasFaltantes, textoFaltan } from "@/lib/eventos";
+import { actividadAbierta, TIPOS_EVENTO, TipoEvento, diasFaltantes, textoFaltan } from "@/lib/eventos";
 import { proximoRepaso } from "@/lib/calendario-repaso";
 
 export default async function CalendarioEstudiante() {
@@ -21,7 +21,7 @@ export default async function CalendarioEstudiante() {
   const [{ data: eventos }, { data: unidades }, { data: actividades }, { data: entregas }] = await Promise.all([
     supabase
       .from("eventos")
-      .select("id, titulo, tipo, fecha, unidad_id")
+      .select("id, titulo, tipo, fecha, unidad_id, actividad_id")
       .eq("grupo_id", estudiante.grupo_id)
       .order("fecha"),
     admin.from("unidades").select("id, nombre, orden"),
@@ -49,6 +49,7 @@ export default async function CalendarioEstudiante() {
     fecha: ev.fecha,
     titulo: ev.titulo,
     tipoEvento: ev.tipo as TipoEvento,
+    actividadId: ev.actividad_id,
     unidad: unidades?.find((u) => u.id === ev.unidad_id),
     recomendaciones: recomendacionPara(ev.unidad_id),
   }));
@@ -110,11 +111,27 @@ export default async function CalendarioEstudiante() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {textoFaltan(dias)} · Unidad {item.unidad?.orden}
                   </p>
-                  {item.recomendaciones.length > 0 && (
+                  {item.tipoEvento === "apertura_actividad" ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {actividadAbierta(item.fecha)
+                          ? "Llegó su fecha de apertura. Si cumpliste los requisitos previos, ya puedes comenzar."
+                          : "Podrás comenzar esta actividad desde esta fecha."}
+                      </p>
+                      {actividadAbierta(item.fecha) && item.actividadId && (
+                        <Link
+                          href={`/estudiante/actividad/${item.actividadId}`}
+                          className="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          Abrir actividad
+                        </Link>
+                      )}
+                    </div>
+                  ) : item.recomendaciones.length > 0 ? (
                     <p className="text-sm text-slate-600 dark:text-slate-400">
                       {conector}: {item.recomendaciones.join(", ")}
                     </p>
-                  )}
+                  ) : null}
                 </Card>
               );
             }

@@ -1,13 +1,16 @@
-export type TipoEvento = "examen" | "proyecto" | "entrega" | "otro";
+export type TipoEvento = "examen" | "proyecto" | "entrega" | "apertura_actividad" | "otro";
 
 export const TIPOS_EVENTO: Record<TipoEvento, { etiqueta: string; conector: string }> = {
   examen: { etiqueta: "Examen", conector: "Repasa antes de tu examen" },
   proyecto: { etiqueta: "Proyecto", conector: "Antes de tu proyecto, revisa" },
   entrega: { etiqueta: "Entrega", conector: "Antes de esta entrega, repasa" },
+  apertura_actividad: { etiqueta: "Apertura de actividad", conector: "Disponible a partir de" },
   otro: { etiqueta: "Otro", conector: "Antes de este evento, repasa" },
 };
 
 import { hoyMexico } from "./fecha-mexico";
+
+export { actividadAbierta } from "./fecha-mexico";
 
 const UN_DIA_MS = 1000 * 60 * 60 * 24;
 
@@ -25,4 +28,13 @@ export function textoFaltan(dias: number): string {
   if (dias === 0) return "hoy";
   if (dias === 1) return "mañana";
   return `en ${dias} días`;
+}
+
+export function fechaLarga(fecha: string): string {
+  return new Date(`${fecha}T00:00:00Z`).toLocaleDateString("es-MX", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }

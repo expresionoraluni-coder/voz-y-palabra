@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, MessageSquareText, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, MessageSquareText, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { guardarAperturasActividad } from "../acciones-actividad";
 import { mensajeError } from "@/lib/mensaje-error";
 import { DESCRIPCION_TIPO, etiquetaTipo, ICONO_TIPO } from "@/lib/tipo-actividad-icono";
 import { esTipoActividadActual, TIPOS_ACTIVIDAD_ACTUALES } from "@/lib/tipos-actividad-actuales";
@@ -30,6 +31,9 @@ type ActividadInicial = {
   videoUrl?: string;
   contenido: Record<string, unknown>;
 };
+
+type GrupoApertura = { id: string; nombre: string };
+type AperturaInicial = { grupo_id: string; fecha: string };
 
 function lineas(texto: string): string[] {
   return texto
@@ -81,10 +85,14 @@ export default function ActividadForm({
   unidadId,
   actividadInicial,
   tieneEntregas = false,
+  gruposApertura,
+  aperturasIniciales = [],
 }: {
   unidadId: string;
   actividadInicial?: ActividadInicial;
   tieneEntregas?: boolean;
+  gruposApertura: GrupoApertura[];
+  aperturasIniciales?: AperturaInicial[];
 }) {
   const router = useRouter();
   const modoEdicion = !!actividadInicial;
@@ -203,6 +211,15 @@ export default function ActividadForm({
   const [borradorListo, setBorradorListo] = useState(false);
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [tipoBorradorNombre, setTipoBorradorNombre] = useState<string | null>(null);
+  const fechasApertura = Array.from(new Set(aperturasIniciales.map((apertura) => apertura.fecha)));
+  const [fechaApertura, setFechaApertura] = useState(
+    fechasApertura.length === 1 ? fechasApertura[0] : "",
+  );
+  const [gruposSeleccionados, setGruposSeleccionados] = useState<string[]>(() =>
+    aperturasIniciales.map((apertura) => apertura.grupo_id),
+  );
+  const [guardandoApertura, setGuardandoApertura] = useState(false);
+  const [errorApertura, setErrorApertura] = useState<string | null>(null);
   const tipoSeleccionado = tipos.find((t) => t.id === tipoId);
   const nombreTipo = tipoSeleccionado?.nombre;
   const disponible = esTipoActividadActual(nombreTipo);
@@ -474,6 +491,41 @@ export default function ActividadForm({
     window.location.reload();
   }
 
+  function alternarGrupoApertura(grupoId: string) {
+    setGruposSeleccionados((actuales) =>
+      actuales.includes(grupoId)
+        ? actuales.filter((id) => id !== grupoId)
+        : [...actuales, grupoId],
+    );
+  }
+
+  async function guardarFechaApertura() {
+    if (!modoEdicion || !actividadInicial || guardandoApertura) return;
+    setErrorApertura(null);
+    if (!fechaApertura) {
+      setErrorApertura("Selecciona la fecha en que se abrirá la actividad.");
+      return;
+    }
+    if (!gruposSeleccionados.length) {
+      setErrorApertura("Selecciona al menos un grupo.");
+      return;
+    }
+
+    setGuardandoApertura(true);
+    const resultado = await guardarAperturasActividad(
+      actividadInicial.id,
+      unidadId,
+      fechaApertura,
+      gruposSeleccionados,
+    );
+    setGuardandoApertura(false);
+    if (!resultado.ok) {
+      setErrorApertura(resultado.error);
+      return;
+    }
+    router.refresh();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (cargando) return;
@@ -486,6 +538,11 @@ export default function ActividadForm({
 
     if (!tipoId || !nombreTipo || !puedeGuardar) {
       setError("Selecciona un tipo de actividad vigente antes de guardar.");
+      return;
+    }
+
+    if (!modoEdicion && (!fechaApertura || !gruposSeleccionados.length)) {
+      setError("Indica la fecha de apertura y selecciona al menos un grupo.");
       return;
     }
 
@@ -775,8 +832,21 @@ export default function ActividadForm({
         setCargando(false);
         return;
       }
+      if (fechaApertura && gruposSeleccionados.length) {
+        const resultadoApertura = await guardarAperturasActividad(
+          actividadInicial!.id,
+          unidadId,
+          fechaApertura,
+          gruposSeleccionados,
+        );
+        if (!resultadoApertura.ok) {
+          setError(`Los datos de la actividad se guardaron, pero no se pudo actualizar su apertura: ${resultadoApertura.error}`);
+          setCargando(false);
+          return;
+        }
+      }
     } else {
-      const { error: insertError } = await supabase.rpc("crear_actividad_docente", {
+      const { error: insertError } = await supabase.rpc("crear_actividad_programada_docente", {
         p_unidad_id: unidadId,
         p_tipo_id: tipoId,
         p_titulo: tituloNormalizado,
@@ -784,6 +854,8 @@ export default function ActividadForm({
         p_aprendizaje_esperado: aprendizajeNormalizado || null,
         p_video_url: videoUrlNormalizada || null,
         p_contenido: contenido,
+        p_fecha_apertura: fechaApertura,
+        p_grupo_ids: gruposSeleccionados,
       });
       if (insertError) {
         setError(insertError.message.includes("Ya existe una actividad con ese título")
@@ -913,7 +985,65 @@ export default function ActividadForm({
       )}
 
       <form onSubmit={handleSubmit}>
-    <fieldset disabled={contenidoBloqueado || cargandoTipos || Boolean(errorCargaTipos)} className="flex flex-col gap-6">
+        <Card className="mb-6 flex flex-col gap-4 border-indigo-100 p-5 dark:border-indigo-900">
+          <div className="flex items-center gap-2.5">
+            <CalendarDays className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Apertura y calendario</h2>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            La actividad aparecerá en el calendario de los grupos seleccionados y se podrá entregar desde esta fecha. No tendrá fecha de cierre.
+          </p>
+          <Field>
+            <Label htmlFor="fechaApertura">Fecha de apertura</Label>
+            <Input
+              id="fechaApertura"
+              type="date"
+              required={!modoEdicion}
+              value={fechaApertura}
+              onChange={(e) => setFechaApertura(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <Label>Grupos que recibirán la apertura</Label>
+            {gruposApertura.length ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {gruposApertura.map((grupo) => (
+                  <label
+                    key={grupo.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={gruposSeleccionados.includes(grupo.id)}
+                      onChange={() => alternarGrupoApertura(grupo.id)}
+                      className="size-4 shrink-0 accent-indigo-600"
+                    />
+                    {grupo.nombre}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-amber-700 dark:text-amber-300">No hay grupos asignados a tu cuenta para programar esta apertura.</p>
+            )}
+          </Field>
+          {modoEdicion && (
+            <>
+              {errorApertura && <Alert tono="error">{errorApertura}</Alert>}
+              <Boton
+                type="button"
+                variant="secondary"
+                size="sm"
+                cargando={guardandoApertura}
+                disabled={guardandoApertura || !fechaApertura || !gruposSeleccionados.length}
+                onClick={guardarFechaApertura}
+                className="self-start"
+              >
+                {guardandoApertura ? "Guardando apertura…" : "Guardar fecha y grupos"}
+              </Boton>
+            </>
+          )}
+        </Card>
+        <fieldset disabled={contenidoBloqueado || cargandoTipos || Boolean(errorCargaTipos)} className="flex flex-col gap-6">
         <Card className="flex flex-col gap-4 p-5">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Datos que verá el estudiante</h2>

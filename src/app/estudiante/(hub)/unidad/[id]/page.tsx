@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ArrowRight, CheckCircle2, Circle, Lock, TrendingUp } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Circle, Lock, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Confianza from "./confianza";
@@ -18,6 +18,8 @@ import {
   unidadEstaCompleta,
 } from "@/lib/progreso-unidad";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { actividadAbierta, fechaLarga } from "@/lib/eventos";
+import { esDependenciaDosNiveles } from "@/lib/dependencias-actividades";
 
 export default async function UnidadEstudiante({
   params,
@@ -37,7 +39,7 @@ export default async function UnidadEstudiante({
 
   const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
-    .select("id, debe_cambiar_nip")
+    .select("id, grupo_id, debe_cambiar_nip")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -54,6 +56,7 @@ export default async function UnidadEstudiante({
   const [
     { data: unidad, error: unidadError },
     { data: actividadesRaw, error: actividadesError },
+    { data: aperturas, error: aperturasError },
     { data: entregasEstudiante, error: entregasError },
     { data: reflexionesActividad, error: reflexionesActividadError },
   ] = await Promise.all([
@@ -64,9 +67,15 @@ export default async function UnidadEstudiante({
       .single(),
     admin
       .from("actividades")
-      .select("id, titulo, instrucciones, contenido, requiere_actividad_id")
+      .select("id, titulo, instrucciones, contenido, requiere_actividad_id, tipos_actividad(nombre)")
       .eq("unidad_id", id)
       .order("orden"),
+    supabase
+      .from("eventos")
+      .select("actividad_id, fecha")
+      .eq("grupo_id", estudiante.grupo_id)
+      .eq("unidad_id", id)
+      .eq("tipo", "apertura_actividad"),
     supabase.from("entregas").select("actividad_id, puntaje_auto, respuesta").eq("estudiante_id", estudiante.id),
     supabase
       .from("reflexiones")
@@ -76,11 +85,17 @@ export default async function UnidadEstudiante({
   ]);
   revisarErrorConsulta(unidadError, "No pudimos cargar esta unidad.");
   revisarErrorConsulta(actividadesError, "No pudimos cargar las actividades de esta unidad.");
+  revisarErrorConsulta(aperturasError, "No pudimos cargar las fechas de apertura.");
   revisarErrorConsulta(entregasError, "No pudimos cargar tu avance en esta unidad.");
   revisarErrorConsulta(reflexionesActividadError, "No pudimos cargar tus reflexiones de actividad.");
   if (!unidad) notFound();
 
   const entregasPorActividad = new Map((entregasEstudiante ?? []).map((e) => [e.actividad_id, e]));
+  const aperturaPorActividad = new Map(
+    (aperturas ?? [])
+      .filter((apertura) => apertura.actividad_id)
+      .map((apertura) => [apertura.actividad_id!, apertura.fecha]),
+  );
   const actividadesConReflexion = new Set(
     (reflexionesActividad ?? [])
       .map((reflexion) => reflexion.actividad_id)
@@ -88,8 +103,11 @@ export default async function UnidadEstudiante({
   );
   const actividades = (actividadesRaw ?? []).map((a) => {
     const entrega = entregasPorActividad.get(a.id);
+    const tipo = Array.isArray(a.tipos_actividad) ? a.tipos_actividad[0] : a.tipos_actividad;
     return {
       ...a,
+      tipoNombre: tipo?.nombre ?? null,
+      fechaApertura: aperturaPorActividad.get(a.id) ?? null,
       entregas: entrega ? [{ puntaje_auto: entrega.puntaje_auto, respuesta: entrega.respuesta }] : [],
     };
   });
@@ -273,16 +291,14 @@ export default async function UnidadEstudiante({
             />
           ) : (
             <div className="flex flex-col gap-2">
-              {actividades.map((a, indice) => {
+              {actividades.map((a) => {
                 const completada = entregaCuentaComoCompletada(a.entregas?.[0], a.contenido);
                 const reflexionada = actividadesConReflexion.has(a.id);
-                const idsPrerequisito = Array.from(
-                  new Set(
-                    [...actividades.slice(0, indice).map((anterior) => anterior.id), a.requiere_actividad_id].filter(
-                      (actividadId): actividadId is string => typeof actividadId === "string",
-                    ),
-                  ),
-                );
+                const requisito = actividades.find((candidata) => candidata.id === a.requiere_actividad_id);
+                const requiereNivelAnterior = esDependenciaDosNiveles(a.tipoNombre, requisito?.tipoNombre);
+                const idsPrerequisito = requiereNivelAnterior && a.requiere_actividad_id
+                  ? [a.requiere_actividad_id]
+                  : [];
                 const requisitoSinEntrega = idsPrerequisito.find((actividadId) =>
                   !entregaCuentaComoCompletada(
                     entregasPorActividad.get(actividadId),
@@ -307,6 +323,21 @@ export default async function UnidadEstudiante({
                       <span className="flex-1 font-medium text-slate-500 dark:text-slate-400">{a.titulo}</span>
                       <span className="text-xs text-slate-400 dark:text-slate-600">
                         {requisitoSinEntrega ? "Primero completa" : "Primero guarda la reflexión de"}: {actividadBloqueada?.titulo ?? "la actividad anterior"}
+                      </span>
+                    </div>
+                  );
+                }
+
+                if (!a.entregas?.length && (!a.fechaApertura || !actividadAbierta(a.fechaApertura))) {
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 px-4 py-3.5 opacity-70 dark:border-slate-800"
+                    >
+                      <CalendarDays className="size-5 shrink-0 text-indigo-400 dark:text-indigo-500" aria-hidden="true" />
+                      <span className="flex-1 font-medium text-slate-600 dark:text-slate-300">{a.titulo}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {a.fechaApertura ? `Disponible el ${fechaLarga(a.fechaApertura)}` : "Aún sin fecha de apertura"}
                       </span>
                     </div>
                   );

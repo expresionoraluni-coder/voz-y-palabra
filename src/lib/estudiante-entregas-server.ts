@@ -19,6 +19,8 @@ import {
   entregaCuentaComoCompletada,
   unidadEstaCompleta,
 } from "@/lib/progreso-unidad";
+import { hoyMexico } from "@/lib/fecha-mexico";
+import { esDependenciaDosNiveles } from "@/lib/dependencias-actividades";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -46,6 +48,8 @@ type ActividadParaAcceso = {
   orden: number;
   requiereActividadId: string | null;
   unidadOrden: number;
+  grupoId?: string;
+  tipoNombre: string | null;
 };
 
 type ClienteAdmin = ReturnType<typeof createAdminClient>;
@@ -66,12 +70,58 @@ export async function validarAccesoActividad(
   admin: ClienteAdmin,
   estudianteId: string,
   actividad: ActividadParaAcceso,
-  opciones: { requiereInicio?: boolean } = {},
+  opciones: { requiereInicio?: boolean; verificarApertura?: boolean } = {},
 ): Promise<{ ok: true } | { ok: false; error: string; motivo: MotivoBloqueoActividad }> {
   // Todas las lecturas de avance se filtran por el estudiante previamente
   // resuelto desde auth.uid(). Se usa el cliente de servidor para no depender
   // de permisos directos de una sesión anónima sobre tablas de aprendizaje.
   const lectura = admin;
+  if (opciones.verificarApertura !== false) {
+    if (!actividad.grupoId) {
+      return {
+        ok: false,
+        error: "No pudimos comprobar la fecha de apertura de esta actividad.",
+        motivo: "actividad_no_programada",
+      };
+    }
+    const [
+      { data: apertura, error: aperturaError },
+      { data: entregaExistente, error: entregaExistenteError },
+    ] = await Promise.all([
+      lectura
+        .from("eventos")
+        .select("fecha")
+        .eq("grupo_id", actividad.grupoId)
+        .eq("actividad_id", actividad.id)
+        .eq("tipo", "apertura_actividad")
+        .maybeSingle(),
+      lectura
+        .from("entregas")
+        .select("id")
+        .eq("estudiante_id", estudianteId)
+        .eq("actividad_id", actividad.id)
+        .maybeSingle(),
+    ]);
+    revisarErrorConsulta(aperturaError, "No pudimos comprobar la fecha de apertura.");
+    revisarErrorConsulta(entregaExistenteError, "No pudimos comprobar tu avance en esta actividad.");
+    // Un estudiante que ya tenía una entrega conserva acceso para revisar su
+    // trabajo aunque todavía no exista una fecha nueva de apertura.
+    if (!entregaExistente && !apertura) {
+      return {
+        ok: false,
+        error: "Tu docente todavía no programó esta actividad.",
+        motivo: "actividad_no_programada",
+      };
+    }
+    if (!entregaExistente && apertura && apertura.fecha > hoyMexico()) {
+      return {
+        ok: false,
+        error: `Esta actividad estará disponible a partir del ${apertura.fecha}.`,
+        motivo: "actividad_no_abierta",
+      };
+    }
+  }
+
   const [{ data: bitacoraInicio, error: bitacoraError }, { data: confianzaInicio, error: confianzaError }] = await Promise.all([
     lectura
       .from("bitacora")
@@ -97,89 +147,64 @@ export async function validarAccesoActividad(
     };
   }
 
-  // El recorrido es secuencial aunque el catálogo no declare una dependencia
-  // explícita: para abrir cualquier actividad posterior deben estar guardadas
-  // tanto la entrega como la reflexión de todas las actividades anteriores.
-  // Una dependencia curricular distinta se comprueba además, sin confundirla
-  // con el orden ni con los intentos de una misma actividad.
-  const { data: actividadesAnterioresUnidad, error: actividadesAnterioresUnidadError } = await lectura
-    .from("actividades")
-    .select("id, titulo, contenido")
-    .eq("unidad_id", actividad.unidadId)
-    .lt("orden", actividad.orden)
-    .order("orden");
-  revisarErrorConsulta(actividadesAnterioresUnidadError, "No pudimos comprobar las actividades anteriores.");
+  // Solo bloquea una actividad cuando el catálogo declara un requisito
+  // pedagógico explícito. El resto de las actividades de la unidad se puede
+  // resolver en cualquier orden.
+  if (actividad.requiereActividadId && actividad.tipoNombre === "clasificacion") {
+    const { data: requisito, error: requisitoError } = await lectura
+      .from("actividades")
+      .select("id, titulo, contenido, tipos_actividad(nombre)")
+      .eq("id", actividad.requiereActividadId)
+      .maybeSingle();
+    revisarErrorConsulta(requisitoError, "No pudimos comprobar la actividad requerida.");
+    const tipoRequisito = requisito?.tipos_actividad?.[0]?.nombre;
 
-  const idsPrerequisito = Array.from(
-    new Set(
-      [...(actividadesAnterioresUnidad ?? []).map((anterior) => anterior.id), actividad.requiereActividadId].filter(
-        (id): id is string => typeof id === "string",
-      ),
-    ),
-  );
-  if (idsPrerequisito.length) {
-    const [
-      { data: entregasPrerequisito, error: entregasPrerequisitoError },
-      { data: reflexionesPrerequisito, error: reflexionesPrerequisitoError },
-    ] = await Promise.all([
-      lectura
-        .from("entregas")
-        .select("actividad_id, puntaje_auto, respuesta")
-        .eq("estudiante_id", estudianteId)
-        .in("actividad_id", idsPrerequisito),
-      lectura
-        .from("reflexiones")
-        .select("actividad_id")
-        .eq("estudiante_id", estudianteId)
-        .eq("momento", "cierre")
-        .in("actividad_id", idsPrerequisito),
-    ]);
-    revisarErrorConsulta(entregasPrerequisitoError, "No pudimos comprobar las actividades anteriores.");
-    revisarErrorConsulta(reflexionesPrerequisitoError, "No pudimos comprobar las reflexiones anteriores.");
+    if (esDependenciaDosNiveles(actividad.tipoNombre, tipoRequisito)) {
+      const [
+        { data: entregaRequisito, error: entregaRequisitoError },
+        { data: reflexionRequisito, error: reflexionRequisitoError },
+      ] = await Promise.all([
+        lectura
+          .from("entregas")
+          .select("actividad_id, puntaje_auto, respuesta")
+          .eq("estudiante_id", estudianteId)
+          .eq("actividad_id", actividad.requiereActividadId)
+          .maybeSingle(),
+        lectura
+          .from("reflexiones")
+          .select("id")
+          .eq("estudiante_id", estudianteId)
+          .eq("actividad_id", actividad.requiereActividadId)
+          .eq("momento", "cierre")
+          .maybeSingle(),
+      ]);
+      revisarErrorConsulta(entregaRequisitoError, "No pudimos comprobar tu actividad requerida.");
+      revisarErrorConsulta(reflexionRequisitoError, "No pudimos comprobar la reflexión requerida.");
 
-    const idsEntregados = new Set(
-      (entregasPrerequisito ?? [])
-        .filter((entrega) => {
-          const actividadPrerequisito = (actividadesAnterioresUnidad ?? []).find(
-            (anterior) => anterior.id === entrega.actividad_id,
-          );
-          return entregaCuentaComoCompletada(entrega, actividadPrerequisito?.contenido);
-        })
-        .map((entrega) => entrega.actividad_id),
-    );
-    const entregaQueRequiereReintento = (entregasPrerequisito ?? []).find((entrega) => {
-      const actividadPrerequisito = (actividadesAnterioresUnidad ?? []).find(
-        (anterior) => anterior.id === entrega.actividad_id,
-      );
-      return requiereReintentoAlternativo(
-        actividadPrerequisito?.contenido,
-        entrega.respuesta,
-        entrega.puntaje_auto,
-      );
-    });
-    if (entregaQueRequiereReintento) {
-      return {
-        ok: false,
-        error: "Mejora el resultado de la actividad anterior con su ejercicio alternativo antes de continuar.",
-        motivo: "dependencia_reintento",
-      };
-    }
-
-    if (idsPrerequisito.some((id) => !idsEntregados.has(id))) {
-      return {
-        ok: false,
-        error: "Completa las actividades anteriores antes de continuar.",
-        motivo: "dependencia",
-      };
-    }
-
-    const idsReflexionados = new Set((reflexionesPrerequisito ?? []).map((reflexion) => reflexion.actividad_id));
-    if (idsPrerequisito.some((id) => !idsReflexionados.has(id))) {
-      return {
-        ok: false,
-        error: "Guarda las reflexiones de las actividades anteriores antes de continuar.",
-        motivo: "dependencia_reflexion",
-      };
+      if (
+        entregaRequisito &&
+        requiereReintentoAlternativo(requisito?.contenido, entregaRequisito.respuesta, entregaRequisito.puntaje_auto)
+      ) {
+        return {
+          ok: false,
+          error: "Mejora el resultado de la actividad requerida con su ejercicio alternativo antes de continuar.",
+          motivo: "dependencia_reintento",
+        };
+      }
+      if (!requisito || !entregaCuentaComoCompletada(entregaRequisito, requisito.contenido)) {
+        return {
+          ok: false,
+          error: "Completa la actividad requerida antes de continuar.",
+          motivo: "dependencia",
+        };
+      }
+      if (!reflexionRequisito) {
+        return {
+          ok: false,
+          error: "Guarda la reflexión de la actividad requerida antes de continuar.",
+          motivo: "dependencia_reflexion",
+        };
+      }
     }
   }
 
@@ -320,7 +345,7 @@ export async function validarAccesoUnidad(
 ) {
   const { data: actividad, error } = await admin
     .from("actividades")
-    .select("id, unidad_id, orden, requiere_actividad_id, unidades(orden)")
+    .select("id, unidad_id, orden, requiere_actividad_id, unidades(orden), tipos_actividad(nombre)")
     .eq("unidad_id", unidadId)
     .order("orden")
     .limit(1)
@@ -328,6 +353,9 @@ export async function validarAccesoUnidad(
   revisarErrorConsulta(error, "No pudimos comprobar el inicio de la unidad.");
   if (!actividad) return { ok: true as const };
   const unidad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
+  const tipoActividad = Array.isArray(actividad.tipos_actividad)
+    ? actividad.tipos_actividad[0]
+    : actividad.tipos_actividad;
   return validarAccesoActividad(
     admin,
     estudianteId,
@@ -337,8 +365,9 @@ export async function validarAccesoUnidad(
       orden: actividad.orden,
       requiereActividadId: actividad.requiere_actividad_id,
       unidadOrden: Number(unidad?.orden ?? 1),
+      tipoNombre: tipoActividad?.nombre ?? null,
     },
-    { requiereInicio },
+    { requiereInicio, verificarApertura: false },
   );
 }
 
@@ -362,7 +391,7 @@ export async function obtenerContextoCalificacion(
   const admin = createAdminClient();
   const { data: estudiante } = await admin
     .from("estudiantes")
-    .select("id, debe_cambiar_nip")
+    .select("id, grupo_id, debe_cambiar_nip")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -388,6 +417,8 @@ export async function obtenerContextoCalificacion(
     orden: actividad.orden,
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: Number(unidad?.orden ?? 1),
+    grupoId: estudiante.grupo_id,
+    tipoNombre: tipo?.nombre ?? null,
   });
   if (!acceso.ok) return acceso;
 

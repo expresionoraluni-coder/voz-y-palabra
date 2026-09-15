@@ -134,7 +134,8 @@ create table actividades (
   constraint actividades_video_url_https_check check (
     video_url is null
     or lower(video_url) ~ '^https://(www\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)(/|$)'
-  )
+  ),
+  constraint actividades_id_unidad_unique unique (id, unidad_id)
 );
 
 -- ============================================================
@@ -232,10 +233,19 @@ create table eventos (
   grupo_id uuid not null references grupos(id) on delete cascade,
   unidad_id uuid not null references unidades(id) on delete cascade,
   titulo text not null,
-  tipo text not null check (tipo in ('examen', 'proyecto', 'entrega', 'otro')),
+  tipo text not null check (tipo in ('examen', 'proyecto', 'entrega', 'apertura_actividad', 'otro')),
   fecha date not null,
-  created_at timestamptz not null default now()
+  actividad_id uuid,
+  created_at timestamptz not null default now(),
+  constraint eventos_apertura_actividad_coincide_unidad
+    foreign key (actividad_id, unidad_id) references actividades (id, unidad_id) on delete cascade,
+  constraint eventos_apertura_actividad_tipo_check
+    check ((tipo = 'apertura_actividad') = (actividad_id is not null))
 );
+
+create unique index eventos_apertura_actividad_grupo_unique
+  on eventos (grupo_id, actividad_id)
+  where tipo = 'apertura_actividad' and actividad_id is not null;
 
 create table bitacora (
   id uuid primary key default gen_random_uuid(),
@@ -325,6 +335,7 @@ create index entregas_actividad_id_idx on entregas(actividad_id);
 create index eventos_docente_id_idx on eventos(docente_id);
 create index eventos_grupo_id_idx on eventos(grupo_id);
 create index eventos_unidad_id_idx on eventos(unidad_id);
+create index eventos_actividad_unidad_id_idx on eventos(actividad_id, unidad_id);
 create index reportes_estado_prioridad_idx on reportes(estado, prioridad, created_at desc);
 create index reportes_reportante_id_idx on reportes(reportante_id, created_at desc);
 create index reportes_grupo_id_idx on reportes(grupo_id, created_at desc);

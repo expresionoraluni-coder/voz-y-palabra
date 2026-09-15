@@ -54,6 +54,7 @@ const migracionEntregasReportes = await texto("supabase/migrations/2026082123260
 const migracionInvitacion = await texto("supabase/migrations/20260817002812_proteger_registro_docente_con_invitacion.sql");
 const accionesEntrega = await texto("src/app/estudiante/actividad/[id]/acciones-entrega.ts");
 const contextoEntregas = await texto("src/lib/estudiante-entregas-server.ts");
+const dependenciasActividades = await texto("src/lib/dependencias-actividades.ts");
 const accionesAprendizaje = await texto("src/app/estudiante/acciones-reflexiones.ts");
 const progresoUnidad = await texto("src/lib/progreso-unidad.ts");
 const intentosAuto = await texto("src/lib/intentos-auto.ts");
@@ -421,12 +422,15 @@ if (
   !inicioEstudiante.includes("actividadesConReflexion") ||
   !unidadEstudiante.includes("actividadesConReflexion") ||
   !contextoEntregas.includes('motivo: "dependencia_reflexion"') ||
-  !contextoEntregas.includes('.lt("orden", actividad.orden)') ||
+  contextoEntregas.includes('.lt("orden", actividad.orden)') ||
+  !contextoEntregas.includes('eq("tipo", "apertura_actividad")') ||
+  !contextoEntregas.includes("esDependenciaDosNiveles") ||
+  !dependenciasActividades.includes('tipoActividad === "clasificacion" && tipoRequisito === "clasificacion"') ||
   !accionesAprendizaje.includes("Guarda la reflexión de cada actividad antes de cerrar la unidad.") ||
   !cierreUnidadEstudiante.includes("primeraReflexionPendiente") ||
-  !actividadPostEntrega.includes("entregaCompletada && reflexionGuardada")
+  !actividadPostEntrega.includes("entregaCompletada && !reintentoObligatorio")
 ) {
-  failures.push("pedagogía: cada actividad debe exigir su reflexión antes del siguiente paso y del cierre de unidad.");
+  failures.push("pedagogía: solo las parejas de clasificación de dos niveles deben conservar el bloqueo; las reflexiones siguen siendo necesarias para cerrar unidad.");
 }
 if (
   !functions.includes("v_intentos_previos >= v_max_intentos") ||

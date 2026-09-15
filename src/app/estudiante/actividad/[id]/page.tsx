@@ -39,6 +39,8 @@ import { sanitizarContenidoOrtografia, type ContenidoOrtografia } from "@/lib/co
 import { sanitizarRespuestaParaEstudiante, validarAccesoActividad } from "@/lib/estudiante-entregas-server";
 import { entregaCuentaComoCompletada } from "@/lib/progreso-unidad";
 import { tieneReintentoAlternativo } from "@/lib/intentos-auto";
+import { actividadAbierta } from "@/lib/eventos";
+import { esDependenciaDosNiveles } from "@/lib/dependencias-actividades";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 import { instruccionesMomentosDeContenido } from "@/lib/instrucciones-momentos";
 
@@ -83,6 +85,10 @@ export default async function ActividadEstudiante({
   revisarErrorConsulta(actividadError, "No pudimos cargar esta actividad.");
   if (!actividad) notFound();
 
+  const tipo = Array.isArray(actividad.tipos_actividad)
+    ? actividad.tipos_actividad[0]
+    : actividad.tipos_actividad;
+  const nombreTipo = tipo?.nombre;
   const unidadParaAcceso = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const acceso = await validarAccesoActividad(admin, estudiante.id, {
     id: actividad.id,
@@ -90,13 +96,11 @@ export default async function ActividadEstudiante({
     orden: actividad.orden,
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: Number(unidadParaAcceso?.orden ?? 1),
+    grupoId: estudiante.grupo_id,
+    tipoNombre: nombreTipo ?? null,
   });
   if (!acceso.ok) redirect(`/estudiante/unidad/${actividad.unidad_id}?bloqueada=${acceso.motivo}`);
 
-  const tipo = Array.isArray(actividad.tipos_actividad)
-    ? actividad.tipos_actividad[0]
-    : actividad.tipos_actividad;
-  const nombreTipo = tipo?.nombre;
   if (!esTipoActividadActual(nombreTipo)) notFound();
   const unidadDeActividad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const modoRedaccion = (actividad.contenido as { modo?: string } | null)?.modo;
@@ -109,6 +113,8 @@ export default async function ActividadEstudiante({
     { data: reflexionExistente, error: reflexionError },
     { data: actividadesDeUnidad, error: actividadesDeUnidadError },
     { data: entregasDeUnidad, error: entregasDeUnidadError },
+    { data: aperturasDeUnidad, error: aperturasDeUnidadError },
+    { data: reflexionesDeUnidad, error: reflexionesDeUnidadError },
   ] = await Promise.all([
     admin
       .from("entregas")
@@ -142,6 +148,17 @@ export default async function ActividadEstudiante({
       .from("entregas")
       .select("actividad_id, puntaje_auto, respuesta")
       .eq("estudiante_id", estudiante.id),
+    supabase
+      .from("eventos")
+      .select("actividad_id, fecha")
+      .eq("grupo_id", estudiante.grupo_id)
+      .eq("unidad_id", actividad.unidad_id)
+      .eq("tipo", "apertura_actividad"),
+    admin
+      .from("reflexiones")
+      .select("actividad_id")
+      .eq("estudiante_id", estudiante.id)
+      .eq("momento", "cierre"),
   ]);
 
   revisarErrorConsulta(entregaError, "No pudimos cargar tu entrega.");
@@ -149,6 +166,8 @@ export default async function ActividadEstudiante({
   revisarErrorConsulta(reflexionError, "No pudimos cargar tu reflexión.");
   revisarErrorConsulta(actividadesDeUnidadError, "No pudimos cargar la ruta de actividades.");
   revisarErrorConsulta(entregasDeUnidadError, "No pudimos cargar tu avance en la unidad.");
+  revisarErrorConsulta(aperturasDeUnidadError, "No pudimos cargar las fechas de apertura.");
+  revisarErrorConsulta(reflexionesDeUnidadError, "No pudimos cargar tus reflexiones.");
 
   // Misma forma que antes (`entregas(puntaje_auto)` embebido), reconstruida
   // en JS a partir de las dos consultas separadas de arriba.
@@ -170,31 +189,34 @@ export default async function ActividadEstudiante({
   }));
 
   const respuesta = sanitizarRespuestaParaEstudiante(entregaExistente?.respuesta);
-  const siguiente = hermanas?.find((a) => a.orden > actividad.orden);
-  const siguientePrerequisito = siguiente?.requiere_actividad_id
-    ? hermanas?.find((a) => a.id === siguiente.requiere_actividad_id)
-    : null;
-  const entregaSiguientePrerequisito = siguientePrerequisito?.entregas?.[0];
-  const siguienteDependenciaListaTrasEntrega = Boolean(
-    siguiente &&
-      (!siguiente.requiere_actividad_id ||
-        siguiente.requiere_actividad_id === actividad.id ||
-        (entregaSiguientePrerequisito &&
-          entregaCuentaComoCompletada(entregaSiguientePrerequisito, siguientePrerequisito?.contenido))),
-  );
   const entregaActual = entregaExistente
     ? { puntaje_auto: entregaExistente.puntaje_auto, respuesta }
     : null;
   const actividadActualLista = entregaCuentaComoCompletada(entregaActual, actividad.contenido);
-  const reflexionActualGuardada = Boolean(reflexionExistente);
-  const siguienteDisponible = Boolean(
-    siguiente &&
-      actividadActualLista &&
-      reflexionActualGuardada &&
-      (!siguiente.requiere_actividad_id ||
-        (entregaSiguientePrerequisito &&
-          entregaCuentaComoCompletada(entregaSiguientePrerequisito, siguientePrerequisito?.contenido))),
+  const aperturaPorActividad = new Map(
+    (aperturasDeUnidad ?? [])
+      .filter((apertura) => apertura.actividad_id)
+      .map((apertura) => [apertura.actividad_id!, apertura.fecha]),
   );
+  const reflexionesDeActividades = new Set(
+    (reflexionesDeUnidad ?? [])
+      .map((reflexion) => reflexion.actividad_id)
+      .filter((actividadId): actividadId is string => typeof actividadId === "string"),
+  );
+  const esActividadAccesible = (candidata: NonNullable<typeof hermanas>[number]) => {
+    const tieneEntrega = Boolean(candidata.entregas?.length);
+    if (!tieneEntrega && !actividadAbierta(aperturaPorActividad.get(candidata.id))) return false;
+    if (!candidata.requiere_actividad_id) return true;
+    const requisito = hermanas?.find((hermana) => hermana.id === candidata.requiere_actividad_id);
+    if (!esDependenciaDosNiveles(candidata.tipoNombre, requisito?.tipoNombre)) return true;
+    const entregaRequisito = requisito?.entregas?.[0];
+    return Boolean(
+      requisito &&
+        entregaRequisito &&
+        entregaCuentaComoCompletada(entregaRequisito, requisito.contenido) &&
+        reflexionesDeActividades.has(requisito.id),
+    );
+  };
   // "Dos niveles": esta actividad requiere a otra (es el nivel 2) o alguna
   // otra la requiere a ella (es el nivel 1 que la desbloquea). Esto solo
   // cambia el orden visual de las opciones; no concede intentos adicionales.
@@ -209,12 +231,19 @@ export default async function ActividadEstudiante({
       ),
   );
 
-  // Navegación anterior/siguiente entre actividades de la unidad, visible
-  // desde que se entra (no solo tras entregar, a diferencia del botón de
-  // abajo) — si el destino es un nivel 2 todavía bloqueado, el guard del
-  // inicio de esta misma página ya se encarga de redirigir con su mensaje.
+  // La navegación recorre cualquier actividad ya abierta y con sus requisitos
+  // explícitos satisfechos, aunque la actividad actual siga pendiente.
   const indiceActual = hermanas?.findIndex((h) => h.id === actividad.id) ?? -1;
-  const actividadAnterior = indiceActual > 0 ? hermanas![indiceActual - 1] : null;
+  const actividadesDisponibles = (hermanas ?? []).filter(
+    (hermana) => hermana.id !== actividad.id && esActividadAccesible(hermana),
+  );
+  const actividadSiguiente = actividadesDisponibles
+    .filter((hermana) => hermana.orden > actividad.orden)
+    .sort((a, b) => a.orden - b.orden)[0] ?? actividadesDisponibles.sort((a, b) => a.orden - b.orden)[0];
+  const actividadAnterior = actividadesDisponibles
+    .filter((hermana) => hermana.orden < actividad.orden)
+    .sort((a, b) => b.orden - a.orden)[0];
+  const siguienteDisponible = Boolean(actividadSiguiente);
   const porcentajeUnidad = hermanas && indiceActual >= 0 ? Math.round(((indiceActual + 1) / hermanas.length) * 100) : 0;
 
   const bloqueAeUc = unidadDeActividad?.unidad_competencia && (
@@ -357,23 +386,15 @@ export default async function ActividadEstudiante({
           confianza={prediccionExistente?.confianza ?? null}
           textoReflexionPrevio={reflexionExistente?.texto ?? null}
           siguienteHref={
-            siguienteDisponible
-              ? `/estudiante/actividad/${siguiente!.id}`
-              : siguiente
-                ? `/estudiante/actividad/${actividad.id}`
-                : `/estudiante/unidad/${actividad.unidad_id}`
-          }
-          siguienteHrefTrasEntrega={
-            siguienteDependenciaListaTrasEntrega ? `/estudiante/actividad/${siguiente!.id}` : null
+            actividadSiguiente
+              ? `/estudiante/actividad/${actividadSiguiente.id}`
+              : `/estudiante/unidad/${actividad.unidad_id}`
           }
           textoSiguiente={
             siguienteDisponible
               ? "Siguiente actividad"
-              : siguiente
-                ? "Revisar esta actividad antes de continuar"
-                : "Volver a la unidad"
+              : "Volver a la unidad"
           }
-          textoSiguienteTrasEntrega={siguiente ? "Siguiente actividad" : "Volver a la unidad"}
           placeholderReflexionPersonalizado={
             nombreTipo === "redaccion_checklist" && modoRedaccion === "leer_reflexionar"
               ? "Reflexiona sobre cómo cambió tu seguridad inicial después de comparar los tres textos."
@@ -413,7 +434,7 @@ export default async function ActividadEstudiante({
               </span>
               {siguienteDisponible ? (
                 <Link
-                  href={`/estudiante/actividad/${siguiente!.id}`}
+                  href={`/estudiante/actividad/${actividadSiguiente!.id}`}
                   aria-label="Actividad siguiente"
                   className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50"
                 >
@@ -421,8 +442,7 @@ export default async function ActividadEstudiante({
                 </Link>
               ) : (
                 <span
-                  title={siguiente ? "Completa o mejora la actividad anterior para continuar" : undefined}
-                  aria-label={siguiente ? "Actividad siguiente bloqueada" : "No hay actividad siguiente"}
+                  aria-label="No hay otra actividad disponible por ahora"
                   className="flex size-8 items-center justify-center text-slate-300 dark:text-slate-700"
                 >
                   <ChevronRight className="size-4" aria-hidden="true" />

@@ -39,6 +39,24 @@ export default async function EditarActividad({
 
   if (!actividad) notFound();
 
+  const [
+    { data: grupos, error: gruposError },
+    { data: aperturas, error: aperturasError },
+  ] = await Promise.all([
+    supabase
+      .from("grupos")
+      .select("id, nombre")
+      .eq("docente_id", user.id)
+      .order("nombre"),
+    supabase
+      .from("eventos")
+      .select("grupo_id, fecha")
+      .eq("actividad_id", actividadId)
+      .eq("tipo", "apertura_actividad"),
+  ]);
+  revisarErrorConsulta(gruposError, "No pudimos cargar tus grupos.");
+  revisarErrorConsulta(aperturasError, "No pudimos cargar las fechas de apertura.");
+
   const tipo = Array.isArray(actividad.tipos_actividad) ? actividad.tipos_actividad[0] : actividad.tipos_actividad;
 
   return (
@@ -54,6 +72,8 @@ export default async function EditarActividad({
         contenido: (actividad.contenido as Record<string, unknown>) ?? {},
       }}
       tieneEntregas={(entregasCount ?? 0) > 0}
+      gruposApertura={grupos ?? []}
+      aperturasIniciales={aperturas ?? []}
     />
   );
 }

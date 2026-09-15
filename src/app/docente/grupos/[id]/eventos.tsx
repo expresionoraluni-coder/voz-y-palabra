@@ -18,30 +18,52 @@ type Evento = {
   tipo: string;
   fecha: string;
   unidad_id: string;
+  actividad_id: string | null;
+};
+
+type Actividad = {
+  id: string;
+  titulo: string;
+  unidad_id: string;
 };
 
 export default function Eventos({
   grupoId,
   unidades,
   eventos,
+  actividades,
 }: {
   grupoId: string;
   unidades: { id: string; nombre: string; orden: number }[];
   eventos: Evento[];
+  actividades: Actividad[];
 }) {
   const router = useRouter();
   const [titulo, setTitulo] = useState("");
   const [tipo, setTipo] = useState<TipoEvento>("examen");
   const [fecha, setFecha] = useState("");
   const [unidadId, setUnidadId] = useState(unidades[0]?.id ?? "");
+  const [actividadId, setActividadId] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { borrando, error: errorEliminar, eliminar } = useEliminarFila("eventos");
+  const actividadesSinApertura = actividades.filter(
+    (actividad) => !eventos.some((evento) => evento.tipo === "apertura_actividad" && evento.actividad_id === actividad.id),
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (cargando) return;
     setError(null);
+    const actividadApertura = actividadesSinApertura.find((actividad) => actividad.id === actividadId);
+    if (tipo === "apertura_actividad" && !actividadApertura) {
+      setError("Selecciona la actividad que se abrirá.");
+      return;
+    }
+    if (tipo !== "apertura_actividad" && !titulo.trim()) {
+      setError("Escribe el título de la fecha.");
+      return;
+    }
     setCargando(true);
 
     const supabase = createClient();
@@ -56,7 +78,15 @@ export default function Eventos({
 
     const { error: insertError } = await supabase
       .from("eventos")
-      .insert({ docente_id: user.id, grupo_id: grupoId, unidad_id: unidadId, titulo, tipo, fecha });
+      .insert({
+        docente_id: user.id,
+        grupo_id: grupoId,
+        unidad_id: tipo === "apertura_actividad" ? actividadApertura!.unidad_id : unidadId,
+        titulo: tipo === "apertura_actividad" ? actividadApertura!.titulo : titulo.trim(),
+        tipo,
+        fecha,
+        actividad_id: tipo === "apertura_actividad" ? actividadApertura!.id : null,
+      });
     if (insertError) {
       setError(mensajeError(insertError));
       setCargando(false);
@@ -65,6 +95,7 @@ export default function Eventos({
 
     setTitulo("");
     setFecha("");
+    setActividadId("");
     setCargando(false);
     router.refresh();
   }
@@ -79,13 +110,15 @@ export default function Eventos({
       <Card className="flex flex-col gap-4 p-5">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <Field>
-            <Input
-              required
-              aria-label="Título del evento"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Ej. Examen de Unidad 2"
-            />
+            {tipo !== "apertura_actividad" && (
+              <Input
+                required
+                aria-label="Título del evento"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Ej. Examen de Unidad 2"
+              />
+            )}
           </Field>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Field>
@@ -97,15 +130,33 @@ export default function Eventos({
                 ))}
               </Select>
             </Field>
-            <Field>
-              <Select aria-label="Unidad" value={unidadId} onChange={(e) => setUnidadId(e.target.value)}>
-                {unidades.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    Unidad {u.orden}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            {tipo === "apertura_actividad" ? (
+              <Field>
+                <Select
+                  required
+                  aria-label="Actividad que se abrirá"
+                  value={actividadId}
+                  onChange={(e) => setActividadId(e.target.value)}
+                >
+                  <option value="">Selecciona una actividad</option>
+                  {actividadesSinApertura.map((actividad) => (
+                    <option key={actividad.id} value={actividad.id}>
+                      {actividad.titulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : (
+              <Field>
+                <Select aria-label="Unidad" value={unidadId} onChange={(e) => setUnidadId(e.target.value)}>
+                  {unidades.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      Unidad {u.orden}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
             <Field>
               <Input
                 required
@@ -117,8 +168,9 @@ export default function Eventos({
             </Field>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            La unidad que elijas es lo que le permite a la plataforma sugerirle a tus estudiantes qué
-            repasar antes de esta fecha.
+            {tipo === "apertura_actividad"
+              ? "La actividad quedará disponible para este grupo a partir de esta fecha y permanecerá abierta."
+              : "La unidad que elijas le permite a la plataforma sugerir qué repasar antes de esta fecha."}
           </p>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton
@@ -126,7 +178,7 @@ export default function Eventos({
             variant="secondary"
             size="sm"
             cargando={cargando}
-            disabled={!unidadId}
+            disabled={tipo === "apertura_actividad" ? !actividadesSinApertura.length : !unidadId}
             className="self-start"
           >
             {cargando ? "Guardando…" : "Agregar fecha"}
