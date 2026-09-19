@@ -8,6 +8,7 @@ import AccesoGrupo from "./acceso-grupo";
 import EditarGrupo from "./editar-grupo";
 import EliminarGrupo from "./eliminar-grupo";
 import GrupoEstudiantesPanel from "./grupo-estudiantes-panel";
+import SeguimientoAprendizaje from "./seguimiento-aprendizaje";
 import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import MetricCard from "@/components/ui/metric-card";
@@ -15,10 +16,12 @@ import ProgressBar from "@/components/ui/progress-bar";
 import Alert from "@/components/ui/alert";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import type { ReflexionSeguimiento } from "./tipos-seguimiento";
 
 const DIAS_INACTIVIDAD = 10;
 
 type AlertaDocente = {
+  tipo: "sin_comenzar" | "inactividad";
   texto: string;
   estudianteId: string;
 };
@@ -43,6 +46,7 @@ type EntregaConfusionGrupo = {
 };
 
 const TAMANO_PAGINA_ENTREGAS = 1000;
+const TAMANO_PAGINA_REFLEXIONES = 1000;
 
 async function cargarEntregasPaginadas<T>(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -81,6 +85,34 @@ async function cargarEntregasPaginadas<T>(
   return { data: resultados.flatMap((resultado) => resultado.data), error: null };
 }
 
+async function cargarReflexionesPaginadas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  estudianteIds: string[],
+): Promise<{ data: ReflexionSeguimiento[]; error: ErrorDeConsultaLocal }> {
+  if (estudianteIds.length === 0) return { data: [], error: null };
+
+  const { count, error: conteoError } = await supabase
+    .from("reflexiones")
+    .select("id", { count: "exact", head: true })
+    .in("estudiante_id", estudianteIds);
+  if (conteoError) return { data: [], error: conteoError };
+
+  const paginas = Array.from({ length: Math.ceil((count ?? 0) / TAMANO_PAGINA_REFLEXIONES) }, (_, indice) => indice * TAMANO_PAGINA_REFLEXIONES);
+  const resultados = await Promise.all(paginas.map(async (desde) => {
+    const { data, error } = await supabase
+      .from("reflexiones")
+      .select("id, estudiante_id, actividad_id, unidad_id, texto, momento, confianza, created_at")
+      .in("estudiante_id", estudianteIds)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(desde, desde + TAMANO_PAGINA_REFLEXIONES - 1);
+    return { data: (data ?? []) as ReflexionSeguimiento[], error };
+  }));
+  const resultadoConError = resultados.find((resultado) => resultado.error);
+  if (resultadoConError?.error) return { data: [], error: resultadoConError.error };
+  return { data: resultados.flatMap((resultado) => resultado.data), error: null };
+}
+
 export default async function DetalleGrupo({
   params,
 }: {
@@ -99,7 +131,6 @@ export default async function DetalleGrupo({
     { data: estudiantesTodos, error: estudiantesError },
     { data: unidades, error: unidadesError },
     { data: actividades, error: actividadesError },
-    { data: confianzas, error: confianzasError },
     { data: avisos, error: avisosError },
     { data: eventos, error: eventosError },
   ] = await Promise.all([
@@ -115,8 +146,7 @@ export default async function DetalleGrupo({
       .eq("grupo_id", id)
       .order("nombre"),
     supabase.from("unidades").select("id, nombre, orden").order("orden"),
-    supabase.from("actividades").select("id, unidad_id, titulo, contenido, tipos_actividad(nombre)"),
-    supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor"),
+    supabase.from("actividades").select("id, unidad_id, titulo, orden, contenido, tipos_actividad(nombre)").order("orden"),
     supabase
       .from("avisos")
       .select("id, titulo, mensaje, created_at")
@@ -131,7 +161,6 @@ export default async function DetalleGrupo({
   revisarErrorConsulta(estudiantesError, "No pudimos cargar la lista de estudiantes.");
   revisarErrorConsulta(unidadesError, "No pudimos cargar las unidades del curso.");
   revisarErrorConsulta(actividadesError, "No pudimos cargar las actividades del curso.");
-  revisarErrorConsulta(confianzasError, "No pudimos cargar los niveles de seguridad.");
   revisarErrorConsulta(avisosError, "No pudimos cargar los avisos del grupo.");
   revisarErrorConsulta(eventosError, "No pudimos cargar los eventos del grupo.");
 
@@ -144,12 +173,29 @@ export default async function DetalleGrupo({
   // persona dada de baja se conservan para su ficha, pero no deben inflar el
   // avance ni aparecer como casos sin nombre en este panel.
   const idsEstudiantesGrupo = estudiantes.map((estudiante) => estudiante.id);
-  const { data: entregas, error: entregasError } = await cargarEntregasPaginadas<EntregaResumenGrupo>(
-    supabase,
-    idsEstudiantesGrupo,
-    "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente",
-  );
+  const [
+    { data: entregas, error: entregasError },
+    { data: confianzas, error: confianzasError },
+    { data: bitacoras, error: bitacorasError },
+    { data: reflexiones, error: reflexionesError },
+  ] = await Promise.all([
+    cargarEntregasPaginadas<EntregaResumenGrupo>(
+      supabase,
+      idsEstudiantesGrupo,
+      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente",
+    ),
+    idsEstudiantesGrupo.length
+      ? supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor").in("estudiante_id", idsEstudiantesGrupo)
+      : Promise.resolve({ data: [], error: null }),
+    idsEstudiantesGrupo.length
+      ? supabase.from("bitacora").select("estudiante_id, unidad_id, meta, cumplida").in("estudiante_id", idsEstudiantesGrupo)
+      : Promise.resolve({ data: [], error: null }),
+    cargarReflexionesPaginadas(supabase, idsEstudiantesGrupo),
+  ]);
   revisarErrorConsulta(entregasError, "No pudimos cargar el avance del grupo.");
+  revisarErrorConsulta(confianzasError, "No pudimos cargar los niveles de seguridad.");
+  revisarErrorConsulta(bitacorasError, "No pudimos cargar las expectativas de apertura.");
+  revisarErrorConsulta(reflexionesError, "No pudimos cargar las reflexiones del grupo.");
 
   // La tabla entregas puede contener respuestas JSON grandes. El panel solo
   // necesita las elecciones del estudiante para la matriz de confusión; las
@@ -166,6 +212,7 @@ export default async function DetalleGrupo({
         actividad.id,
         {
           titulo: actividad.titulo,
+          orden: actividad.orden,
           tipo: tipo?.nombre ?? "otro",
           unidadOrden: unidad?.orden ?? null,
           contenido: actividad.contenido as Record<string, unknown>,
@@ -345,49 +392,31 @@ export default async function DetalleGrupo({
   for (const e of porEstudiante) {
     if (e.totalEntregas === 0) {
       const diasDesdeAlta = Math.floor((hoy - new Date(e.created_at).getTime()) / (1000 * 60 * 60 * 24));
-      if (diasDesdeAlta >= 3) alertas.push({ estudianteId: e.id, texto: `${e.nombre} todavía no ha empezado a practicar.` });
+      if (diasDesdeAlta >= 3) alertas.push({ tipo: "sin_comenzar", estudianteId: e.id, texto: `${e.nombre} todavía no ha empezado a practicar.` });
     } else if (e.diasInactivo !== null && e.diasInactivo > DIAS_INACTIVIDAD) {
-      alertas.push({ estudianteId: e.id, texto: `${e.nombre} sin actividad hace ${e.diasInactivo} días.` });
+      alertas.push({ tipo: "inactividad", estudianteId: e.id, texto: `${e.nombre} sin actividad hace ${e.diasInactivo} días.` });
     }
   }
-  for (const c of confianzas ?? []) {
-    if (c.momento !== "inicio") continue;
-    const est = porEstudianteMap.get(c.estudiante_id);
-    if (!est) continue;
-    if (c.valor >= 4 && est.totalEntregas === 0) {
-      alertas.push({ estudianteId: est.id, texto: `${est.nombre} dice sentirse seguro pero no ha completado actividades.` });
-      continue;
-    }
-    if (c.valor >= 4 && est.totalEntregas > 0) {
-      const misPuntajes = (entregasPorEstudiante.get(est.id) ?? []).filter((en) => en.puntaje_auto !== null);
-      if (misPuntajes.length > 0) {
-        const promedio = misPuntajes.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / misPuntajes.length;
-        if (promedio < 50) {
-          alertas.push({
-            estudianteId: est.id,
-            texto: `${est.nombre} dice sentirse seguro pero su precisión real es de ${Math.round(promedio)}%.`,
-          });
-        }
-      }
-    }
-  }
+  const alertasSinComenzar = alertas.filter((alerta) => alerta.tipo === "sin_comenzar");
+  const alertasInactividad = alertas.filter((alerta) => alerta.tipo === "inactividad");
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-6 py-10">
       <PageHeader
         volverHref="/docente/dashboard"
         titulo={grupo.nombre}
-        descripcion={`Identificador del grupo · ${estudiantes?.length ?? 0} estudiantes activos · seguimiento del avance y señales de apoyo`}
+        descripcion={`${estudiantes?.length ?? 0} estudiantes activos`}
         accion={<EditarGrupo grupoId={grupo.id} nombreActual={grupo.nombre} codigoActual={grupo.codigo_acceso} />}
       />
 
-      <nav className="sticky top-0 z-10 -mx-6 flex gap-1 border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <nav aria-label="Secciones del grupo" className="sticky top-0 z-10 -mx-6 flex gap-1 overflow-x-auto whitespace-nowrap border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         {[
           { href: "#resumen", etiqueta: "Resumen" },
-          { href: "#atencion", etiqueta: "Atención" },
-          { href: "#detalle", etiqueta: "Avance" },
-          { href: "#avisos", etiqueta: "Avisos" },
+          { href: "#seguimiento", etiqueta: "Seguimiento" },
           { href: "#estudiantes", etiqueta: "Estudiantes" },
+          { href: "#operacion", etiqueta: "Operación" },
+          { href: "#atencion", etiqueta: "Atención" },
+          { href: "#analisis", etiqueta: "Análisis adicional" },
         ].map((t) => (
           <a
             key={t.href}
@@ -416,56 +445,99 @@ export default async function DetalleGrupo({
         <MetricCard etiqueta="Estudiantes" valor={estudiantes?.length ?? 0} icon={Users} tono="slate" />
       </div>
 
-      <section id="atencion" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="atencion-titulo">
-        <div>
-          <h2 id="atencion-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Qué necesita atención</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Señales para decidir dónde mirar primero; no son calificaciones.</p>
+      <SeguimientoAprendizaje
+        nombreGrupo={grupo.nombre}
+        estudiantes={porEstudiante}
+        unidades={(unidades ?? []).map((unidad) => ({ id: unidad.id, nombre: unidad.nombre, orden: unidad.orden }))}
+        actividades={(actividades ?? []).map((actividad) => {
+          const tipo = Array.isArray(actividad.tipos_actividad) ? actividad.tipos_actividad[0] : actividad.tipos_actividad;
+          return { id: actividad.id, unidad_id: actividad.unidad_id, titulo: actividad.titulo, orden: actividad.orden, tipo: tipo?.nombre ?? "otro" };
+        })}
+        entregas={(entregas ?? []).map((entrega) => ({
+          id: entrega.id,
+          estudiante_id: entrega.estudiante_id,
+          actividad_id: entrega.actividad_id,
+          estado: entrega.estado,
+          created_at: entrega.created_at,
+          puntaje_auto: entrega.puntaje_auto,
+        }))}
+        confianzas={confianzas ?? []}
+        reflexiones={reflexiones ?? []}
+        bitacoras={bitacoras ?? []}
+      />
+
+      <details id="atencion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
+        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Seguimiento operativo
+          <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
+            {alertasSinComenzar.length} sin empezar · {alertasInactividad.length} inactivos · {entregasPorRevisar.length} casos
+          </span>
+        </summary>
+        <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-800">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {sinEmpezar} sin empezar · {sinActividadReciente} con más de {DIAS_INACTIVIDAD} días sin actividad · {primerIngresoPendiente} con primer ingreso pendiente
+          </p>
+
+          {alertas.length > 0 && (
+            <Alert tono="warning" titulo="Alertas de actividad">
+              <ul className="flex flex-col gap-2">
+                {alertas.slice(0, 5).map((alerta) => (
+                  <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{alerta.texto}</span>
+                    <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold text-amber-800 underline underline-offset-2 dark:text-amber-200">
+                      Ver perfil
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {alertas.length > 5 && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-sm font-medium">Ver {alertas.length - 5} alertas más</summary>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {alertas.slice(5).map((alerta) => (
+                      <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
+                        <span>{alerta.texto}</span>
+                        <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold text-amber-800 underline underline-offset-2 dark:text-amber-200">Ver perfil</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </Alert>
+          )}
+          {alertas.length === 0 && <p className="text-sm text-slate-600 dark:text-slate-400">No hay alertas de actividad.</p>}
+
+          <details id="apoyo" className="rounded-lg border border-amber-200 dark:border-amber-900/60">
+            <summary className="cursor-pointer px-3 py-3 text-sm font-medium text-slate-800 dark:text-slate-100">
+              Casos de apoyo para atender ({entregasPorRevisar.length})
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-amber-100 p-3 dark:border-amber-900/40">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Orientaciones opcionales, no calificaciones.</p>
+              {entregasPorRevisar.length > 0 ? entregasPorRevisar.map((entrega) => {
+                const estudiante = porEstudianteMap.get(entrega.estudiante_id);
+                const actividad = actividadesMapa.get(entrega.actividad_id);
+                return (
+                  <Link key={entrega.id} href={`/docente/estudiantes/${entrega.estudiante_id}#entrega-${entrega.id}`}>
+                    <CardLink className="flex items-center gap-3 px-4 py-3">
+                      <span className="size-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
+                      <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
+                        <strong className="font-medium">{estudiante?.nombre}</strong> · {actividad?.titulo}
+                      </span>
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Abrir caso</span>
+                    </CardLink>
+                  </Link>
+                );
+              }) : <p className="text-sm text-slate-600 dark:text-slate-400">No hay casos pendientes en este momento.</p>}
+            </div>
+          </details>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Link href="#estudiantes">
-            <CardLink className="flex h-full flex-col gap-2 border-amber-100 px-4 py-4 dark:border-amber-900/60">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Sin comenzar</p>
-              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{sinEmpezar}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Abrir lista de estudiantes</p>
-            </CardLink>
-          </Link>
-          <Link href="#estudiantes">
-            <CardLink className="flex h-full flex-col gap-2 border-slate-200 px-4 py-4 dark:border-slate-800">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Sin actividad reciente</p>
-              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{sinActividadReciente}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Más de {DIAS_INACTIVIDAD} días</p>
-            </CardLink>
-          </Link>
-          <Link href="#estudiantes">
-            <CardLink className="flex h-full flex-col gap-2 border-amber-100 px-4 py-4 dark:border-amber-900/60">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Primer ingreso pendiente</p>
-              <p className="text-2xl font-semibold text-slate-900 dark:text-slate-50">{primerIngresoPendiente}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Revisar estudiantes con NIP inicial</p>
-            </CardLink>
-          </Link>
-        </div>
-      </section>
+      </details>
 
-      <AccesoGrupo codigo={grupo.codigo_acceso} nombreGrupo={grupo.nombre} />
-
-      {alertas.length > 0 && (
-        <Alert tono="warning" titulo="Alertas">
-          <ul className="flex flex-col gap-2">
-            {alertas.map((a) => (
-              <li key={`${a.estudianteId}-${a.texto}`} className="flex flex-wrap items-center justify-between gap-2">
-                <span>{a.texto}</span>
-                <Link
-                  href={`/docente/estudiantes/${a.estudianteId}`}
-                  className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs font-semibold text-amber-800 underline decoration-amber-300 underline-offset-2 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-200 dark:hover:text-amber-50"
-                >
-                  Ver perfil
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Alert>
-      )}
-
+      <details id="analisis" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
+        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Análisis adicional
+        </summary>
+        <div className="flex flex-col gap-6 border-t border-slate-200 p-4 dark:border-slate-800">
       <section id="detalle" className="scroll-mt-16 flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h2>
         <Card className="flex flex-col gap-4 p-5">
@@ -576,65 +648,50 @@ export default async function DetalleGrupo({
         </section>
       )}
 
-      <section id="apoyo" className="scroll-mt-16 flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Casos de apoyo para atender</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Orientaciones opcionales, no calificaciones.</p>
         </div>
-        {entregasPorRevisar.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {entregasPorRevisar.map((en) => {
-              const est = porEstudianteMap.get(en.estudiante_id);
-              const act = actividadesMapa.get(en.actividad_id);
-              return (
-                <Link key={en.id} href={`/docente/estudiantes/${en.estudiante_id}#entrega-${en.id}`}>
-                  <CardLink className="flex items-center gap-3 px-4 py-3">
-                    <span className="size-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
-                    <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
-                      <strong className="font-medium">{est?.nombre}</strong> · {act?.titulo}
-                    </span>
-                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Abrir caso</span>
-                  </CardLink>
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">No hay casos pendientes en este momento.</Card>
-        )}
-      </section>
+      </details>
 
-      <div id="avisos" className="scroll-mt-16 flex flex-col gap-8">
-        <Eventos
-          grupoId={grupo.id}
-          unidades={unidades ?? []}
-          eventos={eventos ?? []}
-          actividades={(actividades ?? []).map((actividad) => ({
-            id: actividad.id,
-            unidad_id: actividad.unidad_id,
-            titulo: actividad.titulo,
-          }))}
-        />
-        <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
-      </div>
+      <details id="operacion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
+        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Acceso, fechas y avisos
+          <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{eventos?.length ?? 0} fechas · {avisos?.length ?? 0} avisos</span>
+        </summary>
+        <div className="flex flex-col gap-6 border-t border-slate-200 p-4 dark:border-slate-800">
+          <AccesoGrupo codigo={grupo.codigo_acceso} nombreGrupo={grupo.nombre} />
+          <div id="avisos" className="scroll-mt-20 flex flex-col gap-8">
+            <Eventos
+              grupoId={grupo.id}
+              unidades={unidades ?? []}
+              eventos={eventos ?? []}
+              actividades={(actividades ?? []).map((actividad) => ({
+                id: actividad.id,
+                unidad_id: actividad.unidad_id,
+                titulo: actividad.titulo,
+              }))}
+            />
+            <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
+          </div>
+        </div>
+      </details>
 
       <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
         <GrupoEstudiantesPanel
           grupoId={grupo.id}
-          nombreGrupo={grupo.nombre}
           estudiantes={porEstudiante}
           estudiantesBaja={estudiantesBaja ?? []}
           nombresExistentes={[...(estudiantes ?? []), ...(estudiantesBaja ?? [])].map((e) => e.nombre)}
         />
 
-      <section className="flex flex-col gap-3 border-t border-slate-200 pt-6 dark:border-slate-800">
-        <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400">Zona de riesgo</h2>
-        <EliminarGrupo
-          grupoId={grupo.id}
-          nombreGrupo={grupo.nombre}
-          totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
-        />
-      </section>
+      <details className="border-t border-slate-200 pt-4 dark:border-slate-800">
+        <summary className="cursor-pointer text-sm font-medium text-slate-500 dark:text-slate-400">Zona de riesgo y eliminación del grupo</summary>
+        <div className="mt-3">
+          <EliminarGrupo
+            grupoId={grupo.id}
+            nombreGrupo={grupo.nombre}
+            totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
+          />
+        </div>
+      </details>
       </div>
     </div>
   );

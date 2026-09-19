@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { CheckSquare, Search, UserCheck, UserMinus, Users, X } from "lucide-react";
 import { actualizarEstudiantesLote } from "./acciones-estudiantes";
 import AgregarEstudiantes from "./agregar-estudiantes";
-import ExportarGrupo from "./exportar-grupo";
 import Avatar from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
@@ -32,13 +31,11 @@ type OrdenEstudiantes = "nombre" | "avance_desc" | "avance_asc" | "ultima_recien
 
 export default function GrupoEstudiantesPanel({
   grupoId,
-  nombreGrupo,
   estudiantes,
   estudiantesBaja,
   nombresExistentes,
 }: {
   grupoId: string;
-  nombreGrupo: string;
   estudiantes: EstudianteResumen[];
   estudiantesBaja: EstudianteBaja[];
   nombresExistentes: string[];
@@ -48,6 +45,7 @@ export default function GrupoEstudiantesPanel({
   const [filtro, setFiltro] = useState<FiltroEstudiantes>("todos");
   const [orden, setOrden] = useState<OrdenEstudiantes>("nombre");
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
+  const [pagina, setPagina] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accionPendiente, setAccionPendiente] = useState<"dar_de_baja" | null>(null);
@@ -72,7 +70,11 @@ export default function GrupoEstudiantesPanel({
     });
   }, [busqueda, estudiantes, filtro, orden]);
 
-  const visiblesIds = visibles.map((estudiante) => estudiante.id);
+  const tamanoPagina = 10;
+  const totalPaginas = Math.max(1, Math.ceil(visibles.length / tamanoPagina));
+  const paginaActual = Math.min(pagina, totalPaginas - 1);
+  const estudiantesPagina = visibles.slice(paginaActual * tamanoPagina, (paginaActual + 1) * tamanoPagina);
+  const visiblesIds = estudiantesPagina.map((estudiante) => estudiante.id);
   const todasVisiblesSeleccionadas = visiblesIds.length > 0 && visiblesIds.every((id) => seleccionados.includes(id));
 
   function alternarSeleccion(id: string) {
@@ -116,7 +118,6 @@ export default function GrupoEstudiantesPanel({
             </h2>
             <HelpText>Busca, ordena y filtra para encontrar rápidamente a quien quieras consultar.</HelpText>
           </div>
-          {estudiantes.length > 0 && <ExportarGrupo nombreGrupo={nombreGrupo} estudiantes={estudiantes} />}
         </div>
 
         {estudiantes.length === 0 ? (
@@ -129,14 +130,14 @@ export default function GrupoEstudiantesPanel({
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <Input
                   value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
+                  onChange={(e) => { setBusqueda(e.target.value); setPagina(0); }}
                   placeholder="Buscar por nombre"
                   className="pl-9"
                 />
               </label>
               <label>
                 <span className="sr-only">Filtrar estudiantes</span>
-                <Select value={filtro} onChange={(e) => setFiltro(e.target.value as FiltroEstudiantes)}>
+                <Select value={filtro} onChange={(e) => { setFiltro(e.target.value as FiltroEstudiantes); setPagina(0); }}>
                   <option value="todos">Todos</option>
                   <option value="sin_empezar">Sin empezar</option>
                   <option value="en_ruta">En ruta</option>
@@ -146,7 +147,7 @@ export default function GrupoEstudiantesPanel({
               </label>
               <label>
                 <span className="sr-only">Ordenar estudiantes</span>
-                <Select value={orden} onChange={(e) => setOrden(e.target.value as OrdenEstudiantes)}>
+                <Select value={orden} onChange={(e) => { setOrden(e.target.value as OrdenEstudiantes); setPagina(0); }}>
                   <option value="nombre">Ordenar: nombre</option>
                   <option value="avance_desc">Ordenar: mayor avance</option>
                   <option value="avance_asc">Ordenar: menor avance</option>
@@ -155,7 +156,7 @@ export default function GrupoEstudiantesPanel({
               </label>
               <Boton type="button" variant="ghost" size="sm" onClick={alternarTodas} disabled={visibles.length === 0}>
                 <CheckSquare className="size-4" aria-hidden="true" />
-                {todasVisiblesSeleccionadas ? "Quitar selección" : "Seleccionar visibles"}
+                {todasVisiblesSeleccionadas ? "Quitar selección de esta página" : "Seleccionar esta página"}
               </Boton>
             </div>
 
@@ -189,14 +190,14 @@ export default function GrupoEstudiantesPanel({
 
             {error && <ErrorText>{error}</ErrorText>}
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Mostrando {visibles.length} de {estudiantes.length}. Las acciones solo afectan a estudiantes de este grupo.
+              {visibles.length === 0 ? "No hay resultados." : `Mostrando ${paginaActual * tamanoPagina + 1}–${Math.min((paginaActual + 1) * tamanoPagina, visibles.length)} de ${visibles.length} resultados.`} Las acciones solo afectan a estudiantes de este grupo.
             </p>
 
             {visibles.length === 0 ? (
               <EmptyState icon={Search} titulo="No encontramos coincidencias" descripcion="Prueba con otro nombre o cambia el filtro." />
             ) : (
               <div className="flex flex-col gap-2">
-                {visibles.map((estudiante) => (
+                {estudiantesPagina.map((estudiante) => (
                   <div key={estudiante.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-800">
                     <input
                       type="checkbox"
@@ -222,16 +223,28 @@ export default function GrupoEstudiantesPanel({
                 ))}
               </div>
             )}
+
+            {visibles.length > tamanoPagina && (
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                <Boton type="button" variant="ghost" size="sm" onClick={() => setPagina((actual) => Math.max(0, actual - 1))} disabled={paginaActual === 0}>
+                  Anterior
+                </Boton>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Página {paginaActual + 1} de {totalPaginas}</span>
+                <Boton type="button" variant="ghost" size="sm" onClick={() => setPagina((actual) => Math.min(totalPaginas - 1, actual + 1))} disabled={paginaActual + 1 >= totalPaginas}>
+                  Siguiente
+                </Boton>
+              </div>
+            )}
           </Card>
         )}
       </section>
 
       {estudiantesBaja.length > 0 && (
-        <section className="flex flex-col gap-3" aria-labelledby="estudiantes-baja">
-          <h2 id="estudiantes-baja" className="text-sm font-medium text-slate-500 dark:text-slate-500">
-            Dados de baja ({estudiantesBaja.length})
-          </h2>
-          <Card className="flex flex-col gap-2 p-3">
+        <details className="rounded-xl border border-slate-200 dark:border-slate-800">
+          <summary id="estudiantes-baja" className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300">
+            Estudiantes dados de baja ({estudiantesBaja.length})
+          </summary>
+          <Card className="mx-3 mb-3 flex flex-col gap-2 p-3">
             {estudiantesBaja.map((estudiante) => (
               <div key={estudiante.id} className="flex items-center gap-3 rounded-lg px-2 py-2 opacity-70">
                 <Avatar nombre={estudiante.nombre} size="sm" />
@@ -248,9 +261,8 @@ export default function GrupoEstudiantesPanel({
               </div>
             ))}
           </Card>
-        </section>
+        </details>
       )}
     </>
   );
 }
-
