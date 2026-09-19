@@ -115,10 +115,10 @@ export default function SeguimientoAprendizaje({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="seguimiento-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Confianza, expectativas y resultados
+            Seguimiento
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-            Consulta por unidad la confianza inicial, el resultado, la expectativa y la reflexión.
+            Confianza, expectativas y resultados por unidad.
           </p>
         </div>
         {estudiantes.length > 0 && (

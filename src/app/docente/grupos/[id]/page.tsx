@@ -678,16 +678,17 @@ export default async function DetalleGrupo({
         </div>
       </details>
 
-      <details id="eliminacion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
-        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">Eliminar grupo</summary>
-        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+      <section id="eliminacion" className="scroll-mt-20 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/60 dark:bg-red-950/15" aria-labelledby="eliminacion-titulo">
+        <h2 id="eliminacion-titulo" className="text-base font-semibold text-red-800 dark:text-red-200">Zona de riesgo</h2>
+        <p className="mt-1 text-sm text-red-700 dark:text-red-300">Eliminar este grupo borra su información de forma permanente.</p>
+        <div className="mt-3">
           <EliminarGrupo
             grupoId={grupo.id}
             nombreGrupo={grupo.nombre}
             totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
           />
         </div>
-      </details>
+      </section>
     </div>
   );
 }
