@@ -118,7 +118,7 @@ export default function SeguimientoAprendizaje({
             Confianza, expectativas y resultados
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-            Compara la confianza inicial con los aciertos y consulta qué esperaba aprender cada estudiante y qué reflexionó al cerrar la unidad.
+            Consulta por unidad la confianza inicial, el resultado, la expectativa y la reflexión.
           </p>
         </div>
         {estudiantes.length > 0 && (
@@ -178,7 +178,7 @@ export default function SeguimientoAprendizaje({
           {vista === "unidad" ? (
             <>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                La confianza inicial se compara con el promedio de resultados automáticos de la unidad. En esa comparación, 1/5 equivale a 0 %, 5/5 a 100 % y una diferencia de hasta 25 puntos se considera cercana.
+                1/5 equivale a 0 %, 5/5 a 100 %; hasta 25 puntos de diferencia se considera cercana.
               </p>
               {estudiantesFiltrados.length === 0 ? (
                 <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-950 dark:text-slate-400">No hay estudiantes con ese nombre.</p>

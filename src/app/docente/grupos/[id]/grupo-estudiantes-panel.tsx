@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import EmptyState from "@/components/ui/empty-state";
 import ProgressBar from "@/components/ui/progress-bar";
 import Boton from "@/components/ui/button";
-import { Input, Select, ErrorText, HelpText } from "@/components/ui/field";
+import { Input, Select, ErrorText } from "@/components/ui/field";
 
 export type EstudianteResumen = {
   id: string;
@@ -108,15 +108,12 @@ export default function GrupoEstudiantesPanel({
 
   return (
     <>
-      <AgregarEstudiantes grupoId={grupoId} nombresExistentes={nombresExistentes} />
-
       <section className="flex flex-col gap-3" aria-labelledby="estudiantes-activos">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 id="estudiantes-activos" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
               Estudiantes ({estudiantes.length})
             </h2>
-            <HelpText>Busca, ordena y filtra para encontrar rápidamente a quien quieras consultar.</HelpText>
           </div>
         </div>
 
@@ -238,6 +235,8 @@ export default function GrupoEstudiantesPanel({
           </Card>
         )}
       </section>
+
+      <AgregarEstudiantes grupoId={grupoId} nombresExistentes={nombresExistentes} />
 
       {estudiantesBaja.length > 0 && (
         <details className="rounded-xl border border-slate-200 dark:border-slate-800">

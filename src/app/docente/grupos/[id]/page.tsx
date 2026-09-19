@@ -10,7 +10,7 @@ import EliminarGrupo from "./eliminar-grupo";
 import GrupoEstudiantesPanel from "./grupo-estudiantes-panel";
 import SeguimientoAprendizaje from "./seguimiento-aprendizaje";
 import PageHeader from "@/components/ui/page-header";
-import { Card, CardLink } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
 import { temaUnidad } from "@/lib/unidad-tema";
@@ -36,7 +36,6 @@ type EntregaResumenGrupo = {
   estado: string | null;
   created_at: string;
   puntaje_auto: number | null;
-  evaluacion_docente: string | null;
   respuesta: unknown;
 };
 
@@ -184,7 +183,7 @@ export default async function DetalleGrupo({
     cargarEntregasPaginadas<EntregaResumenGrupo>(
       supabase,
       idsEstudiantesGrupo,
-      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta",
+      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, respuesta",
     ),
     idsEstudiantesGrupo.length
       ? supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor").in("estudiante_id", idsEstudiantesGrupo)
@@ -292,21 +291,13 @@ export default async function DetalleGrupo({
       ultimaActividad: actividadActual?.titulo ?? null,
     };
   });
-  const porEstudianteMap = new Map(porEstudiante.map((e) => [e.id, e]));
-
   const avancePromedio =
     porEstudiante.length > 0
       ? Math.round(porEstudiante.reduce((s, e) => s + e.avance, 0) / porEstudiante.length)
       : 0;
   const activosSemana = porEstudiante.filter((e) => e.diasInactivo !== null && e.diasInactivo <= 7).length;
-  const sinEmpezar = porEstudiante.filter((e) => e.totalEntregas === 0).length;
-  const sinActividadReciente = porEstudiante.filter((e) => e.diasInactivo !== null && e.diasInactivo > DIAS_INACTIVIDAD).length;
   // Más antigua primero: sin esto salían en el orden arbitrario en que las
   // devolvía Postgres, no en el orden en que conviene atenderlas.
-  const entregasPorRevisar = entregasSeguras
-    .filter((en) => en.estado === "pendiente_revision")
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
-
   const avancePorUnidad = (unidades ?? []).map((u) => {
     const actsUnidad = (actividades ?? []).filter((a) => a.unidad_id === u.id);
     const actividadesAbiertasUnidad = actsUnidad.filter((actividad) => actividadesAbiertas.has(actividad.id));
@@ -443,9 +434,10 @@ export default async function DetalleGrupo({
           { href: "#resumen", etiqueta: "Resumen" },
           { href: "#estudiantes", etiqueta: "Estudiantes" },
           { href: "#seguimiento", etiqueta: "Seguimiento" },
-          { href: "#analisis", etiqueta: "Análisis adicional" },
+          { href: "#analisis", etiqueta: "Análisis" },
           { href: "#operacion", etiqueta: "Fechas y avisos" },
-          { href: "#atencion", etiqueta: "Atención" },
+          { href: "#atencion", etiqueta: "Alertas" },
+          { href: "#eliminacion", etiqueta: "Eliminar grupo" },
         ].map((t) => (
           <a
             key={t.href}
@@ -458,43 +450,39 @@ export default async function DetalleGrupo({
       </nav>
 
       <section id="resumen" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="resumen-titulo">
-        <div>
-          <h2 id="resumen-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Resumen del grupo</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Indicadores calculados solo con los datos que ya están disponibles para este grupo.</p>
+        <h2 id="resumen-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Resumen</h2>
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <MetricCard
+            etiqueta="Participación"
+            valor={`${activosSemana}/${estudiantes?.length ?? 0}`}
+            descripcion="Con al menos una entrega en los últimos 7 días"
+            icon={Activity}
+            tono="emerald"
+          />
+          <MetricCard
+            etiqueta="Avance"
+            valor={`${avancePromedio}%`}
+            descripcion="Actividades completas de las que ya se abrieron"
+            icon={TrendingUp}
+            tono="indigo"
+          />
+          <MetricCard
+            etiqueta="Confianza frente al resultado"
+            valor={comparacionesConfianza.length > 0 ? comparacionesCercanas : "Sin datos"}
+            descripcion={comparacionesConfianza.length > 0
+              ? `${comparacionesCercanas} de ${comparacionesConfianza.length} comparaciones quedaron a 25 puntos o menos.`
+              : "Aún no hay unidades con confianza y resultado."}
+            icon={Scale}
+            tono="slate"
+          />
+          <MetricCard
+            etiqueta="Sin primer ingreso"
+            valor={primerIngresoPendiente}
+            descripcion="No han cambiado su NIP inicial"
+            icon={KeyRound}
+            tono="amber"
+          />
         </div>
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <MetricCard
-          etiqueta="Participación"
-          valor={`${activosSemana}/${estudiantes?.length ?? 0}`}
-          descripcion="Al menos una entrega en los últimos 7 días"
-          icon={Activity}
-          tono="emerald"
-        />
-        <MetricCard
-          etiqueta="Avance"
-          valor={`${avancePromedio}%`}
-          descripcion="Actividades completas de las que ya se abrieron"
-          icon={TrendingUp}
-          tono="indigo"
-        />
-        <MetricCard
-          etiqueta="Confianza y resultado"
-          valor={comparacionesConfianza.length > 0 ? `${comparacionesCercanas}/${comparacionesConfianza.length} cercanos` : "Sin datos"}
-          descripcion="Confianza inicial frente al promedio de aciertos por unidad"
-          icon={Scale}
-          tono="slate"
-        />
-        <MetricCard
-          etiqueta="Sin primer ingreso"
-          valor={primerIngresoPendiente}
-          descripcion="Aún no cambian su NIP inicial"
-          icon={KeyRound}
-          tono="amber"
-        />
-      </div>
-      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-        En “Confianza y resultado”, la confianza de 1 a 5 se compara con el promedio de aciertos automáticos de la unidad. Se considera cercano cuando la diferencia es de hasta 25 puntos porcentuales.
-      </p>
       </section>
 
       <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
@@ -528,16 +516,13 @@ export default async function DetalleGrupo({
         bitacoras={bitacoras ?? []}
       />
 
-      <details id="analisis" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
-        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Análisis adicional
-        </summary>
-        <div className="flex flex-col gap-6 border-t border-slate-200 p-4 dark:border-slate-800">
-      <section id="detalle" className="scroll-mt-16 flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Cada porcentaje considera solo las actividades que ya se abrieron para este grupo.</p>
-        </div>
+      <section id="analisis" className="scroll-mt-20 flex flex-col gap-6" aria-labelledby="analisis-titulo">
+        <h2 id="analisis-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Análisis del grupo</h2>
+        <section id="detalle" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="avance-unidad-titulo">
+          <div>
+            <h3 id="avance-unidad-titulo" className="text-base font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Solo cuenta las actividades ya abiertas.</p>
+          </div>
         <Card className="flex flex-col gap-4 p-5">
           {avancePorUnidad.map((u) => (
             <div key={u.id}>
@@ -559,15 +544,8 @@ export default async function DetalleGrupo({
       </section>
 
       {precisionPorActividad.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-              Aciertos por actividad
-            </h2>
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              resultados automáticos
-            </span>
-          </div>
+          <section className="flex flex-col gap-3" aria-labelledby="aciertos-actividad-titulo">
+            <h3 id="aciertos-actividad-titulo" className="text-base font-semibold text-slate-900 dark:text-slate-50">Aciertos por actividad</h3>
           <Card className="flex flex-col gap-4 p-5">
             {precisionPorActividad.map((actividad) => (
               <div key={actividad.id}>
@@ -616,13 +594,8 @@ export default async function DetalleGrupo({
       )}
 
       {confusionesTop.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Errores más frecuentes
-          </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {totalConfusiones} respuestas incorrectas identificadas; ordenadas de mayor a menor frecuencia.
-          </p>
+          <section className="flex flex-col gap-3" aria-labelledby="errores-frecuentes-titulo">
+            <h3 id="errores-frecuentes-titulo" className="text-base font-semibold text-slate-900 dark:text-slate-50">Errores más frecuentes</h3>
           <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
@@ -654,8 +627,7 @@ export default async function DetalleGrupo({
         </section>
       )}
 
-        </div>
-      </details>
+      </section>
 
       <details id="operacion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
         <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
@@ -676,36 +648,21 @@ export default async function DetalleGrupo({
             />
             <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
           </div>
-          <details className="border-t border-slate-200 pt-4 dark:border-slate-800">
-            <summary className="cursor-pointer text-sm font-medium text-slate-500 dark:text-slate-400">Zona de riesgo y eliminación del grupo</summary>
-            <div className="mt-3">
-              <EliminarGrupo
-                grupoId={grupo.id}
-                nombreGrupo={grupo.nombre}
-                totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
-              />
-            </div>
-          </details>
         </div>
       </details>
 
       <details id="atencion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
         <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Atención que podría necesitarse
+          Alertas de actividad
           <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
-            {alertas.length} alertas · {entregasPorRevisar.length} casos por revisar
+            {alertas.length}
           </span>
         </summary>
-        <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-800">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {sinEmpezar} sin empezar · {sinActividadReciente} con más de {DIAS_INACTIVIDAD} días sin actividad · {primerIngresoPendiente} sin primer ingreso
-          </p>
-
+        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
           {alertas.length > 0 ? (
             <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">
-              <p className="font-medium">Actividad que conviene revisar</p>
               <ul className="mt-2 flex flex-col gap-2">
-                {alertas.slice(0, 5).map((alerta) => (
+                {alertas.map((alerta) => (
                   <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
                     <span>{alerta.texto}</span>
                     <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold underline underline-offset-2">
@@ -714,47 +671,21 @@ export default async function DetalleGrupo({
                   </li>
                 ))}
               </ul>
-              {alertas.length > 5 && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-sm font-medium">Ver {alertas.length - 5} alertas más</summary>
-                  <ul className="mt-2 flex flex-col gap-2">
-                    {alertas.slice(5).map((alerta) => (
-                      <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
-                        <span>{alerta.texto}</span>
-                        <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold underline underline-offset-2">Ver perfil</Link>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
             </div>
           ) : (
             <p className="text-sm text-slate-600 dark:text-slate-400">No hay alertas de actividad.</p>
           )}
+        </div>
+      </details>
 
-          <details id="apoyo" className="rounded-lg border border-amber-200 dark:border-amber-900/60">
-            <summary className="cursor-pointer px-3 py-3 text-sm font-medium text-slate-800 dark:text-slate-100">
-              Casos de apoyo para atender ({entregasPorRevisar.length})
-            </summary>
-            <div className="flex flex-col gap-2 border-t border-amber-100 p-3 dark:border-amber-900/40">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Orientaciones opcionales, no calificaciones.</p>
-              {entregasPorRevisar.length > 0 ? entregasPorRevisar.map((entrega) => {
-                const estudiante = porEstudianteMap.get(entrega.estudiante_id);
-                const actividad = actividadesMapa.get(entrega.actividad_id);
-                return (
-                  <Link key={entrega.id} href={`/docente/estudiantes/${entrega.estudiante_id}#entrega-${entrega.id}`}>
-                    <CardLink className="flex items-center gap-3 px-4 py-3">
-                      <span className="size-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
-                      <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
-                        <strong className="font-medium">{estudiante?.nombre}</strong> · {actividad?.titulo}
-                      </span>
-                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Abrir caso</span>
-                    </CardLink>
-                  </Link>
-                );
-              }) : <p className="text-sm text-slate-600 dark:text-slate-400">No hay casos pendientes en este momento.</p>}
-            </div>
-          </details>
+      <details id="eliminacion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
+        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">Eliminar grupo</summary>
+        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+          <EliminarGrupo
+            grupoId={grupo.id}
+            nombreGrupo={grupo.nombre}
+            totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
+          />
         </div>
       </details>
     </div>
