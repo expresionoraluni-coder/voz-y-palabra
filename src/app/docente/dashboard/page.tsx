@@ -9,6 +9,7 @@ import EmptyState from "@/components/ui/empty-state";
 import MetricCard from "@/components/ui/metric-card";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 import { obtenerUsuarioActual } from "@/lib/supabase/usuario-actual";
+import { calcularAvanceDeActividadesAbiertas } from "@/lib/avance-actividades-abiertas";
 
 type EstudianteDashboard = {
   id: string;
@@ -20,7 +21,10 @@ type EstudianteDashboard = {
 
 type EntregaDashboard = {
   estudiante_id: string;
+  actividad_id: string;
   created_at: string;
+  puntaje_auto: number | null;
+  respuesta: unknown;
 };
 
 const TAMANO_PAGINA_ENTREGAS = 1000;
@@ -40,6 +44,7 @@ export default async function DashboardDocente() {
     { data: grupos, error: gruposError },
     { data: unidades, error: unidadesError },
     { data: estudiantes, error: estudiantesError },
+    { data: actividades, error: actividadesError },
   ] = await Promise.all([
     // El layout ya valida el perfil; `maybeSingle` evita un 406 fugaz en
     // sesiones antiguas o durante la creación del perfil y permite que el
@@ -52,6 +57,7 @@ export default async function DashboardDocente() {
       .order("created_at", { ascending: false }),
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, actividades(id)").order("orden"),
     supabase.from("estudiantes").select("id, grupo_id, created_at, activo, debe_cambiar_nip").eq("activo", true),
+    supabase.from("actividades").select("id, contenido"),
   ]);
 
   const entregasResumen: EntregaDashboard[] = [];
@@ -70,7 +76,7 @@ export default async function DashboardDocente() {
         paginas.map((desde) =>
           supabase
             .from("entregas")
-            .select("estudiante_id, created_at")
+            .select("estudiante_id, actividad_id, created_at, puntaje_auto, respuesta")
             .in("estudiante_id", estudianteIds)
             .order("created_at", { ascending: true })
             .order("id", { ascending: true })
@@ -86,19 +92,28 @@ export default async function DashboardDocente() {
     }
   }
 
+  const grupoIds = (grupos ?? []).map((grupo) => grupo.id);
+  const { data: aperturas, error: aperturasError } = grupoIds.length > 0
+    ? await supabase
+        .from("eventos")
+        .select("grupo_id, tipo, actividad_id, fecha")
+        .in("grupo_id", grupoIds)
+        .eq("tipo", "apertura_actividad")
+    : { data: [], error: null };
+
   revisarErrorConsulta(docenteError, "No pudimos cargar tu perfil docente.");
   revisarErrorConsulta(gruposError, "No pudimos cargar tus grupos.");
   revisarErrorConsulta(unidadesError, "No pudimos cargar las unidades del curso.");
   revisarErrorConsulta(estudiantesError, "No pudimos cargar el resumen de estudiantes.");
+  revisarErrorConsulta(actividadesError, "No pudimos cargar las actividades del curso.");
   revisarErrorConsulta(entregasError, "No pudimos cargar el resumen de avance.");
+  revisarErrorConsulta(aperturasError, "No pudimos cargar las fechas de apertura.");
 
   if (!docente) redirect("/ingreso/profesora/verificar");
 
   // El resumen reutiliza las entregas que ya se necesitan para los grupos,
   // evitando una consulta independiente por cada tarjeta.
   const estudiantesActivos = (estudiantes ?? []) as EstudianteDashboard[];
-  const totalActividades =
-    unidades?.reduce((total, unidad) => total + (Array.isArray(unidad.actividades) ? unidad.actividades.length : 0), 0) ?? 0;
   const entregasPorEstudiante = new Map<string, { total: number; ultima: number | null }>();
   for (const entrega of entregasResumen) {
     const actual = entregasPorEstudiante.get(entrega.estudiante_id) ?? { total: 0, ultima: null };
@@ -106,6 +121,33 @@ export default async function DashboardDocente() {
     actual.total += 1;
     actual.ultima = actual.ultima === null ? fecha : Math.max(actual.ultima, fecha);
     entregasPorEstudiante.set(entrega.estudiante_id, actual);
+  }
+
+  const estudiantesPorGrupo = new Map<string, string[]>();
+  for (const estudiante of estudiantesActivos) {
+    const ids = estudiantesPorGrupo.get(estudiante.grupo_id) ?? [];
+    ids.push(estudiante.id);
+    estudiantesPorGrupo.set(estudiante.grupo_id, ids);
+  }
+  const aperturasPorGrupo = new Map<string, typeof aperturas>();
+  for (const apertura of aperturas ?? []) {
+    const delGrupo = aperturasPorGrupo.get(apertura.grupo_id) ?? [];
+    delGrupo.push(apertura);
+    aperturasPorGrupo.set(apertura.grupo_id, delGrupo);
+  }
+  const avancePorEstudiante = new Map<string, number>();
+  for (const grupo of grupos ?? []) {
+    const resumen = calcularAvanceDeActividadesAbiertas({
+      actividades: (actividades ?? []).map((actividad) => ({ id: actividad.id, contenido: actividad.contenido })),
+      aperturas: (aperturasPorGrupo.get(grupo.id) ?? []).map((apertura) => ({
+        tipo: apertura.tipo,
+        actividad_id: apertura.actividad_id,
+        fecha: apertura.fecha,
+      })),
+      entregas: entregasResumen,
+      estudiantesIds: estudiantesPorGrupo.get(grupo.id) ?? [],
+    });
+    for (const [estudianteId, avance] of resumen.avancePorEstudiante) avancePorEstudiante.set(estudianteId, avance);
   }
 
   // eslint-disable-next-line react-hooks/purity
@@ -120,7 +162,7 @@ export default async function DashboardDocente() {
       primerIngresoPendiente: 0,
     };
     const entregasEstudiante = entregasPorEstudiante.get(estudiante.id);
-    const avance = totalActividades > 0 ? Math.min(100, Math.round(((entregasEstudiante?.total ?? 0) / totalActividades) * 100)) : 0;
+    const avance = avancePorEstudiante.get(estudiante.id) ?? 0;
     const diasDesdeUltima = entregasEstudiante?.ultima === null || entregasEstudiante?.ultima === undefined
       ? null
       : Math.floor((hoy - entregasEstudiante.ultima) / (1000 * 60 * 60 * 24));
@@ -139,10 +181,7 @@ export default async function DashboardDocente() {
     return ultima !== undefined && ultima !== null && Math.floor((hoy - ultima) / (1000 * 60 * 60 * 24)) <= 7;
   }).length;
   const avanceGeneral = totalEstudiantes > 0
-    ? Math.round(estudiantesActivos.reduce((total, estudiante) => {
-        const entregasEstudiante = entregasPorEstudiante.get(estudiante.id)?.total ?? 0;
-        return total + (totalActividades > 0 ? Math.min(100, (entregasEstudiante / totalActividades) * 100) : 0);
-      }, 0) / totalEstudiantes)
+    ? Math.round(estudiantesActivos.reduce((total, estudiante) => total + (avancePorEstudiante.get(estudiante.id) ?? 0), 0) / totalEstudiantes)
     : 0;
 
   return (
@@ -169,7 +208,13 @@ export default async function DashboardDocente() {
           <MetricCard etiqueta="Estudiantes activos" valor={totalEstudiantes} icon={Users} tono="slate" />
           <MetricCard etiqueta="Activos esta semana" valor={estudiantesActivosSemana} icon={Activity} tono="emerald" />
           <MetricCard etiqueta="Sin comenzar" valor={estudiantesSinEmpezar} icon={CircleAlert} tono="amber" />
-          <MetricCard etiqueta="Avance promedio" valor={`${avanceGeneral}%`} icon={BookOpen} tono="indigo" />
+          <MetricCard
+            etiqueta="Avance promedio"
+            valor={`${avanceGeneral}%`}
+            descripcion="Actividades completas de las que ya se abrieron"
+            icon={BookOpen}
+            tono="indigo"
+          />
         </div>
       </section>
 
@@ -218,7 +263,7 @@ export default async function DashboardDocente() {
                         </p>
                         <div className="grid grid-cols-4 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
                           <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Avance</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Avance abierto</p>
                             <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-50">{avance}%</p>
                           </div>
                           <div>

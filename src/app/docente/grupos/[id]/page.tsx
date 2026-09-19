@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ClipboardCheck, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { Activity, KeyRound, Scale, TrendingDown, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import Avisos from "./avisos";
 import Eventos from "./eventos";
@@ -13,9 +13,10 @@ import PageHeader from "@/components/ui/page-header";
 import { Card, CardLink } from "@/components/ui/card";
 import MetricCard from "@/components/ui/metric-card";
 import ProgressBar from "@/components/ui/progress-bar";
-import Alert from "@/components/ui/alert";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { calcularAvanceDeActividadesAbiertas } from "@/lib/avance-actividades-abiertas";
+import { casoCalibracion } from "@/lib/calibracion-confianza";
 import type { ReflexionSeguimiento } from "./tipos-seguimiento";
 
 const DIAS_INACTIVIDAD = 10;
@@ -36,6 +37,7 @@ type EntregaResumenGrupo = {
   created_at: string;
   puntaje_auto: number | null;
   evaluacion_docente: string | null;
+  respuesta: unknown;
 };
 
 type EntregaConfusionGrupo = {
@@ -182,7 +184,7 @@ export default async function DetalleGrupo({
     cargarEntregasPaginadas<EntregaResumenGrupo>(
       supabase,
       idsEstudiantesGrupo,
-      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente",
+      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, evaluacion_docente, respuesta",
     ),
     idsEstudiantesGrupo.length
       ? supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor").in("estudiante_id", idsEstudiantesGrupo)
@@ -214,7 +216,9 @@ export default async function DetalleGrupo({
           titulo: actividad.titulo,
           orden: actividad.orden,
           tipo: tipo?.nombre ?? "otro",
+          unidadId: actividad.unidad_id,
           unidadOrden: unidad?.orden ?? null,
+          unidadNombre: unidad?.nombre ?? "Sin unidad",
           contenido: actividad.contenido as Record<string, unknown>,
         },
       ];
@@ -238,10 +242,10 @@ export default async function DetalleGrupo({
     : { data: [] as EntregaConfusionGrupo[], error: null };
   revisarErrorConsulta(entregasConConfusionError, "No pudimos cargar los datos para detectar dificultades comunes.");
 
-  const totalActividades = actividades?.length ?? 0;
   const entregasSeguras = entregas ?? [];
   const entregasPorEstudiante = new Map<string, typeof entregasSeguras>();
   const entregasPorActividad = new Map<string, typeof entregasSeguras>();
+  const ultimaEntregaPorEstudianteYActividad = new Map<string, typeof entregasSeguras[number]>();
   for (const entrega of entregasSeguras) {
     const delEstudiante = entregasPorEstudiante.get(entrega.estudiante_id) ?? [];
     delEstudiante.push(entrega);
@@ -249,14 +253,27 @@ export default async function DetalleGrupo({
     const deLaActividad = entregasPorActividad.get(entrega.actividad_id) ?? [];
     deLaActividad.push(entrega);
     entregasPorActividad.set(entrega.actividad_id, deLaActividad);
+    ultimaEntregaPorEstudianteYActividad.set(`${entrega.estudiante_id}:${entrega.actividad_id}`, entrega);
   }
+  const avanceDeActividadesAbiertas = calcularAvanceDeActividadesAbiertas({
+    actividades: (actividades ?? []).map((actividad) => ({ id: actividad.id, contenido: actividad.contenido })),
+    aperturas: (eventos ?? []).map((evento) => ({
+      tipo: evento.tipo,
+      actividad_id: evento.actividad_id,
+      fecha: evento.fecha,
+    })),
+    entregas: entregasSeguras,
+    estudiantesIds: idsEstudiantesGrupo,
+  });
+  const { actividadesAbiertas, completadasPorEstudiante, avancePorEstudiante } = avanceDeActividadesAbiertas;
+
   // La actividad se mide respecto al momento en que se solicita el panel.
   // eslint-disable-next-line react-hooks/purity
   const hoy = Date.now();
 
   const porEstudiante = (estudiantes ?? []).map((e) => {
     const misEntregas = entregasPorEstudiante.get(e.id) ?? [];
-    const avance = totalActividades > 0 ? Math.round((misEntregas.length / totalActividades) * 100) : 0;
+    const avance = avancePorEstudiante.get(e.id) ?? 0;
     const fechas = misEntregas.map((en) => new Date(en.created_at).getTime());
     const ultima = fechas.length ? Math.max(...fechas) : null;
     const diasInactivo = ultima ? Math.floor((hoy - ultima) / (1000 * 60 * 60 * 24)) : null;
@@ -292,45 +309,45 @@ export default async function DetalleGrupo({
 
   const avancePorUnidad = (unidades ?? []).map((u) => {
     const actsUnidad = (actividades ?? []).filter((a) => a.unidad_id === u.id);
-    const totalPosible = actsUnidad.length * (estudiantes?.length ?? 0);
-    const hechas = actsUnidad.reduce((total, a) => total + (entregasPorActividad.get(a.id)?.length ?? 0), 0);
+    const actividadesAbiertasUnidad = actsUnidad.filter((actividad) => actividadesAbiertas.has(actividad.id));
+    const totalPosible = actividadesAbiertasUnidad.length * estudiantes.length;
+    const hechas = [...completadasPorEstudiante.values()].reduce(
+      (total, completadas) => total + actividadesAbiertasUnidad.filter((actividad) => completadas.has(actividad.id)).length,
+      0,
+    );
     return {
       ...u,
-      porcentaje: totalPosible > 0 ? Math.round((hechas / totalPosible) * 100) : 0,
+      actividadesAbiertas: actividadesAbiertasUnidad.length,
+      totalActividades: actsUnidad.length,
+      porcentaje: totalPosible > 0 ? Math.round((hechas / totalPosible) * 100) : null,
     };
   });
 
-  // Precisión promedio por tipo de actividad: solo los tipos con respuesta
-  // objetivamente correcta guardan puntaje_auto (clasificación, etiquetado
-  // de texto, opción-justificación, ordenar fragmentos, y comparador en
-  // modo chips). Ordenado de peor a mejor para que salte a la vista dónde
-  // intervenir.
-  function nombreTipoDe(en: { actividad_id: string }) {
-    return actividadesMapa.get(en.actividad_id)?.tipo ?? "otro";
-  }
+  const confianzaInicialPorClave = new Map(
+    (confianzas ?? [])
+      .filter((confianza) => confianza.momento === "inicio")
+      .map((confianza) => [`${confianza.estudiante_id}:${confianza.unidad_id}`, confianza.valor]),
+  );
+  const comparacionesConfianza = estudiantes.flatMap((estudiante) =>
+    (unidades ?? []).flatMap((unidad) => {
+      const confianza = confianzaInicialPorClave.get(`${estudiante.id}:${unidad.id}`) ?? null;
+      const puntajes = (actividades ?? [])
+        .filter((actividad) => actividad.unidad_id === unidad.id)
+        .map((actividad) => ultimaEntregaPorEstudianteYActividad.get(`${estudiante.id}:${actividad.id}`)?.puntaje_auto ?? null)
+        .filter((puntaje): puntaje is number => puntaje !== null);
+      if (confianza === null || puntajes.length === 0) return [];
+      const promedio = Math.round(puntajes.reduce((total, puntaje) => total + puntaje, 0) / puntajes.length);
+      return [casoCalibracion(confianza, promedio)];
+    }),
+  );
+  const comparacionesCercanas = comparacionesConfianza.filter(
+    (caso) => caso === "bien_calibrado_alto" || caso === "bien_calibrado_bajo",
+  ).length;
 
-  const precisionPorTipoBase = Object.values(
-    (entregas ?? [])
-      .filter((en) => en.puntaje_auto !== null)
-      .reduce(
-        (acc, en) => {
-          const nombre = nombreTipoDe(en);
-          acc[nombre] ??= { nombre, suma: 0, total: 0 };
-          acc[nombre].suma += en.puntaje_auto ?? 0;
-          acc[nombre].total += 1;
-          return acc;
-        },
-        {} as Record<string, { nombre: string; suma: number; total: number }>,
-      ),
-  )
-    .map((x) => ({ nombre: x.nombre, promedio: Math.round(x.suma / x.total), n: x.total }))
-    .sort((a, b) => a.promedio - b.promedio);
-
-  // Tendencia de precisión por tipo: compara el promedio de puntaje_auto de
-  // los últimos 7 días contra los 7 anteriores, calculado en vivo a partir
-  // de las entregas ya cargadas. Va por tipo (no un solo número agregado)
-  // porque dos tipos moviéndose en direcciones opuestas se cancelaban entre
-  // sí y mostraban "igual que la semana pasada" sin serlo.
+  // Los resultados automáticos se muestran por actividad y no por tipo para
+  // que la docente reconozca enseguida el ejercicio al que corresponde cada
+  // porcentaje. La comparación semanal solo aparece cuando ambos periodos
+  // tienen entregas para esa actividad.
   const hace7dias = hoy - 7 * 24 * 60 * 60 * 1000;
   const hace14dias = hoy - 14 * 24 * 60 * 60 * 1000;
   const entregasSemanaActual = (entregas ?? []).filter(
@@ -340,22 +357,35 @@ export default async function DetalleGrupo({
     const t = new Date(en.created_at).getTime();
     return t >= hace14dias && t < hace7dias;
   });
-  function promedioPuntajePorTipo(arr: typeof entregas, nombreTipo: string) {
+  function promedioPuntajePorActividad(arr: typeof entregasSeguras, actividadId: string) {
     const conPuntaje = (arr ?? []).filter(
-      (en) => en.puntaje_auto !== null && nombreTipoDe(en) === nombreTipo,
+      (en) => en.puntaje_auto !== null && en.actividad_id === actividadId,
     );
     return conPuntaje.length > 0
       ? Math.round(conPuntaje.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / conPuntaje.length)
       : null;
   }
-  const precisionPorTipo = precisionPorTipoBase.map((t) => {
-    const actual = promedioPuntajePorTipo(entregasSemanaActual, t.nombre);
-    const anterior = promedioPuntajePorTipo(entregasSemanaAnterior, t.nombre);
-    return {
-      ...t,
-      tendencia: actual !== null && anterior !== null ? actual - anterior : null,
-    };
-  });
+  const precisionPorActividad = (actividades ?? [])
+    .map((actividad) => {
+      const puntajes = (entregasPorActividad.get(actividad.id) ?? [])
+        .map((entrega) => entrega.puntaje_auto)
+        .filter((puntaje): puntaje is number => puntaje !== null);
+      if (puntajes.length === 0) return null;
+      const actual = promedioPuntajePorActividad(entregasSemanaActual, actividad.id);
+      const anterior = promedioPuntajePorActividad(entregasSemanaAnterior, actividad.id);
+      const datosActividad = actividadesMapa.get(actividad.id);
+      return {
+        id: actividad.id,
+        titulo: actividad.titulo,
+        unidadOrden: datosActividad?.unidadOrden ?? null,
+        unidadNombre: datosActividad?.unidadNombre ?? "Sin unidad",
+        promedio: Math.round(puntajes.reduce((total, puntaje) => total + puntaje, 0) / puntajes.length),
+        n: puntajes.length,
+        tendencia: actual !== null && anterior !== null ? actual - anterior : null,
+      };
+    })
+    .filter((actividad): actividad is NonNullable<typeof actividad> => actividad !== null)
+    .sort((a, b) => a.promedio - b.promedio || (a.unidadOrden ?? 0) - (b.unidadOrden ?? 0) || a.titulo.localeCompare(b.titulo));
 
   // Matriz de confusión por elemento: no solo "clasificación va al 69%",
   // sino "el grupo confunde 'Receptor' con 'Emisor' en 5 entregas" — mismo
@@ -397,11 +427,8 @@ export default async function DetalleGrupo({
       alertas.push({ tipo: "inactividad", estudianteId: e.id, texto: `${e.nombre} sin actividad hace ${e.diasInactivo} días.` });
     }
   }
-  const alertasSinComenzar = alertas.filter((alerta) => alerta.tipo === "sin_comenzar");
-  const alertasInactividad = alertas.filter((alerta) => alerta.tipo === "inactividad");
-
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col gap-8 px-6 py-10 lg:px-8">
       <PageHeader
         volverHref="/docente/dashboard"
         titulo={grupo.nombre}
@@ -409,14 +436,16 @@ export default async function DetalleGrupo({
         accion={<EditarGrupo grupoId={grupo.id} nombreActual={grupo.nombre} codigoActual={grupo.codigo_acceso} />}
       />
 
-      <nav aria-label="Secciones del grupo" className="sticky top-0 z-10 -mx-6 flex gap-1 overflow-x-auto whitespace-nowrap border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+      <AccesoGrupo codigo={grupo.codigo_acceso} nombreGrupo={grupo.nombre} />
+
+      <nav aria-label="Secciones del grupo" className="sticky top-0 z-10 -mx-6 flex gap-1 overflow-x-auto whitespace-nowrap border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur lg:-mx-8 lg:px-8 dark:border-slate-800 dark:bg-slate-950/95">
         {[
           { href: "#resumen", etiqueta: "Resumen" },
-          { href: "#seguimiento", etiqueta: "Seguimiento" },
           { href: "#estudiantes", etiqueta: "Estudiantes" },
-          { href: "#operacion", etiqueta: "Operación" },
-          { href: "#atencion", etiqueta: "Atención" },
+          { href: "#seguimiento", etiqueta: "Seguimiento" },
           { href: "#analisis", etiqueta: "Análisis adicional" },
+          { href: "#operacion", etiqueta: "Fechas y avisos" },
+          { href: "#atencion", etiqueta: "Atención" },
         ].map((t) => (
           <a
             key={t.href}
@@ -428,25 +457,58 @@ export default async function DetalleGrupo({
         ))}
       </nav>
 
-      <div id="resumen" className="scroll-mt-16 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <MetricCard etiqueta="Avance promedio" valor={`${avancePromedio}%`} icon={TrendingUp} tono="indigo" />
+      <section id="resumen" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="resumen-titulo">
+        <div>
+          <h2 id="resumen-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Resumen del grupo</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Indicadores calculados solo con los datos que ya están disponibles para este grupo.</p>
+        </div>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <MetricCard
-          etiqueta="Activos esta semana"
+          etiqueta="Participación"
           valor={`${activosSemana}/${estudiantes?.length ?? 0}`}
-          icon={Users}
+          descripcion="Al menos una entrega en los últimos 7 días"
+          icon={Activity}
           tono="emerald"
         />
         <MetricCard
-          etiqueta="Casos de apoyo"
-          valor={entregasPorRevisar.length}
-          icon={ClipboardCheck}
+          etiqueta="Avance"
+          valor={`${avancePromedio}%`}
+          descripcion="Actividades completas de las que ya se abrieron"
+          icon={TrendingUp}
+          tono="indigo"
+        />
+        <MetricCard
+          etiqueta="Confianza y resultado"
+          valor={comparacionesConfianza.length > 0 ? `${comparacionesCercanas}/${comparacionesConfianza.length} cercanos` : "Sin datos"}
+          descripcion="Confianza inicial frente al promedio de aciertos por unidad"
+          icon={Scale}
+          tono="slate"
+        />
+        <MetricCard
+          etiqueta="Sin primer ingreso"
+          valor={primerIngresoPendiente}
+          descripcion="Aún no cambian su NIP inicial"
+          icon={KeyRound}
           tono="amber"
         />
-        <MetricCard etiqueta="Estudiantes" valor={estudiantes?.length ?? 0} icon={Users} tono="slate" />
+      </div>
+      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+        En “Confianza y resultado”, la confianza de 1 a 5 se compara con el promedio de aciertos automáticos de la unidad. Se considera cercano cuando la diferencia es de hasta 25 puntos porcentuales.
+      </p>
+      </section>
+
+      <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
+        <GrupoEstudiantesPanel
+          grupoId={grupo.id}
+          estudiantes={porEstudiante}
+          estudiantesBaja={estudiantesBaja ?? []}
+          nombresExistentes={[...(estudiantes ?? []), ...(estudiantesBaja ?? [])].map((e) => e.nombre)}
+        />
       </div>
 
       <SeguimientoAprendizaje
         nombreGrupo={grupo.nombre}
+        codigoGrupo={grupo.codigo_acceso}
         estudiantes={porEstudiante}
         unidades={(unidades ?? []).map((unidad) => ({ id: unidad.id, nombre: unidad.nombre, orden: unidad.orden }))}
         actividades={(actividades ?? []).map((actividad) => {
@@ -466,80 +528,16 @@ export default async function DetalleGrupo({
         bitacoras={bitacoras ?? []}
       />
 
-      <details id="atencion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
-        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Seguimiento operativo
-          <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
-            {alertasSinComenzar.length} sin empezar · {alertasInactividad.length} inactivos · {entregasPorRevisar.length} casos
-          </span>
-        </summary>
-        <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-800">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {sinEmpezar} sin empezar · {sinActividadReciente} con más de {DIAS_INACTIVIDAD} días sin actividad · {primerIngresoPendiente} con primer ingreso pendiente
-          </p>
-
-          {alertas.length > 0 && (
-            <Alert tono="warning" titulo="Alertas de actividad">
-              <ul className="flex flex-col gap-2">
-                {alertas.slice(0, 5).map((alerta) => (
-                  <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
-                    <span>{alerta.texto}</span>
-                    <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold text-amber-800 underline underline-offset-2 dark:text-amber-200">
-                      Ver perfil
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              {alertas.length > 5 && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-sm font-medium">Ver {alertas.length - 5} alertas más</summary>
-                  <ul className="mt-2 flex flex-col gap-2">
-                    {alertas.slice(5).map((alerta) => (
-                      <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
-                        <span>{alerta.texto}</span>
-                        <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold text-amber-800 underline underline-offset-2 dark:text-amber-200">Ver perfil</Link>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </Alert>
-          )}
-          {alertas.length === 0 && <p className="text-sm text-slate-600 dark:text-slate-400">No hay alertas de actividad.</p>}
-
-          <details id="apoyo" className="rounded-lg border border-amber-200 dark:border-amber-900/60">
-            <summary className="cursor-pointer px-3 py-3 text-sm font-medium text-slate-800 dark:text-slate-100">
-              Casos de apoyo para atender ({entregasPorRevisar.length})
-            </summary>
-            <div className="flex flex-col gap-2 border-t border-amber-100 p-3 dark:border-amber-900/40">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Orientaciones opcionales, no calificaciones.</p>
-              {entregasPorRevisar.length > 0 ? entregasPorRevisar.map((entrega) => {
-                const estudiante = porEstudianteMap.get(entrega.estudiante_id);
-                const actividad = actividadesMapa.get(entrega.actividad_id);
-                return (
-                  <Link key={entrega.id} href={`/docente/estudiantes/${entrega.estudiante_id}#entrega-${entrega.id}`}>
-                    <CardLink className="flex items-center gap-3 px-4 py-3">
-                      <span className="size-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
-                      <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
-                        <strong className="font-medium">{estudiante?.nombre}</strong> · {actividad?.titulo}
-                      </span>
-                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Abrir caso</span>
-                    </CardLink>
-                  </Link>
-                );
-              }) : <p className="text-sm text-slate-600 dark:text-slate-400">No hay casos pendientes en este momento.</p>}
-            </div>
-          </details>
-        </div>
-      </details>
-
       <details id="analisis" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
         <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
           Análisis adicional
         </summary>
         <div className="flex flex-col gap-6 border-t border-slate-200 p-4 dark:border-slate-800">
       <section id="detalle" className="scroll-mt-16 flex flex-col gap-3">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Cada porcentaje considera solo las actividades que ya se abrieron para este grupo.</p>
+        </div>
         <Card className="flex flex-col gap-4 p-5">
           {avancePorUnidad.map((u) => (
             <div key={u.id}>
@@ -547,58 +545,66 @@ export default async function DetalleGrupo({
                 <span className="text-slate-700 dark:text-slate-300">
                   Unidad {u.orden}. {u.nombre}
                 </span>
-                <span className="font-medium text-slate-900 dark:text-slate-50">{u.porcentaje}%</span>
+                <span className="font-medium text-slate-900 dark:text-slate-50">
+                  {u.porcentaje === null ? "Aún sin apertura" : `${u.porcentaje}%`}
+                </span>
               </div>
-              <ProgressBar porcentaje={u.porcentaje} gradiente={temaUnidad(u.orden).barra} />
+              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                {u.actividadesAbiertas}/{u.totalActividades} actividades abiertas
+              </p>
+              {u.porcentaje !== null && <ProgressBar porcentaje={u.porcentaje} gradiente={temaUnidad(u.orden).barra} />}
             </div>
           ))}
         </Card>
       </section>
 
-      {precisionPorTipo.length > 0 && (
+      {precisionPorActividad.length > 0 && (
         <section className="flex flex-col gap-3">
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-              Precisión por tipo de actividad
+              Aciertos por actividad
             </h2>
             <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              vs. semana pasada, por tipo
+              resultados automáticos
             </span>
           </div>
           <Card className="flex flex-col gap-4 p-5">
-            {precisionPorTipo.map((t) => (
-              <div key={t.nombre}>
+            {precisionPorActividad.map((actividad) => (
+              <div key={actividad.id}>
                 <div className="mb-1.5 flex justify-between text-sm">
-                  <span className="capitalize text-slate-700 dark:text-slate-300">
-                    {t.nombre.replaceAll("_", " ")}
+                  <span className="min-w-0 pr-4 text-slate-700 dark:text-slate-300">
+                    <span className="block truncate font-medium">{actividad.titulo}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                      {actividad.unidadOrden ? `Unidad ${actividad.unidadOrden}. ` : ""}{actividad.unidadNombre}
+                    </span>
                   </span>
                   <span className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-50">
-                    {t.tendencia !== null && t.tendencia !== 0 && (
+                    {actividad.tendencia !== null && actividad.tendencia !== 0 && (
                       <span
                         className={`flex items-center text-xs font-medium ${
-                          t.tendencia > 0
+                          actividad.tendencia > 0
                             ? "text-emerald-600 dark:text-emerald-400"
                             : "text-red-600 dark:text-red-400"
                         }`}
                       >
-                        {t.tendencia > 0 ? (
+                        {actividad.tendencia > 0 ? (
                           <TrendingUp className="size-3" aria-hidden="true" />
                         ) : (
                           <TrendingDown className="size-3" aria-hidden="true" />
                         )}
-                        {t.tendencia > 0 ? "+" : ""}
-                        {t.tendencia}
+                        {actividad.tendencia > 0 ? "+" : ""}
+                        {actividad.tendencia}
                       </span>
                     )}
-                    {t.promedio}% · {t.n} {t.n === 1 ? "entrega" : "entregas"}
+                    {actividad.promedio}% · {actividad.n} {actividad.n === 1 ? "entrega" : "entregas"}
                   </span>
                 </div>
                 <ProgressBar
-                  porcentaje={t.promedio}
+                  porcentaje={actividad.promedio}
                   gradiente={
-                    t.promedio >= 70
+                    actividad.promedio >= 70
                       ? "from-emerald-500 to-emerald-600"
-                      : t.promedio >= 40
+                      : actividad.promedio >= 40
                         ? "from-amber-500 to-amber-600"
                         : "from-red-500 to-red-600"
                   }
@@ -653,11 +659,10 @@ export default async function DetalleGrupo({
 
       <details id="operacion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
         <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Acceso, fechas y avisos
+          Fechas y avisos
           <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{eventos?.length ?? 0} fechas · {avisos?.length ?? 0} avisos</span>
         </summary>
         <div className="flex flex-col gap-6 border-t border-slate-200 p-4 dark:border-slate-800">
-          <AccesoGrupo codigo={grupo.codigo_acceso} nombreGrupo={grupo.nombre} />
           <div id="avisos" className="scroll-mt-20 flex flex-col gap-8">
             <Eventos
               grupoId={grupo.id}
@@ -671,28 +676,87 @@ export default async function DetalleGrupo({
             />
             <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
           </div>
+          <details className="border-t border-slate-200 pt-4 dark:border-slate-800">
+            <summary className="cursor-pointer text-sm font-medium text-slate-500 dark:text-slate-400">Zona de riesgo y eliminación del grupo</summary>
+            <div className="mt-3">
+              <EliminarGrupo
+                grupoId={grupo.id}
+                nombreGrupo={grupo.nombre}
+                totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
+              />
+            </div>
+          </details>
         </div>
       </details>
 
-      <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
-        <GrupoEstudiantesPanel
-          grupoId={grupo.id}
-          estudiantes={porEstudiante}
-          estudiantesBaja={estudiantesBaja ?? []}
-          nombresExistentes={[...(estudiantes ?? []), ...(estudiantesBaja ?? [])].map((e) => e.nombre)}
-        />
+      <details id="atencion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
+        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Atención que podría necesitarse
+          <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
+            {alertas.length} alertas · {entregasPorRevisar.length} casos por revisar
+          </span>
+        </summary>
+        <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-800">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {sinEmpezar} sin empezar · {sinActividadReciente} con más de {DIAS_INACTIVIDAD} días sin actividad · {primerIngresoPendiente} sin primer ingreso
+          </p>
 
-      <details className="border-t border-slate-200 pt-4 dark:border-slate-800">
-        <summary className="cursor-pointer text-sm font-medium text-slate-500 dark:text-slate-400">Zona de riesgo y eliminación del grupo</summary>
-        <div className="mt-3">
-          <EliminarGrupo
-            grupoId={grupo.id}
-            nombreGrupo={grupo.nombre}
-            totalEstudiantes={(estudiantes?.length ?? 0) + (estudiantesBaja?.length ?? 0)}
-          />
+          {alertas.length > 0 ? (
+            <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">
+              <p className="font-medium">Actividad que conviene revisar</p>
+              <ul className="mt-2 flex flex-col gap-2">
+                {alertas.slice(0, 5).map((alerta) => (
+                  <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{alerta.texto}</span>
+                    <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold underline underline-offset-2">
+                      Ver perfil
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {alertas.length > 5 && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-sm font-medium">Ver {alertas.length - 5} alertas más</summary>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {alertas.slice(5).map((alerta) => (
+                      <li key={`${alerta.estudianteId}-${alerta.texto}`} className="flex flex-wrap items-center justify-between gap-2">
+                        <span>{alerta.texto}</span>
+                        <Link href={`/docente/estudiantes/${alerta.estudianteId}`} className="text-xs font-semibold underline underline-offset-2">Ver perfil</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-600 dark:text-slate-400">No hay alertas de actividad.</p>
+          )}
+
+          <details id="apoyo" className="rounded-lg border border-amber-200 dark:border-amber-900/60">
+            <summary className="cursor-pointer px-3 py-3 text-sm font-medium text-slate-800 dark:text-slate-100">
+              Casos de apoyo para atender ({entregasPorRevisar.length})
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-amber-100 p-3 dark:border-amber-900/40">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Orientaciones opcionales, no calificaciones.</p>
+              {entregasPorRevisar.length > 0 ? entregasPorRevisar.map((entrega) => {
+                const estudiante = porEstudianteMap.get(entrega.estudiante_id);
+                const actividad = actividadesMapa.get(entrega.actividad_id);
+                return (
+                  <Link key={entrega.id} href={`/docente/estudiantes/${entrega.estudiante_id}#entrega-${entrega.id}`}>
+                    <CardLink className="flex items-center gap-3 px-4 py-3">
+                      <span className="size-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
+                      <span className="flex-1 text-sm text-slate-900 dark:text-slate-50">
+                        <strong className="font-medium">{estudiante?.nombre}</strong> · {actividad?.titulo}
+                      </span>
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Abrir caso</span>
+                    </CardLink>
+                  </Link>
+                );
+              }) : <p className="text-sm text-slate-600 dark:text-slate-400">No hay casos pendientes en este momento.</p>}
+            </div>
+          </details>
         </div>
       </details>
-      </div>
     </div>
   );
 }

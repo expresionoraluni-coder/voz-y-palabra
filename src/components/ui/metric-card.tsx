@@ -3,11 +3,13 @@ import { LucideIcon } from "lucide-react";
 export default function MetricCard({
   etiqueta,
   valor,
+  descripcion,
   icon: Icon,
   tono = "indigo",
 }: {
   etiqueta: string;
   valor: string | number;
+  descripcion?: string;
   icon?: LucideIcon;
   tono?: "indigo" | "amber" | "emerald" | "slate";
 }) {
@@ -31,6 +33,7 @@ export default function MetricCard({
       <p className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
         {valor}
       </p>
+      {descripcion && <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{descripcion}</p>}
     </div>
   );
 }

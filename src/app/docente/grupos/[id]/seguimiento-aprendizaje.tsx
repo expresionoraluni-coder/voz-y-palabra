@@ -35,6 +35,7 @@ function etiquetaCalibracion(confianza: number | null, resultado: number | null)
 
 export default function SeguimientoAprendizaje({
   nombreGrupo,
+  codigoGrupo,
   estudiantes,
   unidades,
   actividades,
@@ -44,6 +45,7 @@ export default function SeguimientoAprendizaje({
   bitacoras,
 }: {
   nombreGrupo: string;
+  codigoGrupo: string;
   estudiantes: EstudianteResumen[];
   unidades: UnidadSeguimiento[];
   actividades: ActividadSeguimiento[];
@@ -122,6 +124,7 @@ export default function SeguimientoAprendizaje({
         {estudiantes.length > 0 && (
           <ExportarGrupo
             nombreGrupo={nombreGrupo}
+            codigoGrupo={codigoGrupo}
             estudiantes={estudiantes}
             unidades={unidades}
             actividades={actividades}
@@ -137,7 +140,7 @@ export default function SeguimientoAprendizaje({
         <Card className="p-5 text-sm text-slate-600 dark:text-slate-400">Aún no hay unidades para consultar.</Card>
       ) : (
         <Card className="flex flex-col gap-4 p-4 sm:p-5">
-          <div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_minmax(14rem,1.5fr)]">
+          <div className="grid gap-2 lg:grid-cols-[minmax(15rem,0.8fr)_minmax(22rem,1.2fr)]">
             <label>
               <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Unidad</span>
               <Select value={unidadId} onChange={(event) => { setUnidadId(event.target.value); setPagina(0); }}>
@@ -175,13 +178,20 @@ export default function SeguimientoAprendizaje({
           {vista === "unidad" ? (
             <>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                El promedio usa solo actividades con porcentaje de aciertos. Para comparar escalas, 1/5 equivale a 0% y 5/5 a 100%.
+                La confianza inicial se compara con el promedio de resultados automáticos de la unidad. En esa comparación, 1/5 equivale a 0 %, 5/5 a 100 % y una diferencia de hasta 25 puntos se considera cercana.
               </p>
               {estudiantesFiltrados.length === 0 ? (
                 <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-950 dark:text-slate-400">No hay estudiantes con ese nombre.</p>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full min-w-[800px] text-sm">
+                  <table className="w-full min-w-[1080px] table-fixed text-sm">
+                    <colgroup>
+                      <col className="w-[19%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[18%]" />
+                      <col className="w-[36%]" />
+                    </colgroup>
                     <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
                       <tr>
                         <th className="px-3 py-3">Estudiante</th>
@@ -217,7 +227,7 @@ export default function SeguimientoAprendizaje({
                               <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${comparacion.clases}`}>{comparacion.texto}</span>
                             </td>
                             <td className="px-3 py-3">
-                              <details className="group max-w-sm">
+                              <details className="group">
                                 <summary className="cursor-pointer font-medium text-indigo-700 underline decoration-indigo-200 underline-offset-2 dark:text-indigo-300 dark:decoration-indigo-800">
                                   Ver expectativa y reflexión
                                 </summary>
