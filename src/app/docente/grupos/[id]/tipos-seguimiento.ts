@@ -16,7 +16,6 @@ export type EntregaSeguimiento = {
   id: string;
   estudiante_id: string;
   actividad_id: string;
-  estado: string | null;
   created_at: string;
   puntaje_auto: number | null;
 };

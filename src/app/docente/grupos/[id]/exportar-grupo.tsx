@@ -267,6 +267,9 @@ function filasLibro({
   }));
   const comparables = comparaciones.filter((comparacion) => comparacion.confianza !== null && comparacion.resultado !== null);
   const comparacionesCercanas = comparables.filter((comparacion) => etiquetaComparacion(comparacion.confianza, comparacion.resultado) === "Confianza y resultado alineados").length;
+  const calibracionPorcentaje = comparables.length > 0
+    ? Math.round((comparacionesCercanas / comparables.length) * 100)
+    : null;
   const participantesSemana = estudiantes.filter((estudiante) => estudiante.diasInactivo !== null && estudiante.diasInactivo <= 7).length;
   const avancePromedio = estudiantes.length > 0
     ? Math.round(estudiantes.reduce((total, estudiante) => total + estudiante.avance, 0) / estudiantes.length)
@@ -282,7 +285,7 @@ function filasLibro({
       ["Estudiantes activos", estudiantes.length, "Incluidos en este archivo."],
       ["Participación en 7 días", `${participantesSemana}/${estudiantes.length}`, "Al menos una entrega en los últimos 7 días."],
       ["Avance promedio", `${avancePromedio}%`, "Promedio de actividades completas entre las que ya se abrieron."],
-      ["Confianza cercana al resultado", `${comparacionesCercanas}/${comparables.length}`, "Compara confianza inicial y promedio de aciertos por unidad; cercana significa una diferencia de hasta 25 puntos."],
+      ["Calibración", calibracionPorcentaje === null ? "Sin datos" : `${calibracionPorcentaje}%`, "Porcentaje de comparaciones entre confianza inicial y resultado que quedaron cercanas."],
     ],
     anchos: [32, 22, 76],
     columnasTextoLargo: [2],

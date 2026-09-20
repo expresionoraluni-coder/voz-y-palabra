@@ -33,7 +33,6 @@ type EntregaResumenGrupo = {
   id: string;
   estudiante_id: string;
   actividad_id: string;
-  estado: string | null;
   created_at: string;
   puntaje_auto: number | null;
   respuesta: unknown;
@@ -183,7 +182,7 @@ export default async function DetalleGrupo({
     cargarEntregasPaginadas<EntregaResumenGrupo>(
       supabase,
       idsEstudiantesGrupo,
-      "id, estudiante_id, actividad_id, estado, created_at, puntaje_auto, respuesta",
+      "id, estudiante_id, actividad_id, created_at, puntaje_auto, respuesta",
     ),
     idsEstudiantesGrupo.length
       ? supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor").in("estudiante_id", idsEstudiantesGrupo)
@@ -509,7 +508,6 @@ export default async function DetalleGrupo({
           id: entrega.id,
           estudiante_id: entrega.estudiante_id,
           actividad_id: entrega.actividad_id,
-          estado: entrega.estado,
           created_at: entrega.created_at,
           puntaje_auto: entrega.puntaje_auto,
         }))}
