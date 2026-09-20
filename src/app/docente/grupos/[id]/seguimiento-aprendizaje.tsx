@@ -112,7 +112,7 @@ export default function SeguimientoAprendizaje({
 
   return (
     <section id="seguimiento" className="scroll-mt-20 flex flex-col gap-3" aria-labelledby="seguimiento-titulo">
-      <div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="seguimiento-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
             Seguimiento
@@ -121,6 +121,20 @@ export default function SeguimientoAprendizaje({
             Confianza, expectativas y resultados por unidad.
           </p>
         </div>
+        {estudiantes.length > 0 && (
+          <ExportarGrupo
+            principal
+            nombreGrupo={nombreGrupo}
+            codigoGrupo={codigoGrupo}
+            estudiantes={estudiantes}
+            unidades={unidades}
+            actividades={actividades}
+            entregas={entregas}
+            confianzas={confianzas}
+            reflexiones={reflexiones}
+            bitacoras={bitacoras}
+          />
+        )}
       </div>
 
       {unidades.length === 0 ? (
@@ -161,21 +175,6 @@ export default function SeguimientoAprendizaje({
                 Por actividad
               </button>
             </div>
-            {estudiantes.length > 0 && (
-              <div className="ml-auto">
-                <ExportarGrupo
-                  nombreGrupo={nombreGrupo}
-                  codigoGrupo={codigoGrupo}
-                  estudiantes={estudiantes}
-                  unidades={unidades}
-                  actividades={actividades}
-                  entregas={entregas}
-                  confianzas={confianzas}
-                  reflexiones={reflexiones}
-                  bitacoras={bitacoras}
-                />
-              </div>
-            )}
           </div>
 
           <div className="flex flex-col gap-4">

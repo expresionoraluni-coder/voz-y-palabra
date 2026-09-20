@@ -195,7 +195,7 @@ function xmlHoja(hoja: HojaLibro): string {
     ? `<mergeCells count="2"><mergeCell ref="A1:${ultimaColumna}1"/><mergeCell ref="A2:${ultimaColumna}2"/></mergeCells>`
     : "";
 
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${congelarNombreYEncabezado}<sheetFormatPr defaultRowHeight="18"/>${columnas}<sheetData>${[...filasConTitulo, ...filasDatos].join("")}</sheetData>${combinaciones}${filtro}</worksheet>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${congelarNombreYEncabezado}<sheetFormatPr defaultRowHeight="18"/>${columnas}<sheetData>${[...filasConTitulo, ...filasDatos].join("")}</sheetData>${filtro}${combinaciones}</worksheet>`;
 }
 
 function clave(estudianteId: string, recursoId: string): string {
@@ -420,6 +420,7 @@ function construirLibro(hojas: HojaLibro[]): Uint8Array {
 }
 
 export default function ExportarGrupo({
+  principal = false,
   nombreGrupo,
   codigoGrupo,
   estudiantes,
@@ -430,6 +431,7 @@ export default function ExportarGrupo({
   reflexiones,
   bitacoras,
 }: {
+  principal?: boolean;
   nombreGrupo: string;
   codigoGrupo: string;
   estudiantes: EstudianteResumen[];
@@ -470,7 +472,7 @@ export default function ExportarGrupo({
 
   return (
     <div className="flex flex-wrap items-center gap-2" aria-live="polite">
-      <Boton type="button" variant="secondary" size="sm" onClick={exportar} cargando={estado === "preparando"}>
+      <Boton type="button" variant={principal ? "primary" : "secondary"} size={principal ? "md" : "sm"} onClick={exportar} cargando={estado === "preparando"}>
         {estado === "listo" ? <Check className="size-3.5" aria-hidden="true" /> : estado !== "preparando" ? <Download className="size-3.5" aria-hidden="true" /> : null}
         {estado === "preparando" ? "Preparando Excel…" : estado === "listo" ? "Descarga iniciada" : "Descargar Excel"}
       </Boton>
