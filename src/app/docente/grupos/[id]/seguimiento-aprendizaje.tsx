@@ -112,7 +112,7 @@ export default function SeguimientoAprendizaje({
 
   return (
     <section id="seguimiento" className="scroll-mt-20 flex flex-col gap-3" aria-labelledby="seguimiento-titulo">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
         <div>
           <h2 id="seguimiento-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
             Seguimiento
@@ -121,19 +121,6 @@ export default function SeguimientoAprendizaje({
             Confianza, expectativas y resultados por unidad.
           </p>
         </div>
-        {estudiantes.length > 0 && (
-          <ExportarGrupo
-            nombreGrupo={nombreGrupo}
-            codigoGrupo={codigoGrupo}
-            estudiantes={estudiantes}
-            unidades={unidades}
-            actividades={actividades}
-            entregas={entregas}
-            confianzas={confianzas}
-            reflexiones={reflexiones}
-            bitacoras={bitacoras}
-          />
-        )}
       </div>
 
       {unidades.length === 0 ? (
@@ -155,23 +142,40 @@ export default function SeguimientoAprendizaje({
             </label>
           </div>
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de seguimiento">
-            <button
-              type="button"
-              aria-pressed={vista === "unidad"}
-              onClick={() => { setVista("unidad"); setPagina(0); }}
-              className={`min-h-10 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${vista === "unidad" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
-            >
-              Por unidad
-            </button>
-            <button
-              type="button"
-              aria-pressed={vista === "actividad"}
-              onClick={() => { setVista("actividad"); setPagina(0); }}
-              className={`min-h-10 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${vista === "actividad" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
-            >
-              Por actividad
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de seguimiento">
+              <button
+                type="button"
+                aria-pressed={vista === "unidad"}
+                onClick={() => { setVista("unidad"); setPagina(0); }}
+                className={`min-h-10 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${vista === "unidad" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
+              >
+                Por unidad
+              </button>
+              <button
+                type="button"
+                aria-pressed={vista === "actividad"}
+                onClick={() => { setVista("actividad"); setPagina(0); }}
+                className={`min-h-10 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${vista === "actividad" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
+              >
+                Por actividad
+              </button>
+            </div>
+            {estudiantes.length > 0 && (
+              <div className="ml-auto">
+                <ExportarGrupo
+                  nombreGrupo={nombreGrupo}
+                  codigoGrupo={codigoGrupo}
+                  estudiantes={estudiantes}
+                  unidades={unidades}
+                  actividades={actividades}
+                  entregas={entregas}
+                  confianzas={confianzas}
+                  reflexiones={reflexiones}
+                  bitacoras={bitacoras}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-4">

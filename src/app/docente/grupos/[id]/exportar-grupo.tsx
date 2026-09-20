@@ -1,6 +1,7 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { useState } from "react";
+import { Check, Download } from "lucide-react";
 import Boton from "@/components/ui/button";
 import type { EstudianteResumen } from "./grupo-estudiantes-panel";
 import type {
@@ -439,25 +440,41 @@ export default function ExportarGrupo({
   reflexiones: ReflexionSeguimiento[];
   bitacoras: BitacoraSeguimiento[];
 }) {
+  const [estado, setEstado] = useState<"inactivo" | "preparando" | "listo" | "error">("inactivo");
+
   function exportar() {
-    const libro = construirLibro(filasLibro({ nombreGrupo, codigoGrupo, estudiantes, unidades, actividades, entregas, confianzas, reflexiones, bitacoras }));
-    const blob = new Blob([libro.buffer as ArrayBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = URL.createObjectURL(blob);
-    const enlace = document.createElement("a");
-    enlace.href = url;
-    enlace.download = `${nombreGrupo.replace(/[^\w-]+/g, "_")}_seguimiento.xlsx`;
-    document.body.appendChild(enlace);
-    enlace.click();
-    enlace.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setEstado("preparando");
+    try {
+      const libro = construirLibro(filasLibro({ nombreGrupo, codigoGrupo, estudiantes, unidades, actividades, entregas, confianzas, reflexiones, bitacoras }));
+      const bytes = new Uint8Array(libro);
+      const blob = new Blob([bytes.buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = `${nombreGrupo.replace(/[^\w-]+/g, "_")}_seguimiento.xlsx`;
+      enlace.style.display = "none";
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      // Algunos navegadores cancelan la descarga si el objeto se libera en el
+      // mismo ciclo que el clic. Se conserva el archivo temporal un minuto.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setEstado("listo");
+      window.setTimeout(() => setEstado("inactivo"), 5_000);
+    } catch {
+      setEstado("error");
+    }
   }
 
   return (
-    <Boton type="button" variant="secondary" size="sm" onClick={exportar}>
-      <Download className="size-3.5" aria-hidden="true" />
-      Exportar a Excel
-    </Boton>
+    <div className="flex flex-wrap items-center gap-2" aria-live="polite">
+      <Boton type="button" variant="secondary" size="sm" onClick={exportar} cargando={estado === "preparando"}>
+        {estado === "listo" ? <Check className="size-3.5" aria-hidden="true" /> : estado !== "preparando" ? <Download className="size-3.5" aria-hidden="true" /> : null}
+        {estado === "preparando" ? "Preparando Excel…" : estado === "listo" ? "Descarga iniciada" : "Descargar Excel"}
+      </Boton>
+      {estado === "error" && <span role="status" className="text-xs text-red-600 dark:text-red-400">No se pudo preparar el archivo. Inténtalo de nuevo.</span>}
+    </div>
   );
 }
