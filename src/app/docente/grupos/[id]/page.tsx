@@ -334,6 +334,9 @@ export default async function DetalleGrupo({
   const comparacionesCercanas = comparacionesConfianza.filter(
     (caso) => caso === "bien_calibrado_alto" || caso === "bien_calibrado_bajo",
   ).length;
+  const calibracionPorcentaje = comparacionesConfianza.length > 0
+    ? Math.round((comparacionesCercanas / comparacionesConfianza.length) * 100)
+    : null;
 
   // Los resultados automáticos se muestran por actividad y no por tipo para
   // que la docente reconozca enseguida el ejercicio al que corresponde cada
@@ -437,7 +440,6 @@ export default async function DetalleGrupo({
           { href: "#analisis", etiqueta: "Análisis" },
           { href: "#operacion", etiqueta: "Fechas y avisos" },
           { href: "#atencion", etiqueta: "Alertas" },
-          { href: "#eliminacion", etiqueta: "Eliminar grupo" },
         ].map((t) => (
           <a
             key={t.href}
@@ -467,11 +469,11 @@ export default async function DetalleGrupo({
             tono="indigo"
           />
           <MetricCard
-            etiqueta="Confianza frente al resultado"
-            valor={comparacionesConfianza.length > 0 ? comparacionesCercanas : "Sin datos"}
-            descripcion={comparacionesConfianza.length > 0
-              ? `${comparacionesCercanas} de ${comparacionesConfianza.length} comparaciones quedaron a 25 puntos o menos.`
-              : "Aún no hay unidades con confianza y resultado."}
+            etiqueta="Calibración"
+            valor={calibracionPorcentaje === null ? "Sin datos" : `${calibracionPorcentaje}%`}
+            descripcion={calibracionPorcentaje === null
+              ? "Aún no hay unidades con confianza y resultado."
+              : "Confianza inicial y resultado cercanos en las unidades comparables."}
             icon={Scale}
             tono="slate"
           />
