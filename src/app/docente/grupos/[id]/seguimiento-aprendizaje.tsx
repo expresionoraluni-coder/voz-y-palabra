@@ -18,19 +18,19 @@ import { Input, Select } from "@/components/ui/field";
 
 type Vista = "unidad" | "actividad";
 
-function etiquetaCalibracion(confianza: number | null, resultado: number | null) {
+function etiquetaCalibracion(confianza: number | null, resultado: number | null, termino = "Confianza") {
   if (confianza === null || resultado === null) {
     return { texto: "Sin datos comparables", clases: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" };
   }
 
   const caso = casoCalibracion(confianza, resultado);
   if (caso === "sobreconfianza") {
-    return { texto: "Confianza mayor al resultado", clases: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200" };
+    return { texto: `${termino} mayor al resultado`, clases: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200" };
   }
   if (caso === "subconfianza") {
-    return { texto: "Resultado mayor a la confianza", clases: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-200" };
+    return { texto: `Resultado mayor a la ${termino.toLocaleLowerCase("es-MX")}`, clases: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-200" };
   }
-  return { texto: "Confianza y resultado alineados", clases: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200" };
+  return { texto: `${termino} y resultado alineados`, clases: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200" };
 }
 
 export default function SeguimientoAprendizaje({
@@ -172,7 +172,7 @@ export default function SeguimientoAprendizaje({
                 onClick={() => { setVista("actividad"); setPagina(0); }}
                 className={`min-h-10 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${vista === "actividad" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"}`}
               >
-                Por actividad
+                Expectativa por actividad
               </button>
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function SeguimientoAprendizaje({
           ) : (
             <>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Cada celda muestra el porcentaje guardado y la confianza previa cuando existe. Desplázate horizontalmente para recorrer actividades; 1/5 equivale a 0% y 5/5 a 100% en la comparación.
+                Cada actividad reúne la expectativa numérica registrada antes de empezar, el resultado y la reflexión posterior. Desplázate horizontalmente para recorrerlas.
               </p>
               {estudiantesFiltrados.length === 0 ? (
                 <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-950 dark:text-slate-400">No hay estudiantes con ese nombre.</p>
@@ -288,14 +288,14 @@ export default function SeguimientoAprendizaje({
                             const confianza = confianzaActividadPorClave.get(clave) ?? null;
                             const reflexion = reflexionActividadPorClave.get(clave);
                             const resultado = entrega?.puntaje_auto ?? null;
-                            const comparacion = etiquetaCalibracion(confianza, resultado);
+                            const comparacion = etiquetaCalibracion(confianza, resultado, "Expectativa");
                             return (
                               <td key={actividad.id} className="px-3 py-3 align-top">
                                 <div className="flex min-h-16 flex-col gap-1.5">
                                   <span className="font-semibold text-slate-900 dark:text-slate-50">
                                     {!entrega ? "Sin entrega" : resultado === null ? "Sin % automático" : `${resultado}%`}
                                   </span>
-                                  {confianza !== null && <span className="text-xs text-slate-500 dark:text-slate-400">Confianza: {confianza}/5</span>}
+                                  {confianza !== null && <span className="text-xs text-slate-500 dark:text-slate-400">Expectativa numérica: {confianza}/5</span>}
                                   {confianza !== null && resultado !== null && (
                                     <span className={`w-fit rounded-full px-2 py-0.5 text-[11px] font-medium ${comparacion.clases}`}>
                                       {comparacion.texto}

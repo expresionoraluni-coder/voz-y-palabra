@@ -218,6 +218,14 @@ function etiquetaComparacion(confianza: number | null, resultado: number | null)
   return "Confianza y resultado alineados";
 }
 
+function etiquetaExpectativaActividad(expectativa: number | null, resultado: number | null): string {
+  if (expectativa === null || resultado === null) return "Sin datos comparables";
+  const expectativaPorcentaje = (expectativa - 1) * 25;
+  if (expectativaPorcentaje - resultado > 25) return "Expectativa mayor al resultado";
+  if (expectativaPorcentaje - resultado < -25) return "Resultado mayor a la expectativa";
+  return "Expectativa y resultado alineados";
+}
+
 function filasLibro({
   nombreGrupo,
   codigoGrupo,
@@ -255,6 +263,16 @@ function filasLibro({
       .filter((reflexion) => reflexion.momento === "cierre" && reflexion.unidad_id && !reflexion.actividad_id && reflexion.texto)
       .map((reflexion) => [clave(reflexion.estudiante_id, reflexion.unidad_id!), reflexion]),
   );
+  const expectativaActividadPorClave = new Map(
+    reflexiones
+      .filter((reflexion) => reflexion.momento === "prediccion" && reflexion.actividad_id && reflexion.confianza !== null)
+      .map((reflexion) => [clave(reflexion.estudiante_id, reflexion.actividad_id!), reflexion.confianza]),
+  );
+  const reflexionActividadPorClave = new Map(
+    reflexiones
+      .filter((reflexion) => reflexion.momento === "cierre" && reflexion.actividad_id && reflexion.texto)
+      .map((reflexion) => [clave(reflexion.estudiante_id, reflexion.actividad_id!), reflexion.texto]),
+  );
   const metaPorClave = new Map(bitacoras.map((bitacora) => [clave(bitacora.estudiante_id, bitacora.unidad_id), bitacora.meta]));
   const unidadesOrdenadas = [...unidades].sort((a, b) => a.orden - b.orden);
   const comparaciones = estudiantes.flatMap((estudiante) => unidadesOrdenadas.map((unidad) => {
@@ -271,6 +289,23 @@ function filasLibro({
   const calibracionPorcentaje = comparables.length > 0
     ? Math.round((comparacionesCercanas / comparables.length) * 100)
     : null;
+  const comparacionesActividad = estudiantes.flatMap((estudiante) => actividadesOrdenadas.map((actividad) => {
+    const expectativa = expectativaActividadPorClave.get(clave(estudiante.id, actividad.id)) ?? null;
+    const resultado = entregaPorClave.get(clave(estudiante.id, actividad.id))?.puntaje_auto ?? null;
+    return {
+      estudiante,
+      actividad,
+      unidad: unidades.find((unidad) => unidad.id === actividad.unidad_id),
+      expectativa,
+      resultado,
+      reflexion: reflexionActividadPorClave.get(clave(estudiante.id, actividad.id)) ?? null,
+    };
+  }));
+  const comparablesActividad = comparacionesActividad.filter((comparacion) => comparacion.expectativa !== null && comparacion.resultado !== null);
+  const comparacionesActividadCercanas = comparablesActividad.filter((comparacion) => etiquetaExpectativaActividad(comparacion.expectativa, comparacion.resultado) === "Expectativa y resultado alineados").length;
+  const calibracionActividadPorcentaje = comparablesActividad.length > 0
+    ? Math.round((comparacionesActividadCercanas / comparablesActividad.length) * 100)
+    : null;
   const participantesSemana = estudiantes.filter((estudiante) => estudiante.diasInactivo !== null && estudiante.diasInactivo <= 7).length;
   const avancePromedio = estudiantes.length > 0
     ? Math.round(estudiantes.reduce((total, estudiante) => total + estudiante.avance, 0) / estudiantes.length)
@@ -286,7 +321,8 @@ function filasLibro({
       ["Estudiantes activos", estudiantes.length, "Incluidos en este archivo."],
       ["Participación en 7 días", `${participantesSemana}/${estudiantes.length}`, "Al menos una entrega en los últimos 7 días."],
       ["Avance promedio", `${avancePromedio}%`, "Promedio de actividades completas entre las que ya se abrieron."],
-      ["Calibración", calibracionPorcentaje === null ? "Sin datos" : `${calibracionPorcentaje}%`, "Porcentaje de comparaciones entre confianza inicial y resultado que quedaron cercanas."],
+      ["Calibración por unidad", calibracionPorcentaje === null ? "Sin datos" : `${calibracionPorcentaje}%`, "Porcentaje de comparaciones entre seguridad inicial y resultado promedio que quedaron cercanas."],
+      ["Calibración por actividad", calibracionActividadPorcentaje === null ? "Sin datos" : `${calibracionActividadPorcentaje}%`, "Porcentaje de comparaciones entre expectativa numérica y resultado que quedaron cercanas."],
     ],
     anchos: [32, 22, 76],
     columnasTextoLargo: [2],
@@ -386,7 +422,29 @@ function filasLibro({
     columnasTextoLargo: [2, 3],
   };
 
-  return [resumen, hojaEstudiantes, ...hojasAciertos, confianzaResultados, expectativasYReflexiones];
+  const seguimientoActividad: HojaLibro = {
+    nombre: "Seguimiento por actividad",
+    titulo: `Seguimiento por actividad · ${nombreGrupo}`,
+    subtitulo: "La expectativa numérica se registra antes de iniciar la actividad; la reflexión se guarda después de conocer el resultado.",
+    filas: [
+      ["Estudiante", "Unidad", "Actividad", "Expectativa numérica (1–5)", "Equivalencia (%)", "Resultado (%)", "Comparación", "Reflexión metacognitiva"],
+      ...comparacionesActividad.map((comparacion) => [
+        comparacion.estudiante.nombre,
+        comparacion.unidad ? `Unidad ${comparacion.unidad.orden}. ${comparacion.unidad.nombre}` : "Sin unidad",
+        comparacion.actividad.titulo,
+        comparacion.expectativa ?? "—",
+        comparacion.expectativa === null ? "—" : (comparacion.expectativa - 1) * 25,
+        comparacion.resultado ?? "—",
+        etiquetaExpectativaActividad(comparacion.expectativa, comparacion.resultado),
+        comparacion.reflexion ?? "Sin reflexión registrada",
+      ]),
+    ],
+    anchos: [32, 30, 34, 28, 20, 18, 35, 72],
+    columnasPorcentaje: [4, 5],
+    columnasTextoLargo: [7],
+  };
+
+  return [resumen, hojaEstudiantes, ...hojasAciertos, seguimientoActividad, confianzaResultados, expectativasYReflexiones];
 }
 
 const ESTILOS_EXCEL = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="0&quot;%&quot;"/></numFmts><fonts count="5"><font><sz val="10"/><color rgb="FF1E293B"/><name val="Aptos"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="10"/><name val="Aptos"/></font><font><b/><color rgb="FF3730A3"/><sz val="16"/><name val="Aptos Display"/></font><font><i/><color rgb="FF64748B"/><sz val="10"/><name val="Aptos"/></font><font><b/><color rgb="FF1E293B"/><sz val="10"/><name val="Aptos"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF4338CA"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDCFCE7"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEE2E2"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top style="thin"><color rgb="FFCBD5E1"/></top><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="11"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="164" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="164" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="164" fontId="0" fillId="5" borderId="0" xfId="0" applyFill="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="0" fontId="3" fillId="6" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyBorder="1" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
