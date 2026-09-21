@@ -10,9 +10,13 @@
 
 ## Atención de reportes
 
-- Las actualizaciones administrativas solo pueden modificar estado, prioridad y resolución.
+- Las actualizaciones administrativas solo pueden modificar estado, prioridad, respuesta pública, nota interna, responsable y fecha límite.
 - La base de datos protege los datos originales, calcula `atendido_en` y `updated_at`, y registra cada atención en `public.reporte_eventos`.
 - Si otra sesión actualizó el mismo caso, la interfaz rechaza el guardado y pide recargarlo para evitar sobrescribir trabajo.
+- La respuesta pública y la nota interna son opcionales. Puedes marcar un caso como resuelto o cerrarlo sin escribir comentarios; ambos estados se pueden reabrir.
+- Trabaja en una cola a la vez: **Nuevos**, **En revisión**, **Esperando respuesta** o **Urgentes**. Elige un caso de la lista y atiéndelo desde el panel de detalle, sin desplegar todos los demás.
+- Para solicitar datos, usa **Pedir información**: prepara un texto, cambia el estado a espera y enfoca el mensaje. Para comunicar una actualización sin dejar el caso esperando, escribe el mensaje y envíalo sin cambiar el estado.
+- Los mensajes no enviados se conservan durante 24 horas solo en el navegador y la sesión administrativa actual. Usa **Ctrl/Cmd + Enter** para enviar más rápido.
 
 ## Sesiones
 

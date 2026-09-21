@@ -3,7 +3,7 @@
 -- atención. Todo se revierte al terminar la prueba.
 
 begin;
-select plan(10);
+select plan(13);
 
 -- Los fixtures administrativos no representan un alta docente. El trigger de
 -- invitación se prueba por separado; se desactiva solo dentro de esta
@@ -63,5 +63,20 @@ select ok(public.es_administrador_activo(), 'admin: una cuenta con TOTP verifica
 select ok(not is_empty(
   $$ select id from reportes where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$
 ), 'admin: una cuenta con TOTP verificado y AAL2 puede leer reportes');
+select ok(
+  has_table_privilege('authenticated', 'public.reporte_mensajes', 'INSERT'),
+  'admin: la conversación tiene privilegio de inserción sujeto a RLS'
+);
+select lives_ok(
+  $$ select public.registrar_mensaje_reporte(
+       'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '__test__ mensaje administrativo'
+     ) $$,
+  'admin: puede enviar un mensaje sin requerir leer columnas internas del reporte'
+);
+select lives_ok(
+  $$ update reportes set estado = 'cerrado', resolucion = null
+     where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$,
+  'admin: puede cerrar un reporte sin nota interna obligatoria'
+);
 
 rollback;

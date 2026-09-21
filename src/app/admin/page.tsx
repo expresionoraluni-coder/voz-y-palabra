@@ -12,7 +12,7 @@ import { timestampHace24Horas } from "@/lib/fecha-servidor";
 const ESTADOS_PENDIENTES = ["recibido", "en_revision", "necesita_informacion"];
 
 export default async function AdminDashboard() {
-  const { supabase, administrador, mfa } = await requerirAdministrador({ permitirConfiguracionMfa: true });
+  const { supabase, mfa } = await requerirAdministrador({ permitirConfiguracionMfa: true });
 
   if (!mfa.tieneFactorVerificado) {
     return (
@@ -123,25 +123,37 @@ export default async function AdminDashboard() {
         <MetricCard etiqueta="Acceso admin" valor="Protegido" icon={ShieldCheck} tono="slate" />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-4 md:grid-cols-3" aria-label="Accesos rápidos de atención">
         <Link href="/admin/reportes">
           <CardLink className="flex h-full flex-col gap-2 p-5">
             <MessageSquareText className="size-5 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-            <h2 className="font-semibold text-slate-900 dark:text-slate-50">Atender reportes</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-slate-50">Ver todos los casos</h2>
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Revisa problemas de acceso, actividades, videos, avance o carga y registra cómo fueron resueltos.
+              Consulta la bandeja completa, busca a una persona y ajusta filtros cuando lo necesites.
             </p>
             <span className="mt-auto pt-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Abrir bandeja</span>
           </CardLink>
         </Link>
-        <Card className="flex flex-col gap-2 p-5">
-          <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Monitoreo y automatizaciones</h2>
-          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            Cada reporte conserva el contexto de la pantalla, recibe una prioridad inicial y evita duplicados del mismo caso durante 24 horas. El panel se desconecta después de 30 minutos sin actividad y no guarda sus pantallas en caché.
-          </p>
-          <p className="mt-auto pt-2 text-xs text-slate-500 dark:text-slate-400">Administrador: {administrador.nombre}</p>
-        </Card>
+        <Link href="/admin/reportes?prioridad=urgente">
+          <CardLink className="flex h-full flex-col gap-2 p-5">
+            <AlertTriangle className="size-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <h2 className="font-semibold text-slate-900 dark:text-slate-50">Atender urgentes</h2>
+            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              Empieza por los casos con prioridad urgente y dales seguimiento desde una vista ya filtrada.
+            </p>
+            <span className="mt-auto pt-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Ver urgentes</span>
+          </CardLink>
+        </Link>
+        <Link href="/admin/reportes?estado=necesita_informacion">
+          <CardLink className="flex h-full flex-col gap-2 p-5">
+            <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            <h2 className="font-semibold text-slate-900 dark:text-slate-50">Esperando respuesta</h2>
+            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              Retoma los casos donde ya pediste datos adicionales y decide si resolverlos, cerrarlos o reabrirlos.
+            </p>
+            <span className="mt-auto pt-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Ver seguimientos</span>
+          </CardLink>
+        </Link>
       </section>
 
       <section className="flex flex-col gap-3" aria-labelledby="reportes-recientes">

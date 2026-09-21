@@ -1517,15 +1517,18 @@ create or replace function public.registrar_mensaje_reporte(p_reporte_id uuid, p
 returns table(id uuid) language plpgsql security invoker set search_path = public
 as $$
 declare
-  v_reporte public.reportes;
+  v_estado text;
   v_admin boolean := public.es_administrador_activo();
   v_tipo text;
 begin
   if auth.uid() is null then raise exception 'Sesión inválida.'; end if;
   if p_mensaje is null or length(trim(p_mensaje)) not between 2 and 2000 then raise exception 'El mensaje debe tener entre 2 y 2000 caracteres.'; end if;
-  select * into v_reporte from public.reportes r where r.id = p_reporte_id and (v_admin or r.reportante_id = (select auth.uid()));
+  -- El rol autenticado solo puede leer columnas operativas del reporte. No
+  -- seleccionar la fila completa evita que esta función invoker falle por
+  -- permisos de columnas que no necesita para enviar un mensaje.
+  select r.estado into v_estado from public.reportes r where r.id = p_reporte_id and (v_admin or r.reportante_id = (select auth.uid()));
   if not found then raise exception 'No encontramos este reporte.'; end if;
-  if v_reporte.estado = 'cerrado' then raise exception 'Este reporte ya está cerrado.'; end if;
+  if v_estado = 'cerrado' then raise exception 'Este reporte ya está cerrado.'; end if;
   v_tipo := case when v_admin then 'administrador' else 'reportante' end;
   return query insert into public.reporte_mensajes (reporte_id, autor_id, autor_tipo, mensaje, visible_para_reportante)
     values (p_reporte_id, (select auth.uid()), v_tipo, trim(p_mensaje), true)
@@ -1557,7 +1560,6 @@ begin
   if new.estado is not distinct from old.estado and new.prioridad is not distinct from old.prioridad
     and new.resolucion is not distinct from old.resolucion and new.respuesta_publica is not distinct from old.respuesta_publica
     and new.asignado_a is not distinct from old.asignado_a and new.fecha_limite is not distinct from old.fecha_limite then return new; end if;
-  if new.estado in ('resuelto', 'cerrado') and nullif(trim(new.resolucion), '') is null then raise exception 'Una atención resuelta o cerrada necesita una nota interna.'; end if;
   if new.asignado_a is distinct from old.asignado_a then new.asignado_en := case when new.asignado_a is null then null else clock_timestamp() end; else new.asignado_en := old.asignado_en; end if;
   if auth.uid() is not null then new.atendido_por := (select auth.uid()); end if;
   if new.estado in ('resuelto', 'cerrado') and old.estado not in ('resuelto', 'cerrado') then new.atendido_en := clock_timestamp(); elsif new.estado not in ('resuelto', 'cerrado') then new.atendido_en := null; else new.atendido_en := old.atendido_en; end if;

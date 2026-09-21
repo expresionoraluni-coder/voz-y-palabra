@@ -95,6 +95,8 @@ const adminReportesPage = await texto("src/app/admin/reportes/page.tsx");
 const actividadEstudiante = await texto("src/app/estudiante/actividad/[id]/page.tsx");
 const migracionReportesProtegidos = await texto("supabase/migrations/20260817121500_restringir_alta_reportes.sql");
 const migracionContextoReportes = await texto("supabase/migrations/20260817123000_derivar_unidad_en_reportes.sql");
+const migracionFlujoAtencionAdmin = await texto("supabase/migrations/20260920010000_mejorar_flujo_atencion_admin.sql");
+const atencionReporte = await texto("src/app/admin/reportes/reporte-atencion.tsx");
 const recuperacion = await texto("src/app/ingreso/recuperar/page.tsx");
 const accionesRecuperacion = await texto("src/app/ingreso/recuperar/acciones.ts");
 const actualizarContrasena = await texto("src/app/ingreso/recuperar/actualizar/page.tsx");
@@ -302,6 +304,15 @@ if (!schema.includes("revoke all on public.reportes from public, anon, authentic
 }
 if (!schema.includes('drop policy if exists "estudiante o docente crea su reporte"') || !migracionReportesProtegidos.includes('drop policy if exists "estudiante o docente crea su reporte"')) {
   failures.push("reportes: no debe permanecer una policy de inserción directa como ruta heredada.");
+}
+if (!schema.includes("grant insert on public.reporte_mensajes to authenticated") || !functions.includes("select r.estado into v_estado from public.reportes") || !migracionFlujoAtencionAdmin.includes("grant insert on public.reporte_mensajes to authenticated")) {
+  failures.push("reportes: el RPC de conversación debe tener privilegio de inserción y leer solo las columnas necesarias.");
+}
+if (adminAction.includes("Escribe una nota antes de marcar el reporte") || functions.includes("Una atención resuelta o cerrada necesita una nota interna") || !migracionFlujoAtencionAdmin.includes("Cerrar es reversible")) {
+  failures.push("admin: cerrar o resolver un caso no debe requerir una nota interna.");
+}
+if (!atencionReporte.includes("Cerrar caso") || !atencionReporte.includes("Marcar resuelto") || !atencionReporte.includes("Escribir un mensaje")) {
+  failures.push("admin: las acciones habituales de un reporte deben ser directas y distinguibles.");
 }
 if (!actividadEstudiante.includes("ReportarProblema") || !actividadEstudiante.includes("navegacionInferior={false}")) {
   failures.push("reportes: el estudiante debe poder solicitar ayuda dentro de una actividad.");

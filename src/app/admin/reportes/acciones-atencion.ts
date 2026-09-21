@@ -47,10 +47,6 @@ export async function guardarAtencionReporte(input: {
   if (!input.actualizadoEn || Number.isNaN(Date.parse(input.actualizadoEn))) {
     return { ok: false, error: "La versión del reporte ya no es válida. Recarga la bandeja." };
   }
-  if (["resuelto", "cerrado"].includes(input.estado) && !resolucion) {
-    return { ok: false, error: "Escribe una nota antes de marcar el reporte como resuelto o cerrado." };
-  }
-
   const { data: actual, error: consultaError } = await acceso.supabase
     .from("reportes")
     .select("estado, updated_at")

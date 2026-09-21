@@ -3555,7 +3555,6 @@ begin
     and new.resolucion is not distinct from old.resolucion then
     return new;
   end if;
-  if new.estado in ('resuelto', 'cerrado') and nullif(trim(new.resolucion), '') is null then raise exception 'Una atención resuelta o cerrada necesita una nota.'; end if;
   if auth.uid() is not null then new.atendido_por := (select auth.uid()); end if;
   if new.estado in ('resuelto', 'cerrado') and old.estado not in ('resuelto', 'cerrado') then new.atendido_en := clock_timestamp(); elsif new.estado not in ('resuelto', 'cerrado') then new.atendido_en := null; else new.atendido_en := old.atendido_en; end if;
   new.updated_at := clock_timestamp();
@@ -3861,6 +3860,7 @@ alter table public.faq_interacciones enable row level security;
 revoke all on public.reporte_mensajes, public.faq_articulos, public.faq_interacciones from public, anon, authenticated;
 grant select, insert, update, delete on public.faq_articulos to authenticated;
 grant select on public.reporte_mensajes, public.faq_interacciones to authenticated;
+grant insert on public.reporte_mensajes to authenticated;
 
 drop policy if exists "reportante o admin lee mensajes del reporte" on public.reporte_mensajes;
 create policy "reportante o admin lee mensajes del reporte" on public.reporte_mensajes for select to authenticated using (

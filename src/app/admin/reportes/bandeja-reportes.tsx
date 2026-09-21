@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Filter, MessageSquareText, RotateCcw, Search } from "lucide-react";
-import { CATEGORIAS_REPORTE } from "@/lib/reportes-constantes";
+import { AlertTriangle, Filter, MessageSquareText, RotateCcw, Search } from "lucide-react";
+import { CATEGORIAS_REPORTE, ESTADOS_REPORTE, ETIQUETAS_CATEGORIA, PRIORIDADES_REPORTE } from "@/lib/reportes-constantes";
 import EmptyState from "@/components/ui/empty-state";
 import ReporteAtencion from "./reporte-atencion";
 
@@ -66,6 +66,29 @@ const OPCIONES = {
 
 const CATEGORIA_OPCIONES = [["", "Todas las categorías"], ...CATEGORIAS_REPORTE.map(([valor, etiqueta]) => [valor, etiqueta])] as const;
 
+const COLAS_RAPIDAS = [
+  { id: "todos", etiqueta: "Todos", estado: "", prioridad: "" },
+  { id: "nuevos", etiqueta: "Nuevos", estado: "recibido", prioridad: "" },
+  { id: "mios", etiqueta: "En revisión", estado: "en_revision", prioridad: "" },
+  { id: "esperando", etiqueta: "Esperando respuesta", estado: "necesita_informacion", prioridad: "" },
+  { id: "urgentes", etiqueta: "Urgentes", estado: "", prioridad: "urgente" },
+] as const;
+
+function construirUrl(pathname: string, filtros: { estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string; pagina?: number }) {
+  const params = new URLSearchParams();
+  if (filtros.estado) params.set("estado", filtros.estado);
+  if (filtros.prioridad) params.set("prioridad", filtros.prioridad);
+  if (filtros.tipo) params.set("tipo", filtros.tipo);
+  if (filtros.categoria) params.set("categoria", filtros.categoria);
+  if (filtros.busqueda.trim()) params.set("q", filtros.busqueda.trim());
+  if ((filtros.pagina ?? 1) > 1) params.set("pagina", String(filtros.pagina));
+  return `${pathname}${params.size ? `?${params.toString()}` : ""}`;
+}
+
+function fechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
+
 export default function BandejaReportes({
   reportes,
   grupos,
@@ -102,7 +125,20 @@ export default function BandejaReportes({
   const [tipo, setTipo] = useState(filtrosIniciales.tipo);
   const [categoria, setCategoria] = useState(filtrosIniciales.categoria);
   const [busqueda, setBusqueda] = useState(filtrosIniciales.busqueda);
+  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(reportes[0]?.id ?? null);
   const hayFiltros = Boolean(estado || prioridad || tipo || categoria || busqueda);
+  const seleccionado = reportes.find((reporte) => reporte.id === seleccionadoId) ?? reportes[0] ?? null;
+  const colaActual = COLAS_RAPIDAS.find((cola) => cola.estado === estado && cola.prioridad === prioridad && !tipo && !categoria && !busqueda) ?? null;
+
+  function navegar(cambios: Partial<{ estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string }> = {}) {
+    router.push(construirUrl(pathname, {
+      estado: cambios.estado ?? estado,
+      prioridad: cambios.prioridad ?? prioridad,
+      tipo: cambios.tipo ?? tipo,
+      categoria: cambios.categoria ?? categoria,
+      busqueda: cambios.busqueda ?? busqueda,
+    }));
+  }
 
   function limpiarFiltros() {
     setEstado("");
@@ -115,77 +151,112 @@ export default function BandejaReportes({
 
   function aplicarFiltros(evento: React.FormEvent) {
     evento.preventDefault();
-    const params = new URLSearchParams();
-    if (estado) params.set("estado", estado);
-    if (prioridad) params.set("prioridad", prioridad);
-    if (tipo) params.set("tipo", tipo);
-    if (categoria) params.set("categoria", categoria);
-    if (busqueda.trim()) params.set("q", busqueda.trim());
-    router.push(`${pathname}${params.size ? `?${params.toString()}` : ""}`);
+    navegar();
+  }
+
+  function aplicarCola(cola: (typeof COLAS_RAPIDAS)[number]) {
+    setEstado(cola.estado);
+    setPrioridad(cola.prioridad);
+    setTipo("");
+    setCategoria("");
+    setBusqueda("");
+    router.push(construirUrl(pathname, { estado: cola.estado, prioridad: cola.prioridad, tipo: "", categoria: "", busqueda: "" }));
   }
 
   function hrefPagina(numero: number) {
-    const params = new URLSearchParams();
-    if (estado) params.set("estado", estado);
-    if (prioridad) params.set("prioridad", prioridad);
-    if (tipo) params.set("tipo", tipo);
-    if (categoria) params.set("categoria", categoria);
-    if (busqueda.trim()) params.set("q", busqueda.trim());
-    if (numero > 1) params.set("pagina", String(numero));
-    return `${pathname}${params.size ? `?${params.toString()}` : ""}`;
+    return construirUrl(pathname, { estado, prioridad, tipo, categoria, busqueda, pagina: numero });
   }
 
   return (
     <>
-      <form onSubmit={aplicarFiltros} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 sm:col-span-4">
-          <Filter className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-          Filtrar la atención
-          <span className="font-normal text-slate-500 dark:text-slate-400">{reportes.length} en esta página · {total} en total</span>
-          {hayFiltros && (
-              <button type="button" onClick={limpiarFiltros} className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-              <RotateCcw className="size-3.5" aria-hidden="true" />
-              Limpiar
-            </button>
-          )}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-label="Colas de trabajo">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h2 className="font-semibold text-slate-900 dark:text-slate-50">Bandeja de trabajo</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Elige una cola y trabaja un caso a la vez.</p>
+          </div>
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{total} {total === 1 ? "caso" : "casos"}</span>
         </div>
-        <label className="relative sm:col-span-4">
-          <span className="sr-only">Buscar por texto, persona o grupo</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-          <input type="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar descripción, persona, grupo o pantalla" className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
-        </label>
-        <select aria-label="Filtrar por estado" value={estado} onChange={(e) => setEstado(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-          {OPCIONES.estado.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
-        </select>
-        <select aria-label="Filtrar por prioridad" value={prioridad} onChange={(e) => setPrioridad(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-          {OPCIONES.prioridad.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
-        </select>
-        <select aria-label="Filtrar por tipo de reportante" value={tipo} onChange={(e) => setTipo(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-          {OPCIONES.tipo.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
-        </select>
-        <select aria-label="Filtrar por categoría" value={categoria} onChange={(e) => setCategoria(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-          {CATEGORIA_OPCIONES.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
-        </select>
-        <button type="submit" className="h-10 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 sm:col-span-4 sm:justify-self-end">Aplicar filtros</button>
-      </form>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {COLAS_RAPIDAS.map((cola) => (
+            <button key={cola.id} type="button" onClick={() => aplicarCola(cola)} aria-pressed={colaActual?.id === cola.id} className={`rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${colaActual?.id === cola.id ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"}`}>
+              {cola.id === "urgentes" && <AlertTriangle className="mr-1 inline size-3.5" aria-hidden="true" />}
+              {cola.etiqueta}
+            </button>
+          ))}
+        </div>
+        <details className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200"><Filter className="mr-1.5 inline size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />Buscar y filtrar</summary>
+          <form onSubmit={aplicarFiltros} className="mt-4 grid gap-3 sm:grid-cols-4">
+            <label className="relative sm:col-span-4">
+              <span className="sr-only">Buscar por texto, persona o grupo</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <input type="search" value={busqueda} onChange={(event) => setBusqueda(event.target.value)} placeholder="Buscar descripción, persona, grupo o pantalla" className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
+            </label>
+            <select aria-label="Filtrar por estado" value={estado} onChange={(event) => setEstado(event.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">{OPCIONES.estado.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}</select>
+            <select aria-label="Filtrar por prioridad" value={prioridad} onChange={(event) => setPrioridad(event.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">{OPCIONES.prioridad.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}</select>
+            <select aria-label="Filtrar por tipo de reportante" value={tipo} onChange={(event) => setTipo(event.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">{OPCIONES.tipo.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}</select>
+            <select aria-label="Filtrar por categoría" value={categoria} onChange={(event) => setCategoria(event.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">{CATEGORIA_OPCIONES.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}</select>
+            <div className="flex items-center justify-end gap-3 sm:col-span-4">
+              {hayFiltros && <button type="button" onClick={limpiarFiltros} className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"><RotateCcw className="size-3.5" aria-hidden="true" />Limpiar</button>}
+              <button type="submit" className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">Aplicar filtros</button>
+            </div>
+          </form>
+        </details>
+      </section>
 
       {reportes.length === 0 ? (
-        <EmptyState icon={MessageSquareText} titulo={hayFiltros ? "No hay reportes con estos filtros" : "Aún no hay reportes"} descripcion={hayFiltros ? "Prueba con otra combinación o limpia los filtros." : "Cuando un estudiante o la docente solicite ayuda, el caso aparecerá aquí."} />
+        <EmptyState icon={MessageSquareText} titulo={hayFiltros ? "No hay reportes con estos filtros" : "Aún no hay reportes"} descripcion={hayFiltros ? "Prueba otra combinación o limpia los filtros." : "Cuando un estudiante o docente solicite ayuda, el caso aparecerá aquí."} />
       ) : (
-        <section className="flex flex-col gap-3" aria-label="Bandeja de reportes filtrada">
-          {reportes.map((reporte) => (
-            <ReporteAtencion
-              key={reporte.id}
-              reporte={reporte}
-              nombreReportante={reporte.reportante_tipo === "estudiante" ? estudiantes.get(reporte.estudiante_id ?? "") ?? "Estudiante" : docentes.get(reporte.docente_id ?? "") ?? "Docente"}
-              nombreGrupo={reporte.grupo_id ? grupos.get(reporte.grupo_id) ?? null : null}
-              nombreUnidad={reporte.unidad_id ? unidades.get(reporte.unidad_id) ?? null : null}
-              nombreActividad={reporte.actividad_id ? actividades.get(reporte.actividad_id) ?? null : null}
-              eventos={eventos.get(reporte.id) ?? []}
-              mensajes={mensajes.get(reporte.id) ?? []}
-              administradorId={administradorId}
-            />
-          ))}
+        <section className="grid items-start gap-4 lg:grid-cols-[minmax(17rem,0.7fr)_minmax(0,1.5fr)]" aria-label="Bandeja de reportes filtrada">
+          <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+              <h2 className="font-semibold text-slate-900 dark:text-slate-50">Casos</h2>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{reportes.length} en esta página</span>
+            </div>
+            <ul className="max-h-[65vh] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+              {reportes.map((reporte) => {
+                const nombre = reporte.reportante_tipo === "estudiante" ? estudiantes.get(reporte.estudiante_id ?? "") ?? "Estudiante" : docentes.get(reporte.docente_id ?? "") ?? "Docente";
+                const conversacion = mensajes.get(reporte.id) ?? [];
+                const ultimoMensaje = conversacion[conversacion.length - 1];
+                const respondio = ultimoMensaje?.autor_tipo === "reportante";
+                const seleccionadoAhora = seleccionado?.id === reporte.id;
+                return (
+                  <li key={reporte.id}>
+                    <button type="button" onClick={() => setSeleccionadoId(reporte.id)} aria-current={seleccionadoAhora ? "true" : undefined} className={`w-full px-4 py-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 ${seleccionadoAhora ? "bg-indigo-50 dark:bg-indigo-950/30" : "hover:bg-slate-50 dark:hover:bg-slate-800/70"}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-50">{reporte.descripcion}</span>
+                          <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">{nombre} · {ETIQUETAS_CATEGORIA[reporte.categoria] ?? reporte.categoria}</span>
+                        </span>
+                        <span className="shrink-0 text-[11px] text-slate-400">{fechaCorta(reporte.created_at)}</span>
+                      </div>
+                      <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ESTADOS_REPORTE[reporte.estado] ?? reporte.estado}</span>
+                        {reporte.prioridad !== "normal" && <span className={`rounded-full px-2 py-0.5 ${reporte.prioridad === "urgente" ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"}`}>{PRIORIDADES_REPORTE[reporte.prioridad] ?? reporte.prioridad}</span>}
+                        {respondio && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Respondió</span>}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
+          {seleccionado && (
+            <div className="lg:sticky lg:top-6">
+              <ReporteAtencion
+                key={`${seleccionado.id}:${seleccionado.updated_at}`}
+                reporte={seleccionado}
+                nombreReportante={seleccionado.reportante_tipo === "estudiante" ? estudiantes.get(seleccionado.estudiante_id ?? "") ?? "Estudiante" : docentes.get(seleccionado.docente_id ?? "") ?? "Docente"}
+                nombreGrupo={seleccionado.grupo_id ? grupos.get(seleccionado.grupo_id) ?? null : null}
+                nombreUnidad={seleccionado.unidad_id ? unidades.get(seleccionado.unidad_id) ?? null : null}
+                nombreActividad={seleccionado.actividad_id ? actividades.get(seleccionado.actividad_id) ?? null : null}
+                eventos={eventos.get(seleccionado.id) ?? []}
+                mensajes={mensajes.get(seleccionado.id) ?? []}
+                administradorId={administradorId}
+              />
+            </div>
+          )}
         </section>
       )}
 

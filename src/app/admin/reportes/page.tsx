@@ -215,6 +215,7 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
       </section>
 
       <BandejaReportes
+        key={[estado, prioridad, tipo, categoria, busqueda, paginaVisible].join("|")}
         reportes={reportesCargados.map((reporte) => ({ ...reporte, antiguedad: obtenerAntiguedad(reporte.created_at) }))}
         grupos={gruposMapa}
         estudiantes={estudiantesMapa}
