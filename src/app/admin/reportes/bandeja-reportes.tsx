@@ -67,20 +67,23 @@ const OPCIONES = {
 const CATEGORIA_OPCIONES = [["", "Todas las categorías"], ...CATEGORIAS_REPORTE.map(([valor, etiqueta]) => [valor, etiqueta])] as const;
 
 const COLAS_RAPIDAS = [
-  { id: "todos", etiqueta: "Todos", estado: "", prioridad: "" },
-  { id: "nuevos", etiqueta: "Nuevos", estado: "recibido", prioridad: "" },
-  { id: "mios", etiqueta: "En revisión", estado: "en_revision", prioridad: "" },
-  { id: "esperando", etiqueta: "Esperando respuesta", estado: "necesita_informacion", prioridad: "" },
-  { id: "urgentes", etiqueta: "Urgentes", estado: "", prioridad: "urgente" },
+  { id: "todos", etiqueta: "Todos", estado: "", prioridad: "", tipo: "", vencidos: false },
+  { id: "nuevos", etiqueta: "Nuevos", estado: "recibido", prioridad: "", tipo: "", vencidos: false },
+  { id: "bloqueados", etiqueta: "Estudiantes bloqueados", estado: "", prioridad: "alta", tipo: "estudiante", vencidos: false },
+  { id: "mios", etiqueta: "En revisión", estado: "en_revision", prioridad: "", tipo: "", vencidos: false },
+  { id: "esperando", etiqueta: "Esperando respuesta", estado: "necesita_informacion", prioridad: "", tipo: "", vencidos: false },
+  { id: "vencidos", etiqueta: "Vencidos", estado: "", prioridad: "", tipo: "", vencidos: true },
+  { id: "urgentes", etiqueta: "Urgentes", estado: "", prioridad: "urgente", tipo: "", vencidos: false },
 ] as const;
 
-function construirUrl(pathname: string, filtros: { estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string; pagina?: number }) {
+function construirUrl(pathname: string, filtros: { estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string; vencidos: boolean; pagina?: number }) {
   const params = new URLSearchParams();
   if (filtros.estado) params.set("estado", filtros.estado);
   if (filtros.prioridad) params.set("prioridad", filtros.prioridad);
   if (filtros.tipo) params.set("tipo", filtros.tipo);
   if (filtros.categoria) params.set("categoria", filtros.categoria);
   if (filtros.busqueda.trim()) params.set("q", filtros.busqueda.trim());
+  if (filtros.vencidos) params.set("vencidos", "1");
   if ((filtros.pagina ?? 1) > 1) params.set("pagina", String(filtros.pagina));
   return `${pathname}${params.size ? `?${params.toString()}` : ""}`;
 }
@@ -102,6 +105,7 @@ export default function BandejaReportes({
   total,
   pagina,
   paginas,
+  ahora,
   filtrosIniciales,
 }: {
   reportes: Reporte[];
@@ -116,7 +120,8 @@ export default function BandejaReportes({
   total: number;
   pagina: number;
   paginas: number;
-  filtrosIniciales: { estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string };
+  ahora: string;
+  filtrosIniciales: { estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string; vencidos: boolean };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -125,18 +130,20 @@ export default function BandejaReportes({
   const [tipo, setTipo] = useState(filtrosIniciales.tipo);
   const [categoria, setCategoria] = useState(filtrosIniciales.categoria);
   const [busqueda, setBusqueda] = useState(filtrosIniciales.busqueda);
+  const [vencidos, setVencidos] = useState(filtrosIniciales.vencidos);
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(reportes[0]?.id ?? null);
-  const hayFiltros = Boolean(estado || prioridad || tipo || categoria || busqueda);
+  const hayFiltros = Boolean(estado || prioridad || tipo || categoria || busqueda || vencidos);
   const seleccionado = reportes.find((reporte) => reporte.id === seleccionadoId) ?? reportes[0] ?? null;
-  const colaActual = COLAS_RAPIDAS.find((cola) => cola.estado === estado && cola.prioridad === prioridad && !tipo && !categoria && !busqueda) ?? null;
+  const colaActual = COLAS_RAPIDAS.find((cola) => cola.estado === estado && cola.prioridad === prioridad && cola.tipo === tipo && cola.vencidos === vencidos && !categoria && !busqueda) ?? null;
 
-  function navegar(cambios: Partial<{ estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string }> = {}) {
+  function navegar(cambios: Partial<{ estado: string; prioridad: string; tipo: string; categoria: string; busqueda: string; vencidos: boolean }> = {}) {
     router.push(construirUrl(pathname, {
       estado: cambios.estado ?? estado,
       prioridad: cambios.prioridad ?? prioridad,
       tipo: cambios.tipo ?? tipo,
       categoria: cambios.categoria ?? categoria,
       busqueda: cambios.busqueda ?? busqueda,
+      vencidos: cambios.vencidos ?? vencidos,
     }));
   }
 
@@ -146,6 +153,7 @@ export default function BandejaReportes({
     setTipo("");
     setCategoria("");
     setBusqueda("");
+    setVencidos(false);
     router.push(pathname);
   }
 
@@ -157,14 +165,15 @@ export default function BandejaReportes({
   function aplicarCola(cola: (typeof COLAS_RAPIDAS)[number]) {
     setEstado(cola.estado);
     setPrioridad(cola.prioridad);
-    setTipo("");
+    setTipo(cola.tipo);
     setCategoria("");
     setBusqueda("");
-    router.push(construirUrl(pathname, { estado: cola.estado, prioridad: cola.prioridad, tipo: "", categoria: "", busqueda: "" }));
+    setVencidos(cola.vencidos);
+    router.push(construirUrl(pathname, { estado: cola.estado, prioridad: cola.prioridad, tipo: cola.tipo, categoria: "", busqueda: "", vencidos: cola.vencidos }));
   }
 
   function hrefPagina(numero: number) {
-    return construirUrl(pathname, { estado, prioridad, tipo, categoria, busqueda, pagina: numero });
+    return construirUrl(pathname, { estado, prioridad, tipo, categoria, busqueda, vencidos, pagina: numero });
   }
 
   return (
@@ -181,6 +190,7 @@ export default function BandejaReportes({
           {COLAS_RAPIDAS.map((cola) => (
             <button key={cola.id} type="button" onClick={() => aplicarCola(cola)} aria-pressed={colaActual?.id === cola.id} className={`rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${colaActual?.id === cola.id ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"}`}>
               {cola.id === "urgentes" && <AlertTriangle className="mr-1 inline size-3.5" aria-hidden="true" />}
+              {cola.id === "vencidos" && <AlertTriangle className="mr-1 inline size-3.5" aria-hidden="true" />}
               {cola.etiqueta}
             </button>
           ))}
@@ -220,6 +230,7 @@ export default function BandejaReportes({
                 const conversacion = mensajes.get(reporte.id) ?? [];
                 const ultimoMensaje = conversacion[conversacion.length - 1];
                 const respondio = ultimoMensaje?.autor_tipo === "reportante";
+                const vencido = Boolean(reporte.fecha_limite && new Date(reporte.fecha_limite).getTime() < new Date(ahora).getTime() && !["resuelto", "cerrado"].includes(reporte.estado));
                 const seleccionadoAhora = seleccionado?.id === reporte.id;
                 return (
                   <li key={reporte.id}>
@@ -234,6 +245,7 @@ export default function BandejaReportes({
                       <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ESTADOS_REPORTE[reporte.estado] ?? reporte.estado}</span>
                         {reporte.prioridad !== "normal" && <span className={`rounded-full px-2 py-0.5 ${reporte.prioridad === "urgente" ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"}`}>{PRIORIDADES_REPORTE[reporte.prioridad] ?? reporte.prioridad}</span>}
+                        {vencido && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">Vencido</span>}
                         {respondio && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Respondió</span>}
                       </span>
                     </button>

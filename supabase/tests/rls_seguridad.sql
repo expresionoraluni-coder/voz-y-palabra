@@ -18,7 +18,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(40);
+select plan(44);
 
 -- ============================================================
 -- Fixtures
@@ -182,6 +182,34 @@ select is(
 select is_empty(
   $$ select id from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd' $$,
   'reportes: el estudiante no ve la conversación de una docente'
+);
+select lives_ok(
+  $$ update reportes
+       set reportante_ultimo_visto_en = '2000-01-01T00:00:00Z'
+       where id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc' $$,
+  'reportes: el estudiante puede confirmar la lectura de su propio caso histórico'
+);
+select ok(
+  (select reportante_ultimo_visto_en > now() - interval '1 minute'
+   from reportes where id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc'),
+  'reportes: el acuse de lectura se normaliza con el reloj del servidor'
+);
+select throws_ok(
+  $$ update reportes set estado = 'cerrado'
+     where id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc' $$,
+  'P0001', 'No tienes permiso para atender reportes.',
+  'reportes: el estudiante no puede cerrar su propio caso al confirmar lectura'
+);
+select is(
+  (select prioridad from reportes where id = (
+    select id from public.registrar_reporte(
+      'estudiante', '55555555-5555-5555-5555-555555555555', null, null, null, null,
+      'estudiante_video', '__test__ video bloqueado con impacto alto', '/__test__/impacto',
+      '{"impacto":"no_puedo_continuar"}'::jsonb
+    )
+  )),
+  'alta',
+  'reportes: un bloqueo estudiantil declarado se prioriza para revisión'
 );
 
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);

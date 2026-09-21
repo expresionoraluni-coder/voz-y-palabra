@@ -99,6 +99,7 @@ const migracionFlujoAtencionAdmin = await texto("supabase/migrations/20260920010
 const migracionAccesoReportesSesion = await texto("supabase/migrations/20260921122338_restaurar_acceso_reportes_sesion_estudiante.sql");
 const migracionPoliciesMensajesSesion = await texto("supabase/migrations/20260921123010_corregir_policies_mensajes_sesion_estudiante.sql");
 const migracionHelpersReportesPrivados = await texto("supabase/migrations/20260921123800_mover_helpers_reportes_a_private.sql");
+const migracionSeguimientoReportes = await texto("supabase/migrations/20260921231013_mejorar_seguimiento_reportes.sql");
 const atencionReporte = await texto("src/app/admin/reportes/reporte-atencion.tsx");
 const recuperacion = await texto("src/app/ingreso/recuperar/page.tsx");
 const accionesRecuperacion = await texto("src/app/ingreso/recuperar/acciones.ts");
@@ -281,7 +282,7 @@ if (!proxy.includes("createServerClient") || !proxy.includes("supabase.auth.getU
 if (!reportarProblema.includes('.rpc("registrar_reporte"') || reportarProblema.includes("nip:") || reportarProblema.includes("password:")) {
   failures.push("reportes: el botón debe registrar casos sin transportar NIP ni contraseña.");
 }
-if (!reportarProblema.includes("Mis solicitudes") || !reportarProblema.includes("contextoDeRuta") || !reportarProblema.includes("bottom-24")) {
+if (!reportarProblema.includes("Mis solicitudes") || !reportarProblema.includes("contextoDeRuta") || !reportarProblema.includes("bottom-24") || !reportarProblema.includes("useBorradorLocal")) {
   failures.push("reportes: el flujo debe ofrecer seguimiento propio, contexto de ruta y espacio para la navegación inferior del estudiante.");
 }
 if (!reportarProblema.includes("window.addEventListener(\"focus\", actualizarAlVolver)") || !reportarProblema.includes("Actualizar") || reportarProblema.includes("if (misReportes !== null)")) {
@@ -305,7 +306,7 @@ if (adminReportesPage.includes('from("reportes").select("*")')) {
 if (!migracionReportesOrientacion.includes("reportes_categoria_check") || !migracionReportesOrientacion.includes("p_unidad_id") || !migracionReportesOrientacion.includes("p_actividad_id") || !migracionReportesOrientacion.includes("p_categoria = 'orientacion'")) {
   failures.push("Supabase: la migración de reportes debe validar contexto y conservar la orientación automática.");
 }
-if (!schema.includes("revoke all on public.reportes from public, anon, authenticated") || !functions.includes("grant select (id, reportante_id, reportante_tipo, categoria, descripcion, estado, prioridad, grupo_id, unidad_id, actividad_id, ruta, contexto, respuesta_publica, created_at, updated_at) on public.reportes to authenticated") || !functions.includes("grant update (estado, prioridad, resolucion, respuesta_publica, asignado_a, fecha_limite) on public.reportes to authenticated") || !migracionReportesProtegidos.includes("revoke insert on public.reportes from authenticated")) {
+if (!schema.includes("revoke all on public.reportes from public, anon, authenticated") || !functions.includes("reportante_ultimo_visto_en") || !functions.includes("grant update (estado, prioridad, resolucion, respuesta_publica, asignado_a, fecha_limite, reportante_ultimo_visto_en)") || !migracionReportesProtegidos.includes("revoke insert on public.reportes from authenticated")) {
   failures.push("reportes: la creación debe quedar exclusivamente detrás del RPC validado.");
 }
 if (!schema.includes('drop policy if exists "estudiante o docente crea su reporte"') || !migracionReportesProtegidos.includes('drop policy if exists "estudiante o docente crea su reporte"')) {
@@ -337,6 +338,9 @@ if (
 }
 if (adminAction.includes("Escribe una nota antes de marcar el reporte") || functions.includes("Una atención resuelta o cerrada necesita una nota interna") || !migracionFlujoAtencionAdmin.includes("Cerrar es reversible")) {
   failures.push("admin: cerrar o resolver un caso no debe requerir una nota interna.");
+}
+if (!migracionSeguimientoReportes.includes("reportante confirma lectura del reporte") || !migracionSeguimientoReportes.includes("private.es_reportante_actual_de_reporte") || !migracionSeguimientoReportes.includes("reportante_ultimo_visto_en") || !functions.includes("to_jsonb(new) - 'reportante_ultimo_visto_en'") || !reportarProblema.includes("cargarNovedades") || !reportarProblema.includes("no_puedo_continuar")) {
+  failures.push("reportes: las respuestas nuevas, el acuse de lectura y la prioridad por bloqueo deben conservar mínimo privilegio.");
 }
 if (!atencionReporte.includes("Cerrar caso") || !atencionReporte.includes("Marcar resuelto") || !atencionReporte.includes("Escribir un mensaje")) {
   failures.push("admin: las acciones habituales de un reporte deben ser directas y distinguibles.");

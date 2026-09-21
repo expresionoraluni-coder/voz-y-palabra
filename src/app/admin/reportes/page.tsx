@@ -86,6 +86,7 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
   const prioridadParametro = primerParametro(parametros.prioridad);
   const tipoParametro = primerParametro(parametros.tipo);
   const categoriaParametro = primerParametro(parametros.categoria);
+  const vencidos = primerParametro(parametros.vencidos) === "1";
   const busqueda = limpiarBusqueda(primerParametro(parametros.q));
   const paginaSolicitada = Number.parseInt(primerParametro(parametros.pagina), 10);
   const pagina = Number.isFinite(paginaSolicitada) && paginaSolicitada > 0 ? paginaSolicitada : 1;
@@ -134,6 +135,9 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
   if (prioridad) consulta = consulta.eq("prioridad", prioridad);
   if (tipo) consulta = consulta.eq("reportante_tipo", tipo);
   if (categoria) consulta = consulta.eq("categoria", categoria);
+  if (vencidos) consulta = consulta
+    .lt("fecha_limite", new Date().toISOString())
+    .in("estado", ["recibido", "en_revision", "necesita_informacion"]);
   if (clausulasBusqueda) consulta = consulta.or(clausulasBusqueda);
 
   const { data: reportes, error: reportesError, count } = await consulta;
@@ -215,7 +219,7 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
       </section>
 
       <BandejaReportes
-        key={[estado, prioridad, tipo, categoria, busqueda, paginaVisible].join("|")}
+        key={[estado, prioridad, tipo, categoria, busqueda, vencidos, paginaVisible].join("|")}
         reportes={reportesCargados.map((reporte) => ({ ...reporte, antiguedad: obtenerAntiguedad(reporte.created_at) }))}
         grupos={gruposMapa}
         estudiantes={estudiantesMapa}
@@ -228,7 +232,8 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
         total={total}
         pagina={paginaVisible}
         paginas={paginas}
-        filtrosIniciales={{ estado, prioridad, tipo, categoria, busqueda }}
+        ahora={new Date().toISOString()}
+        filtrosIniciales={{ estado, prioridad, tipo, categoria, busqueda, vencidos }}
       />
     </div>
   );

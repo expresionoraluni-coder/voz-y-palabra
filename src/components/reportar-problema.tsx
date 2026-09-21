@@ -15,6 +15,7 @@ import Boton from "@/components/ui/button";
 import { ErrorText, Field, HelpText, Label } from "@/components/ui/field";
 import { faqFallback, idFaqValido, normalizarFaqArticulo, type FaqArticulo } from "@/lib/faq";
 import { UUID_FRAGMENT } from "@/lib/uuid";
+import { useBorradorLocal } from "@/hooks/use-borrador-local";
 
 type AyudaRapida = { titulo: string; pasos: string[] };
 
@@ -86,6 +87,8 @@ type ReportePropio = {
   descripcion: string;
   estado: string;
   respuesta_publica: string | null;
+  fecha_limite: string | null;
+  reportante_ultimo_visto_en: string;
   created_at: string;
   updated_at: string;
 };
@@ -97,6 +100,24 @@ type MensajePropio = {
   mensaje: string;
   creado_en: string;
 };
+
+type BorradorReporte = {
+  categoria: CategoriaReporte;
+  descripcion: string;
+  impacto: string;
+};
+
+const IMPACTOS_ESTUDIANTE = [
+  ["no_puedo_continuar", "No puedo continuar ahora"],
+  ["puedo_continuar_parcialmente", "Puedo seguir, pero con dificultad"],
+  ["duda_o_mejora", "Es una duda o algo que debería mejorar"],
+] as const;
+
+const IMPACTOS_DOCENTE = [
+  ["no_puedo_continuar", "No puedo realizar la tarea"],
+  ["afecta_a_mi_grupo", "Afecta el trabajo de mi grupo"],
+  ["duda_o_mejora", "Es una duda o algo que debería mejorar"],
+] as const;
 
 
 function capturarId(pathname: string, segmentos: string) {
@@ -119,6 +140,21 @@ function folioReporte(id: string) {
   return id.slice(0, 8).toUpperCase();
 }
 
+function siguientePaso(estado: string) {
+  switch (estado) {
+    case "recibido":
+      return "Recibimos tu solicitud. Revisaremos el contexto que se registró.";
+    case "en_revision":
+      return "Estamos revisando tu caso. Puedes agregar información si algo cambia.";
+    case "necesita_informacion":
+      return "Necesitamos una respuesta tuya para continuar con la revisión.";
+    case "resuelto":
+      return "Marcamos el caso como resuelto. Si el problema continúa, cuéntanoslo aquí.";
+    default:
+      return "Este caso está cerrado. Puedes crear una nueva solicitud si vuelve a ocurrir.";
+  }
+}
+
 export default function ReportarProblema({
   tipo,
   estudianteId,
@@ -136,10 +172,17 @@ export default function ReportarProblema({
   const categorias = tipo === "estudiante" ? CATEGORIAS_REPORTE_ESTUDIANTE : CATEGORIAS_REPORTE_DOCENTE;
   const ayudas = tipo === "estudiante" ? AYUDAS_ESTUDIANTE : AYUDAS_DOCENTE;
   const audiencia = tipo === "estudiante" ? "estudiante" : "docente";
+  const actorBorradorId = estudianteId ?? docenteId ?? "sesion-activa";
+  const { borrador, guardarBorrador, borrarBorrador } = useBorradorLocal<BorradorReporte>({
+    estudianteId: actorBorradorId,
+    tipo: "reporte-ayuda",
+    recursoId: pathname,
+  });
   const [abierto, setAbierto] = useState(false);
   const [vista, setVista] = useState<"formulario" | "reportes">("formulario");
-  const [categoria, setCategoria] = useState<CategoriaReporte>(tipo === "estudiante" ? "estudiante_actividad" : "docente_grupo");
-  const [descripcion, setDescripcion] = useState("");
+  const [categoria, setCategoria] = useState<CategoriaReporte>(() => borrador?.categoria ?? (tipo === "estudiante" ? "estudiante_actividad" : "docente_grupo"));
+  const [descripcion, setDescripcion] = useState(() => borrador?.descripcion ?? "");
+  const [impacto, setImpacto] = useState(() => borrador?.impacto ?? "");
   const [cargando, setCargando] = useState(false);
   const [cargandoReportes, setCargandoReportes] = useState(false);
   const [enviado, setEnviado] = useState(false);
@@ -153,12 +196,22 @@ export default function ReportarProblema({
   const [mensajesPropios, setMensajesPropios] = useState<Record<string, MensajePropio[]>>({});
   const [enviandoMensajeId, setEnviandoMensajeId] = useState<string | null>(null);
   const [mensajeEnviadoId, setMensajeEnviadoId] = useState<string | null>(null);
+  const [novedades, setNovedades] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const primerFocoRef = useRef<HTMLButtonElement>(null);
   const focoAnteriorRef = useRef<HTMLElement | null>(null);
   const faqMostradaRef = useRef<string | null>(null);
   const faqCargaIniciadaRef = useRef(false);
+
+  useEffect(() => {
+    if (!abierto || enviado) return;
+    if (descripcion.trim() || impacto) {
+      guardarBorrador({ categoria, descripcion, impacto });
+    } else {
+      borrarBorrador();
+    }
+  }, [abierto, borrarBorrador, categoria, descripcion, enviado, guardarBorrador, impacto]);
 
   const cerrar = useCallback(() => {
     if (cargando || cargandoReportes) return;
@@ -256,6 +309,7 @@ export default function ReportarProblema({
 
   function cambiarCategoria(valor: CategoriaReporte) {
     setCategoria(valor);
+    setImpacto("");
     setRespuestasFaq({});
     setFaqResuelto(false);
     setError(null);
@@ -271,6 +325,38 @@ export default function ReportarProblema({
     });
   }
 
+  const cargarNovedades = useCallback(async () => {
+    const supabase = createClient();
+    const { data: reportes } = await supabase
+      .from("reportes")
+      .select("id, reportante_ultimo_visto_en")
+      .neq("estado", "cerrado")
+      .order("updated_at", { ascending: false })
+      .limit(20);
+    const casos = (reportes ?? []) as Pick<ReportePropio, "id" | "reportante_ultimo_visto_en">[];
+    if (!casos.length) {
+      setNovedades(0);
+      return;
+    }
+    const { data: mensajes } = await supabase
+      .from("reporte_mensajes")
+      .select("reporte_id, autor_tipo, creado_en")
+      .in("reporte_id", casos.map((reporte) => reporte.id))
+      .eq("autor_tipo", "administrador");
+    const ultimoVisto = new Map(casos.map((reporte) => [reporte.id, new Date(reporte.reportante_ultimo_visto_en).getTime()]));
+    const conRespuestaNueva = new Set(
+      (mensajes ?? [])
+        .filter((mensaje) => new Date(mensaje.creado_en).getTime() > (ultimoVisto.get(mensaje.reporte_id) ?? Number.POSITIVE_INFINITY))
+        .map((mensaje) => mensaje.reporte_id),
+    );
+    setNovedades(conRespuestaNueva.size);
+  }, []);
+
+  useEffect(() => {
+    const temporizador = window.setTimeout(() => void cargarNovedades(), 0);
+    return () => window.clearTimeout(temporizador);
+  }, [cargarNovedades]);
+
   const abrirMisReportes = useCallback(async () => {
     if (cargandoReportes) return;
     setError(null);
@@ -278,9 +364,9 @@ export default function ReportarProblema({
     const supabase = createClient();
     const { data, error: consultaError } = await supabase
       .from("reportes")
-      .select("id, categoria, descripcion, estado, respuesta_publica, created_at, updated_at")
+      .select("id, categoria, descripcion, estado, respuesta_publica, fecha_limite, reportante_ultimo_visto_en, created_at, updated_at")
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(20);
 
     if (consultaError) {
       setError("No pudimos cargar tus solicitudes. Revisa tu conexión e inténtalo de nuevo.");
@@ -304,9 +390,22 @@ export default function ReportarProblema({
     for (const mensaje of (mensajes ?? []) as MensajePropio[]) {
       (mapaMensajes[mensaje.reporte_id] ??= []).push(mensaje);
     }
+    const idsLeidos = reportes
+      .filter((reporte) => (mapaMensajes[reporte.id] ?? []).some((mensaje) => mensaje.autor_tipo === "administrador" && new Date(mensaje.creado_en).getTime() > new Date(reporte.reportante_ultimo_visto_en).getTime()))
+      .map((reporte) => reporte.id);
+    if (idsLeidos.length) {
+      const { error: lecturaError } = await supabase
+        .from("reportes")
+        .update({ reportante_ultimo_visto_en: new Date().toISOString() })
+        .in("id", idsLeidos);
+      if (lecturaError) {
+        setError("Cargamos tus solicitudes, pero no pudimos confirmar las respuestas nuevas.");
+      }
+    }
     setMensajesPropios(mapaMensajes);
     setMisReportes(reportes);
     setVista("reportes");
+    setNovedades(0);
     setCargandoReportes(false);
   }, [cargandoReportes]);
 
@@ -372,6 +471,7 @@ export default function ReportarProblema({
       actividad_id: ruta.actividadId,
       ...(idFaqValido(articuloFaq?.id ?? null) ? { faq_articulo_id: articuloFaq?.id } : {}),
       ...(Object.keys(respuestasFaq).length ? { faq_respuestas: respuestasFaq } : {}),
+      ...(impacto ? { impacto } : {}),
     };
     const { data: resultado, error: insertError } = await supabase.rpc("registrar_reporte", {
       p_reportante_tipo: tipo,
@@ -402,6 +502,8 @@ export default function ReportarProblema({
     setReporteEnviadoId(reporteId);
     if (reporteId && articuloFaq) registrarEventoFaq("reporte_creado", reporteId);
     setDescripcion("");
+    setImpacto("");
+    borrarBorrador();
     setCargando(false);
     setMisReportes(null);
     setEnviado(true);
@@ -445,15 +547,27 @@ export default function ReportarProblema({
                 <p className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">Todavía no tienes solicitudes registradas.</p>
               ) : (
                 <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
-                  {misReportes.map((reporte) => (
-                    <article key={reporte.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                  {misReportes.map((reporte) => {
+                    const tieneMensajeNuevo = (mensajesPropios[reporte.id] ?? []).some(
+                      (mensaje) => mensaje.autor_tipo === "administrador" && new Date(mensaje.creado_en).getTime() > new Date(reporte.reportante_ultimo_visto_en).getTime(),
+                    );
+                    const puedeResponder = reporte.estado !== "cerrado";
+                    const etiquetaRespuesta = reporte.estado === "necesita_informacion"
+                      ? "Administración necesita más información"
+                      : reporte.estado === "resuelto"
+                        ? "¿El problema continúa?"
+                        : "¿Tienes información nueva?";
+                    return (
+                    <article key={reporte.id} className={`rounded-xl border p-3 dark:border-slate-700 ${tieneMensajeNuevo ? "border-indigo-300 bg-indigo-50/40 dark:border-indigo-800 dark:bg-indigo-950/20" : "border-slate-200"}`}>
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-xs font-semibold text-slate-900 dark:text-slate-50">{etiquetaCategoria(reporte.categoria)}</p>
                         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{ESTADOS_REPORTE[reporte.estado] ?? reporte.estado}</span>
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">{reporte.descripcion}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">{siguientePaso(reporte.estado)}</p>
+                      {tieneMensajeNuevo && <p className="mt-2 rounded-lg bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-200">Tienes una respuesta nueva de Administración.</p>}
                       {reporte.respuesta_publica && <p className="mt-2 rounded-lg bg-emerald-50 p-2 text-xs leading-relaxed text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{reporte.respuesta_publica}</p>}
-                      <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-400">Folio {folioReporte(reporte.id)} · Actualizado {reporte.updated_at.slice(0, 10)}</p>
+                      <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-400">Folio {folioReporte(reporte.id)} · Actualizado {reporte.updated_at.slice(0, 10)}{reporte.fecha_limite && reporte.estado !== "cerrado" ? ` · Fecha objetivo: ${new Date(reporte.fecha_limite).toLocaleDateString("es-MX")}` : ""}</p>
                       {(mensajesPropios[reporte.id] ?? []).length > 0 && (
                         <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                           <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Conversación</p>
@@ -466,18 +580,19 @@ export default function ReportarProblema({
                           ))}
                         </div>
                       )}
-                      {reporte.estado === "necesita_informacion" && (
+                      {puedeResponder && (
                         <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                          <label htmlFor={`respuesta-${reporte.id}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">El administrador necesita más información</label>
+                          <label htmlFor={`respuesta-${reporte.id}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">{etiquetaRespuesta}</label>
                           <textarea id={`respuesta-${reporte.id}`} value={mensajesReporte[reporte.id] ?? ""} onChange={(e) => setMensajesReporte((actual) => ({ ...actual, [reporte.id]: e.target.value }))} maxLength={2000} rows={2} placeholder="Explica qué ocurrió o qué probaste" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[11px] text-slate-400 dark:text-slate-400">{mensajeEnviadoId === reporte.id ? "Información enviada." : "No incluyas contraseñas ni NIP."}</span>
-                            <Boton type="button" size="sm" variant="secondary" onClick={() => enviarMensajeEnSolicitud(reporte.id)} cargando={enviandoMensajeId === reporte.id} disabled={(mensajesReporte[reporte.id] ?? "").trim().length < 2}>Enviar información</Boton>
+                            <Boton type="button" size="sm" variant="secondary" onClick={() => enviarMensajeEnSolicitud(reporte.id)} cargando={enviandoMensajeId === reporte.id} disabled={(mensajesReporte[reporte.id] ?? "").trim().length < 2}>Enviar actualización</Boton>
                           </div>
                         </div>
                       )}
                     </article>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {error && <ErrorText>{error}</ErrorText>}
@@ -543,6 +658,14 @@ export default function ReportarProblema({
                 <textarea id="reporte-descripcion" required minLength={10} maxLength={2000} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={4} placeholder={tipo === "estudiante" ? "Ejemplo: terminé la actividad anterior, pero la siguiente sigue bloqueada." : "Ejemplo: cargué el Excel, pero no aparecen los estudiantes del grupo."} className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
                 <HelpText>Se adjunta automáticamente la pantalla, unidad y actividad cuando se pueden identificar. No escribas contraseñas ni NIP.</HelpText>
               </Field>
+              <Field>
+                <Label htmlFor="reporte-impacto">¿Cómo te afecta ahora? (opcional)</Label>
+                <select id="reporte-impacto" value={impacto} onChange={(e) => setImpacto(e.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
+                  <option value="">Selecciona una opción</option>
+                  {(tipo === "estudiante" ? IMPACTOS_ESTUDIANTE : IMPACTOS_DOCENTE).map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
+                </select>
+                <HelpText>{tipo === "estudiante" ? "Si no puedes continuar, lo señalaremos para priorizar la revisión." : "Esto ayuda a ordenar la revisión sin compartir datos sensibles."}</HelpText>
+              </Field>
               {error && <ErrorText>{error}</ErrorText>}
               <Boton type="submit" size="sm" cargando={cargando}>
                 <Send className="size-4" aria-hidden="true" />
@@ -552,9 +675,9 @@ export default function ReportarProblema({
           )}
         </div>
       ) : (
-        <button type="button" onClick={() => setAbierto(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-lg shadow-slate-900/10 transition hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300 dark:hover:bg-indigo-950/50">
+        <button type="button" onClick={() => { setAbierto(true); if (novedades) void abrirMisReportes(); }} aria-label={novedades ? `Ayuda: ${novedades} respuestas nuevas` : "Ayuda"} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-lg shadow-slate-900/10 transition hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300 dark:hover:bg-indigo-950/50">
           <LifeBuoy className="size-4" aria-hidden="true" />
-          Ayuda
+          {novedades ? `Ayuda · ${novedades} nueva${novedades === 1 ? "" : "s"}` : "Ayuda"}
         </button>
       )}
     </div>
