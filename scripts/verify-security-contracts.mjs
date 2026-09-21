@@ -96,6 +96,9 @@ const actividadEstudiante = await texto("src/app/estudiante/actividad/[id]/page.
 const migracionReportesProtegidos = await texto("supabase/migrations/20260817121500_restringir_alta_reportes.sql");
 const migracionContextoReportes = await texto("supabase/migrations/20260817123000_derivar_unidad_en_reportes.sql");
 const migracionFlujoAtencionAdmin = await texto("supabase/migrations/20260920010000_mejorar_flujo_atencion_admin.sql");
+const migracionAccesoReportesSesion = await texto("supabase/migrations/20260921122338_restaurar_acceso_reportes_sesion_estudiante.sql");
+const migracionPoliciesMensajesSesion = await texto("supabase/migrations/20260921123010_corregir_policies_mensajes_sesion_estudiante.sql");
+const migracionHelpersReportesPrivados = await texto("supabase/migrations/20260921123800_mover_helpers_reportes_a_private.sql");
 const atencionReporte = await texto("src/app/admin/reportes/reporte-atencion.tsx");
 const recuperacion = await texto("src/app/ingreso/recuperar/page.tsx");
 const accionesRecuperacion = await texto("src/app/ingreso/recuperar/acciones.ts");
@@ -310,6 +313,27 @@ if (!schema.includes('drop policy if exists "estudiante o docente crea su report
 }
 if (!schema.includes("grant insert on public.reporte_mensajes to authenticated") || !functions.includes("select r.estado into v_estado from public.reportes") || !migracionFlujoAtencionAdmin.includes("grant insert on public.reporte_mensajes to authenticated")) {
   failures.push("reportes: el RPC de conversación debe tener privilegio de inserción y leer solo las columnas necesarias.");
+}
+const politicaReportesFinal = schema.slice(schema.lastIndexOf('create policy "reportes visibles para reportante o administrador"'));
+const politicaReportesFuncionesFinal = functions.slice(functions.lastIndexOf('create policy "reportes visibles para reportante o administrador"'));
+const politicaMensajesFinal = schema.slice(schema.lastIndexOf('create policy "reportante o admin lee mensajes del reporte"'));
+const rpcMensajeReporteFinal = functions.slice(functions.lastIndexOf("create or replace function public.registrar_mensaje_reporte"));
+if (
+  !politicaReportesFinal.includes("estudiante_id = public.estudiante_actual()") ||
+  !politicaReportesFuncionesFinal.includes("estudiante_id = public.estudiante_actual()") ||
+  !politicaMensajesFinal.includes("private.es_reportante_actual_de_reporte(reporte_id)") ||
+  !politicaMensajesFinal.includes("private.puede_responder_reporte_actual(reporte_id)") ||
+  !rpcMensajeReporteFinal.includes("private.es_reportante_actual_de_reporte(p_reporte_id)") ||
+  !functions.includes("create or replace function private.es_reportante_actual_de_reporte") ||
+  !functions.includes("create or replace function private.puede_responder_reporte_actual") ||
+  !migracionAccesoReportesSesion.includes("r.estudiante_id = public.estudiante_actual()") ||
+  !migracionAccesoReportesSesion.includes("r.estudiante_id = p_estudiante_id") ||
+  !migracionPoliciesMensajesSesion.includes("public.es_reportante_actual_de_reporte(reporte_id)") ||
+  !migracionPoliciesMensajesSesion.includes("public.puede_responder_reporte_actual(reporte_id)") ||
+  !migracionHelpersReportesPrivados.includes("private.es_reportante_actual_de_reporte(reporte_id)") ||
+  !migracionHelpersReportesPrivados.includes("drop function if exists public.es_reportante_actual_de_reporte(uuid)")
+) {
+  failures.push("reportes: una nueva sesión estudiantil debe conservar acceso, respuesta y deduplicación de sus casos anteriores.");
 }
 if (adminAction.includes("Escribe una nota antes de marcar el reporte") || functions.includes("Una atención resuelta o cerrada necesita una nota interna") || !migracionFlujoAtencionAdmin.includes("Cerrar es reversible")) {
   failures.push("admin: cerrar o resolver un caso no debe requerir una nota interna.");

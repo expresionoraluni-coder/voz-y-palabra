@@ -18,7 +18,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(37);
+select plan(40);
 
 -- ============================================================
 -- Fixtures
@@ -64,7 +64,7 @@ values
 insert into reportes (id, reportante_id, reportante_tipo, estudiante_id, categoria, descripcion)
 values
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '33333333-3333-3333-3333-333333333333', 'estudiante', '55555555-5555-5555-5555-555555555555', 'estudiante_otro', '__test__ reporte propio para FAQ'),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '22222222-2222-2222-2222-222222222222', 'estudiante', '55555555-5555-5555-5555-555555555555', 'estudiante_otro', '__test__ reporte ajeno para FAQ');
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '22222222-2222-2222-2222-222222222222', 'estudiante', '55555555-5555-5555-5555-555555555555', 'estudiante_tecnico', '__test__ reporte de una sesión anterior para FAQ');
 
 insert into reportes (id, reportante_id, reportante_tipo, docente_id, grupo_id, categoria, descripcion)
 values (
@@ -78,6 +78,7 @@ values (
 insert into reporte_mensajes (reporte_id, autor_id, autor_tipo, mensaje)
 values
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'administrador', '__test__ respuesta administrativa para estudiante'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '11111111-1111-1111-1111-111111111111', 'administrador', '__test__ respuesta para estudiante tras renovar sesión'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', '33333333-3333-3333-3333-333333333333', 'administrador', '__test__ respuesta administrativa para docente');
 
 -- ============================================================
@@ -158,6 +159,25 @@ select is(
   (select count(*) from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
   1::bigint,
   'reportes: el estudiante ve el mensaje público de su propia solicitud'
+);
+select is(
+  (select count(*) from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc'),
+  1::bigint,
+  'reportes: el estudiante ve el mensaje de su caso creado con una sesión anterior'
+);
+select lives_ok(
+  $$ select public.registrar_mensaje_reporte(
+       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '__test__ seguimiento tras renovar sesión'
+     ) $$,
+  'reportes: el estudiante puede responder un caso creado con una sesión anterior'
+);
+select is(
+  (select id from public.registrar_reporte(
+    'estudiante', '55555555-5555-5555-5555-555555555555', null, null, null, null,
+    'estudiante_tecnico', '__test__ mismo caso tras sesión nueva', null, '{}'::jsonb
+  )),
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc'::uuid,
+  'reportes: renovar sesión no duplica un caso abierto del mismo estudiante'
 );
 select is_empty(
   $$ select id from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd' $$,

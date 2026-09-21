@@ -1144,11 +1144,17 @@ begin
     if p_grupo_id is not null and not exists (select 1 from public.grupos g where g.id = p_grupo_id and g.docente_id = (select auth.uid())) then raise exception 'No tienes permiso para reportar ese grupo.'; end if;
   end if;
   perform pg_advisory_xact_lock(hashtextextended(format('%s|%s|%s', auth.uid(), p_categoria, coalesce(p_ruta, '')), 0));
-  perform pg_advisory_xact_lock(hashtext((select auth.uid())::text));
-  if (select count(*) from public.reportes where reportante_id = (select auth.uid()) and created_at >= now() - interval '24 hours') >= 10 then
+  perform pg_advisory_xact_lock(hashtext(case when p_reportante_tipo = 'estudiante' then 'estudiante:' || p_estudiante_id::text else 'docente:' || (select auth.uid())::text end));
+  if (select count(*) from public.reportes r where r.created_at >= now() - interval '24 hours' and (
+    (p_reportante_tipo = 'estudiante' and r.reportante_tipo = 'estudiante' and r.estudiante_id = p_estudiante_id)
+    or (p_reportante_tipo = 'docente' and r.reportante_id = (select auth.uid()))
+  )) >= 10 then
     raise exception 'Alcanzaste el límite diario de solicitudes. Revisa tus reportes abiertos antes de crear otro.';
   end if;
-  select r.id into v_existente from public.reportes r where r.reportante_id = (select auth.uid()) and r.categoria = p_categoria and coalesce(r.ruta, '') = coalesce(p_ruta, '') and r.estado in ('recibido', 'en_revision', 'necesita_informacion') and r.created_at >= now() - interval '24 hours' order by r.created_at desc limit 1;
+  select r.id into v_existente from public.reportes r where r.categoria = p_categoria and coalesce(r.ruta, '') = coalesce(p_ruta, '') and r.estado in ('recibido', 'en_revision', 'necesita_informacion') and r.created_at >= now() - interval '24 hours' and (
+    (p_reportante_tipo = 'estudiante' and r.reportante_tipo = 'estudiante' and r.estudiante_id = p_estudiante_id)
+    or (p_reportante_tipo = 'docente' and r.reportante_id = (select auth.uid()))
+  ) order by r.created_at desc limit 1;
   if v_existente is not null then return query select v_existente, true; return; end if;
   v_prioridad := case
     when p_categoria in ('estudiante_acceso', 'estudiante_avance', 'docente_acceso', 'acceso', 'avance') then 'alta'
@@ -1170,8 +1176,11 @@ returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
   if auth.uid() is not null then
-    perform pg_advisory_xact_lock(hashtext((select auth.uid())::text));
-    if (select count(*) from public.reportes where reportante_id = (select auth.uid()) and created_at >= now() - interval '24 hours') >= 10 then
+    perform pg_advisory_xact_lock(hashtext(case when new.reportante_tipo = 'estudiante' then 'estudiante:' || new.estudiante_id::text else 'docente:' || (select auth.uid())::text end));
+    if (select count(*) from public.reportes r where r.created_at >= now() - interval '24 hours' and (
+      (new.reportante_tipo = 'estudiante' and r.reportante_tipo = 'estudiante' and r.estudiante_id = new.estudiante_id)
+      or (new.reportante_tipo = 'docente' and r.reportante_id = (select auth.uid()))
+    )) >= 10 then
       raise exception 'Alcanzaste el límite diario de solicitudes. Revisa tus reportes abiertos antes de crear otro.';
     end if;
   end if;
@@ -1189,7 +1198,12 @@ create policy "administrador ve su perfil" on public.administradores
   for select to authenticated using (id = (select auth.uid()) and public.es_administrador_activo());
 drop policy if exists "reportes visibles para reportante o administrador" on public.reportes;
 create policy "reportes visibles para reportante o administrador" on public.reportes
-  for select to authenticated using (reportante_id = (select auth.uid()) or public.es_administrador_activo());
+  for select to authenticated using (
+    reportante_id = (select auth.uid())
+    or (reportante_tipo = 'estudiante' and estudiante_id = public.estudiante_actual())
+    or (reportante_tipo = 'docente' and docente_id = (select auth.uid()) and public.es_docente_activo())
+    or public.es_administrador_activo()
+  );
 drop policy if exists "administrador atiende reportes" on public.reportes;
 create policy "administrador atiende reportes" on public.reportes
   for update to authenticated using (public.es_administrador_activo())
@@ -1513,6 +1527,35 @@ $$;
 revoke execute on function public.registrar_interaccion_faq(uuid, text, uuid, jsonb) from public, anon;
 grant execute on function public.registrar_interaccion_faq(uuid, text, uuid, jsonb) to authenticated;
 
+grant usage on schema private to authenticated;
+
+create or replace function private.es_reportante_actual_de_reporte(p_reporte_id uuid)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.reportes r
+    where r.id = p_reporte_id and (
+      r.reportante_id = (select auth.uid())
+      or (r.reportante_tipo = 'estudiante' and r.estudiante_id = public.estudiante_actual())
+      or (r.reportante_tipo = 'docente' and r.docente_id = (select auth.uid()) and public.es_docente_activo())
+    )
+  );
+$$;
+revoke all on function private.es_reportante_actual_de_reporte(uuid) from public, anon;
+grant execute on function private.es_reportante_actual_de_reporte(uuid) to authenticated;
+
+create or replace function private.puede_responder_reporte_actual(p_reporte_id uuid)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select private.es_reportante_actual_de_reporte(p_reporte_id)
+    and exists (
+      select 1 from public.reportes r
+      where r.id = p_reporte_id and r.estado <> 'cerrado'
+    );
+$$;
+revoke all on function private.puede_responder_reporte_actual(uuid) from public, anon;
+grant execute on function private.puede_responder_reporte_actual(uuid) to authenticated;
+
 create or replace function public.registrar_mensaje_reporte(p_reporte_id uuid, p_mensaje text)
 returns table(id uuid) language plpgsql security invoker set search_path = public
 as $$
@@ -1523,11 +1566,10 @@ declare
 begin
   if auth.uid() is null then raise exception 'Sesión inválida.'; end if;
   if p_mensaje is null or length(trim(p_mensaje)) not between 2 and 2000 then raise exception 'El mensaje debe tener entre 2 y 2000 caracteres.'; end if;
-  -- El rol autenticado solo puede leer columnas operativas del reporte. No
-  -- seleccionar la fila completa evita que esta función invoker falle por
-  -- permisos de columnas que no necesita para enviar un mensaje.
-  select r.estado into v_estado from public.reportes r where r.id = p_reporte_id and (v_admin or r.reportante_id = (select auth.uid()));
-  if not found then raise exception 'No encontramos este reporte.'; end if;
+  -- La propiedad se verifica en un helper SECURITY DEFINER: la función
+  -- invoker solo conserva acceso a las columnas operativas que necesita.
+  if not (v_admin or private.es_reportante_actual_de_reporte(p_reporte_id)) then raise exception 'No encontramos este reporte.'; end if;
+  select r.estado into v_estado from public.reportes r where r.id = p_reporte_id;
   if v_estado = 'cerrado' then raise exception 'Este reporte ya está cerrado.'; end if;
   v_tipo := case when v_admin then 'administrador' else 'reportante' end;
   return query insert into public.reporte_mensajes (reporte_id, autor_id, autor_tipo, mensaje, visible_para_reportante)
