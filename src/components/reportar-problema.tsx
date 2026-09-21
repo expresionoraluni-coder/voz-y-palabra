@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { CheckCircle2, LifeBuoy, Send, X } from "lucide-react";
+import { CheckCircle2, LifeBuoy, RefreshCw, Send, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   CATEGORIAS_REPORTE_DOCENTE,
@@ -271,13 +271,8 @@ export default function ReportarProblema({
     });
   }
 
-  async function abrirMisReportes() {
+  const abrirMisReportes = useCallback(async () => {
     if (cargandoReportes) return;
-    if (misReportes !== null) {
-      setVista("reportes");
-      setError(null);
-      return;
-    }
     setError(null);
     setCargandoReportes(true);
     const supabase = createClient();
@@ -313,7 +308,16 @@ export default function ReportarProblema({
     setMisReportes(reportes);
     setVista("reportes");
     setCargandoReportes(false);
-  }
+  }, [cargandoReportes]);
+
+  useEffect(() => {
+    if (!abierto || vista !== "reportes") return;
+    const actualizarAlVolver = () => {
+      if (document.visibilityState === "visible") void abrirMisReportes();
+    };
+    window.addEventListener("focus", actualizarAlVolver);
+    return () => window.removeEventListener("focus", actualizarAlVolver);
+  }, [abierto, vista, abrirMisReportes]);
 
   async function enviarMensajeEnSolicitud(reporteId: string) {
     const mensaje = (mensajesReporte[reporteId] ?? "").trim();
@@ -423,13 +427,20 @@ export default function ReportarProblema({
 
           <div className="mt-3 flex gap-2 border-b border-slate-100 pb-3 text-xs dark:border-slate-800">
             <button type="button" onClick={() => { setVista("formulario"); setEnviado(false); setError(null); }} className={`rounded-lg px-2.5 py-1.5 font-semibold ${vista === "formulario" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}>Enviar solicitud</button>
-            <button type="button" onClick={abrirMisReportes} disabled={cargandoReportes} className={`rounded-lg px-2.5 py-1.5 font-semibold ${vista === "reportes" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}>
+            <button type="button" onClick={() => void abrirMisReportes()} disabled={cargandoReportes} className={`rounded-lg px-2.5 py-1.5 font-semibold ${vista === "reportes" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}>
               {cargandoReportes ? "Cargando…" : "Mis solicitudes"}
             </button>
           </div>
 
           {vista === "reportes" ? (
             <div className="mt-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400">La conversación se actualiza al volver a esta pestaña.</p>
+                <button type="button" onClick={() => void abrirMisReportes()} disabled={cargandoReportes} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-60 dark:text-indigo-300 dark:hover:bg-indigo-950/50">
+                  <RefreshCw className={`size-3.5 ${cargandoReportes ? "animate-spin" : ""}`} aria-hidden="true" />
+                  Actualizar
+                </button>
+              </div>
               {!misReportes || misReportes.length === 0 ? (
                 <p className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">Todavía no tienes solicitudes registradas.</p>
               ) : (
@@ -477,7 +488,7 @@ export default function ReportarProblema({
               <p>Ya registramos dónde ocurrió. Puedes continuar trabajando mientras la revisamos.</p>
               {reporteEnviadoId && <p className="text-xs font-semibold">Folio de seguimiento: {folioReporte(reporteEnviadoId)}</p>}
               <div className="flex flex-wrap gap-2">
-                <Boton type="button" size="sm" variant="secondary" onClick={abrirMisReportes}>Ver mis solicitudes</Boton>
+                <Boton type="button" size="sm" variant="secondary" onClick={() => void abrirMisReportes()}>Ver mis solicitudes</Boton>
                 <Boton type="button" size="sm" variant="secondary" onClick={cerrar}>Cerrar</Boton>
               </div>
             </div>

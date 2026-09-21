@@ -18,7 +18,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(33);
+select plan(37);
 
 -- ============================================================
 -- Fixtures
@@ -65,6 +65,20 @@ insert into reportes (id, reportante_id, reportante_tipo, estudiante_id, categor
 values
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '33333333-3333-3333-3333-333333333333', 'estudiante', '55555555-5555-5555-5555-555555555555', 'estudiante_otro', '__test__ reporte propio para FAQ'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '22222222-2222-2222-2222-222222222222', 'estudiante', '55555555-5555-5555-5555-555555555555', 'estudiante_otro', '__test__ reporte ajeno para FAQ');
+
+insert into reportes (id, reportante_id, reportante_tipo, docente_id, grupo_id, categoria, descripcion)
+values (
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', '11111111-1111-1111-1111-111111111111', 'docente',
+  '11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444',
+  'docente_otro', '__test__ reporte propio de docente para conversación'
+);
+
+-- Se insertan como sistema para aislar la prueba de lectura: el contrato que
+-- importa aquí es que cada reportante vea la conversación de su propio folio.
+insert into reporte_mensajes (reporte_id, autor_id, autor_tipo, mensaje)
+values
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '11111111-1111-1111-1111-111111111111', 'administrador', '__test__ respuesta administrativa para estudiante'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', '33333333-3333-3333-3333-333333333333', 'administrador', '__test__ respuesta administrativa para docente');
 
 -- ============================================================
 -- Auditoría: una sesión anónima no es una cuenta docente y solo recibe la
@@ -131,6 +145,36 @@ select throws_ok(
   'P0001', 'Alcanzaste el límite temporal de interacciones de ayuda.',
   'Auditoría: la FAQ limita la telemetría por actor y ventana temporal'
 );
+reset role;
+
+-- ============================================================
+-- Conversación de reportes: estudiante y docente pueden leer el mensaje
+-- público de su propio caso, pero nunca la conversación ajena.
+-- ============================================================
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","is_anonymous":true}', true);
+
+select is(
+  (select count(*) from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
+  1::bigint,
+  'reportes: el estudiante ve el mensaje público de su propia solicitud'
+);
+select is_empty(
+  $$ select id from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd' $$,
+  'reportes: el estudiante no ve la conversación de una docente'
+);
+
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+select is(
+  (select count(*) from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd'),
+  1::bigint,
+  'reportes: la docente ve el mensaje público de su propia solicitud'
+);
+select is_empty(
+  $$ select id from reporte_mensajes where reporte_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' $$,
+  'reportes: la docente no ve la conversación de un estudiante'
+);
+
 reset role;
 
 -- ============================================================
@@ -488,4 +532,3 @@ reset role;
 
 select * from finish();
 rollback;
-

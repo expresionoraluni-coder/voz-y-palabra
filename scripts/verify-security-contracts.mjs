@@ -281,6 +281,9 @@ if (!reportarProblema.includes('.rpc("registrar_reporte"') || reportarProblema.i
 if (!reportarProblema.includes("Mis solicitudes") || !reportarProblema.includes("contextoDeRuta") || !reportarProblema.includes("bottom-24")) {
   failures.push("reportes: el flujo debe ofrecer seguimiento propio, contexto de ruta y espacio para la navegación inferior del estudiante.");
 }
+if (!reportarProblema.includes("window.addEventListener(\"focus\", actualizarAlVolver)") || !reportarProblema.includes("Actualizar") || reportarProblema.includes("if (misReportes !== null)")) {
+  failures.push("reportes: Mis solicitudes debe actualizar la conversación al volver a la app y al solicitarla de nuevo.");
+}
 if (!reportarProblema.includes("AYUDAS_ESTUDIANTE") || !reportarProblema.includes("AYUDAS_DOCENTE")) {
   failures.push("reportes: las dudas frecuentes deben recibir orientación rápida antes de generar un caso.");
 }
