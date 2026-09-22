@@ -18,8 +18,6 @@ export async function guardarAtencionReporte(input: {
   reporteId: string;
   estado: string;
   prioridad: string;
-  respuestaPublica: string;
-  resolucion: string;
   asignadoA: string | null;
   fechaLimite: string | null;
   actualizadoEn: string;
@@ -30,14 +28,6 @@ export async function guardarAtencionReporte(input: {
     return { ok: false, error: "Los datos de atención no son válidos." };
   }
 
-  const resolucion = input.resolucion.trim();
-  const respuestaPublica = input.respuestaPublica.trim();
-  if (resolucion.length > 2000) {
-    return { ok: false, error: "La nota de atención es demasiado larga." };
-  }
-  if (respuestaPublica.length > 2000) {
-    return { ok: false, error: "La respuesta pública es demasiado larga." };
-  }
   if (input.asignadoA !== null && !esUuid(input.asignadoA)) {
     return { ok: false, error: "La cuenta asignada no es válida." };
   }
@@ -65,8 +55,6 @@ export async function guardarAtencionReporte(input: {
     .update({
       estado: input.estado,
       prioridad: input.prioridad,
-      respuesta_publica: respuestaPublica || null,
-      resolucion: resolucion || null,
       asignado_a: input.asignadoA || null,
       fecha_limite: input.fechaLimite || null,
     })

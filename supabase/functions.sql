@@ -1631,6 +1631,52 @@ $$;
 revoke all on function public.finalizar_notificacion_correo_reporte(uuid, boolean) from public, anon, authenticated;
 grant execute on function public.finalizar_notificacion_correo_reporte(uuid, boolean) to service_role;
 
+create or replace function public.reclamar_notificacion_correo_mensaje_reporte(p_mensaje_id uuid)
+returns boolean
+language plpgsql security definer set search_path = private, public, pg_catalog
+as $$
+declare v_reclamado boolean;
+begin
+  insert into private.notificaciones_correo_mensajes_reportes (mensaje_id)
+  values (p_mensaje_id)
+  on conflict (mensaje_id) do nothing;
+
+  update private.notificaciones_correo_mensajes_reportes
+     set estado = 'enviando',
+         intentos = intentos + 1,
+         en_proceso_desde = clock_timestamp()
+   where mensaje_id = p_mensaje_id
+     and (
+       estado in ('pendiente', 'fallida')
+       or (estado = 'enviando' and en_proceso_desde < clock_timestamp() - interval '10 minutes')
+     )
+  returning true into v_reclamado;
+
+  return coalesce(v_reclamado, false);
+end;
+$$;
+revoke all on function public.reclamar_notificacion_correo_mensaje_reporte(uuid) from public, anon, authenticated;
+grant execute on function public.reclamar_notificacion_correo_mensaje_reporte(uuid) to service_role;
+
+create or replace function public.finalizar_notificacion_correo_mensaje_reporte(
+  p_mensaje_id uuid,
+  p_enviada boolean
+)
+returns void
+language plpgsql security definer set search_path = private, public, pg_catalog
+as $$
+begin
+  update private.notificaciones_correo_mensajes_reportes
+     set estado = case when p_enviada then 'enviada' else 'fallida' end,
+         en_proceso_desde = null,
+         enviada_en = case when p_enviada then clock_timestamp() else null end
+   where mensaje_id = p_mensaje_id
+     and estado = 'enviando';
+end;
+$$;
+revoke all on function public.finalizar_notificacion_correo_mensaje_reporte(uuid, boolean) from public, anon, authenticated;
+grant execute on function public.finalizar_notificacion_correo_mensaje_reporte(uuid, boolean) to service_role;
+
 create or replace function public.proteger_reporte_atencion()
 returns trigger language plpgsql security definer set search_path = public
 as $$

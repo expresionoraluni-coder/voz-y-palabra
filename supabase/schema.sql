@@ -3858,6 +3858,18 @@ create table if not exists public.reporte_mensajes (
 );
 create index if not exists reporte_mensajes_reporte_idx on public.reporte_mensajes (reporte_id, creado_en desc);
 
+create table if not exists private.notificaciones_correo_mensajes_reportes (
+  mensaje_id uuid primary key references public.reporte_mensajes(id) on delete cascade,
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'enviando', 'enviada', 'fallida')),
+  intentos integer not null default 0 check (intentos >= 0),
+  en_proceso_desde timestamptz,
+  creado_en timestamptz not null default now(),
+  enviada_en timestamptz
+);
+alter table private.notificaciones_correo_mensajes_reportes enable row level security;
+revoke all on private.notificaciones_correo_mensajes_reportes from public, anon, authenticated;
+grant all on private.notificaciones_correo_mensajes_reportes to service_role;
+
 create table if not exists public.faq_articulos (
   id uuid primary key default gen_random_uuid(),
   audiencia text not null check (audiencia in ('estudiante', 'docente', 'ambos')),

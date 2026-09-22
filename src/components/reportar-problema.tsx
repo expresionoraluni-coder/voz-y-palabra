@@ -16,6 +16,7 @@ import { ErrorText, Field, HelpText, Label } from "@/components/ui/field";
 import { faqFallback, idFaqValido, normalizarFaqArticulo, type FaqArticulo } from "@/lib/faq";
 import { UUID_FRAGMENT } from "@/lib/uuid";
 import { useBorradorLocal } from "@/hooks/use-borrador-local";
+import { diagnosticoDeEntregaParaReporte } from "@/lib/diagnostico-entrega-cliente";
 
 type AyudaRapida = { titulo: string; pasos: string[] };
 
@@ -86,7 +87,6 @@ type ReportePropio = {
   categoria: string;
   descripcion: string;
   estado: string;
-  respuesta_publica: string | null;
   fecha_limite: string | null;
   reportante_ultimo_visto_en: string;
   created_at: string;
@@ -330,7 +330,6 @@ export default function ReportarProblema({
     const { data: reportes } = await supabase
       .from("reportes")
       .select("id, reportante_ultimo_visto_en")
-      .neq("estado", "cerrado")
       .order("updated_at", { ascending: false })
       .limit(20);
     const casos = (reportes ?? []) as Pick<ReportePropio, "id" | "reportante_ultimo_visto_en">[];
@@ -364,7 +363,7 @@ export default function ReportarProblema({
     const supabase = createClient();
     const { data, error: consultaError } = await supabase
       .from("reportes")
-      .select("id, categoria, descripcion, estado, respuesta_publica, fecha_limite, reportante_ultimo_visto_en, created_at, updated_at")
+      .select("id, categoria, descripcion, estado, fecha_limite, reportante_ultimo_visto_en, created_at, updated_at")
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -432,12 +431,20 @@ export default function ReportarProblema({
       setEnviandoMensajeId(null);
       return;
     }
+    const mensajeId = Array.isArray(resultado.data) && typeof resultado.data[0]?.id === "string" ? resultado.data[0].id : null;
+    if (mensajeId) {
+      void fetch("/api/reportes/notificar-admin-respuesta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensajeId }),
+      }).catch(() => undefined);
+    }
     setMensajesPropios((actual) => ({
       ...actual,
       [reporteId]: [
         ...(actual[reporteId] ?? []),
         {
-          id: `${reporteId}-local-${(actual[reporteId] ?? []).length}`,
+          id: mensajeId ?? `${reporteId}-local-${(actual[reporteId] ?? []).length}`,
           reporte_id: reporteId,
           autor_tipo: "reportante",
           mensaje,
@@ -463,6 +470,7 @@ export default function ReportarProblema({
     setCargando(true);
     const supabase = createClient();
     const ruta = contextoDeRuta(pathname);
+    const diagnosticoEntrega = ruta.actividadId ? diagnosticoDeEntregaParaReporte(ruta.actividadId) : null;
     const contexto = {
       origen: "boton_ayuda",
       idioma: "es-MX",
@@ -472,6 +480,7 @@ export default function ReportarProblema({
       ...(idFaqValido(articuloFaq?.id ?? null) ? { faq_articulo_id: articuloFaq?.id } : {}),
       ...(Object.keys(respuestasFaq).length ? { faq_respuestas: respuestasFaq } : {}),
       ...(impacto ? { impacto } : {}),
+      ...(diagnosticoEntrega ? { diagnostico_entrega: diagnosticoEntrega } : {}),
     };
     const { data: resultado, error: insertError } = await supabase.rpc("registrar_reporte", {
       p_reportante_tipo: tipo,
@@ -576,7 +585,6 @@ export default function ReportarProblema({
                       <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">{reporte.descripcion}</p>
                       <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">{siguientePaso(reporte.estado)}</p>
                       {tieneMensajeNuevo && <p className="mt-2 rounded-lg bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-200">Tienes una respuesta nueva de Administración.</p>}
-                      {reporte.respuesta_publica && <p className="mt-2 rounded-lg bg-emerald-50 p-2 text-xs leading-relaxed text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{reporte.respuesta_publica}</p>}
                       <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-400">Folio {folioReporte(reporte.id)} · Actualizado {reporte.updated_at.slice(0, 10)}{reporte.fecha_limite && reporte.estado !== "cerrado" ? ` · Fecha objetivo: ${new Date(reporte.fecha_limite).toLocaleDateString("es-MX")}` : ""}</p>
                       {(mensajesPropios[reporte.id] ?? []).length > 0 && (
                         <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
@@ -685,9 +693,9 @@ export default function ReportarProblema({
           )}
         </div>
       ) : (
-        <button type="button" onClick={() => { setAbierto(true); if (novedades) void abrirMisReportes(); }} aria-label={novedades ? `Ayuda: ${novedades} respuestas nuevas` : "Ayuda"} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-lg shadow-slate-900/10 transition hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300 dark:hover:bg-indigo-950/50">
+        <button type="button" onClick={() => { setAbierto(true); if (novedades) void abrirMisReportes(); }} aria-label={novedades ? `Tienes ${novedades} respuestas nuevas en Ayuda` : "Ayuda"} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-lg shadow-slate-900/10 transition hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300 dark:hover:bg-indigo-950/50">
           <LifeBuoy className="size-4" aria-hidden="true" />
-          {novedades ? `Ayuda · ${novedades} nueva${novedades === 1 ? "" : "s"}` : "Ayuda"}
+          {novedades ? `Tienes ${novedades} respuesta${novedades === 1 ? "" : "s"} nueva${novedades === 1 ? "" : "s"}` : "Ayuda"}
         </button>
       )}
     </div>

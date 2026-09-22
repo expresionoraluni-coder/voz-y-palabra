@@ -22,8 +22,6 @@ type Reporte = {
   prioridad: string;
   ruta: string | null;
   contexto: Record<string, unknown>;
-  respuesta_publica: string | null;
-  resolucion: string | null;
   asignado_a: string | null;
   asignado_en: string | null;
   fecha_limite: string | null;
@@ -40,10 +38,6 @@ type EventoReporte = {
   estado_nuevo: string | null;
   prioridad_anterior: string | null;
   prioridad_nueva: string | null;
-  resolucion_anterior: string | null;
-  resolucion_nueva: string | null;
-  respuesta_publica_anterior: string | null;
-  respuesta_publica_nueva: string | null;
   asignado_anterior: string | null;
   asignado_nuevo: string | null;
   creado_en: string;

@@ -24,8 +24,6 @@ type Reporte = {
   prioridad: string;
   ruta: string | null;
   contexto: Record<string, unknown>;
-  respuesta_publica: string | null;
-  resolucion: string | null;
   asignado_a: string | null;
   asignado_en: string | null;
   fecha_limite: string | null;
@@ -41,10 +39,6 @@ type EventoReporte = {
   estado_nuevo: string | null;
   prioridad_anterior: string | null;
   prioridad_nueva: string | null;
-  resolucion_anterior: string | null;
-  resolucion_nueva: string | null;
-  respuesta_publica_anterior: string | null;
-  respuesta_publica_nueva: string | null;
   asignado_anterior: string | null;
   asignado_nuevo: string | null;
   creado_en: string;
@@ -126,7 +120,7 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
 
   let consulta = adminDb
     .from("reportes")
-    .select("id, reportante_tipo, estudiante_id, docente_id, grupo_id, unidad_id, actividad_id, categoria, descripcion, estado, prioridad, ruta, contexto, respuesta_publica, resolucion, asignado_a, asignado_en, fecha_limite, created_at, updated_at", { count: "exact" })
+    .select("id, reportante_tipo, estudiante_id, docente_id, grupo_id, unidad_id, actividad_id, categoria, descripcion, estado, prioridad, ruta, contexto, asignado_a, asignado_en, fecha_limite, created_at, updated_at", { count: "exact" })
     .order("fecha_limite", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range((pagina - 1) * TAMANO_PAGINA, pagina * TAMANO_PAGINA - 1);
@@ -179,7 +173,7 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
   const { data: eventos, error: eventosError } = reporteIds.length
     ? await supabase
         .from("reporte_eventos")
-        .select("id, reporte_id, actor_nombre, estado_anterior, estado_nuevo, prioridad_anterior, prioridad_nueva, resolucion_anterior, resolucion_nueva, creado_en")
+        .select("id, reporte_id, actor_nombre, estado_anterior, estado_nuevo, prioridad_anterior, prioridad_nueva, creado_en")
         .in("reporte_id", reporteIds)
         .order("creado_en", { ascending: false })
     : { data: [], error: null };
@@ -214,7 +208,7 @@ export default async function AdminReportes({ searchParams }: { searchParams: Pa
         <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Atención</p>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Reportes de estudiantes y docentes</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          Tú atiendes todos los casos. Cambiar el estado o escribir una resolución no modifica las respuestas ni el avance del estudiante. La bandeja se carga por páginas para conservar un tiempo de respuesta estable.
+          Tú atiendes todos los casos. Cambiar el estado o escribir un mensaje no modifica las respuestas ni el avance del estudiante. La bandeja se carga por páginas para conservar un tiempo de respuesta estable.
         </p>
       </section>
 

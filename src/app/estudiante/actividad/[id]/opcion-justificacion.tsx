@@ -10,7 +10,8 @@ import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
 import ProgressBar from "@/components/ui/progress-bar";
 import { bloquearPegado } from "@/lib/anti-copiar";
-import { validarJustificacion } from "@/lib/validar-justificacion";
+import { contarPalabrasJustificacion, validarJustificacion } from "@/lib/validar-justificacion";
+import { registrarDiagnosticoDeEntrega } from "@/lib/diagnostico-entrega-cliente";
 import {
   type ContenidoOpcionJustificacionPublico,
   type MensajeChat,
@@ -109,6 +110,7 @@ function PreguntaRonda({
   bloqueado: boolean;
   resultado?: ItemResultado;
 }) {
+  const totalPalabras = contarPalabrasJustificacion(respuesta.justificacion);
   return (
     <div className="flex flex-col gap-4">
       {ronda.contexto && (
@@ -185,7 +187,10 @@ function PreguntaRonda({
           rows={3}
         />
         <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-          Explica con tus palabras qué detalle de la situación te llevó a elegirla. No repitas solo la opción.
+          Explica con tus palabras qué detalle de la situación te llevó a elegirla. Necesitas al menos 8 palabras y 3 palabras propias; no repitas solo la opción.
+        </p>
+        <p aria-live="polite" className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {totalPalabras === 1 ? "1 palabra escrita" : `${totalPalabras} palabras escritas`} · mínimo 8
         </p>
       </Field>
     </div>
@@ -258,6 +263,7 @@ export default function OpcionJustificacion({
   function validarActual(): boolean {
     const errorValidacion = validarJustificacion(respuesta.justificacion, respuesta.opcion);
     if (errorValidacion) {
+      registrarDiagnosticoDeEntrega(actividadId, "validacion_justificacion");
       setError(errorValidacion);
       return false;
     }
@@ -268,7 +274,10 @@ export default function OpcionJustificacion({
   function validarTodas(): boolean {
     const faltante = respuestas.findIndex((r) => validarJustificacion(r.justificacion, r.opcion));
     if (faltante !== -1) {
-      setError(`Completa la explicación de la pregunta ${faltante + 1} antes de guardar.`);
+      const explicacion = validarJustificacion(respuestas[faltante].justificacion, respuestas[faltante].opcion);
+      registrarDiagnosticoDeEntrega(actividadId, "validacion_justificacion");
+      setError(`Pregunta ${faltante + 1}: ${explicacion}`);
+      window.requestAnimationFrame(() => document.getElementById(`justificacion-${faltante}`)?.focus());
       return false;
     }
     setError(null);
@@ -362,6 +371,11 @@ export default function OpcionJustificacion({
         </>
       ) : (
         <>
+          {rondas.length > 1 && !bloqueado && (
+            <p className="rounded-xl bg-indigo-50 px-4 py-3 text-xs leading-relaxed text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+              Al continuar guardamos un borrador solo en este dispositivo. Tus respuestas se entregan cuando pulses <strong>Guardar mis respuestas</strong> al final.
+            </p>
+          )}
           {rondas.length > 1 && (
             <div className="flex flex-col gap-1.5">
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -400,7 +414,7 @@ export default function OpcionJustificacion({
               )
             ) : (
               <Boton type="button" onClick={irASiguiente}>
-                Siguiente
+                Guardar borrador y continuar
               </Boton>
             )}
           </div>

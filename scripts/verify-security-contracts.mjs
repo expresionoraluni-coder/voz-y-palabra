@@ -100,8 +100,11 @@ const migracionAccesoReportesSesion = await texto("supabase/migrations/202609211
 const migracionPoliciesMensajesSesion = await texto("supabase/migrations/20260921123010_corregir_policies_mensajes_sesion_estudiante.sql");
 const migracionHelpersReportesPrivados = await texto("supabase/migrations/20260921123800_mover_helpers_reportes_a_private.sql");
 const migracionSeguimientoReportes = await texto("supabase/migrations/20260921231013_mejorar_seguimiento_reportes.sql");
-const migracionNotificacionesCorreo = await texto("supabase/migrations/20260922021142_notificaciones_correo_reportes.sql");
+const migracionNotificacionesCorreo = await texto("supabase/migrations/20260922021555_notificaciones_correo_reportes.sql");
 const notificarAdminReporte = await texto("src/app/api/reportes/notificar-admin/route.ts");
+const notificarAdminRespuesta = await texto("src/app/api/reportes/notificar-admin-respuesta/route.ts");
+const notificacionesCorreo = await texto("src/lib/reportes/notificaciones-correo.ts");
+const migracionConversacionUnificada = await texto("supabase/migrations/20260922170642_unificar_conversacion_y_avisos_respuestas.sql");
 const atencionReporte = await texto("src/app/admin/reportes/reporte-atencion.tsx");
 const recuperacion = await texto("src/app/ingreso/recuperar/page.tsx");
 const accionesRecuperacion = await texto("src/app/ingreso/recuperar/acciones.ts");
@@ -349,15 +352,35 @@ if (
   !notificarAdminReporte.includes('import "server-only"') ||
   !notificarAdminReporte.includes("auth.getClaims()") ||
   !notificarAdminReporte.includes("reportante_id !== actorId") ||
-  !notificarAdminReporte.includes("GMAIL_SMTP_APP_PASSWORD") ||
-  !notificarAdminReporte.includes("admin.auth.admin.getUserById") ||
-  notificarAdminReporte.includes("descripcion") ||
+  !notificacionesCorreo.includes("GMAIL_SMTP_APP_PASSWORD") ||
+  !notificacionesCorreo.includes("admin.auth.admin.getUserById") ||
+  notificacionesCorreo.includes("reporte.descripcion") ||
   !migracionNotificacionesCorreo.includes("create table private.notificaciones_correo_reportes") ||
   !migracionNotificacionesCorreo.includes("enable row level security") ||
   !migracionNotificacionesCorreo.includes("reclamar_notificacion_correo_reporte") ||
   !migracionNotificacionesCorreo.includes("grant execute on function public.reclamar_notificacion_correo_reporte(uuid) to service_role")
 ) {
   failures.push("notificaciones: el aviso por correo debe ser privado, idempotente, posterior al reporte y sin descripción.");
+}
+if (
+  !reportarProblema.includes('fetch("/api/reportes/notificar-admin-respuesta"') ||
+  !notificarAdminRespuesta.includes("auth.getClaims()") ||
+  !notificarAdminRespuesta.includes("mensaje.autor_id !== actorId") ||
+  !notificarAdminRespuesta.includes("reclamar_notificacion_correo_mensaje_reporte") ||
+  !migracionConversacionUnificada.includes("create table if not exists private.notificaciones_correo_mensajes_reportes") ||
+  !migracionConversacionUnificada.includes("grant execute on function public.reclamar_notificacion_correo_mensaje_reporte(uuid) to service_role") ||
+  notificacionesCorreo.includes("reporte.mensaje")
+) {
+  failures.push("notificaciones: las respuestas del reportante deben avisar al administrador una vez y sin incluir el mensaje en el correo.");
+}
+if (
+  atencionReporte.includes("Respuesta pública") ||
+  atencionReporte.includes("Nota interna") ||
+  reportarProblema.includes("respuesta_publica") ||
+  reportarProblema.includes('.neq("estado", "cerrado")') ||
+  !reportarProblema.includes("Tienes ${novedades} respuesta")
+) {
+  failures.push("reportes: debe existir una sola conversación y avisar dentro de la plataforma incluso si el caso se cerró.");
 }
 if (!atencionReporte.includes("Cerrar caso") || !atencionReporte.includes("Marcar resuelto") || !atencionReporte.includes("Escribir un mensaje")) {
   failures.push("admin: las acciones habituales de un reporte deben ser directas y distinguibles.");

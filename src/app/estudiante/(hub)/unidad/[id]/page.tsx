@@ -227,6 +227,10 @@ export default async function UnidadEstudiante({
       !actividadesConReflexion.has(actividad.id),
   );
   const pct = totalActividades > 0 ? Math.round((completadas / totalActividades) * 100) : 0;
+  const actividadesDisponiblesHoy = actividades.filter((actividad) => !actividad.fechaApertura || actividadAbierta(actividad.fechaApertura)).length;
+  const proximaActividad = actividades
+    .filter((actividad) => actividad.fechaApertura && !actividadAbierta(actividad.fechaApertura))
+    .sort((a, b) => new Date(a.fechaApertura!).getTime() - new Date(b.fechaApertura!).getTime())[0] ?? null;
   const tema = temaUnidad(unidad.orden);
   const detalleBloqueo = detalleBloqueoActividad(bloqueada);
 
@@ -265,15 +269,21 @@ export default async function UnidadEstudiante({
       ) : (
         <>
           {totalActividades > 0 && (
-            <div className="flex items-center gap-3">
-              <ProgressBar
-                porcentaje={pct}
-                gradiente={tema.barra}
-                etiqueta={`Unidad: ${completadas} de ${totalActividades} actividades`}
-              />
-              <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-400">
-                {completadas}/{totalActividades}
-              </span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <ProgressBar
+                  porcentaje={pct}
+                  gradiente={tema.barra}
+                  etiqueta={`Unidad: ${completadas} de ${totalActividades} actividades`}
+                />
+                <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  {completadas}/{totalActividades}
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Hoy puedes trabajar {actividadesDisponiblesHoy} de {totalActividades} actividades.
+                {proximaActividad ? ` La siguiente se abrirá ${fechaLarga(proximaActividad.fechaApertura!)}.` : ""}
+              </p>
             </div>
           )}
 

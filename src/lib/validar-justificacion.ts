@@ -1,3 +1,7 @@
+export function contarPalabrasJustificacion(texto: string): number {
+  return palabrasDe(texto).length;
+}
+
 function palabrasDe(texto: string): string[] {
   return (
     texto
@@ -19,11 +23,11 @@ export function validarJustificacion(texto: string, opcion: string): string | nu
   const palabrasPropias = palabras.filter((palabra) => palabra.length >= 3 && !palabrasOpcion.has(palabra));
 
   if (palabras.length < 8) {
-    return "Explica con una oración completa qué te llevó a elegir esa opción.";
+    return `Escribe al menos 8 palabras; ahora llevas ${palabras.length}.`;
   }
 
   if (unicas.size < 4 || palabrasPropias.length < 3) {
-    return "Escribe una explicación propia, no repitas solo la opción ni uses texto al azar.";
+    return "Explica con al menos 3 palabras propias; no repitas solo la opción.";
   }
 
   return null;

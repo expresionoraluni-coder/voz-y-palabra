@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CircleCheck, ClipboardCheck, FileText, Lightbulb, MessageSquareText, RotateCcw } from "lucide-react";
+import { Check, CircleCheck, ClipboardCheck, Lightbulb, MessageSquareText, RotateCcw } from "lucide-react";
 import { ESTADOS_REPORTE, ETIQUETAS_CATEGORIA, PRIORIDADES_REPORTE, SUGERENCIAS_ATENCION } from "@/lib/reportes-constantes";
 import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import { Card } from "@/components/ui/card";
@@ -34,8 +34,6 @@ type Reporte = {
   prioridad: string;
   ruta: string | null;
   contexto: Record<string, unknown>;
-  respuesta_publica: string | null;
-  resolucion: string | null;
   asignado_a: string | null;
   asignado_en: string | null;
   fecha_limite: string | null;
@@ -50,8 +48,6 @@ type EventoReporte = {
   estado_anterior: string | null;
   estado_nuevo: string | null;
   prioridad_nueva: string | null;
-  resolucion_nueva: string | null;
-  respuesta_publica_nueva: string | null;
   creado_en: string;
 };
 
@@ -70,6 +66,13 @@ const ETIQUETAS_CONTEXTO: Record<string, string> = {
   grupo_id: "Grupo identificado",
   unidad_id: "Unidad identificada",
   actividad_id: "Actividad identificada",
+  diagnostico_entrega: "Resultado al intentar entregar",
+};
+
+const ETIQUETAS_DIAGNOSTICO_ENTREGA: Record<string, string> = {
+  validacion_justificacion: "La explicación no cumplió los requisitos visibles",
+  guardado_rechazado: "El servidor rechazó el guardado",
+  guardado_sin_conexion: "No se pudo confirmar el guardado por conexión",
 };
 
 const TRANSICIONES: Record<string, string[]> = {
@@ -80,8 +83,9 @@ const TRANSICIONES: Record<string, string[]> = {
   cerrado: ["en_revision"],
 };
 
-function valorContexto(valor: unknown) {
-  if (typeof valor === "string" || typeof valor === "number" || typeof valor === "boolean") return String(valor);
+function valorContexto(valor: unknown, clave?: string) {
+  if (typeof valor === "string") return clave === "diagnostico_entrega" ? (ETIQUETAS_DIAGNOSTICO_ENTREGA[valor] ?? valor) : valor;
+  if (typeof valor === "number" || typeof valor === "boolean") return String(valor);
   return null;
 }
 
@@ -115,14 +119,11 @@ export default function ReporteAtencion({
   const router = useRouter();
   const [estado, setEstado] = useState(reporte.estado);
   const [prioridad, setPrioridad] = useState(reporte.prioridad);
-  const [respuestaPublica, setRespuestaPublica] = useState(reporte.respuesta_publica ?? "");
-  const [resolucion, setResolucion] = useState(reporte.resolucion ?? "");
   const [asignadoA, setAsignadoA] = useState(reporte.asignado_a);
   const [fechaLimite, setFechaLimite] = useState(reporte.fecha_limite ? reporte.fecha_limite.slice(0, 16) : "");
   const [actualizadoEn, setActualizadoEn] = useState(reporte.updated_at);
   const [cargando, setCargando] = useState(false);
   const [guardado, setGuardado] = useState(false);
-  const [detallesFinales, setDetallesFinales] = useState(Boolean(reporte.respuesta_publica || reporte.resolucion));
   const [enviandoMensaje, setEnviandoMensaje] = useState(false);
   const [mensajeGuardado, setMensajeGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +138,7 @@ export default function ReporteAtencion({
   const sugerencia = SUGERENCIAS_ATENCION[reporte.categoria];
   const contextoVisible = Object.entries(reporte.contexto ?? {})
     .filter(([clave]) => Object.hasOwn(ETIQUETAS_CONTEXTO, clave))
-    .map(([clave, valor]) => ({ clave, valor: valorContexto(valor) }))
+    .map(([clave, valor]) => ({ clave, valor: valorContexto(valor, clave) }))
     .filter((item): item is { clave: string; valor: string } => item.valor !== null);
 
   useEffect(() => {
@@ -163,8 +164,6 @@ export default function ReporteAtencion({
       reporteId: reporte.id,
       estado: datos.estado,
       prioridad: datos.prioridad,
-      respuestaPublica,
-      resolucion,
       asignadoA: datos.asignadoA,
       fechaLimite: datos.fechaLimite ? new Date(datos.fechaLimite).toISOString() : null,
       actualizadoEn,
@@ -290,6 +289,16 @@ export default function ReporteAtencion({
           </div>
           <span className="text-xs text-slate-500 dark:text-slate-400">{mensajes.length} {mensajes.length === 1 ? "mensaje" : "mensajes"}</span>
         </div>
+        {sugerencia && estado !== "cerrado" && (
+          <div className="mt-3 flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-sm dark:border-indigo-900/70 dark:bg-indigo-950/30">
+            <Lightbulb className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+            <div className="min-w-0 text-slate-700 dark:text-slate-300">
+              <p><span className="font-semibold text-slate-900 dark:text-slate-50">Sugerencia de revisión:</span> {sugerencia}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Es una guía de revisión, no una resolución automática.</p>
+              <button type="button" onClick={() => setMensaje((actual) => actual.trim() ? actual : sugerencia)} className="mt-2 text-xs font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Usar como borrador del mensaje</button>
+            </div>
+          </div>
+        )}
         {mensajes.length > 0 ? (
           <ol className="mt-3 flex max-h-96 flex-col gap-3 overflow-y-auto rounded-xl border border-slate-200 p-3 dark:border-slate-700">
             {mensajes.map((item) => (
@@ -324,37 +333,6 @@ export default function ReporteAtencion({
         )}
       </section>
 
-      <details open={detallesFinales} onToggle={(evento) => setDetallesFinales(evento.currentTarget.open)} className="rounded-xl border border-slate-200 dark:border-slate-700">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200">Respuesta pública y nota interna</summary>
-        <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-700">
-          <Field>
-            <Label htmlFor={`respuesta-publica-${reporte.id}`}>Respuesta pública (opcional)</Label>
-            <textarea id={`respuesta-publica-${reporte.id}`} value={respuestaPublica} onChange={(event) => setRespuestaPublica(event.target.value)} maxLength={2000} rows={3} placeholder="Resumen que también aparecerá en Mis solicitudes" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
-          </Field>
-          <Field>
-            <Label htmlFor={`resolucion-${reporte.id}`}>Nota interna (opcional)</Label>
-            <textarea id={`resolucion-${reporte.id}`} value={resolucion} onChange={(event) => setResolucion(event.target.value)} maxLength={2000} rows={3} placeholder="Qué verificaste o cómo se resolvió" className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50" />
-          </Field>
-          {sugerencia && (
-            <div className="flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-sm dark:border-indigo-900/70 dark:bg-indigo-950/30">
-              <Lightbulb className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-              <div className="min-w-0 text-slate-700 dark:text-slate-300">
-                <p><span className="font-semibold text-slate-900 dark:text-slate-50">Sugerencia de revisión:</span> {sugerencia}</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Es una guía de revisión, no una resolución automática.</p>
-                <button type="button" onClick={() => setResolucion((actual) => actual.trim() ? actual : sugerencia)} className="mt-2 text-xs font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Usar como base de la nota</button>
-              </div>
-            </div>
-          )}
-          {error && <ErrorText>{error}</ErrorText>}
-          <div className="flex justify-end">
-            <Boton type="button" size="sm" onClick={() => void guardar()} cargando={cargando}>
-              {guardado ? <Check className="size-4" aria-hidden="true" /> : <FileText className="size-4" aria-hidden="true" />}
-              <span aria-live="polite">{guardado ? "Guardado" : "Guardar estos detalles"}</span>
-            </Boton>
-          </div>
-        </div>
-      </details>
-
       <details className="rounded-xl border border-slate-200 dark:border-slate-700">
         <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-200">Opciones y contexto técnico</summary>
         <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-700">
@@ -381,6 +359,13 @@ export default function ReporteAtencion({
             <p><span className="font-semibold">Recibido:</span> {fecha(reporte.created_at)}</p>
             {contextoVisible.length > 0 && <div className="mt-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><p className="font-semibold">Contexto capturado</p>{contextoVisible.map(({ clave, valor }) => <p key={clave} className="mt-1"><span className="font-medium">{etiquetaContexto(clave)}:</span> {valor}</p>)}</div>}
           </div>
+          {error && <ErrorText>{error}</ErrorText>}
+          <div className="flex justify-end">
+            <Boton type="button" size="sm" onClick={() => void guardar()} cargando={cargando}>
+              <Check className="size-4" aria-hidden="true" />
+              <span aria-live="polite">{guardado ? "Cambios guardados" : "Guardar cambios"}</span>
+            </Boton>
+          </div>
         </div>
       </details>
 
@@ -392,8 +377,6 @@ export default function ReporteAtencion({
               <li key={evento.id} className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-slate-800 dark:text-slate-100">{evento.actor_nombre}</span><time dateTime={evento.creado_en} className="text-slate-400">{fecha(evento.creado_en)}</time></div>
                 <p className="mt-1">{evento.estado_anterior ? (ESTADOS_REPORTE[evento.estado_anterior] ?? evento.estado_anterior) : "Sin estado"} → {evento.estado_nuevo ? (ESTADOS_REPORTE[evento.estado_nuevo] ?? evento.estado_nuevo) : "Sin estado"} · {evento.prioridad_nueva ? (PRIORIDADES_REPORTE[evento.prioridad_nueva] ?? evento.prioridad_nueva) : "Sin prioridad"}</p>
-                {evento.respuesta_publica_nueva && <p className="mt-1 rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/30">Respuesta pública: {evento.respuesta_publica_nueva}</p>}
-                {evento.resolucion_nueva && <p className="mt-1 rounded-lg bg-slate-50 p-2 dark:bg-slate-800/70">{evento.resolucion_nueva}</p>}
               </li>
             ))}
           </ol>

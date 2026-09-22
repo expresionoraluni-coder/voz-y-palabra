@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useEntregaReciente } from "@/lib/entrega-reciente-context";
 import type { ResultadoCalificacion } from "@/app/estudiante/actividad/[id]/acciones-calificacion";
+import { limpiarDiagnosticoDeEntregaActual, registrarDiagnosticoDeEntregaActual } from "@/lib/diagnostico-entrega-cliente";
 
 /**
  * Maneja el guardado de una entrega (carga/error compartido por los tipos
@@ -48,15 +49,18 @@ export function useEntregaActividad(tieneEntregaInicial = false) {
     try {
       const resultado = await accion();
       if (!resultado.ok) {
+        registrarDiagnosticoDeEntregaActual("guardado_rechazado");
         setError(resultado.error);
         return null;
       }
 
+      limpiarDiagnosticoDeEntregaActual();
       marcarGuardada({ puntajeAuto: resultado.puntajeAuto, respuesta: resultado.respuesta });
       setGuardado(true);
       setEntregaRegistrada(true);
       return resultado.respuesta;
     } catch {
+      registrarDiagnosticoDeEntregaActual("guardado_sin_conexion");
       setError("No pudimos guardar tu respuesta. Revisa tu conexión e inténtalo de nuevo.");
       return null;
     } finally {
