@@ -288,6 +288,20 @@ create table reportes (
     or (reportante_tipo = 'docente' and docente_id is not null and estudiante_id is null))
 );
 
+-- Bitácora privada de los avisos: evita duplicar correos sin exponer su
+-- estado a la API de datos ni a ninguna sesión de la aplicación.
+create table private.notificaciones_correo_reportes (
+  reporte_id uuid primary key references public.reportes(id) on delete cascade,
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'enviando', 'enviada', 'fallida')),
+  intentos integer not null default 0 check (intentos >= 0),
+  en_proceso_desde timestamptz,
+  creado_en timestamptz not null default now(),
+  enviada_en timestamptz
+);
+alter table private.notificaciones_correo_reportes enable row level security;
+revoke all on private.notificaciones_correo_reportes from public, anon, authenticated;
+grant all on private.notificaciones_correo_reportes to service_role;
+
 create table reporte_eventos (
   id uuid primary key default gen_random_uuid(),
   reporte_id uuid not null references reportes(id) on delete cascade,

@@ -27,9 +27,13 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+GMAIL_SMTP_USER=correo-del-admin@gmail.com
+GMAIL_SMTP_APP_PASSWORD=contraseña-de-aplicación-de-gmail
 ```
 
 La clave `SUPABASE_SERVICE_ROLE_KEY` solo se usa en componentes y acciones de servidor. Nunca debe exponerse en el navegador.
+
+Para recibir un aviso por cada reporte nuevo, configura `GMAIL_SMTP_USER` y `GMAIL_SMTP_APP_PASSWORD` como secretos de ejecución en Netlify. La primera debe ser la misma cuenta Gmail de la persona administradora; la segunda es una contraseña de aplicación de Google, no la contraseña normal. El servidor consulta el correo del administrador activo desde Supabase, envía solo folio, tipo, categoría, prioridad y enlace al panel, y registra el envío de manera privada para evitar duplicados.
 
 ## Comandos de calidad
 

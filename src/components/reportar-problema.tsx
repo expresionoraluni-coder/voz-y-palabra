@@ -501,6 +501,16 @@ export default function ReportarProblema({
     const reporteId = resultado?.[0]?.id ?? null;
     setReporteEnviadoId(reporteId);
     if (reporteId && articuloFaq) registrarEventoFaq("reporte_creado", reporteId);
+    // La confirmación del reporte no depende de la notificación: el servidor
+    // valida nuevamente la identidad y el reporte antes de enviar el correo.
+    // Así una falla temporal de Gmail nunca hace que la persona pierda su caso.
+    if (reporteId) {
+      void fetch("/api/reportes/notificar-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reporteId }),
+      }).catch(() => undefined);
+    }
     setDescripcion("");
     setImpacto("");
     borrarBorrador();
