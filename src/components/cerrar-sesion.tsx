@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import Boton from "@/components/ui/button";
 import { limpiarBorradoresLocales } from "@/hooks/use-borrador-local";
 
-export default function CerrarSesion() {
+export default function CerrarSesion({ className = "" }: { className?: string }) {
   const router = useRouter();
 
   async function salir() {
@@ -18,7 +18,7 @@ export default function CerrarSesion() {
   }
 
   return (
-    <Boton variant="ghost" size="sm" onClick={salir}>
+    <Boton variant="ghost" size="sm" onClick={salir} className={className}>
       <LogOut className="size-4" aria-hidden="true" />
       Salir
     </Boton>

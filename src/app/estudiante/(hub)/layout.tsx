@@ -6,6 +6,7 @@ import AvisoSinConexion from "@/components/ui/aviso-sin-conexion";
 import BottomNav from "./bottom-nav";
 import ReportarProblema from "@/components/reportar-problema";
 import BienvenidaPrimerIngreso from "./bienvenida-primer-ingreso";
+import TransicionPagina from "@/components/estudiante/transicion-pagina";
 
 export default async function HubLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -31,7 +32,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
   // navegando directamente a otra sección del hub.
   if (!estudiante.bienvenida_estudiante_completada_at) {
     return (
-      <main id="contenido-principal" className="min-h-dvh">
+      <main id="contenido-principal" className="student-shell min-h-dvh">
         <AvisoSinConexion />
         <BienvenidaPrimerIngreso nombre={estudiante.nombre} />
       </main>
@@ -46,9 +47,9 @@ export default async function HubLayout({ children }: { children: React.ReactNod
       >
         Saltar al contenido
       </a>
-      <main id="contenido-principal" className="pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <main id="contenido-principal" className="student-shell min-h-dvh pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
         <AvisoSinConexion />
-        {children}
+        <TransicionPagina>{children}</TransicionPagina>
       </main>
       <ReportarProblema
         tipo="estudiante"

@@ -70,6 +70,7 @@ export default async function CalendarioEstudiante() {
     });
 
   const timeline = [...itemsEventos, ...itemsRepaso].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const proximoItem = timeline.find((item) => diasFaltantes(item.fecha) >= 0) ?? timeline[0];
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
@@ -94,13 +95,25 @@ export default async function CalendarioEstudiante() {
           descripcion="Cuando haya una fecha o tengas actividades por repasar, van a aparecer aquí."
         />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
+          {proximoItem && (
+            <Card className="relative overflow-hidden border-indigo-100 bg-gradient-to-br from-indigo-50/90 via-white to-violet-50/70 p-5 dark:border-indigo-900/70 dark:from-indigo-950/40 dark:via-slate-900 dark:to-violet-950/25">
+              <div aria-hidden="true" className="absolute -right-8 -top-8 size-28 rounded-full bg-violet-200/45 blur-2xl dark:bg-violet-800/20" />
+              <p className="relative text-[11px] font-bold uppercase tracking-[0.12em] text-indigo-600 dark:text-indigo-400">Lo próximo en tu ruta</p>
+              <p className="relative mt-1 text-lg font-bold text-slate-900 dark:text-slate-50">
+                {proximoItem.tipo === "repaso" ? `Repasa “${proximoItem.titulo}”` : proximoItem.titulo}
+              </p>
+              <p className="relative mt-1 text-sm text-slate-600 dark:text-slate-300">{textoFaltan(diasFaltantes(proximoItem.fecha))}</p>
+            </Card>
+          )}
+          <div className="relative flex flex-col gap-3 before:absolute before:bottom-5 before:left-5 before:top-5 before:w-px before:bg-gradient-to-b before:from-indigo-300 before:via-violet-200 before:to-cyan-200 dark:before:from-indigo-800 dark:before:via-violet-900 dark:before:to-cyan-900">
           {timeline.map((item, i) => {
             if (item.tipo === "evento") {
               const dias = diasFaltantes(item.fecha);
               const conector = TIPOS_EVENTO[item.tipoEvento].conector;
               return (
-                <Card key={`ev-${i}`} className="flex flex-col gap-2.5 p-4">
+                <Card key={`ev-${i}`} className="relative ml-11 flex flex-col gap-2.5 p-4">
+                  <span aria-hidden="true" className="absolute -left-[2.95rem] top-5 flex size-5 items-center justify-center rounded-full border-4 border-slate-50 bg-indigo-500 shadow-sm dark:border-slate-950" />
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <CalendarDays className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
@@ -136,7 +149,8 @@ export default async function CalendarioEstudiante() {
               );
             }
             return (
-              <Link key={`rp-${i}`} href={`/estudiante/actividad/${item.actividadId}`}>
+              <Link key={`rp-${i}`} href={`/estudiante/actividad/${item.actividadId}`} className="relative ml-11">
+                <span aria-hidden="true" className="absolute -left-[2.95rem] top-5 z-10 flex size-5 items-center justify-center rounded-full border-4 border-slate-50 bg-amber-500 shadow-sm dark:border-slate-950" />
                 <CardLink className="flex items-center gap-3 px-4 py-3">
                   <RotateCcw className="size-4 shrink-0 text-slate-400 dark:text-slate-400" aria-hidden="true" />
                   <div className="flex-1">
@@ -150,6 +164,7 @@ export default async function CalendarioEstudiante() {
               </Link>
             );
           })}
+          </div>
         </div>
       )}
     </div>

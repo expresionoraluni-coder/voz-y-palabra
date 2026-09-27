@@ -10,7 +10,7 @@ export default function Avatar({ nombre, size = "md" }: { nombre: string; size?:
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 ${tamanos[size]}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 font-bold text-white shadow-md shadow-indigo-500/25 ring-2 ring-white/80 dark:ring-slate-900 ${tamanos[size]}`}
       aria-hidden="true"
     >
       {iniciales || "?"}

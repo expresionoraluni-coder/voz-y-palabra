@@ -201,6 +201,18 @@ export default async function InicioEstudiante({
       pct,
     };
   });
+  const totalActividadesCurso = unidadesConProgreso.reduce((total, unidad) => total + unidad.total, 0);
+  const totalCompletadasCurso = unidadesConProgreso.reduce((total, unidad) => total + unidad.hechas, 0);
+  const avanceCurso = totalActividadesCurso
+    ? Math.round((totalCompletadasCurso / totalActividadesCurso) * 100)
+    : 0;
+  const unidadesTerminadas = unidadesConProgreso.filter(
+    (unidad) =>
+      unidadEstaCompleta(unidad.total, unidad.hechas) &&
+      unidad.reflexionesCompletas &&
+      unidadesConReflexion.has(unidad.id) &&
+      unidadesConConfianzaCierre.has(unidad.id),
+  ).length;
   const indiceActiva = unidadesConProgreso.findIndex(
     (u) =>
       !unidadEstaCompleta(u.total, u.hechas) ||
@@ -385,20 +397,35 @@ export default async function InicioEstudiante({
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-7 px-6 py-10">
       <CelebracionInsignia insignias={insignias ?? []} estudianteId={estudiante.id} />
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar nombre={estudiante.nombre} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-              Hola, {estudiante.nombre.split(" ")[0]}
-            </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Grupo {grupo?.nombre ?? "—"}
-            </p>
+      <header className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-600 p-5 text-white shadow-xl shadow-indigo-600/20 sm:p-6">
+        <div aria-hidden="true" className="absolute -right-12 -top-12 size-48 rounded-full bg-white/10 blur-2xl" />
+        <div aria-hidden="true" className="absolute -bottom-16 left-1/3 size-40 rounded-full bg-cyan-300/15 blur-2xl" />
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar nombre={estudiante.nombre} size="lg" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-100">Tu espacio de aprendizaje</p>
+              <h1 className="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl">
+                Hola, {estudiante.nombre.split(" ")[0]}
+              </h1>
+              <p className="mt-1 text-sm text-indigo-100">Grupo {grupo?.nombre ?? "—"}</p>
+            </div>
+          </div>
+          <CerrarSesion className="shrink-0 border border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white dark:text-white dark:hover:bg-white/20 dark:hover:text-white" />
+        </div>
+        <div className="relative mt-5 grid grid-cols-2 gap-2.5">
+          <div className="rounded-2xl border border-white/15 bg-white/10 px-3.5 py-3 backdrop-blur-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-100">Tu avance</p>
+            <p className="mt-0.5 text-xl font-bold">{avanceCurso}%</p>
+            <p className="mt-0.5 text-xs text-indigo-100">del recorrido</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 px-3.5 py-3 backdrop-blur-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-100">Unidades</p>
+            <p className="mt-0.5 text-xl font-bold">{unidadesTerminadas}/{unidadesConProgreso.length}</p>
+            <p className="mt-0.5 text-xs text-indigo-100">concluidas</p>
           </div>
         </div>
-        <CerrarSesion />
-      </div>
+      </header>
 
       <CambiarNip />
 
@@ -415,23 +442,24 @@ export default async function InicioEstudiante({
         <section aria-labelledby="siguiente-paso" className="flex flex-col gap-3">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Tu ruta de hoy</p>
-              <h2 id="siguiente-paso" className="mt-0.5 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">Tu siguiente paso</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 dark:text-indigo-400">Tu ruta de hoy</p>
+              <h2 id="siguiente-paso" className="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Tu siguiente paso</h2>
             </div>
             <span className="text-xs text-slate-500 dark:text-slate-400">Un avance a la vez</span>
           </div>
           <Link
             href={siguientePaso.href}
-            className="group flex items-start gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-lg shadow-indigo-600/15 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.99] dark:border-indigo-500/50 dark:focus-visible:ring-offset-slate-950"
+            className="group relative flex items-start gap-4 overflow-hidden rounded-[1.6rem] border border-indigo-300/50 bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 p-5 text-white shadow-xl shadow-indigo-600/20 transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.99] dark:border-indigo-500/50 dark:focus-visible:ring-offset-slate-950"
           >
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+            <div aria-hidden="true" className="absolute -right-10 -top-12 size-40 rounded-full bg-white/10 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+            <div className="relative flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/15 shadow-sm">
               <siguientePaso.icon className="size-5" aria-hidden="true" />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-indigo-100">{siguientePaso.etiqueta}</p>
-              <p className="mt-0.5 text-base font-semibold leading-snug">{siguientePaso.titulo}</p>
+              <p className="mt-1 text-lg font-bold leading-snug">{siguientePaso.titulo}</p>
               <p className="mt-1 text-sm leading-relaxed text-indigo-100">{siguientePaso.descripcion}</p>
-              <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-white">
                 {siguientePaso.cta}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </span>

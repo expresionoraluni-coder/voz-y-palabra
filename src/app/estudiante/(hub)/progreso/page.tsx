@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Flame, NotebookPen, Target } from "lucide-react";
+import { CheckCircle2, Flame, NotebookPen, Target, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
@@ -69,6 +69,9 @@ export default async function ProgresoEstudiante() {
   const metasCumplidas = (bitacoras ?? []).filter((b) => b.cumplida).length;
   const totalUnidades = unidadesConProgreso.length;
   const reflexionesCerradas = new Set((reflexionesCierre ?? []).map((r) => r.unidad_id)).size;
+  const actividadesTotales = unidadesConProgreso.reduce((total, unidad) => total + unidad.total, 0);
+  const actividadesHechas = unidadesConProgreso.reduce((total, unidad) => total + unidad.hechas, 0);
+  const avanceGeneral = actividadesTotales ? Math.round((actividadesHechas / actividadesTotales) * 100) : 0;
 
   const sinDatos = idsCompletadas.size === 0;
 
@@ -98,6 +101,21 @@ export default async function ProgresoEstudiante() {
         />
       ) : (
         <>
+          <Card className="relative overflow-hidden border-indigo-100 bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-600 p-5 text-white shadow-xl shadow-indigo-600/20 dark:border-indigo-700 sm:p-6">
+            <div aria-hidden="true" className="absolute -right-10 -top-10 size-40 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-100">Vista general</p>
+                <p className="mt-1 text-4xl font-bold tracking-tight">{avanceGeneral}%</p>
+                <p className="mt-1 text-sm text-indigo-100">{actividadesHechas} de {actividadesTotales} actividades completadas</p>
+              </div>
+              <TrendingUp className="size-12 text-indigo-100/80" aria-hidden="true" />
+            </div>
+            <div className="relative mt-5 h-2.5 overflow-hidden rounded-full bg-white/20">
+              <div className="h-full rounded-full bg-white transition-[width] duration-700" style={{ width: `${avanceGeneral}%` }} />
+            </div>
+          </Card>
+
           <div className="grid grid-cols-2 gap-3">
             <MetricCard etiqueta="Racha" valor={`${racha} ${racha === 1 ? "día" : "días"}`} icon={Flame} tono="amber" />
             <MetricCard

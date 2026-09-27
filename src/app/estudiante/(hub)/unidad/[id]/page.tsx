@@ -273,22 +273,27 @@ export default async function UnidadEstudiante({
       ) : (
         <>
           {totalActividades > 0 && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3">
+            <Card className="relative overflow-hidden border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/70 p-5 dark:border-indigo-900/70 dark:from-slate-900 dark:via-indigo-950/30 dark:to-violet-950/20">
+              <div aria-hidden="true" className="absolute -right-10 -top-10 size-32 rounded-full bg-violet-200/40 blur-2xl dark:bg-violet-800/20" />
+              <div className="relative flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-600 dark:text-indigo-400">Tu recorrido</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-50">{completadas} de {totalActividades} actividades</p>
+                </div>
+                <span className="rounded-full bg-indigo-600 px-3 py-1 text-sm font-bold text-white shadow-sm">{pct}%</span>
+              </div>
+              <div className="relative mt-4">
                 <ProgressBar
                   porcentaje={pct}
                   gradiente={tema.barra}
                   etiqueta={`Unidad: ${completadas} de ${totalActividades} actividades`}
                 />
-                <span className="shrink-0 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  {completadas}/{totalActividades}
-                </span>
               </div>
-              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              <p className="relative mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                 Hoy puedes trabajar {actividadesDisponiblesHoy} de {totalActividades} actividades.
                 {proximaActividad ? ` La siguiente se abrirá ${fechaLarga(proximaActividad.fechaApertura!)}.` : ""}
               </p>
-            </div>
+            </Card>
           )}
 
           {detalleBloqueo && (
@@ -316,10 +321,13 @@ export default async function UnidadEstudiante({
               descripcion="Las actividades aparecerán aquí cuando estén disponibles."
             />
           ) : (
-            <div className="flex flex-col gap-2">
-              <div className="mb-1">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Actividades de la unidad</h2>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Comienza por la que diga “Lista para comenzar”.</p>
+            <div className="flex flex-col gap-3">
+              <div className="mb-1 flex items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50">Actividades de la unidad</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Comienza por la que diga “Lista para comenzar”.</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-slate-200/70 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{actividades.length}</span>
               </div>
               {actividades.map((a) => {
                 const completada = entregaCuentaComoCompletada(a.entregas?.[0], a.contenido);
@@ -375,20 +383,20 @@ export default async function UnidadEstudiante({
 
                 return (
                   <Link key={a.id} href={`/estudiante/actividad/${a.id}`}>
-                    <CardLink className="flex items-center gap-3 px-4 py-3.5">
+                    <CardLink className="group flex items-center gap-3 px-4 py-4">
                       {completada ? (
                         <CheckCircle2 className="size-5 shrink-0 text-emerald-500" aria-hidden="true" />
                       ) : (
                         <Circle className="size-5 shrink-0 text-slate-300 dark:text-slate-700" aria-hidden="true" />
                       )}
-                      <span className="flex-1 font-medium text-slate-900 dark:text-slate-50">
+                      <span className="flex-1 font-semibold text-slate-900 dark:text-slate-50">
                         {a.titulo}
                       </span>
                       <span
                         className={
                           completada
                             ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
-                            : "text-xs text-slate-500 dark:text-slate-400"
+                          : "text-xs font-medium text-slate-500 dark:text-slate-400"
                         }
                       >
                         {completada
