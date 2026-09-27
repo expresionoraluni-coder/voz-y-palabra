@@ -102,21 +102,34 @@ export default async function AdminDashboard() {
   revisarErrorConsulta(docentesError, "No pudimos cargar el resumen docente.");
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-8 px-6 py-10">
-      <section className="flex flex-col gap-2">
-        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Panel administrativo</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Centro de atención de la plataforma</h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          Aquí se atienden los problemas que estudiantes o docentes no pueden resolver desde sus propios paneles.
-          También puedes observar el estado general sin entrar como docente.
-        </p>
+    <div className="admin-shell mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-8 px-6 py-10">
+      <section className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 px-6 py-7 text-white shadow-xl shadow-indigo-950/25 sm:px-8">
+        <div aria-hidden="true" className="absolute -right-14 -top-16 size-56 rounded-full bg-violet-400/25 blur-3xl" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-200">Panel administrativo</p>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">Centro de atención de la plataforma</h1>
+            <p className="mt-2 text-sm leading-relaxed text-indigo-100">Empieza por lo que requiere decisión hoy; el pulso general queda a la vista sin convertir el panel en una lista interminable.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:min-w-72">
+            <Link href="/admin/reportes?prioridad=urgente" className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur transition hover:bg-white/15">
+              <p className="text-2xl font-extrabold">{reportesUrgentesCount ?? 0}</p><p className="text-xs font-medium text-indigo-100">Alta prioridad</p>
+            </Link>
+            <Link href="/admin/reportes" className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur transition hover:bg-white/15">
+              <p className="text-2xl font-extrabold">{reportesPendientesCount ?? 0}</p><p className="text-xs font-medium text-indigo-100">Por atender</p>
+            </Link>
+          </div>
+        </div>
       </section>
 
-      <section aria-label="Resumen de la plataforma" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-8">
+      <section aria-label="Atención inmediata" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard etiqueta="Reportes pendientes" valor={reportesPendientesCount ?? 0} icon={MessageSquareText} tono="amber" />
         <MetricCard etiqueta="Reportes últimas 24 h" valor={reportes24hCount ?? 0} icon={Clock3} tono="indigo" />
         <MetricCard etiqueta="Alta prioridad" valor={reportesUrgentesCount ?? 0} icon={AlertTriangle} tono="amber" />
         <MetricCard etiqueta="Vencidos" valor={reportesVencidosCount ?? 0} icon={Timer} tono="amber" />
+      </section>
+
+      <section aria-label="Pulso general de la plataforma" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <MetricCard etiqueta="Grupos" valor={gruposCount ?? 0} icon={Users} tono="indigo" />
         <MetricCard etiqueta="Estudiantes activos" valor={estudiantesActivosCount ?? 0} icon={Activity} tono="emerald" />
         <MetricCard etiqueta="Docentes" valor={docentesCount ?? 0} icon={UserRound} tono="slate" />

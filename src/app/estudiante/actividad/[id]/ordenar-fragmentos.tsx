@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CheckCircle2, GripVertical, Plus, X, XCircle } from "lucide-react";
+import { CheckCircle2, GripVertical, Plus, Sparkles, X, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
 import { useIntentosAuto } from "@/hooks/useIntentosAuto";
@@ -187,8 +187,18 @@ export default function OrdenarFragmentos({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="relative overflow-hidden rounded-[1.35rem] border border-cyan-200/80 bg-gradient-to-r from-cyan-50 via-white to-indigo-50 px-4 py-3.5 dark:border-cyan-900/70 dark:from-cyan-950/30 dark:via-slate-900 dark:to-indigo-950/25">
+        <div aria-hidden="true" className="absolute -right-6 -top-8 size-24 rounded-full bg-cyan-200/55 blur-2xl dark:bg-cyan-700/20" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div>
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.13em] text-cyan-700 dark:text-cyan-300"><Sparkles className="size-3.5" aria-hidden="true" /> Taller de secuencia</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">Elige los fragmentos, arma la idea y léela en voz baja.</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold text-cyan-700 shadow-sm dark:bg-slate-900/75 dark:text-cyan-200">{secuencia.length} en orden</span>
+        </div>
+      </div>
       {contenido.contexto && (
-        <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+        <p className="rounded-[1.2rem] border border-slate-200/80 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
           {contenido.contexto}
         </p>
       )}
@@ -205,7 +215,7 @@ export default function OrdenarFragmentos({
                 type="button"
                 onClick={() => agregar(i)}
                 disabled={bloqueado}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-left text-sm text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/40"
+                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-left text-sm text-slate-700 shadow-sm transition-[background-color,border-color,transform] hover:-translate-y-px hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/40"
               >
                 <Plus className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
                 {contenido.fragmentos[i]}
@@ -220,7 +230,7 @@ export default function OrdenarFragmentos({
           Tu secuencia {!bloqueado && "(arrastra para reordenar)"}
         </p>
         {secuencia.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-400 dark:border-slate-800 dark:text-slate-600">
+          <p className="rounded-[1.2rem] border border-dashed border-indigo-200 bg-indigo-50/45 px-4 py-6 text-center text-sm text-indigo-700/70 dark:border-indigo-900/70 dark:bg-indigo-950/20 dark:text-indigo-300/70">
             Todavía no eliges ningún fragmento.
           </p>
         ) : (
@@ -245,7 +255,7 @@ export default function OrdenarFragmentos({
       </div>
 
       {secuencia.length > 0 && (
-        <div className="flex flex-col gap-1 rounded-xl bg-indigo-50 px-4 py-3 dark:bg-indigo-950/40">
+        <div className="flex flex-col gap-1 rounded-[1.2rem] border border-indigo-100 bg-indigo-50 px-4 py-3 shadow-sm dark:border-indigo-900/70 dark:bg-indigo-950/40">
           <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
             Así se lee tu secuencia (léela y evalúa si fluye):
           </p>

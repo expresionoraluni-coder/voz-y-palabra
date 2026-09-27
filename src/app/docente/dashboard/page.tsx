@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Activity, BookOpen, ChevronRight, CircleAlert, Plus, Users } from "lucide-react";
+import { Activity, BarChart3, BookOpen, ChevronRight, CircleAlert, Plus, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import CerrarSesion from "@/components/cerrar-sesion";
 import Avatar from "@/components/ui/avatar";
@@ -52,7 +52,7 @@ export default async function DashboardDocente() {
     supabase.from("docentes").select("nombre").eq("id", user.id).maybeSingle(),
     supabase
       .from("grupos")
-      .select("id, nombre, codigo_acceso, ciclo_escolar")
+      .select("id, nombre, codigo_acceso, ciclo_escolar, modo")
       .eq("docente_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("unidades").select("id, nombre, orden, reto_comunicativo, actividades(id)").order("orden"),
@@ -92,7 +92,8 @@ export default async function DashboardDocente() {
     }
   }
 
-  const grupoIds = (grupos ?? []).map((grupo) => grupo.id);
+  const gruposCurso = (grupos ?? []).filter((grupo) => grupo.modo === "curso");
+  const grupoIds = gruposCurso.map((grupo) => grupo.id);
   const { data: aperturas, error: aperturasError } = grupoIds.length > 0
     ? await supabase
         .from("eventos")
@@ -113,7 +114,8 @@ export default async function DashboardDocente() {
 
   // El resumen reutiliza las entregas que ya se necesitan para los grupos,
   // evitando una consulta independiente por cada tarjeta.
-  const estudiantesActivos = (estudiantes ?? []) as EstudianteDashboard[];
+  const idsGruposCurso = new Set(grupoIds);
+  const estudiantesActivos = ((estudiantes ?? []) as EstudianteDashboard[]).filter((estudiante) => idsGruposCurso.has(estudiante.grupo_id));
   const entregasPorEstudiante = new Map<string, { total: number; ultima: number | null }>();
   for (const entrega of entregasResumen) {
     const actual = entregasPorEstudiante.get(entrega.estudiante_id) ?? { total: 0, ultima: null };
@@ -136,7 +138,7 @@ export default async function DashboardDocente() {
     aperturasPorGrupo.set(apertura.grupo_id, delGrupo);
   }
   const avancePorEstudiante = new Map<string, number>();
-  for (const grupo of grupos ?? []) {
+  for (const grupo of gruposCurso) {
     const resumen = calcularAvanceDeActividadesAbiertas({
       actividades: (actividades ?? []).map((actividad) => ({ id: actividad.id, contenido: actividad.contenido })),
       aperturas: (aperturasPorGrupo.get(grupo.id) ?? []).map((apertura) => ({
@@ -185,24 +187,34 @@ export default async function DashboardDocente() {
     : 0;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-6 py-10">
-      <div className="flex items-center justify-between">
+    <div className="teacher-shell mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-8 px-6 py-8 sm:py-10">
+      <header className="relative overflow-hidden rounded-[1.9rem] border border-indigo-200/70 bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-700 p-5 text-white shadow-xl shadow-indigo-700/20 sm:p-6">
+        <div aria-hidden="true" className="absolute -right-14 -top-14 size-52 rounded-full bg-white/10 blur-2xl" />
+        <div aria-hidden="true" className="absolute -bottom-20 left-1/3 size-52 rounded-full bg-cyan-300/15 blur-3xl" />
+        <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Avatar nombre={docente.nombre} />
+          <Avatar nombre={docente.nombre} size="lg" />
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-100">Espacio docente</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
               Hola, {docente.nombre.split(" ")[0]}
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Seguimiento del curso</p>
+            <p className="mt-1 text-sm text-indigo-100">Empieza por una decisión, no por una tabla.</p>
           </div>
         </div>
-        <CerrarSesion />
-      </div>
+        <CerrarSesion className="shrink-0 border border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white dark:text-white dark:hover:bg-white/20 dark:hover:text-white" />
+        </div>
+        <div className="relative mt-5 grid gap-2.5 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm"><p className="text-[11px] font-bold uppercase tracking-wide text-indigo-100">Para atender</p><p className="mt-1 text-xl font-bold">{estudiantesSinEmpezar}</p><p className="text-xs text-indigo-100">sin comenzar</p></div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm"><p className="text-[11px] font-bold uppercase tracking-wide text-indigo-100">Ritmo reciente</p><p className="mt-1 text-xl font-bold">{estudiantesActivosSemana}</p><p className="text-xs text-indigo-100">activos esta semana</p></div>
+          <Link href="/docente/analitica" className="group rounded-2xl border border-white/20 bg-white/15 px-4 py-3 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-indigo-100"><BarChart3 className="size-3.5" aria-hidden="true" />Analítica</span><p className="mt-1 text-base font-bold">Ver tendencias</p><p className="mt-0.5 text-xs text-indigo-100">Compara grupos y unidades</p></Link>
+        </div>
+      </header>
 
-      <section className="flex flex-col gap-3" aria-labelledby="resumen-curso">
+      <section className="rounded-[1.6rem] border border-white/80 bg-white/80 p-4 shadow-[0_16px_34px_-28px_rgb(15_23_42/0.42)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-5" aria-labelledby="resumen-curso">
         <div>
           <h2 id="resumen-curso" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Resumen del curso</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Una vista rápida para decidir dónde conviene mirar primero.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Solo las cohortes académicas entran en este resumen.</p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MetricCard etiqueta="Estudiantes activos" valor={totalEstudiantes} icon={Users} tono="slate" />
@@ -243,6 +255,26 @@ export default async function DashboardDocente() {
                   {(() => {
                     const metrica = metricasPorGrupo.get(g.id) ?? { estudiantes: 0, sinEmpezar: 0, activosSemana: 0, avanceTotal: 0, primerIngresoPendiente: 0 };
                     const avance = metrica.estudiantes > 0 ? Math.round(metrica.avanceTotal / metrica.estudiantes) : 0;
+                    if (g.modo === "revision") {
+                      return (
+                        <>
+                          <div className="flex items-start gap-4">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">
+                              <BookOpen className="size-4" aria-hidden="true" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-slate-900 dark:text-slate-50">{g.nombre}</p>
+                              <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Entorno de revisión. Sus recorridos no alteran el avance, alertas ni comparativas del curso.</p>
+                            </div>
+                            <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                          </div>
+                          <div className="rounded-2xl border border-violet-100 bg-violet-50/70 px-3.5 py-3 text-xs leading-relaxed text-violet-900 dark:border-violet-900/70 dark:bg-violet-950/30 dark:text-violet-100">
+                            Todas las actividades permanecen disponibles, sin calendario ni aperturas programadas.
+                          </div>
+                          <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">Abrir espacio de revisión</p>
+                        </>
+                      );
+                    }
                     return (
                       <>
                         <div className="flex items-start gap-4">

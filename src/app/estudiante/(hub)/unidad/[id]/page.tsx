@@ -39,13 +39,15 @@ export default async function UnidadEstudiante({
 
   const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
-    .select("id, grupo_id, debe_cambiar_nip")
+    .select("id, grupo_id, debe_cambiar_nip, grupos(modo)")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
   revisarErrorConsulta(estudianteError && estudianteError.code !== "PGRST116" ? estudianteError : null, "No pudimos cargar tu sesión de estudiante.");
   if (!estudiante) redirect("/ingreso/estudiante");
   if (estudiante.debe_cambiar_nip) return null;
+  const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
+  const esGrupoRevision = grupo?.modo === "revision";
 
   // `unidades`/`actividades` ya no tienen policy de lectura abierta a
   // estudiantes — se traen con el cliente admin. Las entregas del propio
@@ -107,12 +109,12 @@ export default async function UnidadEstudiante({
     return {
       ...a,
       tipoNombre: tipo?.nombre ?? null,
-      fechaApertura: aperturaPorActividad.get(a.id) ?? null,
+      fechaApertura: esGrupoRevision ? null : aperturaPorActividad.get(a.id) ?? null,
       entregas: entrega ? [{ puntaje_auto: entrega.puntaje_auto, respuesta: entrega.respuesta }] : [],
     };
   });
 
-  if (unidad.orden > 1) {
+  if (unidad.orden > 1 && !esGrupoRevision) {
       const { data: unidadAnterior, error: unidadAnteriorError } = await admin
       .from("unidades")
       .select("id, nombre, actividades(id, orden, contenido)")
@@ -215,7 +217,7 @@ export default async function UnidadEstudiante({
   revisarErrorConsulta(reflexionCierreError, "No pudimos cargar tu reflexión de cierre.");
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
-  const inicioUnidadCompleto = Boolean(confianzaInicio && bitacora);
+  const inicioUnidadCompleto = esGrupoRevision || Boolean(confianzaInicio && bitacora);
 
   const totalActividades = actividades.length;
   const completadas =
@@ -366,7 +368,7 @@ export default async function UnidadEstudiante({
                   );
                 }
 
-                if (!a.entregas?.length && (!a.fechaApertura || !actividadAbierta(a.fechaApertura))) {
+                if (!esGrupoRevision && !a.entregas?.length && (!a.fechaApertura || !actividadAbierta(a.fechaApertura))) {
                   return (
                     <div
                       key={a.id}

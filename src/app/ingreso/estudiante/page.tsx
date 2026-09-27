@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import Alert from "@/components/ui/alert";
+import MarcaVozPalabra from "@/components/ui/marca-voz-palabra";
 
 function mensajeErrorIngreso(mensaje: string): string {
   const texto = mensaje.toLowerCase();
@@ -177,8 +178,8 @@ export default function IngresoEstudiante() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-1 flex-col items-center justify-start gap-5 px-6 py-6 sm:justify-center sm:py-10">
-      <div className="w-full max-w-sm">
+    <main className="auth-shell flex min-h-dvh flex-1 flex-col items-center justify-start gap-5 px-6 py-6 sm:justify-center sm:py-10">
+      <div className="relative z-10 w-full max-w-sm">
         <Link
           href="/ingreso"
           className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-medium text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:text-slate-50"
@@ -188,20 +189,18 @@ export default function IngresoEstudiante() {
         </Link>
       </div>
 
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
-        <GraduationCap className="size-6" aria-hidden="true" />
-      </div>
+      <section className="relative z-10 max-w-sm text-center">
+        <div className="mx-auto mb-3 w-fit rounded-full border border-white/75 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
+          <MarcaVozPalabra compacta />
+        </div>
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25">
+          <GraduationCap className="size-6" aria-hidden="true" />
+        </div>
+        <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">Entrar como estudiante</h1>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">Ten a la mano tu nombre, el código de grupo y tu NIP. No necesitas correo ni contraseña.</p>
+      </section>
 
-      <div className="max-w-sm text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-          Entrar como estudiante
-        </h1>
-        <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-          Ten a la mano tu nombre, el código de grupo y tu NIP. No necesitas correo ni contraseña.
-        </p>
-      </div>
-
-      <Card className="w-full max-w-sm p-5 sm:p-6">
+      <Card className="relative z-10 w-full max-w-sm border border-white/80 bg-white/90 p-5 shadow-xl shadow-indigo-950/10 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90 sm:p-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <Field>
             <Label htmlFor="codigo">Código de grupo</Label>
@@ -279,7 +278,7 @@ export default function IngresoEstudiante() {
         </form>
       </Card>
 
-      <div className="w-full max-w-sm">
+      <div className="relative z-10 w-full max-w-sm">
         <Alert tono="info" titulo="¿Olvidaste tu NIP?">
           <span className="flex items-start gap-1.5">
             <LifeBuoy className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
@@ -288,7 +287,7 @@ export default function IngresoEstudiante() {
         </Alert>
       </div>
 
-      <p className="flex max-w-sm items-center gap-1.5 text-center text-xs text-slate-500 dark:text-slate-400">
+      <p className="relative z-10 flex max-w-sm items-center gap-1.5 text-center text-xs text-slate-500 dark:text-slate-400">
         <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         No necesitas correo ni contraseña para entrar como estudiante.
       </p>

@@ -28,6 +28,7 @@ import OrdenarFragmentos from "./ordenar-fragmentos";
 import EvaluarVideos from "./evaluar-videos";
 import CorregirOrtografia from "./corregir-ortografia";
 import ActividadOrientacion from "./actividad-orientacion";
+import GuiaAnimoActividad from "../guia-animo-actividad";
 import MomentoActividad from "./momento-actividad";
 import { esTipoActividadActual } from "@/lib/tipos-actividad-actuales";
 import { sanitizarContenidoEvaluarVideos, type ContenidoEvaluarVideos } from "@/lib/calificacion-evaluar-videos";
@@ -67,7 +68,7 @@ export default async function ActividadEstudiante({
   // el NIP inicial siga pendiente de sustituirse por uno personal.
   const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
-    .select("id, grupo_id, debe_cambiar_nip")
+    .select("id, grupo_id, debe_cambiar_nip, grupos(modo)")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -89,6 +90,8 @@ export default async function ActividadEstudiante({
     ? actividad.tipos_actividad[0]
     : actividad.tipos_actividad;
   const nombreTipo = tipo?.nombre;
+  const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
+  const esGrupoRevision = grupo?.modo === "revision";
   const unidadParaAcceso = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
   const acceso = await validarAccesoActividad(admin, estudiante.id, {
     id: actividad.id,
@@ -97,6 +100,7 @@ export default async function ActividadEstudiante({
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: Number(unidadParaAcceso?.orden ?? 1),
     grupoId: estudiante.grupo_id,
+    grupoEsRevision: esGrupoRevision,
     tipoNombre: nombreTipo ?? null,
   });
   if (!acceso.ok) redirect(`/estudiante/unidad/${actividad.unidad_id}?bloqueada=${acceso.motivo}`);
@@ -204,6 +208,7 @@ export default async function ActividadEstudiante({
       .filter((actividadId): actividadId is string => typeof actividadId === "string"),
   );
   const esActividadAccesible = (candidata: NonNullable<typeof hermanas>[number]) => {
+    if (esGrupoRevision) return true;
     const tieneEntrega = Boolean(candidata.entregas?.length);
     if (!tieneEntrega && !actividadAbierta(aperturaPorActividad.get(candidata.id))) return false;
     if (!candidata.requiere_actividad_id) return true;
@@ -481,6 +486,12 @@ export default async function ActividadEstudiante({
         completada={Boolean(entregaExistente)}
         aprendizajeEsperado={actividad.aprendizaje_esperado}
         ayuda={ayudaActividad}
+      />
+
+      <GuiaAnimoActividad
+        tieneEntrega={Boolean(entregaExistente)}
+        puntajeAuto={entregaExistente?.puntaje_auto ?? null}
+        pendienteRevision={entregaExistente?.estado === "pendiente_revision"}
       />
 
       <EntregaRecienteProvider

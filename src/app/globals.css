@@ -151,6 +151,20 @@ html {
   animation: halo-ayuda 2.4s ease-in-out infinite;
 }
 
+@keyframes colibri-flota {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(2deg);
+  }
+}
+
+.animate-colibri-flota {
+  animation: colibri-flota 3.6s ease-in-out infinite;
+}
+
 .esqueleto-redondeado {
   position: relative;
   overflow: hidden;
@@ -175,6 +189,33 @@ html {
     radial-gradient(circle at 8% 4%, rgb(196 181 253 / 0.34), transparent 23rem),
     radial-gradient(circle at 96% 18%, rgb(165 243 252 / 0.22), transparent 25rem),
     linear-gradient(180deg, #f8fafc 0%, #f8fafc 28rem, #f1f5f9 100%);
+}
+
+.teacher-shell,
+.admin-shell,
+.auth-shell {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 10% 2%, rgb(199 210 254 / 0.48), transparent 22rem),
+    radial-gradient(circle at 94% 12%, rgb(221 214 254 / 0.42), transparent 24rem),
+    linear-gradient(180deg, #f8fafc 0%, #f8fafc 24rem, #f1f5f9 100%);
+}
+
+.teacher-shell::before,
+.admin-shell::before,
+.auth-shell::before {
+  position: absolute;
+  z-index: -1;
+  top: 22rem;
+  right: -12rem;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 9999px;
+  background: rgb(196 181 253 / 0.17);
+  content: "";
+  filter: blur(2px);
 }
 
 .student-shell::before,
@@ -216,6 +257,15 @@ html {
 
   .esqueleto-redondeado::after {
     background: linear-gradient(90deg, transparent, rgb(148 163 184 / 0.22), transparent);
+  }
+
+  .teacher-shell,
+  .admin-shell,
+  .auth-shell {
+    background:
+      radial-gradient(circle at 10% 2%, rgb(67 56 202 / 0.3), transparent 22rem),
+      radial-gradient(circle at 94% 12%, rgb(91 33 182 / 0.24), transparent 24rem),
+      linear-gradient(180deg, #020617 0%, #020617 24rem, #0f172a 100%);
   }
 }
 

@@ -47,6 +47,7 @@ export default async function EditarActividad({
       .from("grupos")
       .select("id, nombre")
       .eq("docente_id", user.id)
+      .eq("modo", "curso")
       .order("nombre"),
     supabase
       .from("eventos")

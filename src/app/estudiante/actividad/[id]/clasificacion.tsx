@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Sparkles, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { Select } from "@/components/ui/field";
 import PieEntregaAuto from "@/components/estudiante/pie-entrega-auto";
@@ -112,13 +112,25 @@ export default function Clasificacion({
     setElegidas(contenido.reintento_alternativo.elementos.map(() => ""));
   }
 
+  const elementosClasificados = elegidas.filter(Boolean).length;
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="relative overflow-hidden rounded-[1.35rem] border border-violet-200/80 bg-gradient-to-r from-violet-50 via-white to-indigo-50 px-4 py-3.5 dark:border-violet-900/70 dark:from-violet-950/35 dark:via-slate-900 dark:to-indigo-950/25">
+        <div aria-hidden="true" className="absolute -right-6 -top-8 size-24 rounded-full bg-violet-200/55 blur-2xl dark:bg-violet-700/20" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div>
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.13em] text-violet-700 dark:text-violet-300"><Sparkles className="size-3.5" aria-hidden="true" /> Estación de ideas</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">Relaciona cada idea con la categoría que mejor la explica.</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold text-violet-700 shadow-sm dark:bg-slate-900/75 dark:text-violet-200">{elementosClasificados}/{contenidoActivo.elementos.length}</span>
+        </div>
+      </div>
       {contenido.contexto && (
         <div
           onCopy={bloquearCopiar}
           onContextMenu={(e) => e.preventDefault()}
-          className="select-none rounded-xl bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
+          className="select-none rounded-[1.2rem] border border-slate-200/80 bg-slate-50 px-4 py-3.5 text-sm leading-relaxed text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300"
         >
           {contenido.contexto}
         </div>
@@ -128,9 +140,9 @@ export default function Clasificacion({
         return (
           <div
             key={i}
-            className="flex flex-col gap-2.5 rounded-xl border border-slate-200 px-4 py-3.5 dark:border-slate-800"
+            className="flex flex-col gap-2.5 rounded-[1.2rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[0_8px_20px_-20px_rgb(15_23_42/0.5)] transition-[border-color,transform,box-shadow] focus-within:border-indigo-300 focus-within:shadow-[0_12px_24px_-20px_rgb(79_70_229/0.5)] dark:border-slate-800 dark:bg-slate-900 dark:focus-within:border-indigo-800"
           >
-            <p className="text-sm text-slate-900 dark:text-slate-50">{el.texto}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{el.texto}</p>
             <Select value={elegidas[i]} disabled={bloqueado} onChange={(e) => actualizar(i, e.target.value)}>
               <option value="">Elige una categoría</option>
               {categoriasOrden.map((c) => (

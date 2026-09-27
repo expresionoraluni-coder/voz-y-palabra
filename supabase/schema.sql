@@ -37,6 +37,7 @@ create table grupos (
   codigo_acceso text not null unique,
   docente_id uuid not null references docentes(id) on delete cascade,
   ciclo_escolar text,
+  modo text not null default 'curso' check (modo in ('curso', 'revision')),
   activo boolean not null default true,
   created_at timestamptz not null default now()
 );

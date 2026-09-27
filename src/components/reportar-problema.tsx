@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import { CheckCircle2, LifeBuoy, RefreshCw, Send, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  CATEGORIAS_REPORTE_DOCENTE,
-  CATEGORIAS_REPORTE_ESTUDIANTE,
   ETIQUETAS_CATEGORIA,
   ESTADOS_REPORTE,
   type CategoriaReporte,
@@ -119,6 +117,26 @@ const IMPACTOS_DOCENTE = [
   ["duda_o_mejora", "Es una duda o algo que debería mejorar"],
 ] as const;
 
+const RUTAS_RAPIDAS_ESTUDIANTE: CategoriaReporte[] = [
+  "estudiante_actividad",
+  "estudiante_avance",
+  "estudiante_acceso",
+  "estudiante_tecnico",
+  "estudiante_instruccion",
+  "estudiante_video",
+  "estudiante_contenido",
+];
+
+const RUTAS_RAPIDAS_DOCENTE: CategoriaReporte[] = [
+  "docente_grupo",
+  "docente_estudiantes",
+  "docente_actividad",
+  "docente_seguimiento",
+  "docente_acceso",
+  "docente_video",
+  "docente_tecnico",
+];
+
 
 function capturarId(pathname: string, segmentos: string) {
   return pathname.match(new RegExp(`/(?:${segmentos})/(${UUID_FRAGMENT})(?:/|$)`, "i"))?.[1] ?? null;
@@ -169,7 +187,6 @@ export default function ReportarProblema({
   navegacionInferior?: boolean;
 }) {
   const pathname = usePathname();
-  const categorias = tipo === "estudiante" ? CATEGORIAS_REPORTE_ESTUDIANTE : CATEGORIAS_REPORTE_DOCENTE;
   const ayudas = tipo === "estudiante" ? AYUDAS_ESTUDIANTE : AYUDAS_DOCENTE;
   const audiencia = tipo === "estudiante" ? "estudiante" : "docente";
   const actorBorradorId = estudianteId ?? docenteId ?? "sesion-activa";
@@ -180,6 +197,7 @@ export default function ReportarProblema({
   });
   const [abierto, setAbierto] = useState(false);
   const [vista, setVista] = useState<"formulario" | "reportes">("formulario");
+  const [pasoSolicitud, setPasoSolicitud] = useState<"elegir" | "detalle">("elegir");
   const [categoria, setCategoria] = useState<CategoriaReporte>(() => borrador?.categoria ?? (tipo === "estudiante" ? "estudiante_actividad" : "docente_grupo"));
   const [descripcion, setDescripcion] = useState(() => borrador?.descripcion ?? "");
   const [impacto, setImpacto] = useState(() => borrador?.impacto ?? "");
@@ -217,6 +235,7 @@ export default function ReportarProblema({
     if (cargando || cargandoReportes) return;
     setAbierto(false);
     setVista("formulario");
+    setPasoSolicitud("elegir");
     setEnviado(false);
     setReporteEnviadoId(null);
     setMisReportes(null);
@@ -313,6 +332,11 @@ export default function ReportarProblema({
     setRespuestasFaq({});
     setFaqResuelto(false);
     setError(null);
+  }
+
+  function elegirRuta(valor: CategoriaReporte) {
+    cambiarCategoria(valor);
+    setPasoSolicitud("detalle");
   }
 
   function registrarEventoFaq(evento: "abierto" | "util" | "no_util" | "reporte_creado", reporteId?: string | null) {
@@ -548,7 +572,7 @@ export default function ReportarProblema({
           </div>
 
           <div className="mt-4 flex gap-2 rounded-2xl bg-slate-100/80 p-1.5 text-xs dark:bg-slate-800/80">
-            <button type="button" onClick={() => { setVista("formulario"); setEnviado(false); setError(null); }} className={`flex-1 rounded-xl px-2.5 py-2 font-bold transition ${vista === "formulario" ? "bg-white text-indigo-700 shadow-sm dark:bg-slate-900 dark:text-indigo-300" : "text-slate-500 hover:bg-white/70 dark:text-slate-400 dark:hover:bg-slate-900/70"}`}>Enviar solicitud</button>
+            <button type="button" onClick={() => { setVista("formulario"); setPasoSolicitud("elegir"); setEnviado(false); setError(null); }} className={`flex-1 rounded-xl px-2.5 py-2 font-bold transition ${vista === "formulario" ? "bg-white text-indigo-700 shadow-sm dark:bg-slate-900 dark:text-indigo-300" : "text-slate-500 hover:bg-white/70 dark:text-slate-400 dark:hover:bg-slate-900/70"}`}>Enviar solicitud</button>
             <button type="button" onClick={() => void abrirMisReportes()} disabled={cargandoReportes} className={`flex-1 rounded-xl px-2.5 py-2 font-bold transition ${vista === "reportes" ? "bg-white text-indigo-700 shadow-sm dark:bg-slate-900 dark:text-indigo-300" : "text-slate-500 hover:bg-white/70 dark:text-slate-400 dark:hover:bg-slate-900/70"}`}>
               {cargandoReportes ? "Cargando…" : "Mis solicitudes"}
             </button>
@@ -633,14 +657,32 @@ export default function ReportarProblema({
               <p>Si el problema vuelve a aparecer, abre Ayuda y envía una solicitud con la pantalla donde ocurrió.</p>
               <Boton type="button" size="sm" variant="secondary" onClick={() => setFaqResuelto(false)}>Necesito enviar otra solicitud</Boton>
             </div>
+          ) : pasoSolicitud === "elegir" ? (
+            <section className="mt-4 flex flex-col gap-3" aria-labelledby="ruta-ayuda-titulo">
+              <div>
+                <h3 id="ruta-ayuda-titulo" className="text-sm font-bold text-slate-900 dark:text-slate-50">¿Qué necesitas resolver?</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Elige una ruta. Primero te mostraremos una ayuda breve y solo después te pediremos detalles si la necesitas.</p>
+              </div>
+              <div className="grid gap-2">
+                {(tipo === "estudiante" ? RUTAS_RAPIDAS_ESTUDIANTE : RUTAS_RAPIDAS_DOCENTE).map((valor) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    onClick={() => elegirRuta(valor)}
+                    className="group flex min-h-12 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:-translate-y-px hover:border-indigo-300 hover:bg-indigo-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/35"
+                  >
+                    <span>{etiquetaCategoria(valor)}</span>
+                    <span aria-hidden="true" className="text-lg font-normal text-indigo-500 transition-transform group-hover:translate-x-0.5">→</span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ) : (
             <form onSubmit={enviar} className="mt-4 flex flex-col gap-3">
-              <Field>
-                <Label htmlFor="reporte-categoria">¿Con qué necesitas ayuda?</Label>
-                <select id="reporte-categoria" value={categoria} onChange={(e) => cambiarCategoria(e.target.value as CategoriaReporte)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50">
-                  {categorias.map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
-                </select>
-              </Field>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-2.5 dark:border-indigo-900/70 dark:bg-indigo-950/30">
+                <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-100">{etiquetaCategoria(categoria)}</p>
+                <button type="button" onClick={() => { setPasoSolicitud("elegir"); setError(null); }} className="shrink-0 text-xs font-bold text-indigo-700 underline underline-offset-2 hover:text-indigo-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-100">Cambiar</button>
+              </div>
               {articuloFaq ? (
                 <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-xs leading-relaxed text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
                   <p className="font-semibold text-slate-900 dark:text-slate-50">{articuloFaq.titulo}</p>

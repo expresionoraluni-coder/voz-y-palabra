@@ -40,7 +40,7 @@ import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-
 import { esDependenciaDosNiveles } from "@/lib/dependencias-actividades";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 
-type Grupo = { nombre: string } | { nombre: string }[] | null;
+type Grupo = { nombre: string; modo?: string } | { nombre: string; modo?: string }[] | null;
 
 const MENSAJES_RACHA = [
   "Se nota la constancia.",
@@ -67,7 +67,7 @@ export default async function InicioEstudiante({
     grupo_id: string;
     bienvenida_estudiante_completada_at: string | null;
     grupos: Grupo;
-  }>(supabase, "id, nombre, grupo_id, bienvenida_estudiante_completada_at, grupos(nombre)", { permitirCambioNip: true });
+  }>(supabase, "id, nombre, grupo_id, bienvenida_estudiante_completada_at, grupos(nombre, modo)", { permitirCambioNip: true });
 
   // Los layouts y las páginas pueden resolverse en paralelo. Este guard en
   // la propia página evita consultar datos del curso mientras el código de
@@ -78,6 +78,7 @@ export default async function InicioEstudiante({
   }
 
   const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
+  const esGrupoRevision = grupo?.modo === "revision";
 
   // Los avisos y eventos del grupo solo dependen de estudiante.grupo_id, ya
   // conocido en cuanto resuelve requireEstudiante, así que van en este
@@ -271,7 +272,7 @@ export default async function InicioEstudiante({
   };
   const primeraActividadAccesible = actividadesActiva.find((actividad) => {
     if (idsCompletadas.has(actividad.id)) return false;
-    if (!actividadAbierta(aperturasPorActividad.get(actividad.id))) return false;
+    if (!esGrupoRevision && !actividadAbierta(aperturasPorActividad.get(actividad.id))) return false;
     const requisito = requisitoDosNiveles(actividad);
     return (
       !requisito ||

@@ -36,16 +36,16 @@ export default function FormularioMfa({ factorId }: { factorId: string }) {
   }
 
   return (
-    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+    <main className="auth-shell flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
+      <div className="relative z-10 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-700 to-violet-700 text-white shadow-lg shadow-indigo-500/25">
         <ShieldCheck className="size-6" aria-hidden="true" />
       </div>
-      <div className="text-center">
-        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Acceso administrativo protegido</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Confirma tu identidad</h1>
+      <div className="relative z-10 text-center">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-700 dark:text-indigo-300">Acceso administrativo protegido</p>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">Confirma tu identidad</h1>
         <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500 dark:text-slate-400">Abre tu aplicación autenticadora y escribe el código de 6 dígitos para continuar.</p>
       </div>
-      <Card className="w-full max-w-sm p-6">
+      <Card className="relative z-10 w-full max-w-sm border border-white/80 bg-white/90 p-6 shadow-xl shadow-indigo-950/10 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90">
         <form onSubmit={verificar} className="flex flex-col gap-4">
           <div className="flex items-start gap-3 rounded-xl bg-indigo-50/70 p-3.5 text-sm text-slate-700 dark:bg-indigo-950/30 dark:text-slate-300">
             <KeyRound className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />

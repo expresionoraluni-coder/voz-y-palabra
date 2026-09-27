@@ -49,6 +49,7 @@ type ActividadParaAcceso = {
   requiereActividadId: string | null;
   unidadOrden: number;
   grupoId?: string;
+  grupoEsRevision?: boolean;
   tipoNombre: string | null;
 };
 
@@ -72,6 +73,11 @@ export async function validarAccesoActividad(
   actividad: ActividadParaAcceso,
   opciones: { requiereInicio?: boolean; verificarApertura?: boolean } = {},
 ): Promise<{ ok: true } | { ok: false; error: string; motivo: MotivoBloqueoActividad }> {
+  // El grupo de revisión existe para comprobar todos los recorridos del
+  // estudiante. Su modo se determina del lado del servidor para la sesión
+  // actual y nunca concede acceso a otra cohorte.
+  if (actividad.grupoEsRevision) return { ok: true };
+
   // Todas las lecturas de avance se filtran por el estudiante previamente
   // resuelto desde auth.uid(). Se usa el cliente de servidor para no depender
   // de permisos directos de una sesión anónima sobre tablas de aprendizaje.
@@ -391,7 +397,7 @@ export async function obtenerContextoCalificacion(
   const admin = createAdminClient();
   const { data: estudiante } = await admin
     .from("estudiantes")
-    .select("id, grupo_id, debe_cambiar_nip")
+    .select("id, grupo_id, debe_cambiar_nip, grupos(modo)")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -411,6 +417,7 @@ export async function obtenerContextoCalificacion(
   }
 
   const unidad = Array.isArray(actividad.unidades) ? actividad.unidades[0] : actividad.unidades;
+  const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
   const acceso = await validarAccesoActividad(admin, estudiante.id, {
     id: actividad.id,
     unidadId: actividad.unidad_id,
@@ -418,6 +425,7 @@ export async function obtenerContextoCalificacion(
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: Number(unidad?.orden ?? 1),
     grupoId: estudiante.grupo_id,
+    grupoEsRevision: grupo?.modo === "revision",
     tipoNombre: tipo?.nombre ?? null,
   });
   if (!acceso.ok) return acceso;

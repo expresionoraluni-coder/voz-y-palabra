@@ -137,7 +137,7 @@ export default async function DetalleGrupo({
     supabase.auth.getUser(),
     supabase
       .from("grupos")
-      .select("id, nombre, codigo_acceso, ciclo_escolar")
+      .select("id, nombre, codigo_acceso, ciclo_escolar, modo")
       .eq("id", id)
       .single(),
     supabase
@@ -165,6 +165,8 @@ export default async function DetalleGrupo({
   revisarErrorConsulta(eventosError, "No pudimos cargar los eventos del grupo.");
 
   if (!grupo) notFound();
+
+  const esGrupoRevision = grupo.modo === "revision";
 
   const estudiantes = (estudiantesTodos ?? []).filter((e) => e.activo);
   const estudiantesBaja = (estudiantesTodos ?? []).filter((e) => !e.activo);
@@ -425,7 +427,9 @@ export default async function DetalleGrupo({
       <PageHeader
         volverHref="/docente/dashboard"
         titulo={grupo.nombre}
-        descripcion={`${estudiantes?.length ?? 0} estudiantes activos`}
+        descripcion={esGrupoRevision
+          ? "Espacio de revisión · disponible sin calendario y fuera de las estadísticas académicas"
+          : `${estudiantes?.length ?? 0} estudiantes activos`}
         accion={<EditarGrupo grupoId={grupo.id} nombreActual={grupo.nombre} codigoActual={grupo.codigo_acceso} />}
       />
 
@@ -631,21 +635,30 @@ export default async function DetalleGrupo({
 
       <details id="operacion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
         <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Fechas y avisos
-          <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{eventos?.length ?? 0} fechas · {avisos?.length ?? 0} avisos</span>
+          {esGrupoRevision ? "Avisos del espacio de revisión" : "Fechas y avisos"}
+          <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
+            {esGrupoRevision ? `${avisos?.length ?? 0} avisos` : `${eventos?.length ?? 0} fechas · ${avisos?.length ?? 0} avisos`}
+          </span>
         </summary>
         <div className="flex flex-col gap-6 border-t border-slate-200 p-4 dark:border-slate-800">
           <div id="avisos" className="scroll-mt-20 flex flex-col gap-8">
-            <Eventos
-              grupoId={grupo.id}
-              unidades={unidades ?? []}
-              eventos={eventos ?? []}
-              actividades={(actividades ?? []).map((actividad) => ({
-                id: actividad.id,
-                unidad_id: actividad.unidad_id,
-                titulo: actividad.titulo,
-              }))}
-            />
+            {!esGrupoRevision && (
+              <Eventos
+                grupoId={grupo.id}
+                unidades={unidades ?? []}
+                eventos={eventos ?? []}
+                actividades={(actividades ?? []).map((actividad) => ({
+                  id: actividad.id,
+                  unidad_id: actividad.unidad_id,
+                  titulo: actividad.titulo,
+                }))}
+              />
+            )}
+            {esGrupoRevision && (
+              <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-sm text-violet-950 dark:border-violet-900/70 dark:bg-violet-950/25 dark:text-violet-100">
+                Este grupo siempre tiene todas las actividades disponibles. No necesita calendario de apertura y no se mezcla con las métricas académicas de tus grupos de curso.
+              </div>
+            )}
             <Avisos grupoId={grupo.id} avisos={avisos ?? []} />
           </div>
         </div>
