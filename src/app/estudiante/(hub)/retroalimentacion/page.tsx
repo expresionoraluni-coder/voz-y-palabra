@@ -49,6 +49,16 @@ export default async function RetroalimentacionEstudiante() {
         descripcion="Aquí encontrarás sugerencias de tu docente para retomar una actividad y continuar practicando."
       />
 
+      {comentarios && comentarios.length > 0 && (
+        <Card className="relative overflow-hidden border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 dark:border-amber-900/70 dark:from-amber-950/35 dark:via-slate-900 dark:to-orange-950/20">
+          <div aria-hidden="true" className="absolute -right-8 -top-8 size-28 rounded-full bg-amber-200/45 blur-2xl dark:bg-amber-800/20" />
+          <div className="relative flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"><MessageCircle className="size-5" aria-hidden="true" /></div>
+            <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">Estas orientaciones no son un regaño: son pistas concretas para que puedas retomar tu práctica con más claridad.</p>
+          </div>
+        </Card>
+      )}
+
       {!comentarios || comentarios.length === 0 ? (
         <EmptyState
           icon={MessageCircle}
@@ -72,7 +82,7 @@ export default async function RetroalimentacionEstudiante() {
             const unidad = actividad?.unidades;
             const unidadDato = Array.isArray(unidad) ? unidad[0] : unidad;
             return (
-              <Card key={comentario.id} className="flex flex-col gap-4 p-5">
+              <Card key={comentario.id} className="relative flex flex-col gap-4 overflow-hidden p-5">
                 <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
                     <PenLine className="size-4" aria-hidden="true" />

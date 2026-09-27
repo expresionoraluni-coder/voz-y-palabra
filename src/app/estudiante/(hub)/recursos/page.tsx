@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCheck, HelpCircle, Lightbulb, Mic2, PenLine, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCheck, HelpCircle, Mic2, PenLine, ShieldCheck, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireEstudiante } from "@/lib/requerir-estudiante";
 import PageHeader from "@/components/ui/page-header";
@@ -89,10 +89,11 @@ export default async function RecursosEstudiante() {
       </Card>
 
       <div className="flex flex-col gap-3">
-        {RECURSOS.map(({ titulo, descripcion, icon: Icon, color, puntos }) => (
-          <Card key={titulo} className="flex flex-col gap-4 p-5">
+        {RECURSOS.map(({ titulo, descripcion, icon: Icon, color, puntos }, indice) => (
+          <Card key={titulo} className="relative flex flex-col gap-4 overflow-hidden p-5">
+            <span aria-hidden="true" className="absolute right-4 top-4 text-xs font-bold tracking-[0.12em] text-slate-300 dark:text-slate-700">0{indice + 1}</span>
             <div className="flex items-start gap-3">
-              <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${color}`}>
+              <div className={`flex size-11 shrink-0 items-center justify-center rounded-2xl ${color}`}>
                 <Icon className="size-5" aria-hidden="true" />
               </div>
               <div>
@@ -100,10 +101,10 @@ export default async function RecursosEstudiante() {
                 <p className="mt-0.5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{descripcion}</p>
               </div>
             </div>
-            <ul className="flex flex-col gap-2 text-sm text-slate-700 dark:text-slate-300">
-              {puntos.map((punto) => (
-                <li key={punto} className="flex items-start gap-2">
-                  <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+            <ul className="flex flex-col gap-2.5 text-sm text-slate-700 dark:text-slate-300">
+              {puntos.map((punto, paso) => (
+                <li key={punto} className="flex items-start gap-2.5 rounded-xl bg-slate-50/80 px-3 py-2 dark:bg-slate-800/50">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">{paso + 1}</span>
                   <span>{punto}</span>
                 </li>
               ))}

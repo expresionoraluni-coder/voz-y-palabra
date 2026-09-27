@@ -53,6 +53,10 @@ export default async function Portafolio() {
   const hayContenido = secciones.some(
     (s) => s.confInicio || s.reflexionUnidad || s.reflexionesActividad.length > 0,
   );
+  const reflexionesGuardadas = (reflexiones ?? []).filter((reflexion) => Boolean(reflexion.texto?.trim())).length;
+  const unidadesConEvidencia = secciones.filter(
+    (seccion) => seccion.confInicio || seccion.reflexionUnidad || seccion.reflexionesActividad.length > 0,
+  ).length;
 
   return (
     <main className="print-surface mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10 print:px-0">
@@ -64,6 +68,23 @@ export default async function Portafolio() {
         />
         <BotonImprimir />
       </div>
+
+      {hayContenido && (
+        <Card className="relative overflow-hidden border-violet-200 bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-600 p-5 text-white shadow-xl shadow-indigo-600/20 print:hidden">
+          <div aria-hidden="true" className="absolute -right-10 -top-10 size-36 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative flex items-start gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/15"><FolderHeart className="size-5" aria-hidden="true" /></div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-100">Tu recorrido, en tus palabras</p>
+              <p className="mt-1 text-lg font-bold">Este portafolio reúne cómo has pensado y avanzado.</p>
+            </div>
+          </div>
+          <div className="relative mt-4 grid grid-cols-2 gap-2.5">
+            <div className="rounded-2xl bg-white/10 px-3 py-2.5"><p className="text-[11px] font-semibold text-indigo-100">Reflexiones</p><p className="mt-0.5 text-xl font-bold">{reflexionesGuardadas}</p></div>
+            <div className="rounded-2xl bg-white/10 px-3 py-2.5"><p className="text-[11px] font-semibold text-indigo-100">Unidades</p><p className="mt-0.5 text-xl font-bold">{unidadesConEvidencia}</p></div>
+          </div>
+        </Card>
+      )}
 
       {!hayContenido && (
         <EmptyState
@@ -85,9 +106,9 @@ export default async function Portafolio() {
         if (!confInicio && !reflexionUnidad && reflexionesActividad.length === 0) return null;
 
         return (
-          <section key={u.id} className="flex flex-col gap-3 break-inside-avoid">
+          <section key={u.id} className="relative flex flex-col gap-3 break-inside-avoid rounded-[1.5rem] border border-white/70 bg-white/45 p-4 shadow-sm backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/40">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50">
                 Unidad {u.orden}. {u.nombre}
               </h2>
               {confInicio && (

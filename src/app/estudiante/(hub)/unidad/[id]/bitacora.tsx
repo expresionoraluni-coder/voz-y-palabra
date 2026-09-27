@@ -89,16 +89,17 @@ export default function Bitacora({
 
   if (editando) {
     return (
-      <Card className="flex flex-col gap-3 p-5">
-        <div className="flex items-center gap-2">
-          <NotebookPen className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+      <Card className="relative flex flex-col gap-3 overflow-hidden border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/50 p-5 dark:border-indigo-900/70 dark:from-slate-900 dark:via-indigo-950/25 dark:to-violet-950/20">
+        <div aria-hidden="true" className="absolute -right-8 -top-8 size-28 rounded-full bg-indigo-200/35 blur-2xl dark:bg-indigo-800/20" />
+        <div className="relative flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"><NotebookPen className="size-4" aria-hidden="true" /></span>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Paso 1 de 2</p>
             <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Define qué quieres aprender</p>
           </div>
         </div>
-        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">Completa las tres partes para crear una meta concreta para esta unidad.</p>
-        <form onSubmit={guardarMeta} className="flex flex-col gap-3">
+        <p className="relative text-sm leading-relaxed text-slate-600 dark:text-slate-400">Completa las tres partes para crear una meta concreta para esta unidad.</p>
+        <form onSubmit={guardarMeta} className="relative flex flex-col gap-3">
           <Field>
             <Label htmlFor="verbo">Verbo</Label>
             <Input
@@ -156,12 +157,12 @@ export default function Bitacora({
   }
 
   return (
-    <Card className="flex flex-col gap-3 p-5">
-      <div className="flex items-center gap-2">
-        <NotebookPen className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+    <Card className="relative flex flex-col gap-3 overflow-hidden border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/50 p-5 dark:border-indigo-900/70 dark:from-slate-900 dark:via-indigo-950/25 dark:to-violet-950/20">
+      <div className="relative flex items-center gap-2.5">
+        <span className="flex size-9 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"><NotebookPen className="size-4" aria-hidden="true" /></span>
         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Lo que esperas aprender</p>
       </div>
-      <p className="text-sm italic text-slate-700 dark:text-slate-300">&quot;{metaGuardada}&quot;</p>
+      <p className="relative rounded-2xl bg-white/65 px-3 py-2.5 text-sm italic text-slate-700 dark:bg-slate-900/55 dark:text-slate-300">&quot;{metaGuardada}&quot;</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">Progreso de la unidad: {avancePct}%</p>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton

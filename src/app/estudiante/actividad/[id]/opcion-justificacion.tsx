@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, CheckCircle2, ChevronLeft, XCircle } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, MessageCircleMore, Phone, XCircle } from "lucide-react";
 import { useEntregaActividad } from "@/hooks/useEntregaActividad";
 import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import { Field, Label, Textarea, ErrorText } from "@/components/ui/field";
@@ -55,14 +55,29 @@ function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
   });
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl bg-slate-100 p-3.5 dark:bg-slate-800/60">
+    <section
+      aria-label="Conversación de la actividad"
+      className="relative overflow-hidden rounded-[1.65rem] border border-slate-200/90 bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 p-3.5 shadow-inner dark:border-slate-700/90 dark:from-slate-900 dark:via-slate-800/80 dark:to-slate-900"
+    >
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-20 bg-gradient-to-br from-indigo-500/10 via-violet-400/5 to-transparent" />
+      <div className="relative mb-3 flex items-center gap-2.5 rounded-2xl border border-white/70 bg-white/65 px-3 py-2 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/70">
+        <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-sm">
+          <Phone className="size-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-slate-900 dark:text-slate-50">Conversación en curso</p>
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Observa cómo cambia el mensaje</p>
+        </div>
+        <MessageCircleMore className="size-4 text-indigo-400" aria-hidden="true" />
+      </div>
+      <div className="relative flex flex-col gap-2">
       {mensajes.map((m, i) => {
         const derecha = remitentes.indexOf(m.de) === 1;
         const inicial = m.de.trim().charAt(0).toUpperCase();
         return (
-          <div key={i} className="flex flex-col gap-1.5">
+          <div key={`${m.de}-${i}`} className="animate-mensaje-chat flex flex-col gap-1.5" style={{ animationDelay: `${i * 70}ms` }}>
             {m.nota && (
-              <p className="self-center rounded-full bg-slate-200 px-2.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+              <p className="self-center rounded-full border border-white/80 bg-white/70 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                 {m.nota}
               </p>
             )}
@@ -70,8 +85,8 @@ function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
               <span
                 className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
                   derecha
-                    ? "bg-emerald-600 text-white dark:bg-emerald-500"
-                    : "bg-slate-400 text-white dark:bg-slate-600"
+                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
+                    : "bg-gradient-to-br from-slate-500 to-slate-600 text-white"
                 }`}
                 aria-hidden="true"
               >
@@ -80,8 +95,8 @@ function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
               <div
                 className={`flex max-w-[75%] flex-col gap-0.5 rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
                   derecha
-                    ? "bg-emerald-500 text-white dark:bg-emerald-600"
-                    : "bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-50"
+                    ? "rounded-br-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-600/15 dark:from-emerald-500 dark:to-teal-600"
+                    : "rounded-bl-md bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-50"
                 }`}
               >
                 <span className="text-[11px] font-semibold opacity-70">{m.de}</span>
@@ -91,7 +106,8 @@ function HiloChat({ mensajes }: { mensajes: MensajeChat[] }) {
           </div>
         );
       })}
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -114,7 +130,7 @@ function PreguntaRonda({
   return (
     <div className="flex flex-col gap-4">
       {ronda.contexto && (
-        <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+        <p className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-relaxed text-slate-700 dark:border-slate-700/80 dark:bg-slate-800/60 dark:text-slate-300">
           {ronda.contexto}
         </p>
       )}
@@ -136,7 +152,7 @@ function PreguntaRonda({
             return (
               <label
                 key={op}
-                className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${estilo} ${
+                className={`flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-[border-color,background-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 ${estilo} ${
                   bloqueado ? "cursor-default" : "cursor-pointer"
                 }`}
               >
