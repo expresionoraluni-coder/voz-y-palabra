@@ -38,9 +38,14 @@ export default function PieEntregaAuto({
         </p>
       )}
       {!bloqueado && (
-        <Boton type="submit" cargando={cargando} className={className}>
-          {cargando ? "Guardando…" : textoBoton}
-        </Boton>
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Al guardar, la plataforma revisará tu respuesta y te mostrará el resultado. Después podrás registrar tu reflexión.
+          </p>
+          <Boton type="submit" cargando={cargando} className={className}>
+            {cargando ? "Guardando…" : textoBoton}
+          </Boton>
+        </div>
       )}
       {bloqueado && (
         <AvisoReintento

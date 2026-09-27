@@ -75,6 +75,23 @@ body {
   animation: insignia-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+@keyframes onda-respira {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scaleY(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.animate-onda {
+  animation: onda-respira 1.8s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

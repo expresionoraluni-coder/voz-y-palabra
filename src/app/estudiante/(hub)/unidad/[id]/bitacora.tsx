@@ -92,10 +92,12 @@ export default function Bitacora({
       <Card className="flex flex-col gap-3 p-5">
         <div className="flex items-center gap-2">
           <NotebookPen className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-            ¿Qué aprendizaje esperas alcanzar en esta unidad?
-          </p>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Paso 1 de 2</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Define qué quieres aprender</p>
+          </div>
         </div>
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">Completa las tres partes para crear una meta concreta para esta unidad.</p>
         <form onSubmit={guardarMeta} className="flex flex-col gap-3">
           <Field>
             <Label htmlFor="verbo">Verbo</Label>

@@ -246,10 +246,14 @@ export default async function UnidadEstudiante({
       {!inicioUnidadCompleto ? (
         <>
           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3.5 dark:border-indigo-900 dark:bg-indigo-950/30">
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tu ruta para aprender</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Antes de abrir las actividades</p>
             <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Primero define qué quieres lograr y reconoce con qué conocimientos comienzas. Después podrás avanzar por las actividades a tu propio ritmo.
+              Completa estos dos pasos para preparar tu ruta. Al guardarlos, se abrirán las actividades de la unidad.
             </p>
+            <ol className="mt-3 grid gap-2 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2">
+              <li className="flex items-center gap-2 rounded-xl bg-white/65 px-3 py-2 dark:bg-slate-900/50"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">1</span>Define tu meta.</li>
+              <li className="flex items-center gap-2 rounded-xl bg-white/65 px-3 py-2 dark:bg-slate-900/50"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">2</span>Reconoce tu punto de partida.</li>
+            </ol>
           </div>
           {unidad.unidad_competencia && <UnidadCompetenciaTag texto={unidad.unidad_competencia} />}
           {detalleBloqueo && (
@@ -293,6 +297,18 @@ export default async function UnidadEstudiante({
             </Alert>
           )}
 
+          {primeraReflexionPendiente && !unidadCompleta && (
+            <Card className="flex flex-col gap-3 border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/70 dark:bg-amber-950/25">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tu siguiente paso</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Ya terminaste una actividad. Escribe su reflexión breve para mantener al día tu ruta.</p>
+              </div>
+              <Link href={`/estudiante/actividad/${primeraReflexionPendiente.id}`} className="inline-flex min-h-10 items-center self-start rounded-lg px-3 text-sm font-medium text-indigo-700 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-300 dark:hover:bg-amber-900/30">
+                Ir a la reflexión →
+              </Link>
+            </Card>
+          )}
+
           {actividades.length === 0 ? (
             <EmptyState
               icon={TrendingUp}
@@ -301,6 +317,10 @@ export default async function UnidadEstudiante({
             />
           ) : (
             <div className="flex flex-col gap-2">
+              <div className="mb-1">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Actividades de la unidad</h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Comienza por la que diga “Lista para comenzar”.</p>
+              </div>
               {actividades.map((a) => {
                 const completada = entregaCuentaComoCompletada(a.entregas?.[0], a.contenido);
                 const reflexionada = actividadesConReflexion.has(a.id);

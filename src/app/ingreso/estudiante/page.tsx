@@ -177,30 +177,32 @@ export default function IngresoEstudiante() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 px-6 py-10">
-      <Link
-        href="/ingreso"
-        className="fixed left-6 top-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Volver
-      </Link>
+    <main className="flex min-h-dvh flex-1 flex-col items-center justify-start gap-5 px-6 py-6 sm:justify-center sm:py-10">
+      <div className="w-full max-w-sm">
+        <Link
+          href="/ingreso"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-medium text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:text-slate-50"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Cambiar perfil
+        </Link>
+      </div>
 
       <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
         <GraduationCap className="size-6" aria-hidden="true" />
       </div>
 
-      <div className="text-center">
+      <div className="max-w-sm text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
           Entrar como estudiante
         </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          No necesitas correo ni contraseña. Solo tu nombre, el código de tu grupo y tu NIP.
+        <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          Ten a la mano tu nombre, el código de grupo y tu NIP. No necesitas correo ni contraseña.
         </p>
       </div>
 
-      <Card className="w-full max-w-sm p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Card className="w-full max-w-sm p-5 sm:p-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <Field>
             <Label htmlFor="codigo">Código de grupo</Label>
             <Input
@@ -218,7 +220,7 @@ export default function IngresoEstudiante() {
               spellCheck={false}
               aria-describedby="codigo-ayuda"
             />
-            <HelpText id="codigo-ayuda">Incluye todos los caracteres y el guion. El sistema ignora espacios al inicio y al final.</HelpText>
+            <HelpText id="codigo-ayuda">Escríbelo completo, incluido el guion.</HelpText>
           </Field>
           <Field>
             <Label htmlFor="nombre">Tu nombre completo</Label>
@@ -237,7 +239,7 @@ export default function IngresoEstudiante() {
               spellCheck={false}
               aria-describedby="nombre-ayuda"
             />
-            <HelpText id="nombre-ayuda">Apellidos primero, después nombres, tal como aparece en la lista. Sin abreviaturas. Mayúsculas, minúsculas y acentos no cambian el resultado.</HelpText>
+            <HelpText id="nombre-ayuda">Apellidos y después nombres, tal como aparecen en la lista. Sin abreviaturas.</HelpText>
           </Field>
           <Field>
             <Label htmlFor="nip">Tu NIP (4 dígitos)</Label>
@@ -268,7 +270,7 @@ export default function IngresoEstudiante() {
                 {nipVisible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
               </button>
             </div>
-            <HelpText id="nip-ayuda">Primera vez: últimos 4 dígitos de tu boleta. Después de entrar tendrás que cambiarlo por uno propio de cuatro números.</HelpText>
+            <HelpText id="nip-ayuda">Primer ingreso: últimos 4 dígitos de tu boleta. Después crearás uno personal.</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">
@@ -281,13 +283,12 @@ export default function IngresoEstudiante() {
         <Alert tono="info" titulo="¿Olvidaste tu NIP?">
           <span className="flex items-start gap-1.5">
             <LifeBuoy className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            Pídele a tu profesora que lo reinicie desde tu ficha. Te dará un NIP temporal para entrar;
-            después la plataforma te pedirá crear uno nuevo. No lo compartas en el chat del grupo.
+            Pídele a tu profesora que lo reinicie. Te dará un NIP temporal y, al entrar, crearás uno nuevo. No lo compartas en el chat del grupo.
           </span>
         </Alert>
       </div>
 
-      <p className="flex items-center gap-1.5 text-center text-xs text-slate-500 dark:text-slate-400">
+      <p className="flex max-w-sm items-center gap-1.5 text-center text-xs text-slate-500 dark:text-slate-400">
         <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         No necesitas correo ni contraseña para entrar como estudiante.
       </p>

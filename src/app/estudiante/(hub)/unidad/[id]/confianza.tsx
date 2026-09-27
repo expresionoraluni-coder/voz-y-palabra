@@ -8,6 +8,14 @@ import { ErrorText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
 import { guardarConfianzaUnidad } from "../../../acciones-reflexiones";
 
+const NIVELES_CONFIANZA = [
+  { valor: 1, etiqueta: "Nada" },
+  { valor: 2, etiqueta: "Poco" },
+  { valor: 3, etiqueta: "Algo" },
+  { valor: 4, etiqueta: "Mucho" },
+  { valor: 5, etiqueta: "Totalmente" },
+] as const;
+
 export default function Confianza({
   unidadId,
   momento = "inicio",
@@ -77,16 +85,19 @@ export default function Confianza({
     <Card className="flex flex-col gap-3 p-5">
       <div className="flex items-center gap-2">
         <Gauge className="size-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{titulo}</p>
+        <div>
+          {!esCierre && <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Paso 2 de 2</p>}
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{titulo}</p>
+        </div>
       </div>
       <div role="group" aria-label={ariaLabel} className="grid grid-cols-5 gap-2">
-        {[1, 2, 3, 4, 5].map((nivel) => (
+        {NIVELES_CONFIANZA.map(({ valor: nivel, etiqueta }) => (
           <button
             key={nivel}
             type="button"
             onClick={() => setValor(nivel)}
             aria-pressed={valor === nivel}
-            aria-label={`${nivel} de 5`}
+            aria-label={`${nivel} de 5: ${etiqueta}`}
             className={`min-h-11 rounded-xl border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
               valor === nivel
                 ? "border-indigo-600 bg-indigo-600 text-white"
@@ -97,8 +108,11 @@ export default function Confianza({
           </button>
         ))}
       </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400">
-        {esCierre ? "1 = nada seguro/a · 5 = muy seguro/a" : "1 = nada preparado/a · 5 = muy preparado/a"}
+      <div className="grid grid-cols-5 gap-2 text-center text-[11px] leading-tight text-slate-500 dark:text-slate-400" aria-hidden="true">
+        {NIVELES_CONFIANZA.map(({ valor, etiqueta }) => <span key={valor}>{etiqueta}</span>)}
+      </div>
+      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+        Elige la opción que mejor describa cómo te sientes. Puedes cambiar la selección antes de guardarla.
       </p>
       {error && <ErrorText>{error}</ErrorText>}
       <Boton onClick={guardar} cargando={cargando} size="sm" className="self-start">

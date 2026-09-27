@@ -51,37 +51,46 @@ export default function BienvenidaPrimerIngreso({ nombre }: { nombre: string }) 
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <article className="rounded-2xl border border-indigo-100/80 bg-white/75 p-4 dark:border-indigo-900/60 dark:bg-slate-950/35">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-200">
-              <BookOpen className="size-5" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-200">
+                <BookOpen className="size-5" aria-hidden="true" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">Paso 1</span>
             </div>
-            <h2 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-50">Explora</h2>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Recorre las unidades disponibles y comienza con la actividad que te indique tu ruta.</p>
+            <h2 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-50">Define tu meta</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Al abrir una unidad, escribirás qué quieres aprender. Te ayudará a reconocer tu avance.</p>
           </article>
           <article className="rounded-2xl border border-violet-100/80 bg-white/75 p-4 dark:border-violet-900/60 dark:bg-slate-950/35">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-900/70 dark:text-violet-200">
-              <Lightbulb className="size-5" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-900/70 dark:text-violet-200">
+                <Lightbulb className="size-5" aria-hidden="true" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wide text-violet-600 dark:text-violet-300">Paso 2</span>
             </div>
-            <h2 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-50">Reflexiona</h2>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Lee con calma, piensa en tus respuestas y guarda tu reflexión antes de realizar cada actividad.</p>
+            <h2 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-50">Practica sin perderte</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">En cada actividad revisa la consigna, responde y guarda cuando estés listo o lista. Tu ruta mostrará qué sigue.</p>
           </article>
           <article className="rounded-2xl border border-emerald-100/80 bg-white/75 p-4 dark:border-emerald-100/20 dark:bg-slate-950/35">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/70 dark:text-emerald-200">
-              <Target className="size-5" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/70 dark:text-emerald-200">
+                <Target className="size-5" aria-hidden="true" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Paso 3</span>
             </div>
-            <h2 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-50">Avanza</h2>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Tus respuestas, reflexiones y calificaciones quedarán guardadas para consultar tu progreso.</p>
+            <h2 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-50">Cierra y continúa</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Después de guardar, escribe una reflexión breve sobre tu proceso. Así completas la actividad y continúas con tu ruta.</p>
           </article>
         </div>
 
         <div className="mt-6 flex gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/80 p-4 dark:border-amber-800/70 dark:bg-amber-950/30">
           <Lightbulb className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-300" aria-hidden="true" />
           <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">
-            <strong>Un pequeño consejo para comenzar:</strong> algunas actividades pueden tener más de un nivel o un intento alternativo. Si tienes otra oportunidad disponible, la plataforma te lo indicará.
+            <strong>Un pequeño consejo para comenzar:</strong> algunas actividades pueden tener más de un nivel o un intento alternativo. Si sucede, la plataforma te explicará qué hacer antes de que puedas continuar.
           </p>
         </div>
 
         <p className="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-          Esta es una guía breve para comenzar. Si después quieres conocer con más detalle cómo funciona la plataforma, puedes consultar la guía completa en el apartado <strong className="font-semibold text-slate-700 dark:text-slate-200">Recursos</strong>.
+          No necesitas memorizar todo: en cada pantalla encontrarás la instrucción y el siguiente paso. Ya dentro del curso podrás consultar la guía completa en <strong className="font-semibold text-slate-700 dark:text-slate-200">Recursos</strong>.
         </p>
 
         {error && (
@@ -92,7 +101,7 @@ export default function BienvenidaPrimerIngreso({ nombre }: { nombre: string }) 
 
         <div className="mt-7 flex justify-center">
           <Boton type="button" size="md" onClick={comenzarRuta} cargando={cargando} className="min-w-56">
-            {cargando ? "Guardando…" : "Comenzar mi ruta"}
+            {cargando ? "Guardando…" : "Ver mi primer paso"}
             {!cargando && <ArrowRight className="size-4" aria-hidden="true" />}
           </Boton>
         </div>

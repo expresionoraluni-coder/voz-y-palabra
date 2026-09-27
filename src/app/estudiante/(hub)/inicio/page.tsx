@@ -330,6 +330,15 @@ export default async function InicioEstudiante({
             cta: "Continuar",
             icon: Target,
         }
+        : primeraReflexionPendiente
+          ? {
+              etiqueta: `Unidad ${unidadActiva.orden}`,
+              titulo: `Guarda tu reflexión de “${primeraReflexionPendiente.titulo}”`,
+              descripcion: "Cierra este paso breve antes de continuar con una actividad nueva.",
+              href: `/estudiante/actividad/${primeraReflexionPendiente.id}`,
+              cta: "Completar reflexión",
+              icon: Target,
+            }
         : primeraActividadAccesible
           ? {
               etiqueta: `Unidad ${unidadActiva.orden}`,
@@ -338,15 +347,6 @@ export default async function InicioEstudiante({
               href: `/estudiante/actividad/${primeraActividadAccesible.id}`,
               cta: "Continuar actividad",
               icon: PlayCircle,
-            }
-        : primeraReflexionPendiente
-          ? {
-              etiqueta: `Unidad ${unidadActiva.orden}`,
-              titulo: `Guarda tu reflexión de “${primeraReflexionPendiente.titulo}”`,
-              descripcion: "Puedes guardar esta reflexión y continuar con las actividades disponibles.",
-              href: `/estudiante/actividad/${primeraReflexionPendiente.id}`,
-              cta: "Completar reflexión",
-              icon: Target,
             }
         : faltaCerrarUnidad
           ? {
@@ -383,7 +383,7 @@ export default async function InicioEstudiante({
     : null;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-8 px-6 py-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-7 px-6 py-10">
       <CelebracionInsignia insignias={insignias ?? []} estudianteId={estudiante.id} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -411,44 +411,60 @@ export default async function InicioEstudiante({
         </Alert>
       )}
 
-      {racha > 0 && (
-        <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 px-5 py-4 text-white shadow-lg shadow-orange-500/25">
-          <Flame className="size-8 shrink-0" aria-hidden="true" />
-          <div>
-            <p className="text-2xl font-bold leading-tight">
-              {racha} {racha === 1 ? "día" : "días"} seguidos
-            </p>
-            <p className="text-sm text-orange-50">{mensajeRacha(racha)}</p>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <MetricCard etiqueta="Puntos" valor={puntos} icon={Sparkles} tono="indigo" />
-        <Link href="/estudiante/insignias">
-          <MetricCard etiqueta="Insignias" valor={insignias?.length ?? 0} icon={Award} tono="amber" />
-        </Link>
-      </div>
-
       {siguientePaso && (
-        <Link
-          href={siguientePaso.href}
-          className="group flex items-start gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-lg shadow-indigo-600/15 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.99] dark:border-indigo-500/50 dark:focus-visible:ring-offset-slate-950"
-        >
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-            <siguientePaso.icon className="size-5" aria-hidden="true" />
+        <section aria-labelledby="siguiente-paso" className="flex flex-col gap-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Tu ruta de hoy</p>
+              <h2 id="siguiente-paso" className="mt-0.5 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">Tu siguiente paso</h2>
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Un avance a la vez</span>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-100">{siguientePaso.etiqueta}</p>
-            <p className="mt-0.5 text-base font-semibold leading-snug">{siguientePaso.titulo}</p>
-            <p className="mt-1 text-sm leading-relaxed text-indigo-100">{siguientePaso.descripcion}</p>
-            <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
-              {siguientePaso.cta}
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-            </span>
-          </div>
-        </Link>
+          <Link
+            href={siguientePaso.href}
+            className="group flex items-start gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-lg shadow-indigo-600/15 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.99] dark:border-indigo-500/50 dark:focus-visible:ring-offset-slate-950"
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+              <siguientePaso.icon className="size-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-100">{siguientePaso.etiqueta}</p>
+              <p className="mt-0.5 text-base font-semibold leading-snug">{siguientePaso.titulo}</p>
+              <p className="mt-1 text-sm leading-relaxed text-indigo-100">{siguientePaso.descripcion}</p>
+              <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                {siguientePaso.cta}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </span>
+            </div>
+          </Link>
+        </section>
       )}
+
+      <section aria-labelledby="avance-hoy" className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="avance-hoy" className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tu avance</h2>
+          <Link href="/estudiante/progreso" className="text-xs font-medium text-indigo-600 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+            Ver detalle
+          </Link>
+        </div>
+        {racha > 0 && (
+          <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 px-5 py-4 text-white shadow-lg shadow-orange-500/25">
+            <Flame className="size-8 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="text-2xl font-bold leading-tight">
+                {racha} {racha === 1 ? "día" : "días"} seguidos
+              </p>
+              <p className="text-sm text-orange-50">{mensajeRacha(racha)}</p>
+            </div>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <MetricCard etiqueta="Puntos" valor={puntos} icon={Sparkles} tono="indigo" />
+          <Link href="/estudiante/insignias" className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950">
+            <MetricCard etiqueta="Insignias" valor={insignias?.length ?? 0} icon={Award} tono="amber" />
+          </Link>
+        </div>
+      </section>
 
       {recordatorios.length > 0 && (
         <div className="flex flex-col gap-2 rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3.5 dark:border-amber-900 dark:bg-amber-950/40">

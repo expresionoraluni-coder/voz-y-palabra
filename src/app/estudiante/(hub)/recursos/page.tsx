@@ -79,7 +79,7 @@ export default async function RecursosEstudiante() {
           </li>
           <li className="flex items-start gap-3">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">3</span>
-            <span>Guarda tu reflexión antes de cada actividad; es parte necesaria de tu proceso.</span>
+            <span>Después de guardar una actividad, escribe tu reflexión. La necesitarás para cerrar la unidad y, en algunas rutas, desbloquear el siguiente paso.</span>
           </li>
           <li className="flex items-start gap-3">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">4</span>

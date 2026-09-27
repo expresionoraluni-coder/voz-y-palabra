@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test("la portada usa un enlace real para entrar", async ({ page }) => {
+test("la portada usa un enlace real para acceder al curso", async ({ page }) => {
   await page.goto("/");
 
-  const entrar = page.getByRole("link", { name: "Entrar" });
+  const entrar = page.getByRole("link", { name: "Acceder al curso" });
   await expect(entrar).toHaveAttribute("href", "/ingreso");
   await expect(entrar.locator("button")).toHaveCount(0);
 
