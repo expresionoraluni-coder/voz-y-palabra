@@ -22,6 +22,7 @@ export default function GuiaAnimoActividad({
   const tieneEntregaActual = Boolean(entregaReciente) || tieneEntrega;
   const calibracion = casoCalibracion(confianza, puntajeActual);
   const confianzaAcertada = calibracion === "bien_calibrado_alto" || calibracion === "bien_calibrado_bajo";
+  const resultadoBueno = puntajeActual !== null && puntajeActual >= 70;
   const celebra = tieneEntregaActual && !pendienteRevision && (confianzaAcertada || (puntajeActual ?? 0) >= 85);
   const animacion: AnimacionColibri = celebra ? "celebrar" : tieneEntregaActual ? "animar" : "acompanar";
   const mensaje: MensajeColibri = !tieneEntregaActual
@@ -36,11 +37,16 @@ export default function GuiaAnimoActividad({
         }
       : celebra
         ? {
-            titulo: "¡Lo lograste!",
+            titulo: "¡Lía celebra contigo!",
             texto: confianzaAcertada
               ? "Tu confianza y tu resultado caminaron juntos. Lía celebra contigo este avance."
               : "Tu respuesta salió muy bien. Guarda la estrategia que te ayudó para el siguiente reto.",
           }
+        : resultadoBueno
+          ? {
+              titulo: "¡Vas muy bien!",
+              texto: "Terminaste este reto con un buen resultado. Respira, reconoce lo que hiciste bien y sigue a tu ritmo.",
+            }
         : {
             titulo: "Cada intento deja una pista",
             texto: "Mira con calma lo que sí funcionó y prueba otra forma. Ajustar una idea también es avanzar.",

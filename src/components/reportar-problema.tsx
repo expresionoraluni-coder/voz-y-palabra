@@ -557,8 +557,10 @@ export default function ReportarProblema({
 
   const ayuda = ayudas[categoria];
   const usaNavegacionInferior = tipo === "estudiante" && navegacionInferior;
-  const claseAlturaDialogo = usaNavegacionInferior ? "max-h-[calc(100dvh-10rem)] sm:max-h-[calc(100dvh-7rem)]" : "max-h-[calc(100dvh-2rem)]";
-  const posicionAyuda = usaNavegacionInferior ? "bottom-[9rem] sm:bottom-24" : "bottom-4";
+  const claseAlturaDialogo = usaNavegacionInferior ? "max-h-[calc(100dvh-6.5rem)] sm:max-h-[calc(100dvh-7rem)]" : "max-h-[calc(100dvh-2rem)]";
+  const posicionAyuda = usaNavegacionInferior
+    ? "bottom-[calc(5.25rem+env(safe-area-inset-bottom))] sm:bottom-24"
+    : "bottom-[max(1rem,env(safe-area-inset-bottom))]";
 
   return (
     <div className={`fixed print:hidden ${posicionAyuda} right-4 z-30 sm:right-6`}>
@@ -740,9 +742,9 @@ export default function ReportarProblema({
           )}
         </div>
       ) : (
-        <button type="button" onClick={() => { setAbierto(true); if (novedades) void abrirMisReportes(); }} aria-label={novedades ? `Tienes ${novedades} respuestas nuevas en Ayuda` : "Ayuda"} className="animate-halo-ayuda inline-flex min-h-11 items-center gap-2 rounded-full border border-indigo-500/30 bg-gradient-to-br from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:ring-offset-slate-950">
+        <button type="button" onClick={() => { setAbierto(true); if (novedades) void abrirMisReportes(); }} aria-label={novedades ? `Tienes ${novedades} respuestas nuevas en Ayuda` : "Abrir Ayuda"} className="animate-halo-ayuda relative inline-flex size-12 items-center justify-center rounded-full border border-indigo-500/30 bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:ring-offset-slate-950 sm:min-h-11 sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5">
           <span className="flex size-6 items-center justify-center rounded-full bg-white/15"><LifeBuoy className="size-4" aria-hidden="true" /></span>
-          {novedades ? `Tienes ${novedades} respuesta${novedades === 1 ? "" : "s"} nueva${novedades === 1 ? "" : "s"}` : "Ayuda"}
+          {novedades ? <><span className="sr-only sm:not-sr-only">Tienes {novedades} respuesta{novedades === 1 ? "" : "s"} nueva{novedades === 1 ? "" : "s"}</span><span aria-hidden="true" className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-amber-400 text-[11px] font-extrabold text-amber-950 ring-2 ring-white dark:ring-slate-950 sm:hidden">{novedades}</span></> : <span className="sr-only sm:not-sr-only">Ayuda</span>}
         </button>
       )}
     </div>

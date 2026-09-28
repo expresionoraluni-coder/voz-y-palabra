@@ -118,6 +118,7 @@ const accionesCalificacion = await texto("src/app/estudiante/actividad/[id]/acci
 const cargaE2e = await texto("scripts/e2e-carga-2-grupos.mjs");
 const netlify = await texto("netlify.toml");
 const packageJson = await texto("package.json");
+const nextConfig = await texto("next.config.ts");
 const confianzaUnidad = await texto("src/app/estudiante/(hub)/unidad/[id]/confianza.tsx");
 const inicioEstudiante = await texto("src/app/estudiante/(hub)/inicio/page.tsx");
 const unidadEstudiante = await texto("src/app/estudiante/(hub)/unidad/[id]/page.tsx");
@@ -560,10 +561,13 @@ if (
   failures.push("videos: no debe poder guardarse ni calificarse la comparación si falta alguno de los dos videos.");
 }
 if (!proxy.includes("x-nonce") || !proxy.includes("'nonce-${nonce}'") || proxy.includes("script-src 'self' 'unsafe-inline'")) {
-  failures.push("CSP: los scripts deben autorizarse con nonce y no con unsafe-inline.");
+  failures.push("CSP: las rutas protegidas deben autorizar sus scripts con nonce y no con unsafe-inline.");
 }
-if (!rootLayout.includes('import { connection } from "next/server"') || !rootLayout.includes("await connection()")) {
-  failures.push("CSP: el árbol de rutas debe ser dinámico para recibir el nonce único de cada solicitud.");
+if (!nextConfig.includes('key: "Content-Security-Policy"') || !nextConfig.includes("script-src 'self' 'unsafe-inline'")) {
+  failures.push("CSP: las páginas públicas estáticas deben conservar una política de contenido explícita.");
+}
+if (rootLayout.includes('import { connection } from "next/server"') || rootLayout.includes("await connection()")) {
+  failures.push("rendimiento: el layout raíz no debe forzar renderizado dinámico en páginas públicas.");
 }
 if (
   !antiCopiar.includes("bloquearPegado") ||

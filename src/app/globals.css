@@ -275,6 +275,60 @@ html {
   animation: colibri-destellos 1.2s ease-in-out infinite;
 }
 
+@keyframes colibri-confeti-uno {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.45);
+  }
+  24% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-13px, -26px) rotate(-155deg) scale(1.15);
+  }
+}
+
+@keyframes colibri-confeti-dos {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.4);
+  }
+  24% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(16px, -21px) rotate(170deg) scale(1.2);
+  }
+}
+
+@keyframes colibri-confeti-tres {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.4);
+  }
+  24% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, 12px) rotate(130deg) scale(1.1);
+  }
+}
+
+.animate-colibri-confeti-uno {
+  animation: colibri-confeti-uno 1.1s cubic-bezier(0.22, 0.75, 0.3, 1) both 2;
+}
+
+.animate-colibri-confeti-dos {
+  animation: colibri-confeti-dos 1.05s cubic-bezier(0.22, 0.75, 0.3, 1) 0.1s both 2;
+}
+
+.animate-colibri-confeti-tres {
+  animation: colibri-confeti-tres 0.95s cubic-bezier(0.22, 0.75, 0.3, 1) 0.16s both 2;
+}
+
 @keyframes bocadillo-colibri {
   from {
     opacity: 0;
