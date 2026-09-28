@@ -55,9 +55,12 @@ export default function Ingreso() {
         </Link>
         </div>
 
-        <Link href="/privacidad" className="self-center text-center text-xs text-slate-500 underline underline-offset-2 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:text-slate-300">
-          Uso y privacidad
-        </Link>
+        <nav aria-label="Información legal" className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <Link href="/privacidad" className="underline underline-offset-2 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:text-slate-300">Privacidad</Link>
+          <Link href="/terminos" className="underline underline-offset-2 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:text-slate-300">Términos</Link>
+          <Link href="/cookies" className="underline underline-offset-2 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:text-slate-300">Cookies</Link>
+          <Link href="/uso-responsable" className="underline underline-offset-2 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:text-slate-300">Uso e IA</Link>
+        </nav>
       </div>
     </main>
   );

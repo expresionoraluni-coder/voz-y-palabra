@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { Activity, KeyRound, Scale, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, CalendarClock, KeyRound, Scale, TrendingDown, TrendingUp, UsersRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import Avisos from "./avisos";
 import Eventos from "./eventos";
@@ -423,9 +423,10 @@ export default async function DetalleGrupo({
     }
   }
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col gap-8 px-6 py-10 lg:px-8">
+    <div className="teacher-shell mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col gap-8 px-6 py-8 lg:px-8 lg:py-10">
       <PageHeader
         volverHref="/docente/dashboard"
+        eyebrow={esGrupoRevision ? "Espacio de revisión" : "Panel de grupo"}
         titulo={grupo.nombre}
         descripcion={esGrupoRevision
           ? "Espacio de revisión · disponible sin calendario y fuera de las estadísticas académicas"
@@ -433,9 +434,32 @@ export default async function DetalleGrupo({
         accion={<EditarGrupo grupoId={grupo.id} nombreActual={grupo.nombre} codigoActual={grupo.codigo_acceso} />}
       />
 
+      <section aria-labelledby="panorama-grupo" className="relative overflow-hidden rounded-[1.9rem] border border-indigo-200/70 bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-700 p-5 text-white shadow-xl shadow-indigo-700/20 sm:p-6">
+        <div aria-hidden="true" className="absolute -right-14 -top-16 size-56 rounded-full bg-white/10 blur-2xl" />
+        <div aria-hidden="true" className="absolute -bottom-20 left-1/3 size-52 rounded-full bg-cyan-300/15 blur-3xl" />
+        <div className="relative flex flex-col gap-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-100">Lectura rápida</p>
+              <h2 id="panorama-grupo" className="mt-1 text-2xl font-bold tracking-tight">{esGrupoRevision ? "Un entorno para revisar sin alterar el curso" : "Lo importante para acompañar hoy"}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-indigo-100">{esGrupoRevision ? "Las actividades se mantienen abiertas y sus recorridos no entran en las estadísticas académicas." : alertas.length > 0 ? `Hay ${alertas.length} ${alertas.length === 1 ? "señal" : "señales"} que conviene revisar antes de entrar al detalle.` : "No hay alertas prioritarias. Puedes explorar el avance, las entregas y las reflexiones del grupo."}</p>
+            </div>
+            <a href={alertas.length > 0 ? "#atencion" : "#seguimiento"} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+              {alertas.length > 0 ? <AlertTriangle className="size-4" aria-hidden="true" /> : <Activity className="size-4" aria-hidden="true" />}
+              {alertas.length > 0 ? "Ver señales" : "Ver seguimiento"}
+            </a>
+          </div>
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            <a href="#estudiantes" className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><UsersRound className="size-4 text-cyan-100" aria-hidden="true" /><p className="mt-2 text-xl font-bold">{estudiantes.length}</p><p className="text-xs text-indigo-100">estudiantes activos</p></a>
+            <a href="#atencion" className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><AlertTriangle className="size-4 text-amber-200" aria-hidden="true" /><p className="mt-2 text-xl font-bold">{alertas.length}</p><p className="text-xs text-indigo-100">casos para atender</p></a>
+            <a href="#operacion" className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><CalendarClock className="size-4 text-violet-100" aria-hidden="true" /><p className="mt-2 text-xl font-bold">{esGrupoRevision ? "Siempre" : `${eventos?.length ?? 0}`}</p><p className="text-xs text-indigo-100">{esGrupoRevision ? "actividades disponibles" : "fechas en el grupo"}</p></a>
+          </div>
+        </div>
+      </section>
+
       <AccesoGrupo codigo={grupo.codigo_acceso} nombreGrupo={grupo.nombre} />
 
-      <nav aria-label="Secciones del grupo" className="sticky top-0 z-10 -mx-6 flex gap-1 overflow-x-auto whitespace-nowrap border-b border-slate-200 bg-slate-50/95 px-6 py-2 backdrop-blur lg:-mx-8 lg:px-8 dark:border-slate-800 dark:bg-slate-950/95">
+      <nav aria-label="Secciones del grupo" className="sticky top-0 z-10 -mx-3 flex gap-1 overflow-x-auto whitespace-nowrap rounded-2xl border border-slate-200/80 bg-slate-50/95 px-3 py-2 shadow-sm backdrop-blur lg:mx-0 dark:border-slate-800 dark:bg-slate-950/95">
         {[
           { href: "#resumen", etiqueta: "Resumen" },
           { href: "#estudiantes", etiqueta: "Estudiantes" },
@@ -454,8 +478,8 @@ export default async function DetalleGrupo({
         ))}
       </nav>
 
-      <section id="resumen" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="resumen-titulo">
-        <h2 id="resumen-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Resumen</h2>
+      <section id="resumen" className="scroll-mt-16 flex flex-col gap-3 rounded-[1.7rem] border border-white/80 bg-white/80 p-4 shadow-[0_16px_34px_-28px_rgb(15_23_42/0.42)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-5" aria-labelledby="resumen-titulo">
+        <div><h2 id="resumen-titulo" className="text-lg font-bold text-slate-900 dark:text-slate-50">Pulso del grupo</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Métricas de las actividades que ya están disponibles.</p></div>
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <MetricCard
             etiqueta="Participación"
@@ -520,14 +544,14 @@ export default async function DetalleGrupo({
         bitacoras={bitacoras ?? []}
       />
 
-      <section id="analisis" className="scroll-mt-20 flex flex-col gap-6" aria-labelledby="analisis-titulo">
-        <h2 id="analisis-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">Análisis del grupo</h2>
+      <section id="analisis" className="scroll-mt-20 flex flex-col gap-6 rounded-[1.7rem] border border-white/80 bg-white/80 p-4 shadow-[0_16px_34px_-28px_rgb(15_23_42/0.42)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-5" aria-labelledby="analisis-titulo">
+        <div><p className="text-xs font-bold uppercase tracking-[0.13em] text-cyan-700 dark:text-cyan-300">Patrones del grupo</p><h2 id="analisis-titulo" className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-50">Análisis del grupo</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Úsalo para decidir qué explicar, reforzar o retomar en la siguiente sesión.</p></div>
         <section id="detalle" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="avance-unidad-titulo">
           <div>
             <h3 id="avance-unidad-titulo" className="text-base font-semibold text-slate-900 dark:text-slate-50">Avance por unidad</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Solo cuenta las actividades ya abiertas.</p>
           </div>
-        <Card className="flex flex-col gap-4 p-5">
+        <Card className="flex flex-col gap-4 border-slate-200/80 bg-white/95 p-5 shadow-none dark:border-slate-800 dark:bg-slate-950/30">
           {avancePorUnidad.map((u) => (
             <div key={u.id}>
               <div className="mb-1.5 flex justify-between text-sm">
@@ -550,7 +574,7 @@ export default async function DetalleGrupo({
       {precisionPorActividad.length > 0 && (
           <section className="flex flex-col gap-3" aria-labelledby="aciertos-actividad-titulo">
             <h3 id="aciertos-actividad-titulo" className="text-base font-semibold text-slate-900 dark:text-slate-50">Aciertos por actividad</h3>
-          <Card className="flex flex-col gap-4 p-5">
+          <Card className="flex flex-col gap-4 border-slate-200/80 bg-white/95 p-5 shadow-none dark:border-slate-800 dark:bg-slate-950/30">
             {precisionPorActividad.map((actividad) => (
               <div key={actividad.id}>
                 <div className="mb-1.5 flex justify-between text-sm">
@@ -600,7 +624,7 @@ export default async function DetalleGrupo({
       {confusionesTop.length > 0 && (
           <section className="flex flex-col gap-3" aria-labelledby="errores-frecuentes-titulo">
             <h3 id="errores-frecuentes-titulo" className="text-base font-semibold text-slate-900 dark:text-slate-50">Errores más frecuentes</h3>
-          <Card className="overflow-hidden p-0">
+          <Card className="overflow-hidden border-slate-200/80 bg-white/95 p-0 shadow-none dark:border-slate-800 dark:bg-slate-950/30">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
                 <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
@@ -633,8 +657,8 @@ export default async function DetalleGrupo({
 
       </section>
 
-      <details id="operacion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
-        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+      <details id="operacion" className="scroll-mt-20 rounded-[1.45rem] border border-slate-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 marker:text-indigo-500 dark:text-slate-100">
           {esGrupoRevision ? "Avisos del espacio de revisión" : "Fechas y avisos"}
           <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
             {esGrupoRevision ? `${avisos?.length ?? 0} avisos` : `${eventos?.length ?? 0} fechas · ${avisos?.length ?? 0} avisos`}
@@ -664,8 +688,8 @@ export default async function DetalleGrupo({
         </div>
       </details>
 
-      <details id="atencion" className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800">
-        <summary className="cursor-pointer px-4 py-3.5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+      <details id="atencion" className="scroll-mt-20 rounded-[1.45rem] border border-amber-200 bg-amber-50/50 shadow-sm backdrop-blur-sm dark:border-amber-900/60 dark:bg-amber-950/15">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 marker:text-amber-600 dark:text-slate-100">
           Alertas de actividad
           <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
             {alertas.length}

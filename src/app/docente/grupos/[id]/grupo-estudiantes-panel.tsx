@@ -108,19 +108,21 @@ export default function GrupoEstudiantesPanel({
 
   return (
     <>
-      <section className="flex flex-col gap-3" aria-labelledby="estudiantes-activos">
+      <section className="flex flex-col gap-4 rounded-[1.7rem] border border-white/80 bg-white/80 p-4 shadow-[0_16px_34px_-28px_rgb(15_23_42/0.42)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-5" aria-labelledby="estudiantes-activos">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 id="estudiantes-activos" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-              Estudiantes ({estudiantes.length})
+            <p className="text-xs font-bold uppercase tracking-[0.13em] text-indigo-600 dark:text-indigo-300">Acompañamiento individual</p>
+            <h2 id="estudiantes-activos" className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-50">
+              Estudiantes activos ({estudiantes.length})
             </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Filtra, identifica quién necesita apoyo y abre su ficha sin perder el contexto del grupo.</p>
           </div>
         </div>
 
         {estudiantes.length === 0 ? (
           <EmptyState icon={Users} titulo="Todavía no hay estudiantes en este grupo" />
         ) : (
-          <Card className="flex flex-col gap-3 p-4 sm:p-5">
+          <Card className="flex flex-col gap-3 border-slate-200/80 bg-white/95 p-4 shadow-none dark:border-slate-800 dark:bg-slate-950/30 sm:p-5">
             <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_11rem_auto]">
               <label className="relative block">
                 <span className="sr-only">Buscar estudiante</span>

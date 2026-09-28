@@ -15,6 +15,7 @@ import { faqFallback, idFaqValido, normalizarFaqArticulo, type FaqArticulo } fro
 import { UUID_FRAGMENT } from "@/lib/uuid";
 import { useBorradorLocal } from "@/hooks/use-borrador-local";
 import { diagnosticoDeEntregaParaReporte } from "@/lib/diagnostico-entrega-cliente";
+import { permiteMedicionDeUso } from "@/lib/preferencias-privacidad-cliente";
 
 type AyudaRapida = { titulo: string; pasos: string[] };
 
@@ -318,6 +319,7 @@ export default function ReportarProblema({
   useEffect(() => {
     if (!abierto || !articuloFaq || faqMostradaRef.current === articuloFaq.slug) return;
     faqMostradaRef.current = articuloFaq.slug;
+    if (!permiteMedicionDeUso()) return;
     if (!idFaqValido(articuloFaq.id)) return;
     void createClient().rpc("registrar_interaccion_faq", {
       p_articulo_id: articuloFaq.id,
@@ -340,6 +342,7 @@ export default function ReportarProblema({
   }
 
   function registrarEventoFaq(evento: "abierto" | "util" | "no_util" | "reporte_creado", reporteId?: string | null) {
+    if (!permiteMedicionDeUso()) return;
     if (!articuloFaq || !idFaqValido(articuloFaq.id)) return;
     void createClient().rpc("registrar_interaccion_faq", {
       p_articulo_id: articuloFaq.id,

@@ -111,10 +111,11 @@ export default function SeguimientoAprendizaje({
   const unidadSeleccionada = unidades.find((unidad) => unidad.id === unidadId);
 
   return (
-    <section id="seguimiento" className="scroll-mt-20 flex flex-col gap-3" aria-labelledby="seguimiento-titulo">
+    <section id="seguimiento" className="scroll-mt-20 flex flex-col gap-4 rounded-[1.7rem] border border-white/80 bg-white/80 p-4 shadow-[0_16px_34px_-28px_rgb(15_23_42/0.42)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-5" aria-labelledby="seguimiento-titulo">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id="seguimiento-titulo" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+          <p className="text-xs font-bold uppercase tracking-[0.13em] text-violet-600 dark:text-violet-300">Evidencias de aprendizaje</p>
+          <h2 id="seguimiento-titulo" className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-50">
             Seguimiento
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
@@ -140,7 +141,7 @@ export default function SeguimientoAprendizaje({
       {unidades.length === 0 ? (
         <Card className="p-5 text-sm text-slate-600 dark:text-slate-400">Aún no hay unidades para consultar.</Card>
       ) : (
-        <Card className="flex flex-col gap-4 p-4 sm:p-5">
+        <Card className="flex flex-col gap-4 border-slate-200/80 bg-white/95 p-4 shadow-none dark:border-slate-800 dark:bg-slate-950/30 sm:p-5">
           <div className="grid gap-2 lg:grid-cols-[minmax(15rem,0.8fr)_minmax(22rem,1.2fr)]">
             <label>
               <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Unidad</span>

@@ -7,6 +7,7 @@ import BottomNav from "./bottom-nav";
 import ReportarProblema from "@/components/reportar-problema";
 import BienvenidaPrimerIngreso from "./bienvenida-primer-ingreso";
 import TransicionPagina from "@/components/estudiante/transicion-pagina";
+import ColibriFlotante from "@/components/estudiante/colibri-flotante";
 
 export default async function HubLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -56,6 +57,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
         estudianteId={estudiante.id}
         grupoId={estudiante.grupo_id}
       />
+      <ColibriFlotante />
       <BottomNav />
     </>
   );

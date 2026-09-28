@@ -70,24 +70,28 @@ function pareceCorreo(valor: string): boolean {
 
 export default function IngresoEstudiante() {
   const router = useRouter();
-  const [codigo, setCodigo] = useState("");
-  const [nombre, setNombre] = useState("");
-  const [nip, setNip] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nipVisible, setNipVisible] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (cargando) return;
     setError(null);
 
-    const nombreLimpio = nombre.trim().replace(/\s+/g, " ");
-    if (codigo.trim().length === 0) {
+    // Leemos los campos al enviar, no desde eventos de escritura previos.
+    // Esto conserva lo que la persona ya capturó si la hidratación del
+    // navegador terminó mientras completaba el formulario.
+    const datos = new FormData(e.currentTarget);
+    const codigo = String(datos.get("codigo_grupo_estudiante") ?? "").trim().toUpperCase();
+    const nombreLimpio = String(datos.get("nombre_completo_estudiante") ?? "").trim().replace(/\s+/g, " ");
+    const nip = String(datos.get("nip_estudiante") ?? "").replace(/\D/g, "").slice(0, 4);
+
+    if (codigo.length === 0) {
       setError("Escribe el código de tu grupo tal como te lo compartieron.");
       return;
     }
-    if (codigo.trim().length > 64) {
+    if (codigo.length > 64) {
       setError("El código de tu grupo no puede tener más de 64 caracteres.");
       return;
     }
@@ -139,7 +143,7 @@ export default function IngresoEstudiante() {
     }
 
     let { data: resultado, error: rpcError } = await supabase.rpc("ingresar_estudiante", {
-      p_codigo: codigo.trim(),
+      p_codigo: codigo,
       p_nombre: nombreLimpio,
       p_nip: nip,
     });
@@ -150,7 +154,7 @@ export default function IngresoEstudiante() {
       await supabase.auth.signOut({ scope: "local" });
       if (await crearSesionAnonima()) {
         ({ data: resultado, error: rpcError } = await supabase.rpc("ingresar_estudiante", {
-          p_codigo: codigo.trim(),
+          p_codigo: codigo,
           p_nombre: nombreLimpio,
           p_nip: nip,
         }));
@@ -208,8 +212,6 @@ export default function IngresoEstudiante() {
               id="codigo"
               required
               maxLength={64}
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
               placeholder="Ej. 1IM4-2026"
               name="codigo_grupo_estudiante"
               autoComplete="off"
@@ -227,8 +229,6 @@ export default function IngresoEstudiante() {
               id="nombre"
               required
               maxLength={200}
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
               placeholder="Ej. GARCIA LOPEZ MARIA"
               name="nombre_completo_estudiante"
               autoComplete="off"
@@ -250,8 +250,6 @@ export default function IngresoEstudiante() {
                 inputMode="numeric"
                 pattern="[0-9]{4}"
                 maxLength={4}
-                value={nip}
-                onChange={(e) => setNip(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 placeholder="••••"
                 name="nip_estudiante"
                 autoComplete="off"
