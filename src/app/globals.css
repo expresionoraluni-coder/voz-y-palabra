@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --surface-page: var(--color-slate-50);
-  --border-default: var(--color-slate-200);
-  --text-primary: var(--color-slate-900);
+  --surface-page: #f6f7fc;
+  --border-default: #dbe1f0;
+  --text-primary: #17213d;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -16,6 +17,7 @@
     --surface-page: var(--color-slate-950);
     --border-default: var(--color-slate-800);
     --text-primary: var(--color-slate-50);
+    color-scheme: dark;
   }
 }
 
@@ -203,6 +205,76 @@ html {
   animation: colibri-aereo 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
+@keyframes colibri-celebra {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg) scale(1);
+  }
+  18% {
+    transform: translateY(-9px) rotate(7deg) scale(1.1);
+  }
+  36% {
+    transform: translateY(2px) rotate(-8deg) scale(0.98);
+  }
+  58% {
+    transform: translateY(-7px) rotate(6deg) scale(1.08);
+  }
+  78% {
+    transform: translateY(0) rotate(-2deg) scale(1.02);
+  }
+}
+
+.animate-colibri-celebra {
+  animation: colibri-celebra 1.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes colibri-anima {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg) scale(1);
+  }
+  35% {
+    transform: translateY(-5px) rotate(3deg) scale(1.04);
+  }
+  70% {
+    transform: translateY(1px) rotate(-1deg) scale(0.99);
+  }
+}
+
+.animate-colibri-anima {
+  animation: colibri-anima 1.8s ease-in-out infinite;
+}
+
+@keyframes colibri-calma {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+}
+
+.animate-colibri-calma {
+  animation: colibri-calma 4.8s ease-in-out infinite;
+}
+
+@keyframes colibri-destellos {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: rotate(0deg) scale(0.92);
+  }
+  45% {
+    opacity: 0.95;
+    transform: rotate(90deg) scale(1.08);
+  }
+}
+
+.animate-colibri-destellos {
+  animation: colibri-destellos 1.2s ease-in-out infinite;
+}
+
 @keyframes bocadillo-colibri {
   from {
     opacity: 0;
@@ -239,9 +311,9 @@ html {
   isolation: isolate;
   overflow-x: clip;
   background:
-    radial-gradient(circle at 8% 4%, rgb(196 181 253 / 0.34), transparent 23rem),
-    radial-gradient(circle at 96% 18%, rgb(165 243 252 / 0.22), transparent 25rem),
-    linear-gradient(180deg, #f8fafc 0%, #f8fafc 28rem, #f1f5f9 100%);
+    radial-gradient(circle at 8% 4%, rgb(196 181 253 / 0.48), transparent 23rem),
+    radial-gradient(circle at 96% 18%, rgb(103 232 249 / 0.24), transparent 25rem),
+    linear-gradient(180deg, #fbfbff 0%, #f8f9ff 28rem, #eef2ff 100%);
 }
 
 .teacher-shell,
@@ -251,9 +323,9 @@ html {
   isolation: isolate;
   overflow-x: clip;
   background:
-    radial-gradient(circle at 10% 2%, rgb(199 210 254 / 0.48), transparent 22rem),
-    radial-gradient(circle at 94% 12%, rgb(221 214 254 / 0.42), transparent 24rem),
-    linear-gradient(180deg, #f8fafc 0%, #f8fafc 24rem, #f1f5f9 100%);
+    radial-gradient(circle at 10% 2%, rgb(165 180 252 / 0.56), transparent 22rem),
+    radial-gradient(circle at 94% 12%, rgb(216 180 254 / 0.38), transparent 24rem),
+    linear-gradient(180deg, #fbfbff 0%, #f7f7ff 24rem, #eef2ff 100%);
 }
 
 .teacher-shell::before,

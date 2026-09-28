@@ -60,7 +60,7 @@ export default function ConsentimientoCookies() {
           <p className="text-xs font-bold uppercase tracking-[0.13em] text-indigo-700 dark:text-indigo-300">Tu privacidad</p>
           <h2 id="preferencias-privacidad-titulo" className="mt-0.5 text-base font-bold text-slate-900 dark:text-slate-50">Elige qué medición permites</h2>
           <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-            Las cookies necesarias mantienen tu sesión segura. No usamos publicidad ni rastreo comercial. Puedes permitir o rechazar la medición opcional de uso.
+            Las cookies necesarias mantienen tu sesión segura. No usamos publicidad ni rastreo comercial. Puedes permitir o rechazar la medición opcional de uso; tu elección se guarda una sola vez en este dispositivo y no ocupa espacio en Supabase.
           </p>
         </div>
       </div>

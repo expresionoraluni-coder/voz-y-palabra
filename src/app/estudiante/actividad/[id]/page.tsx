@@ -488,12 +488,6 @@ export default async function ActividadEstudiante({
         ayuda={ayudaActividad}
       />
 
-      <GuiaAnimoActividad
-        tieneEntrega={Boolean(entregaExistente)}
-        puntajeAuto={entregaExistente?.puntaje_auto ?? null}
-        pendienteRevision={entregaExistente?.estado === "pendiente_revision"}
-      />
-
       <EntregaRecienteProvider
         key={actividad.id}
         inicial={
@@ -502,6 +496,12 @@ export default async function ActividadEstudiante({
             : null
         }
       >
+        <GuiaAnimoActividad
+          tieneEntrega={Boolean(entregaExistente)}
+          puntajeAuto={entregaExistente?.puntaje_auto ?? null}
+          pendienteRevision={entregaExistente?.estado === "pendiente_revision"}
+          confianza={prediccionExistente?.confianza ?? null}
+        />
         {!prediccionExistente && !entregaExistente ? (
           <MomentoActividad
             numero={1}
