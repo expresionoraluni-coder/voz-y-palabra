@@ -32,8 +32,6 @@ export default function ActividadPostEntrega({
   const [reflexionGuardada, setReflexionGuardada] = useState(() => Boolean(textoReflexionPrevio?.trim()));
   if (!entregaReciente) return null;
 
-  const puntajeParaReflexion = entregaReciente.puntajeIntentoAuto ?? entregaReciente.puntajeAuto;
-
   const contenidoConReintento = reintentoAlternativoDisponible ? { reintento_alternativo: {} } : null;
   const reintentoObligatorio = requiereReintentoAlternativo(
     contenidoConReintento,
@@ -51,7 +49,7 @@ export default function ActividadPostEntrega({
         actividadId={actividadId}
         estudianteId={estudianteId}
         confianza={confianza}
-        puntajeAuto={puntajeParaReflexion}
+        puntajeAuto={entregaReciente.puntajeAuto}
         textoPrevio={textoReflexionPrevio}
         onGuardada={() => setReflexionGuardada(true)}
         bloqueadaPorReintento={reintentoObligatorio}
