@@ -1,7 +1,26 @@
 type ErrorConCodigo = { message: string; code?: string } | null | undefined;
 type ErrorAuth = { message?: string; code?: string } | null | undefined;
 
-const GENERICO = "No pudimos guardar tu cambio. Intenta de nuevo.";
+const GENERICO = "No pudimos completar el cambio. Intenta de nuevo.";
+
+const MENSAJES_POR_CODIGO: Record<string, string> = {
+  // La función de mantenimiento se habilita con una migración independiente.
+  // Este mensaje evita reintentos confusos y deja claro que no se borró nada.
+  PGRST202: "Esta función todavía no está habilitada en la base de datos. No se modificó ningún dato; avisa a administración para activar la actualización.",
+  23505: "Ese registro ya existe. Revisa los datos e inténtalo de nuevo.",
+  23503: "No se puede completar porque la información está relacionada con otro registro.",
+  23514: "Alguno de los datos ya no es válido. Revísalo e inténtalo de nuevo.",
+  "22P02": "Uno de los datos no tiene un formato válido. Revísalo e inténtalo de nuevo.",
+  40001: "La información cambió mientras confirmabas. Actualiza la vista e inténtalo de nuevo.",
+  "401": "Tu sesión ya no es válida. Entra de nuevo para continuar.",
+  "403": "Tu sesión no tiene permiso para realizar este cambio.",
+  "409": "La información cambió o ese registro ya existe. Actualiza la vista e inténtalo de nuevo.",
+  "429": "Se intentó demasiadas veces. Espera un momento y vuelve a intentarlo.",
+  "500": "El servicio tuvo un problema temporal. Intenta de nuevo en unos momentos.",
+  42501: "Tu sesión no tiene permiso para realizar este cambio.",
+  PGRST116: "No encontramos la información que intentabas actualizar. Actualiza la vista e inténtalo de nuevo.",
+  PGRST301: "Tu sesión ya no es válida. Entra de nuevo para continuar.",
+};
 
 /**
  * Convierte un error de una mutación directa a una tabla (insert/update/
@@ -20,6 +39,12 @@ export function mensajeError(error: ErrorConCodigo, mapa: Record<string, string>
     });
   }
   if (error.code && mapa[error.code]) return mapa[error.code];
+  if (error.code && MENSAJES_POR_CODIGO[error.code]) return MENSAJES_POR_CODIGO[error.code];
+
+  const texto = error.message.toLowerCase();
+  if (texto.includes("network") || texto.includes("fetch") || texto.includes("timeout") || texto.includes("failed to fetch")) {
+    return "No pudimos conectar con la plataforma. Revisa tu conexión e inténtalo de nuevo.";
+  }
   return GENERICO;
 }
 
@@ -78,7 +103,13 @@ export function mensajeErrorRpc(
   permitidos: Array<{ contiene: string; mensaje: string }>,
   generico = "No pudimos completar la acción. Intenta de nuevo.",
 ): string {
-  const texto = error?.message ?? "";
-  const permitido = permitidos.find((item) => texto.includes(item.contiene));
+  if (!error) return generico;
+  if (error.code && MENSAJES_POR_CODIGO[error.code]) return MENSAJES_POR_CODIGO[error.code];
+  const texto = error.message ?? "";
+  const textoNormalizado = texto.toLowerCase();
+  const permitido = permitidos.find((item) => textoNormalizado.includes(item.contiene.toLowerCase()));
+  if (textoNormalizado.includes("network") || textoNormalizado.includes("fetch") || textoNormalizado.includes("timeout")) {
+    return "No pudimos conectar con la plataforma. Revisa tu conexión e inténtalo de nuevo.";
+  }
   return permitido?.mensaje ?? generico;
 }

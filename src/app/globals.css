@@ -344,6 +344,20 @@ html {
   animation: bocadillo-colibri 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-colibri-aereo,
+  .animate-colibri-celebra,
+  .animate-colibri-anima,
+  .animate-colibri-calma,
+  .animate-colibri-destellos,
+  .animate-colibri-confeti-uno,
+  .animate-colibri-confeti-dos,
+  .animate-colibri-confeti-tres,
+  .animate-bocadillo-colibri {
+    animation: none !important;
+  }
+}
+
 .esqueleto-redondeado {
   position: relative;
   overflow: hidden;

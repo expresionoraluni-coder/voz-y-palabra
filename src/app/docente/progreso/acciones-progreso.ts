@@ -212,7 +212,15 @@ export async function limpiarProgresoActividad(
     p_conteo_reflexiones: conteosEsperados.reflexiones,
     p_conteo_retroalimentaciones: conteosEsperados.retroalimentaciones,
   });
-  if (rpcError) return { ok: false, error: mensajeError(rpcError) };
+  if (rpcError) {
+    return {
+      ok: false,
+      error: mensajeError(rpcError, {
+        PGRST202: "La limpieza de progreso todavía no está habilitada en la base de datos. No se modificó ningún dato; avisa a administración para activar la actualización.",
+        40001: "La información cambió mientras confirmabas. Vuelve a generar la vista previa antes de intentarlo de nuevo.",
+      }),
+    };
+  }
 
   const resumen = (resultado ?? {}) as ResultadoRpc;
   if (!resumen.operacion_id) return { ok: false, error: "No se pudo confirmar la operación de limpieza." };
