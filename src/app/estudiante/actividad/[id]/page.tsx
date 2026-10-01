@@ -492,7 +492,11 @@ export default async function ActividadEstudiante({
         key={actividad.id}
         inicial={
           entregaExistente
-            ? { puntajeAuto: entregaExistente.puntaje_auto, respuesta: respuesta as Record<string, unknown> }
+            ? {
+                puntajeAuto: entregaExistente.puntaje_auto,
+                puntajeIntentoAuto: entregaExistente.puntaje_auto,
+                respuesta: respuesta as Record<string, unknown>,
+              }
             : null
         }
       >
@@ -502,7 +506,7 @@ export default async function ActividadEstudiante({
           pendienteRevision={entregaExistente?.estado === "pendiente_revision"}
           confianza={prediccionExistente?.confianza ?? null}
         />
-        {!prediccionExistente && !entregaExistente ? (
+        {!prediccionExistente ? (
           <MomentoActividad
             numero={1}
             titulo="Piensa antes de empezar"

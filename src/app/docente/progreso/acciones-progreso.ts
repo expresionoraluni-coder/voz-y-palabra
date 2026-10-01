@@ -40,6 +40,18 @@ type ResultadoRpc = {
   retroalimentaciones?: number;
 };
 
+function normalizarResultadoRpc(resultado: unknown): ResultadoRpc | null {
+  const valor = Array.isArray(resultado) ? resultado[0] : resultado;
+  if (!valor || typeof valor !== "object") return null;
+  const fila = valor as Record<string, unknown>;
+  return {
+    operacion_id: typeof fila.operacion_id === "string" ? fila.operacion_id : undefined,
+    entregas: typeof fila.entregas === "number" ? fila.entregas : undefined,
+    reflexiones: typeof fila.reflexiones === "number" ? fila.reflexiones : undefined,
+    retroalimentaciones: typeof fila.retroalimentaciones === "number" ? fila.retroalimentaciones : undefined,
+  };
+}
+
 type UnidadAnidada = { nombre?: string | null; orden?: number | null } | null;
 
 function datosUnidad(unidades: unknown) {
@@ -218,12 +230,16 @@ export async function limpiarProgresoActividad(
       error: mensajeError(rpcError, {
         PGRST202: "La limpieza de progreso todavía no está habilitada en la base de datos. No se modificó ningún dato; avisa a administración para activar la actualización.",
         40001: "La información cambió mientras confirmabas. Vuelve a generar la vista previa antes de intentarlo de nuevo.",
+        22023: "La selección ya no es válida. Vuelve a generar la vista previa antes de intentarlo de nuevo.",
+        42501: "Tu sesión docente no tiene permiso sobre este grupo o estudiante.",
+        "42P01": "La actualización de mantenimiento no está completa en la base de datos. No se modificó ningún dato; avisa a administración.",
+        42883: "La actualización de mantenimiento no está habilitada en la base de datos. No se modificó ningún dato; avisa a administración.",
       }),
     };
   }
 
-  const resumen = (resultado ?? {}) as ResultadoRpc;
-  if (!resumen.operacion_id) return { ok: false, error: "No se pudo confirmar la operación de limpieza." };
+  const resumen = normalizarResultadoRpc(resultado);
+  if (!resumen?.operacion_id) return { ok: false, error: "La base de datos no devolvió el comprobante de la operación. No se confirmó ningún cambio; vuelve a intentarlo." };
 
   revalidatePath(`/docente/grupos/${grupoId}`);
   revalidatePath("/docente/dashboard");

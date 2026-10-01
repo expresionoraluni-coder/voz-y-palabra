@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import ReflexionActividad from "./reflexion-actividad";
 import { useEntregaReciente } from "@/lib/entrega-reciente-context";
 import { entregaCuentaComoCompletada } from "@/lib/progreso-unidad";
 import { requiereReintentoAlternativo } from "@/lib/intentos-auto";
 
-// La reflexión se conserva como parte del cierre de unidad; las actividades
-// sin una dependencia curricular pueden continuar sin completarla primero.
+// Cada actividad debe cerrar con su reflexión antes de habilitar la siguiente.
 export default function ActividadPostEntrega({
   actividadId,
   estudianteId,
@@ -29,7 +29,10 @@ export default function ActividadPostEntrega({
   reintentoAlternativoDisponible?: boolean;
 }) {
   const { entregaReciente } = useEntregaReciente();
+  const [reflexionGuardada, setReflexionGuardada] = useState(() => Boolean(textoReflexionPrevio?.trim()));
   if (!entregaReciente) return null;
+
+  const puntajeParaReflexion = entregaReciente.puntajeIntentoAuto ?? entregaReciente.puntajeAuto;
 
   const contenidoConReintento = reintentoAlternativoDisponible ? { reintento_alternativo: {} } : null;
   const reintentoObligatorio = requiereReintentoAlternativo(
@@ -41,15 +44,16 @@ export default function ActividadPostEntrega({
     puntaje_auto: entregaReciente.puntajeAuto,
     respuesta: entregaReciente.respuesta,
   }, contenidoConReintento);
-  const puedeContinuar = entregaCompletada && !reintentoObligatorio;
+  const puedeContinuar = entregaCompletada && !reintentoObligatorio && reflexionGuardada;
   return (
     <>
       <ReflexionActividad
         actividadId={actividadId}
         estudianteId={estudianteId}
         confianza={confianza}
-        puntajeAuto={entregaReciente.puntajeAuto}
+        puntajeAuto={puntajeParaReflexion}
         textoPrevio={textoReflexionPrevio}
+        onGuardada={() => setReflexionGuardada(true)}
         bloqueadaPorReintento={reintentoObligatorio}
         placeholderPersonalizado={placeholderReflexionPersonalizado}
       />

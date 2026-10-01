@@ -66,34 +66,43 @@ export default function GestionarProgreso({
     setCargando(true);
     setError(null);
     setResultado(null);
-    const respuesta = await previsualizarLimpiezaProgreso(grupoId, seleccionadas, estudianteId);
-    if (!respuesta.ok) setError(respuesta.error);
-    else setVistaPrevia(respuesta);
-    setCargando(false);
+    try {
+      const respuesta = await previsualizarLimpiezaProgreso(grupoId, seleccionadas, estudianteId);
+      if (!respuesta.ok) setError(respuesta.error);
+      else setVistaPrevia(respuesta);
+    } catch {
+      setError("No pudimos revisar el progreso. Actualiza la página y vuelve a intentarlo.");
+    } finally {
+      setCargando(false);
+    }
   }
 
   async function confirmarLimpieza() {
     if (cargando || !vistaPrevia) return;
     setCargando(true);
     setError(null);
-    const respuesta = await limpiarProgresoActividad(
-      grupoId,
-      seleccionadas,
-      vistaPrevia.conteos,
-      confirmacion,
-      estudianteId,
-    );
-    if (!respuesta.ok) {
-      setError(respuesta.error);
+    try {
+      const respuesta = await limpiarProgresoActividad(
+        grupoId,
+        seleccionadas,
+        vistaPrevia.conteos,
+        confirmacion,
+        estudianteId,
+      );
+      if (!respuesta.ok) {
+        setError(respuesta.error);
+        return;
+      }
+      setConfirmacion("");
+      setVistaPrevia(null);
+      setSeleccionadas([]);
+      setResultado(`Operación ${respuesta.operacionId} completada: ${respuesta.eliminadas.entregas} entregas, ${respuesta.eliminadas.reflexiones} reflexiones y ${respuesta.eliminadas.retroalimentaciones} retroalimentaciones eliminadas.`);
+      router.refresh();
+    } catch {
+      setError("No pudimos completar la limpieza. Actualiza la página y vuelve a revisar la vista previa.");
+    } finally {
       setCargando(false);
-      return;
     }
-    setConfirmacion("");
-    setVistaPrevia(null);
-    setSeleccionadas([]);
-    setResultado(`Operación ${respuesta.operacionId} completada: ${respuesta.eliminadas.entregas} entregas, ${respuesta.eliminadas.reflexiones} reflexiones y ${respuesta.eliminadas.retroalimentaciones} retroalimentaciones eliminadas.`);
-    setCargando(false);
-    router.refresh();
   }
 
   if (actividadesOrdenadas.length === 0) return null;

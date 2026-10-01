@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  CheckCircle2,
   Eye,
   EyeOff,
   GraduationCap,
@@ -13,6 +14,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
+import Alert from "@/components/ui/alert";
 import Boton from "@/components/ui/button";
 import MarcaVozPalabra from "@/components/ui/marca-voz-palabra";
 
@@ -219,7 +221,7 @@ export default function IngresoEstudiante() {
               spellCheck={false}
               aria-describedby="codigo-ayuda"
             />
-            <HelpText id="codigo-ayuda" className="text-xs leading-snug">Incluye el guion.</HelpText>
+            <HelpText id="codigo-ayuda" className="text-xs leading-snug">Escríbelo completo, incluido el guion.</HelpText>
           </Field>
           <Field>
             <Label htmlFor="nombre">Tu nombre completo</Label>
@@ -236,7 +238,7 @@ export default function IngresoEstudiante() {
               spellCheck={false}
               aria-describedby="nombre-ayuda"
             />
-            <HelpText id="nombre-ayuda" className="text-xs leading-snug">Como aparece en la lista.</HelpText>
+            <HelpText id="nombre-ayuda" className="text-xs leading-snug">Apellidos y después nombres, tal como aparecen en la lista. Sin abreviaturas.</HelpText>
           </Field>
           <Field>
             <Label htmlFor="nip">Tu NIP (4 dígitos)</Label>
@@ -265,7 +267,7 @@ export default function IngresoEstudiante() {
                 {nipVisible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
               </button>
             </div>
-            <HelpText id="nip-ayuda" className="text-xs leading-snug">Primer ingreso: últimos 4 dígitos de tu boleta.</HelpText>
+            <HelpText id="nip-ayuda" className="text-xs leading-snug">Primer ingreso: últimos 4 dígitos de tu boleta. Después crearás uno personal.</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">
@@ -274,13 +276,19 @@ export default function IngresoEstudiante() {
         </form>
       </Card>
 
-      <details className="relative z-10 w-full max-w-sm rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
-        <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-50">
-          <LifeBuoy className="size-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-          ¿Olvidaste tu NIP?
-        </summary>
-        <p className="mt-1.5 leading-snug">Pídele a tu profesora que lo reinicie. Recibirás un NIP temporal y crearás uno nuevo al entrar.</p>
-      </details>
+      <div className="relative z-10 w-full max-w-sm">
+        <Alert tono="info" titulo="¿Olvidaste tu NIP?">
+          <span className="flex items-start gap-1.5 text-xs leading-snug">
+            <LifeBuoy className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            Pídele a tu profesora que lo reinicie. Te dará un NIP temporal y, al entrar, crearás uno nuevo. No lo compartas en el chat del grupo.
+          </span>
+        </Alert>
+      </div>
+
+      <p className="relative z-10 flex max-w-sm items-center gap-1.5 text-center text-xs text-slate-500 dark:text-slate-400">
+        <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+        No necesitas correo ni contraseña para entrar como estudiante.
+      </p>
     </main>
   );
 }

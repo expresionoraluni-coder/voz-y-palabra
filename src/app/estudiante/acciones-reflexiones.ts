@@ -117,6 +117,16 @@ export async function guardarReflexionActividad(
     tipoNombre: actividad.tipo_nombre,
   });
   if (!permitido.ok) return { ok: false, error: permitido.error };
+  const { data: prediccion, error: prediccionError } = await acceso.admin
+    .from("reflexiones")
+    .select("id")
+    .eq("estudiante_id", acceso.estudiante.id)
+    .eq("actividad_id", actividadId)
+    .eq("momento", "prediccion")
+    .not("confianza", "is", null)
+    .maybeSingle();
+  if (prediccionError) return { ok: false, error: "No pudimos comprobar tu nivel de seguridad. Intenta de nuevo." };
+  if (!prediccion) return { ok: false, error: "Registra tu nivel de seguridad antes de guardar la reflexión." };
   const { data: entrega } = await acceso.supabase
     .from("entregas")
     .select("puntaje_auto, respuesta")
