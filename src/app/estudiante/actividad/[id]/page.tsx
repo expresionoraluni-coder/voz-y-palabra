@@ -193,6 +193,15 @@ export default async function ActividadEstudiante({
   }));
 
   const respuesta = sanitizarRespuestaParaEstudiante(entregaExistente?.respuesta);
+  // Mantiene compatible el estado inicial con clientes que ya distinguen el
+  // puntaje del intento actual, sin exigir ese campo al proveedor base.
+  const entregaRecienteInicial = entregaExistente
+    ? {
+        puntajeAuto: entregaExistente.puntaje_auto,
+        puntajeIntentoAuto: entregaExistente.puntaje_auto,
+        respuesta: respuesta as Record<string, unknown>,
+      }
+    : null;
   const entregaActual = entregaExistente
     ? { puntaje_auto: entregaExistente.puntaje_auto, respuesta }
     : null;
@@ -490,15 +499,7 @@ export default async function ActividadEstudiante({
 
       <EntregaRecienteProvider
         key={actividad.id}
-        inicial={
-          entregaExistente
-            ? {
-                puntajeAuto: entregaExistente.puntaje_auto,
-                puntajeIntentoAuto: entregaExistente.puntaje_auto,
-                respuesta: respuesta as Record<string, unknown>,
-              }
-            : null
-        }
+        inicial={entregaRecienteInicial}
       >
         <GuiaAnimoActividad
           tieneEntrega={Boolean(entregaExistente)}
