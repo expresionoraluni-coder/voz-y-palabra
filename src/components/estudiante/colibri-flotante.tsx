@@ -107,7 +107,7 @@ export default function ColibriFlotante({
         }}
         aria-expanded={mensajeVisible}
         aria-label={mensajeVisible ? `Ocultar mensaje de ${NOMBRE_COLIBRI}` : `Abrir mensaje de ${NOMBRE_COLIBRI}`}
-        className="group relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-transparent p-0 transition hover:-translate-y-1 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 sm:size-16"
+        className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-transparent p-0 transition hover:-translate-y-1 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 sm:size-16"
       >
         {celebrando && <><span aria-hidden="true" className="pointer-events-none absolute inset-1 rounded-2xl border border-amber-300/80 animate-colibri-destellos" /><span aria-hidden="true" className="animate-colibri-confeti-uno absolute -left-2 -top-2 text-amber-400">✦</span><span aria-hidden="true" className="animate-colibri-confeti-dos absolute -right-2 top-0 text-fuchsia-400">✦</span><span aria-hidden="true" className="animate-colibri-confeti-tres absolute bottom-0 -right-2 text-cyan-400">✦</span></>}
         <Image src="/ilustraciones/colibri-guia.png" alt="" width={96} height={96} className={`${claseAnimacion} relative size-[3.25rem] object-contain drop-shadow-[0_8px_8px_rgb(79_70_229/0.2)] sm:size-[3.75rem]`} priority={false} />

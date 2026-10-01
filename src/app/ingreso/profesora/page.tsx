@@ -166,23 +166,23 @@ export default function IngresoProfesora() {
   }
 
   return (
-    <main className="auth-shell flex min-h-dvh flex-1 flex-col items-center justify-start gap-6 overflow-y-auto px-6 py-12 sm:justify-center">
+    <main className="auth-shell flex min-h-dvh flex-1 flex-col items-center justify-start gap-3 overflow-y-auto px-4 py-4 sm:justify-center sm:gap-5 sm:px-6 sm:py-6">
       <Link
         href="/ingreso"
-        className="fixed left-6 top-6 z-10 inline-flex items-center gap-1.5 rounded-xl bg-white/55 px-2 py-1.5 text-sm font-medium text-slate-500 backdrop-blur hover:text-slate-900 dark:bg-slate-900/55 dark:text-slate-400 dark:hover:text-slate-50"
+        className="fixed left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-xl bg-white/55 px-2 py-1.5 text-sm font-medium text-slate-500 backdrop-blur hover:text-slate-900 dark:bg-slate-900/55 dark:text-slate-400 dark:hover:text-slate-50 sm:left-6 sm:top-6"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Volver
       </Link>
 
       <section className="relative z-10 text-center">
-        <div className="mx-auto mb-3 w-fit rounded-full border border-white/75 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70"><MarcaVozPalabra compacta /></div>
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25"><UserRound className="size-6" aria-hidden="true" /></div>
-        <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{modo === "entrar" ? "Iniciar sesión" : "Crear cuenta de profesora"}</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{modo === "entrar" ? "Vuelve a tu espacio de grupos y seguimiento." : "Tu acceso docente empieza con una invitación segura."}</p>
+        <div className="mx-auto mb-2 w-fit rounded-full border border-white/75 bg-white/70 px-3 py-1 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70"><MarcaVozPalabra compacta /></div>
+        <div className="mx-auto flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 sm:size-12"><UserRound className="size-5 sm:size-6" aria-hidden="true" /></div>
+        <h1 className="mt-2 text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">{modo === "entrar" ? "Iniciar sesión" : "Crear cuenta de profesora"}</h1>
+        <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{modo === "entrar" ? "Vuelve a tu espacio de grupos y seguimiento." : "Tu acceso docente empieza con una invitación segura."}</p>
       </section>
 
-      <Card className="relative z-10 w-full max-w-sm border border-white/80 bg-white/90 p-6 shadow-xl shadow-indigo-950/10 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90">
+      <Card className="relative z-10 w-full max-w-sm border border-white/80 bg-white/90 p-4 shadow-xl shadow-indigo-950/10 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90 sm:p-5">
         {avisoConfirmacion ? (
           <div className="flex flex-col items-center gap-3 py-2 text-center">
             <MailCheck className="size-8 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
@@ -217,7 +217,7 @@ export default function IngresoProfesora() {
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {modo === "crear" && (
               <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-3 text-sm text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
                 <p className="font-semibold text-slate-900 dark:text-slate-50">Antes de comenzar</p>

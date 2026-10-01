@@ -21,9 +21,9 @@ export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: st
   );
 }
 
-export function HelpText({ children, id }: { children: ReactNode; id?: string }) {
+export function HelpText({ children, id, className = "" }: { children: ReactNode; id?: string; className?: string }) {
   return (
-    <p id={id} className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+    <p id={id} className={`text-sm leading-relaxed text-slate-600 dark:text-slate-400 ${className}`}>
       {children}
     </p>
   );

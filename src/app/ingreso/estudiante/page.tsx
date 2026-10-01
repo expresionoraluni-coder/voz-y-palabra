@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
-  CheckCircle2,
   Eye,
   EyeOff,
   GraduationCap,
@@ -15,7 +14,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Field, Label, Input, ErrorText, HelpText } from "@/components/ui/field";
 import Boton from "@/components/ui/button";
-import Alert from "@/components/ui/alert";
 import MarcaVozPalabra from "@/components/ui/marca-voz-palabra";
 
 function mensajeErrorIngreso(mensaje: string): string {
@@ -182,7 +180,7 @@ export default function IngresoEstudiante() {
   }
 
   return (
-    <main className="auth-shell flex min-h-dvh flex-1 flex-col items-center justify-start gap-5 px-6 py-6 sm:justify-center sm:py-10">
+    <main className="auth-shell flex min-h-dvh flex-1 flex-col items-center justify-start gap-3 px-4 py-4 sm:justify-center sm:gap-2 sm:px-6 sm:py-2">
       <div className="relative z-10 w-full max-w-sm">
         <Link
           href="/ingreso"
@@ -194,18 +192,18 @@ export default function IngresoEstudiante() {
       </div>
 
       <section className="relative z-10 max-w-sm text-center">
-        <div className="mx-auto mb-3 w-fit rounded-full border border-white/75 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
+        <div className="mx-auto mb-2 w-fit rounded-full border border-white/75 bg-white/70 px-3 py-1 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
           <MarcaVozPalabra compacta />
         </div>
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25">
-          <GraduationCap className="size-6" aria-hidden="true" />
+        <div className="mx-auto flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 sm:size-12">
+          <GraduationCap className="size-5 sm:size-6" aria-hidden="true" />
         </div>
-        <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">Entrar como estudiante</h1>
-        <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">Ten a la mano tu nombre, el código de grupo y tu NIP. No necesitas correo ni contraseña.</p>
+        <h1 className="mt-2 text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-2xl">Entrar como estudiante</h1>
+        <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400 sm:text-sm">Ten a la mano tu nombre, el código de grupo y tu NIP. No necesitas correo ni contraseña.</p>
       </section>
 
-      <Card className="relative z-10 w-full max-w-sm border border-white/80 bg-white/90 p-5 shadow-xl shadow-indigo-950/10 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90 sm:p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+      <Card className="relative z-10 w-full max-w-sm border border-white/80 bg-white/90 p-4 shadow-xl shadow-indigo-950/10 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90 sm:p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <Field>
             <Label htmlFor="codigo">Código de grupo</Label>
             <Input
@@ -221,7 +219,7 @@ export default function IngresoEstudiante() {
               spellCheck={false}
               aria-describedby="codigo-ayuda"
             />
-            <HelpText id="codigo-ayuda">Escríbelo completo, incluido el guion.</HelpText>
+            <HelpText id="codigo-ayuda" className="text-xs leading-snug">Incluye el guion.</HelpText>
           </Field>
           <Field>
             <Label htmlFor="nombre">Tu nombre completo</Label>
@@ -238,7 +236,7 @@ export default function IngresoEstudiante() {
               spellCheck={false}
               aria-describedby="nombre-ayuda"
             />
-            <HelpText id="nombre-ayuda">Apellidos y después nombres, tal como aparecen en la lista. Sin abreviaturas.</HelpText>
+            <HelpText id="nombre-ayuda" className="text-xs leading-snug">Como aparece en la lista.</HelpText>
           </Field>
           <Field>
             <Label htmlFor="nip">Tu NIP (4 dígitos)</Label>
@@ -267,7 +265,7 @@ export default function IngresoEstudiante() {
                 {nipVisible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
               </button>
             </div>
-            <HelpText id="nip-ayuda">Primer ingreso: últimos 4 dígitos de tu boleta. Después crearás uno personal.</HelpText>
+            <HelpText id="nip-ayuda" className="text-xs leading-snug">Primer ingreso: últimos 4 dígitos de tu boleta.</HelpText>
           </Field>
           {error && <ErrorText>{error}</ErrorText>}
           <Boton type="submit" cargando={cargando} className="w-full">
@@ -276,19 +274,13 @@ export default function IngresoEstudiante() {
         </form>
       </Card>
 
-      <div className="relative z-10 w-full max-w-sm">
-        <Alert tono="info" titulo="¿Olvidaste tu NIP?">
-          <span className="flex items-start gap-1.5">
-            <LifeBuoy className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            Pídele a tu profesora que lo reinicie. Te dará un NIP temporal y, al entrar, crearás uno nuevo. No lo compartas en el chat del grupo.
-          </span>
-        </Alert>
-      </div>
-
-      <p className="relative z-10 flex max-w-sm items-center gap-1.5 text-center text-xs text-slate-500 dark:text-slate-400">
-        <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-        No necesitas correo ni contraseña para entrar como estudiante.
-      </p>
+      <details className="relative z-10 w-full max-w-sm rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs text-slate-700 dark:border-indigo-900/70 dark:bg-indigo-950/30 dark:text-slate-300">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-50">
+          <LifeBuoy className="size-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+          ¿Olvidaste tu NIP?
+        </summary>
+        <p className="mt-1.5 leading-snug">Pídele a tu profesora que lo reinicie. Recibirás un NIP temporal y crearás uno nuevo al entrar.</p>
+      </details>
     </main>
   );
 }
