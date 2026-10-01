@@ -28,28 +28,28 @@ export default function GuiaAnimoActividad({
   const mensaje: MensajeColibri = !tieneEntregaActual
     ? {
         titulo: "Aquí estoy contigo",
-        texto: "Empieza con una idea, no con una respuesta perfecta. Lee la consigna, toma aire y avanza paso a paso.",
+        texto: "Empieza con una idea y avanza a tu ritmo. Si algo se atora, vuelve a la consigna.",
       }
     : pendienteRevision
       ? {
           titulo: "Ya hiciste tu parte",
-          texto: "Tu respuesta ya está en revisión. Mientras tanto, conserva tus ideas: volver a leerlas también es aprender.",
+          texto: "Tu respuesta ya está en revisión. Reconoce el trabajo que ya hiciste.",
         }
       : celebra
         ? {
             titulo: "¡Lía celebra contigo!",
             texto: confianzaAcertada
-              ? "Tu confianza y tu resultado caminaron juntos. Lía celebra contigo este avance."
-              : "Tu respuesta salió muy bien. Guarda la estrategia que te ayudó para el siguiente reto.",
+              ? "Tu confianza y tu resultado caminaron juntos. Guarda este avance."
+              : "Tu respuesta salió muy bien. Guarda la estrategia que te ayudó.",
           }
         : resultadoBueno
           ? {
               titulo: "¡Vas muy bien!",
-              texto: "Terminaste este reto con un buen resultado. Respira, reconoce lo que hiciste bien y sigue a tu ritmo.",
+              texto: "Terminaste este reto con un buen resultado. Reconoce lo que hiciste bien y sigue a tu ritmo.",
             }
         : {
             titulo: "Cada intento deja una pista",
-            texto: "Mira con calma lo que sí funcionó y prueba otra forma. Ajustar una idea también es avanzar.",
+            texto: "Mira con calma lo que sí funcionó y prueba otra forma. Ajustar también es avanzar.",
           };
   return <ColibriFlotante mensaje={mensaje} navegacionInferior={false} animacion={animacion} />;
 }
