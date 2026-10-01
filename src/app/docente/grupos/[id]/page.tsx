@@ -8,6 +8,7 @@ import AccesoGrupo from "./acceso-grupo";
 import EditarGrupo from "./editar-grupo";
 import EliminarGrupo from "./eliminar-grupo";
 import GrupoEstudiantesPanel from "./grupo-estudiantes-panel";
+import GestionarProgreso from "@/app/docente/progreso/gestionar-progreso";
 import SeguimientoAprendizaje from "./seguimiento-aprendizaje";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -715,6 +716,25 @@ export default async function DetalleGrupo({
         </div>
       </details>
 
+      {!esGrupoRevision && (
+        <section id="mantenimiento-progreso" className="scroll-mt-20" aria-labelledby="mantenimiento-progreso-titulo">
+          <h2 id="mantenimiento-progreso-titulo" className="sr-only">Mantenimiento del progreso</h2>
+          <GestionarProgreso
+            grupoId={grupo.id}
+            actividades={(actividades ?? []).map((actividad) => {
+              const unidad = (unidades ?? []).find((item) => item.id === actividad.unidad_id);
+              const apertura = (eventos ?? []).find((evento) => evento.tipo === "apertura_actividad" && evento.actividad_id === actividad.id);
+              return {
+                id: actividad.id,
+                titulo: actividad.titulo,
+                unidadNombre: unidad?.nombre ?? "Sin unidad",
+                unidadOrden: unidad?.orden ?? null,
+                fechaApertura: apertura?.fecha ?? null,
+              };
+            })}
+          />
+        </section>
+      )}
       <section id="eliminacion" className="scroll-mt-20 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/60 dark:bg-red-950/15" aria-labelledby="eliminacion-titulo">
         <h2 id="eliminacion-titulo" className="text-base font-semibold text-red-800 dark:text-red-200">Zona de riesgo</h2>
         <p className="mt-1 text-sm text-red-700 dark:text-red-300">Eliminar este grupo borra su información de forma permanente.</p>

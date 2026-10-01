@@ -7,6 +7,7 @@ import ComentarioEntrega from "./comentario-entrega";
 import ReiniciarNip from "./reiniciar-nip";
 import EditarEstudiante from "./editar-estudiante";
 import GestionEstudiante from "./gestion-estudiante";
+import GestionarProgreso from "@/app/docente/progreso/gestionar-progreso";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import Badge from "@/components/ui/badge";
@@ -54,7 +55,7 @@ export default async function FichaEstudiante({
       .maybeSingle(),
     supabase
       .from("unidades")
-      .select("id, nombre, orden, actividades(id)")
+      .select("id, nombre, orden, actividades(id, titulo, unidad_id, orden)")
       .order("orden"),
     supabase
       .from("entregas")
@@ -179,6 +180,17 @@ export default async function FichaEstudiante({
         </div>
       </Card>
 
+      <GestionarProgreso
+        grupoId={estudiante.grupo_id}
+        estudianteId={estudiante.id}
+        nombreEstudiante={estudiante.nombre}
+        actividades={(unidades ?? []).flatMap((unidad) => (unidad.actividades ?? []).map((actividad) => ({
+          id: actividad.id,
+          titulo: actividad.titulo,
+          unidadNombre: unidad.nombre,
+          unidadOrden: unidad.orden,
+        })))}
+      />
       {insignias && insignias.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {insignias.map((i, idx) => {
