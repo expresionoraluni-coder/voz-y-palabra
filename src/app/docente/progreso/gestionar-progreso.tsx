@@ -22,8 +22,8 @@ export type ActividadParaLimpieza = {
   fechaApertura?: string | null;
 };
 
-function formatearFecha(fecha: string | null | undefined) {
-  if (!fecha) return "Sin apertura registrada";
+function formatearFecha(fecha: string | null | undefined, grupoEsRevision: boolean) {
+  if (!fecha) return grupoEsRevision ? "Siempre disponible · revisión" : "Sin apertura registrada";
   return new Date(`${fecha}T00:00:00`).toLocaleDateString("es-MX", {
     day: "numeric",
     month: "short",
@@ -42,11 +42,13 @@ export default function GestionarProgreso({
   actividades,
   estudianteId,
   nombreEstudiante,
+  grupoEsRevision = false,
 }: {
   grupoId: string;
   actividades: ActividadParaLimpieza[];
   estudianteId?: string;
   nombreEstudiante?: string;
+  grupoEsRevision?: boolean;
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -128,9 +130,14 @@ export default function GestionarProgreso({
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-amber-900/80 dark:text-amber-100/80">
             {estudianteId
               ? `Reinicia solo el progreso de ${nombreEstudiante ?? "este estudiante"} en las actividades que elijas.`
-              : "Limpia el progreso de todos los estudiantes de este grupo en las actividades que elijas."}
+              : `Limpia el progreso de todos los estudiantes${grupoEsRevision ? " del espacio de revisión" : " de este grupo"} en las actividades que elijas.`}
             {" "}No cierra actividades ni elimina contenidos, aperturas o registros de unidad.
           </p>
+          {!estudianteId && (
+            <p className="mt-2 text-xs text-amber-900/70 dark:text-amber-100/70">
+              Para un alcance individual, abre el perfil del estudiante y selecciona una o varias actividades desde allí.
+            </p>
+          )}
         </div>
         {!abierto && (
           <Boton type="button" size="sm" variant="secondary" onClick={() => setAbierto(true)}>
@@ -163,7 +170,7 @@ export default function GestionarProgreso({
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-900 dark:text-slate-50">{actividad.titulo}</span>
                   <span className="block text-xs text-slate-500 dark:text-slate-400">
-                    {etiquetaActividad(actividad)} · {formatearFecha(actividad.fechaApertura)}
+                    {etiquetaActividad(actividad)} · {formatearFecha(actividad.fechaApertura, grupoEsRevision)}
                   </span>
                 </span>
               </label>

@@ -744,26 +744,25 @@ export default async function DetalleGrupo({
       </details>
       )}
 
-      {!esGrupoRevision && (
-        <section id="mantenimiento-progreso" className="scroll-mt-20" aria-labelledby="mantenimiento-progreso-titulo">
-          <h2 id="mantenimiento-progreso-titulo" className="sr-only">Mantenimiento del progreso</h2>
-          <GestionarProgreso
-            grupoId={grupo.id}
-            actividades={(actividades ?? []).map((actividad) => {
-              const unidad = (unidades ?? []).find((item) => item.id === actividad.unidad_id);
-              const apertura = (eventos ?? []).find((evento) => evento.tipo === "apertura_actividad" && evento.actividad_id === actividad.id);
-              return {
-                id: actividad.id,
-                titulo: actividad.titulo,
-                unidadNombre: unidad?.nombre ?? "Sin unidad",
-                unidadOrden: unidad?.orden ?? null,
-                orden: actividad.orden ?? null,
-                fechaApertura: apertura?.fecha ?? null,
-              };
-            })}
-          />
-        </section>
-      )}
+      <section id="mantenimiento-progreso" className="scroll-mt-20" aria-labelledby="mantenimiento-progreso-titulo">
+        <h2 id="mantenimiento-progreso-titulo" className="sr-only">Mantenimiento del progreso</h2>
+        <GestionarProgreso
+          grupoId={grupo.id}
+          grupoEsRevision={esGrupoRevision}
+          actividades={(actividades ?? []).map((actividad) => {
+            const unidad = (unidades ?? []).find((item) => item.id === actividad.unidad_id);
+            const apertura = (eventos ?? []).find((evento) => evento.tipo === "apertura_actividad" && evento.actividad_id === actividad.id);
+            return {
+              id: actividad.id,
+              titulo: actividad.titulo,
+              unidadNombre: unidad?.nombre ?? "Sin unidad",
+              unidadOrden: unidad?.orden ?? null,
+              orden: actividad.orden ?? null,
+              fechaApertura: apertura?.fecha ?? null,
+            };
+          })}
+        />
+      </section>
 
       <section id="eliminacion" className="scroll-mt-20 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/60 dark:bg-red-950/15" aria-labelledby="eliminacion-titulo">
         <h2 id="eliminacion-titulo" className="text-base font-semibold text-red-800 dark:text-red-200">Zona de riesgo</h2>
