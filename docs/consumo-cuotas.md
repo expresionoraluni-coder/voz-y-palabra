@@ -59,6 +59,19 @@ respaldo institucional debe ser un procedimiento separado.
 
 ## Netlify y los 300 créditos
 
+En los planes de créditos actuales, Netlify contabiliza cada despliegue de
+producción como 15 créditos, cada 10,000 solicitudes web como 2 créditos y
+cada GB transferido como 20 créditos. Las previews y los branch deploys no
+consumen créditos de producción. Consulta las cifras vigentes en la
+[documentación oficial de créditos de Netlify](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/how-credits-work/).
+
+Con 300 créditos mensuales, publicar veinte versiones consumiría el cupo
+completo solo en despliegues. Un monitor cada cinco minutos produciría 8,640
+solicitudes mensuales, aproximadamente 2 créditos si todo lo demás fuera cero;
+por eso el monitor externo no es el riesgo principal. El consumo dominante será
+la combinación de despliegues, solicitudes de páginas/recursos y ancho de
+banda.
+
 Para no consumir créditos innecesariamente:
 
 1. probar localmente y usar previews antes de publicar;
@@ -75,6 +88,16 @@ reduce transferencia y tamaño del despliegue sin cambiar la experiencia.
 El límite exacto y la forma de contabilizar créditos dependen del plan de la
 cuenta Netlify; las cifras de este documento no sustituyen el panel de Usage &
 billing.
+
+## Recomendación de operación con 300 créditos
+
+- Publicar solo cambios agrupados y reservar previews para revisión.
+- Evitar despliegues automáticos por cada commit experimental; fusionar a
+  `main` cuando la versión esté validada.
+- No activar auto-recharge.
+- Revisar Usage & billing al alcanzar 50 %, 75 % y 100 % del cupo.
+- Si el sitio llega al límite, el plan gratuito pausa el proyecto hasta el
+  siguiente ciclo; no genera un cobro automático.
 
 ## Consultas periódicas recomendadas
 
