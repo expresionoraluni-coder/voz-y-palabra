@@ -17,6 +17,13 @@ export type ActividadLimpieza = {
   unidadId: string;
   unidadNombre: string;
   unidadOrden: number | null;
+  orden: number | null;
+  conteos: {
+    entregas: number;
+    reflexiones: number;
+    retroalimentaciones: number;
+    archivos: number;
+  };
 };
 
 export type VistaPreviaLimpieza = {
@@ -53,6 +60,12 @@ function normalizarResultadoRpc(resultado: unknown): ResultadoRpc | null {
 }
 
 type UnidadAnidada = { nombre?: string | null; orden?: number | null } | null;
+
+type ConteosActividad = ActividadLimpieza["conteos"];
+
+function conteosVacios(): ConteosActividad {
+  return { entregas: 0, reflexiones: 0, retroalimentaciones: 0, archivos: 0 };
+}
 
 function datosUnidad(unidades: unknown) {
   const unidad = (Array.isArray(unidades) ? unidades[0] : unidades) as UnidadAnidada;
@@ -121,7 +134,7 @@ export async function previsualizarLimpiezaProgreso(
   const { admin, grupo, estudiante } = acceso;
   const { data: actividades, error: actividadesError } = await admin
     .from("actividades")
-    .select("id, titulo, unidad_id, unidades(nombre, orden)")
+    .select("id, titulo, orden, unidad_id, unidades(nombre, orden)")
     .in("id", idsUnicos)
     .order("id");
   if (actividadesError) return { ok: false, error: mensajeError(actividadesError) };
@@ -137,54 +150,85 @@ export async function previsualizarLimpiezaProgreso(
   const { data: estudiantes, error: estudiantesError } = await estudiantesQuery;
   if (estudiantesError) return { ok: false, error: mensajeError(estudiantesError) };
   const estudiantesIds = (estudiantes ?? []).map((item) => item.id as string);
-  if (estudiantesIds.length === 0) {
-    return {
-      ok: true,
-      grupo,
-      estudiante,
-      actividades: actividades.map((actividad) => {
-        const unidad = datosUnidad(actividad.unidades);
-        return { id: actividad.id, titulo: actividad.titulo, unidadId: actividad.unidad_id, unidadNombre: unidad.nombre, unidadOrden: unidad.orden };
-      }),
-      conteos: { estudiantes: 0, entregas: 0, reflexiones: 0, retroalimentaciones: 0, archivos: 0 },
-    };
+  const actividadesConConteos = new Map<string, ConteosActividad>(
+    idsUnicos.map((id) => [id, conteosVacios()]),
+  );
+
+  if (estudiantesIds.length > 0) {
+    const [{ data: entregas, error: entregasError }, { data: reflexiones, error: reflexionesError }] = await Promise.all([
+      admin
+        .from("entregas")
+        .select("id, actividad_id, archivo_url")
+        .in("estudiante_id", estudiantesIds)
+        .in("actividad_id", idsUnicos),
+      admin
+        .from("reflexiones")
+        .select("id, actividad_id")
+        .in("estudiante_id", estudiantesIds)
+        .in("actividad_id", idsUnicos),
+    ]);
+    if (entregasError) return { ok: false, error: mensajeError(entregasError) };
+    if (reflexionesError) return { ok: false, error: mensajeError(reflexionesError) };
+
+    const entregasIds = (entregas ?? []).map((item) => item.id as string);
+    const entregaActividad = new Map<string, string>(
+      (entregas ?? []).map((item) => [item.id as string, item.actividad_id as string]),
+    );
+    for (const entrega of entregas ?? []) {
+      const conteos = actividadesConConteos.get(entrega.actividad_id as string);
+      if (!conteos) continue;
+      conteos.entregas += 1;
+      if (Boolean(entrega.archivo_url)) conteos.archivos += 1;
+    }
+    for (const reflexion of reflexiones ?? []) {
+      const conteos = actividadesConConteos.get(reflexion.actividad_id as string);
+      if (conteos) conteos.reflexiones += 1;
+    }
+
+    const { data: retroalimentaciones, error: retroalimentacionesError } = entregasIds.length
+      ? await admin
+        .from("retroalimentacion_docente")
+        .select("id, entrega_id")
+        .in("entrega_id", entregasIds)
+      : { data: [], error: null };
+    if (retroalimentacionesError) return { ok: false, error: mensajeError(retroalimentacionesError) };
+    for (const retroalimentacion of retroalimentaciones ?? []) {
+      const actividadId = entregaActividad.get(retroalimentacion.entrega_id as string);
+      const conteos = actividadId ? actividadesConConteos.get(actividadId) : undefined;
+      if (conteos) conteos.retroalimentaciones += 1;
+    }
   }
 
-  const { data: entregas, error: entregasError } = await admin
-    .from("entregas")
-    .select("id, archivo_url")
-    .in("estudiante_id", estudiantesIds)
-    .in("actividad_id", idsUnicos);
-  if (entregasError) return { ok: false, error: mensajeError(entregasError) };
-  const entregasIds = (entregas ?? []).map((item) => item.id as string);
-
-  const [{ count: reflexiones, error: reflexionesError }, { count: retroalimentaciones, error: retroalimentacionesError }] = await Promise.all([
-    admin
-      .from("reflexiones")
-      .select("id", { count: "exact", head: true })
-      .in("estudiante_id", estudiantesIds)
-      .in("actividad_id", idsUnicos),
-    entregasIds.length
-      ? admin.from("retroalimentacion_docente").select("id", { count: "exact", head: true }).in("entrega_id", entregasIds)
-      : Promise.resolve({ count: 0, error: null }),
-  ]);
-  if (reflexionesError) return { ok: false, error: mensajeError(reflexionesError) };
-  if (retroalimentacionesError) return { ok: false, error: mensajeError(retroalimentacionesError) };
+  const actividadesConDetalle = actividades.map((actividad) => {
+    const unidad = datosUnidad(actividad.unidades);
+    return {
+      id: actividad.id,
+      titulo: actividad.titulo,
+      unidadId: actividad.unidad_id,
+      unidadNombre: unidad.nombre,
+      unidadOrden: unidad.orden,
+      orden: actividad.orden ?? null,
+      conteos: actividadesConConteos.get(actividad.id) ?? conteosVacios(),
+    };
+  });
+  const conteosTotales = actividadesConDetalle.reduce(
+    (totales, actividad) => ({
+      entregas: totales.entregas + actividad.conteos.entregas,
+      reflexiones: totales.reflexiones + actividad.conteos.reflexiones,
+      retroalimentaciones: totales.retroalimentaciones + actividad.conteos.retroalimentaciones,
+      archivos: totales.archivos + actividad.conteos.archivos,
+    }),
+    conteosVacios(),
+  );
 
   return {
     ok: true,
     grupo,
     estudiante,
-    actividades: actividades.map((actividad) => {
-      const unidad = datosUnidad(actividad.unidades);
-      return { id: actividad.id, titulo: actividad.titulo, unidadId: actividad.unidad_id, unidadNombre: unidad.nombre, unidadOrden: unidad.orden };
-    }),
+    actividades: actividadesConDetalle,
     conteos: {
       estudiantes: estudiantesIds.length,
-      entregas: entregasIds.length,
-      reflexiones: reflexiones ?? 0,
-      retroalimentaciones: retroalimentaciones ?? 0,
-      archivos: (entregas ?? []).filter((item) => Boolean(item.archivo_url)).length,
+      ...conteosTotales,
     },
   };
 }

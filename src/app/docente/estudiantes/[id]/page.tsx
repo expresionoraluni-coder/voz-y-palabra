@@ -189,6 +189,7 @@ export default async function FichaEstudiante({
           titulo: actividad.titulo,
           unidadNombre: unidad.nombre,
           unidadOrden: unidad.orden,
+          orden: actividad.orden,
         })))}
       />
 

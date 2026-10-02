@@ -757,6 +757,7 @@ export default async function DetalleGrupo({
                 titulo: actividad.titulo,
                 unidadNombre: unidad?.nombre ?? "Sin unidad",
                 unidadOrden: unidad?.orden ?? null,
+                orden: actividad.orden ?? null,
                 fechaApertura: apertura?.fecha ?? null,
               };
             })}

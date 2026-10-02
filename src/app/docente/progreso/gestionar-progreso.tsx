@@ -18,6 +18,7 @@ export type ActividadParaLimpieza = {
   titulo: string;
   unidadNombre: string;
   unidadOrden: number | null;
+  orden: number | null;
   fechaApertura?: string | null;
 };
 
@@ -28,6 +29,12 @@ function formatearFecha(fecha: string | null | undefined) {
     month: "short",
     year: "numeric",
   });
+}
+
+function etiquetaActividad(actividad: { unidadOrden: number | null; orden: number | null }) {
+  const unidad = actividad.unidadOrden == null ? "Unidad —" : `Unidad ${actividad.unidadOrden}`;
+  const orden = actividad.orden == null ? "Actividad —" : `Actividad ${actividad.orden}`;
+  return `${unidad} · ${orden}`;
 }
 
 export default function GestionarProgreso({
@@ -51,7 +58,10 @@ export default function GestionarProgreso({
   const [resultado, setResultado] = useState<string | null>(null);
 
   const actividadesOrdenadas = useMemo(
-    () => [...actividades].sort((a, b) => (a.unidadOrden ?? 0) - (b.unidadOrden ?? 0) || a.titulo.localeCompare(b.titulo)),
+    () => [...actividades].sort((a, b) =>
+      (a.unidadOrden ?? Number.MAX_SAFE_INTEGER) - (b.unidadOrden ?? Number.MAX_SAFE_INTEGER)
+      || (a.orden ?? Number.MAX_SAFE_INTEGER) - (b.orden ?? Number.MAX_SAFE_INTEGER)
+      || a.titulo.localeCompare(b.titulo, "es")),
     [actividades],
   );
 
@@ -153,7 +163,7 @@ export default function GestionarProgreso({
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-900 dark:text-slate-50">{actividad.titulo}</span>
                   <span className="block text-xs text-slate-500 dark:text-slate-400">
-                    Unidad {actividad.unidadOrden ?? "—"} · {formatearFecha(actividad.fechaApertura)}
+                    {etiquetaActividad(actividad)} · {formatearFecha(actividad.fechaApertura)}
                   </span>
                 </span>
               </label>
@@ -181,6 +191,19 @@ export default function GestionarProgreso({
                 <p><strong>{vistaPrevia.conteos.retroalimentaciones}</strong> retroalimentaciones</p>
                 <p><strong>{vistaPrevia.conteos.archivos}</strong> archivos asociados</p>
                 <p><strong>0</strong> aperturas afectadas</p>
+              </div>
+              <div className="rounded-lg border border-red-200 bg-white/70 p-3 text-xs text-red-950 dark:border-red-900/70 dark:bg-slate-950/30 dark:text-red-100">
+                <p className="font-semibold">Se revisó exactamente:</p>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {vistaPrevia.actividades.map((actividad) => (
+                    <li key={actividad.id} className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                      <span><strong>{etiquetaActividad(actividad)}</strong> · {actividad.titulo}</span>
+                      <span className="shrink-0 text-red-800/80 dark:text-red-200/80">
+                        {actividad.conteos.entregas} entregas · {actividad.conteos.reflexiones} reflexiones · {actividad.conteos.retroalimentaciones} retroalimentaciones
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-100">
                 <p className="flex items-center gap-1.5 font-semibold"><ShieldCheck className="size-3.5" aria-hidden="true" /> Se conservarán actividades, contenidos, fechas, bitácoras, confianza e insignias.</p>
