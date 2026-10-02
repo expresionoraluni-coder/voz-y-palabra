@@ -32,10 +32,16 @@ export default function Privacidad() {
         <p className="mt-2">Según tu perfil, la plataforma puede guardar nombre, grupo, identificador escolar o boleta, correo docente, respuestas, reflexiones, autoevaluaciones, avance y solicitudes de ayuda. Las credenciales se tratan como información de acceso y nunca deben escribirse en las respuestas ni en los reportes.</p>
       </section>
 
+      <section className="rounded-[1.6rem] border border-indigo-100 bg-indigo-50/70 p-5 dark:border-indigo-900/70 dark:bg-indigo-950/25">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Quién es responsable y cómo contactarle</h2>
+        <p className="mt-2">La responsable operativa y académica de este sitio es la M. en C. Monserrat Nieto Cuevas, adscrita al Instituto Politécnico Nacional, Centro de Estudios Científicos y Tecnológicos No. 1 «Gonzalo Vázquez Vela», en el Departamento de Unidades de Aprendizaje del Área Humanística, Academia de Lengua y Comunicación. El alcance actual es el grupo de estudiantes de primer semestre de Expresión Oral y Escrita I a su cargo.</p>
+        <p className="mt-2">El IPN y el CECyT 1 se indican como adscripción académica; la responsable directa del sitio es la maestra. Para dudas sobre tus datos, escribe a <a className="font-semibold underline" href="mailto:mnieto@ipn.mx">mnieto@ipn.mx</a>. También puedes contactar al perfil administrador en <a className="font-semibold underline" href="mailto:digp.inv.ipn@gmail.com">digp.inv.ipn@gmail.com</a>; esa cuenta es operada por un integrante autorizado del equipo de investigación bajo la supervisión de la responsable.</p>
+      </section>
+
       <section className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-50"><BarChart3 className="size-5 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />Seguimiento educativo y medición de uso</h2>
         <p className="mt-2">El avance, las entregas y la retroalimentación se registran con fines educativos porque son necesarios para el curso. La docente ve la información de sus grupos y la cuenta administrativa atiende seguridad y soporte. Las comparativas pedagógicas excluyen el grupo de revisión.</p>
-        <p className="mt-2">Los datos también pueden analizarse de manera agregada o anonimizada para investigación pedagógica y mejora del curso. No se utilizan nombres, identificadores ni respuestas atribuibles para ese fin sin la autorización institucional y las autorizaciones aplicables.</p>
+        <p className="mt-2">Durante el semestre, la responsable puede exportar nombres, resultados de actividades y reflexiones para analizar resultados, impacto, metacognición y autonomía. La responsable y su equipo de investigación consultan esa información bajo compromisos éticos firmados y supervisión de la maestra. El análisis busca describir el comportamiento general del grupo, no señalar a un estudiante específico; antes de compartir resultados fuera del equipo autorizado deben retirarse identificadores o agregarse los datos.</p>
         <p className="mt-2">La medición opcional de uso sirve para saber si la ayuda dentro de la plataforma funciona. Se desactiva por defecto hasta que la persona usuaria la permita; no usa publicidad ni comparte respuestas académicas con servicios de analítica.</p>
       </section>
 
@@ -54,7 +60,8 @@ export default function Privacidad() {
 
       <section className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Conservación, acceso y solicitudes</h2>
-        <p className="mt-2">La información se conserva conforme a las reglas institucionales del curso. Puedes pedir que se revise o corrija tu información por el canal institucional del curso. La persona responsable y el primer punto de contacto deben definirse y aprobarse institucionalmente antes de publicar esta política.</p>
+        <p className="mt-2">La información se conserva durante el semestre en curso y un mes adicional para realizar la exportación autorizada y preparar el siguiente semestre. Después, la responsable supervisa la eliminación de cuentas, grupos, entregas, reflexiones, reportes y registros asociados al semestre. Las copias de seguridad o retenciones técnicas de los proveedores pueden tener plazos propios.</p>
+        <p className="mt-2">Puedes pedir revisión, corrección, exportación o eliminación de tu información escribiendo a <a className="font-semibold underline" href="mailto:mnieto@ipn.mx">mnieto@ipn.mx</a> o al contacto administrativo indicado arriba. Las solicitudes se atienden bajo la supervisión de la responsable y las reglas institucionales aplicables.</p>
       </section>
     </MarcoLegal>
   );

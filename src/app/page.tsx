@@ -69,7 +69,6 @@ export default function Home() {
           <Link href="/privacidad" className="underline underline-offset-2 hover:text-white">Privacidad</Link>
           <Link href="/terminos" className="underline underline-offset-2 hover:text-white">Términos</Link>
           <Link href="/cookies" className="underline underline-offset-2 hover:text-white">Cookies</Link>
-          <Link href="/uso-responsable" className="underline underline-offset-2 hover:text-white">Uso e IA</Link>
         </nav>
       </footer>
       <ConsentimientoCookies />

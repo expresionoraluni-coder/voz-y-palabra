@@ -1,13 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft, BookOpenText, Cookie, Scale, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, BookOpenText, Cookie, Scale, ShieldCheck } from "lucide-react";
 import ConsentimientoCookies from "@/components/consentimiento-cookies";
 
 const enlaces = [
   { href: "/privacidad", etiqueta: "Privacidad", Icono: ShieldCheck },
   { href: "/terminos", etiqueta: "Términos", Icono: Scale },
   { href: "/cookies", etiqueta: "Cookies", Icono: Cookie },
-  { href: "/uso-responsable", etiqueta: "Uso e IA", Icono: Sparkles },
 ];
 
 export default function MarcoLegal({
