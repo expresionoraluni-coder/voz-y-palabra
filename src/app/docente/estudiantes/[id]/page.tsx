@@ -191,6 +191,7 @@ export default async function FichaEstudiante({
           unidadOrden: unidad.orden,
         })))}
       />
+
       {insignias && insignias.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {insignias.map((i, idx) => {

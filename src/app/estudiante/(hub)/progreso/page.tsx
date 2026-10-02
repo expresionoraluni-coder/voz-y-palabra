@@ -9,7 +9,7 @@ import ProgressBar from "@/components/ui/progress-bar";
 import EmptyState from "@/components/ui/empty-state";
 import MetricCard from "@/components/ui/metric-card";
 import { calcularRacha } from "@/lib/racha";
-import { casoCalibracion } from "@/lib/calibracion-confianza";
+import { calibracionEsSolida, casoCalibracion } from "@/lib/calibracion-confianza";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { entregaCuentaComoCompletada } from "@/lib/progreso-unidad";
 
@@ -62,9 +62,7 @@ export default async function ProgresoEstudiante() {
       return entrega?.puntaje_auto != null ? casoCalibracion(p.confianza, entrega.puntaje_auto) : null;
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
-  const bienCalibradas = conCalibracion.filter(
-    (c) => c === "bien_calibrado_alto" || c === "bien_calibrado_bajo",
-  ).length;
+  const bienCalibradas = conCalibracion.filter(calibracionEsSolida).length;
 
   const metasCumplidas = (bitacoras ?? []).filter((b) => b.cumplida).length;
   const totalUnidades = unidadesConProgreso.length;
@@ -158,11 +156,11 @@ export default async function ProgresoEstudiante() {
               <Card className="flex items-center gap-3 p-5">
                 <Target className="size-8 shrink-0 text-indigo-500" aria-hidden="true" />
                 <p className="text-sm text-slate-700 dark:text-slate-300">
-                  Le atinas a tu seguridad en{" "}
+                  Tu seguridad estuvo alineada y tu resultado fue sólido en{" "}
                   <strong className="text-slate-900 dark:text-slate-50">
                     {bienCalibradas} de {conCalibracion.length}
                   </strong>{" "}
-                  actividades (tu confianza antes de empezar coincidió con tu resultado real).
+                  actividades. La cercanía con un resultado bajo se muestra como una pista de repaso, no como un acierto.
                 </p>
               </Card>
             </section>

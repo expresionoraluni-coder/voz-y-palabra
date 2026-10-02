@@ -2,11 +2,21 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 
-type EntregaReciente = { puntajeAuto: number | null; respuesta: Record<string, unknown> } | null;
+type EntregaReciente = {
+  /** Mejor puntaje persistido, usado para saber si puede continuar. */
+  puntajeAuto: number | null;
+  /** Puntaje del intento recién enviado, usado para retroalimentación. */
+  puntajeIntentoAuto: number | null;
+  respuesta: Record<string, unknown>;
+} | null;
 
 type EntregaRecienteContextValue = {
   entregaReciente: EntregaReciente;
-  marcarGuardada: (datos: { puntajeAuto: number | null; respuesta: Record<string, unknown> }) => void;
+  marcarGuardada: (datos: {
+    puntajeAuto: number | null;
+    puntajeIntentoAuto: number | null;
+    respuesta: Record<string, unknown>;
+  }) => void;
 };
 
 const EntregaRecienteContext = createContext<EntregaRecienteContextValue>({

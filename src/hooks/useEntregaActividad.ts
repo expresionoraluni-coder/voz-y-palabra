@@ -55,7 +55,11 @@ export function useEntregaActividad(tieneEntregaInicial = false) {
       }
 
       limpiarDiagnosticoDeEntregaActual();
-      marcarGuardada({ puntajeAuto: resultado.puntajeAuto, respuesta: resultado.respuesta });
+      marcarGuardada({
+        puntajeAuto: resultado.puntajeAuto,
+        puntajeIntentoAuto: resultado.puntajeIntentoAuto,
+        respuesta: resultado.respuesta,
+      });
       setGuardado(true);
       setEntregaRegistrada(true);
       return resultado.respuesta;

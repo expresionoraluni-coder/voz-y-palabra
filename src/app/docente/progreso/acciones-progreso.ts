@@ -152,7 +152,7 @@ export async function previsualizarLimpiezaProgreso(
 
   const { data: entregas, error: entregasError } = await admin
     .from("entregas")
-    .select("id, file_url")
+    .select("id, archivo_url")
     .in("estudiante_id", estudiantesIds)
     .in("actividad_id", idsUnicos);
   if (entregasError) return { ok: false, error: mensajeError(entregasError) };
@@ -184,7 +184,7 @@ export async function previsualizarLimpiezaProgreso(
       entregas: entregasIds.length,
       reflexiones: reflexiones ?? 0,
       retroalimentaciones: retroalimentaciones ?? 0,
-      archivos: (entregas ?? []).filter((item) => Boolean(item.file_url)).length,
+      archivos: (entregas ?? []).filter((item) => Boolean(item.archivo_url)).length,
     },
   };
 }

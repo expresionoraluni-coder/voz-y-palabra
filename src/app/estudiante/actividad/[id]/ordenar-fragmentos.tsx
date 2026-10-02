@@ -122,9 +122,12 @@ export default function OrdenarFragmentos({
   // El detalle por posición ya se calificó en el servidor al entregar (ver
   // acciones-calificacion.ts) y se guardó junto a la respuesta — aquí solo
   // se lee, nunca se recalcula (la clave ya no llega al cliente). Entregas
-  // de antes de este cambio sin `resultadoPorPosicion` se tratan como si no
-  // hubiera entrega todavía, en vez de tronar.
-  const [resultado, setResultado] = useState<boolean[] | null>(respuestaPrevia?.resultadoPorPosicion ?? null);
+  // Entregas históricas con un detalle de longitud incompatible no muestran
+  // indicadores por fila, pero siguen bloqueadas por el intento ya guardado.
+  const detallePrevio = respuestaPrevia?.resultadoPorPosicion;
+  const [resultado, setResultado] = useState<boolean[] | null>(
+    detallePrevio && detallePrevio.length === (respuestaPrevia?.orden.length ?? 0) ? detallePrevio : null,
+  );
   const bloqueado = entregaRegistrada || resultado !== null;
 
   const disponibles = useMemo(

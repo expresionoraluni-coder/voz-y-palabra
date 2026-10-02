@@ -29,6 +29,7 @@ export type ResultadoCalificacion =
   | {
       ok: true;
       puntajeAuto: number | null;
+      puntajeIntentoAuto: number | null;
       respuesta: Record<string, unknown>;
       intentos?: number;
       mejorPuntaje?: number | null;
@@ -49,7 +50,10 @@ type ActividadParaAcceso = {
   requiereActividadId: string | null;
   unidadOrden: number;
   grupoId?: string;
-  grupoEsRevision?: boolean;
+  // Debe resolverse desde la sesión del estudiante. No lo dejamos opcional:
+  // omitirlo en una Server Action haría que un grupo de revisión se tratara
+  // como un grupo de curso, aunque la página ya hubiera abierto la actividad.
+  grupoEsRevision: boolean;
   tipoNombre: string | null;
 };
 
@@ -347,7 +351,7 @@ export async function validarAccesoUnidad(
   admin: ClienteAdmin,
   estudianteId: string,
   unidadId: string,
-  requiereInicio = true,
+  opciones: { requiereInicio?: boolean; grupoEsRevision: boolean },
 ) {
   const { data: actividad, error } = await admin
     .from("actividades")
@@ -371,9 +375,10 @@ export async function validarAccesoUnidad(
       orden: actividad.orden,
       requiereActividadId: actividad.requiere_actividad_id,
       unidadOrden: Number(unidad?.orden ?? 1),
+      grupoEsRevision: opciones.grupoEsRevision,
       tipoNombre: tipoActividad?.nombre ?? null,
     },
-    { requiereInicio, verificarApertura: false },
+    { requiereInicio: opciones.requiereInicio, verificarApertura: false },
   );
 }
 
@@ -520,6 +525,7 @@ export async function guardarEntregaInterna(
   return {
     ok: true,
     puntajeAuto: puntajeGuardado,
+    puntajeIntentoAuto: puntajeAuto,
     respuesta: sanitizarRespuestaParaEstudiante(fila.respuesta_cliente) as Record<string, unknown>,
     intentos,
     mejorPuntaje,

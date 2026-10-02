@@ -217,7 +217,10 @@ export default async function UnidadEstudiante({
   revisarErrorConsulta(reflexionCierreError, "No pudimos cargar tu reflexión de cierre.");
 
   const confianzaInicio = confianzas?.find((c) => c.momento === "inicio");
-  const inicioUnidadCompleto = esGrupoRevision || Boolean(confianzaInicio && bitacora);
+  // El grupo de revisión puede saltarse fechas y el orden entre unidades,
+  // pero también debe poder recorrer y guardar el inicio de cada unidad.
+  // Antes se marcaba como completo de antemano y se ocultaban estos campos.
+  const inicioUnidadCompleto = Boolean(confianzaInicio && bitacora);
 
   const totalActividades = actividades.length;
   const completadas =

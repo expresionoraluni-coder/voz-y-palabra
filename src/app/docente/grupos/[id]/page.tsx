@@ -7,8 +7,8 @@ import Eventos from "./eventos";
 import AccesoGrupo from "./acceso-grupo";
 import EditarGrupo from "./editar-grupo";
 import EliminarGrupo from "./eliminar-grupo";
-import GrupoEstudiantesPanel from "./grupo-estudiantes-panel";
 import GestionarProgreso from "@/app/docente/progreso/gestionar-progreso";
+import GrupoEstudiantesPanel from "./grupo-estudiantes-panel";
 import SeguimientoAprendizaje from "./seguimiento-aprendizaje";
 import PageHeader from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -17,7 +17,8 @@ import ProgressBar from "@/components/ui/progress-bar";
 import { temaUnidad } from "@/lib/unidad-tema";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 import { calcularAvanceDeActividadesAbiertas } from "@/lib/avance-actividades-abiertas";
-import { casoCalibracion } from "@/lib/calibracion-confianza";
+import { calibracionEsSolida, casoCalibracion } from "@/lib/calibracion-confianza";
+import { tieneReintentoAlternativo } from "@/lib/intentos-auto";
 import type { ReflexionSeguimiento } from "./tipos-seguimiento";
 
 const DIAS_INACTIVIDAD = 10;
@@ -36,10 +37,10 @@ type EntregaResumenGrupo = {
   actividad_id: string;
   created_at: string;
   puntaje_auto: number | null;
-  respuesta: unknown;
+  respuesta?: unknown;
 };
 
-type EntregaConfusionGrupo = {
+type EntregaConRespuestaGrupo = {
   id: string;
   estudiante_id: string;
   actividad_id: string;
@@ -185,7 +186,7 @@ export default async function DetalleGrupo({
     cargarEntregasPaginadas<EntregaResumenGrupo>(
       supabase,
       idsEstudiantesGrupo,
-      "id, estudiante_id, actividad_id, created_at, puntaje_auto, respuesta",
+      "id, estudiante_id, actividad_id, created_at, puntaje_auto",
     ),
     idsEstudiantesGrupo.length
       ? supabase.from("autoevaluaciones_confianza").select("estudiante_id, unidad_id, momento, valor").in("estudiante_id", idsEstudiantesGrupo)
@@ -200,10 +201,9 @@ export default async function DetalleGrupo({
   revisarErrorConsulta(bitacorasError, "No pudimos cargar las expectativas de apertura.");
   revisarErrorConsulta(reflexionesError, "No pudimos cargar las reflexiones del grupo.");
 
-  // La tabla entregas puede contener respuestas JSON grandes. El panel solo
-  // necesita las elecciones del estudiante para la matriz de confusión; las
-  // respuestas correctas se leen del contenido de la actividad en el servidor
-  // y nunca se guardan dentro de la respuesta visible al estudiante.
+  // La tabla entregas puede contener respuestas JSON grandes. El resumen no
+  // necesita descargarlas: solo se recuperan para actividades que las usan
+  // en un análisis puntual o para comprobar un reintento alternativo.
   const tiposConConfusion = new Set(["clasificacion", "etiquetado_texto"]);
   const actividadesMapa = new Map(
     (actividades ?? []).map((actividad) => {
@@ -233,17 +233,29 @@ export default async function DetalleGrupo({
       return tiposConConfusion.has(tipo?.nombre ?? "");
     })
     .map((actividad) => actividad.id);
-  const { data: entregasConConfusion, error: entregasConConfusionError } = idsActividadesConConfusion.length
-    ? await cargarEntregasPaginadas<EntregaConfusionGrupo>(
+  const idsActividadesConReintento = (actividades ?? [])
+    .filter((actividad) => tieneReintentoAlternativo(actividad.contenido))
+    .map((actividad) => actividad.id);
+  const idsActividadesConRespuesta = esGrupoRevision
+    ? []
+    : [...new Set([...idsActividadesConConfusion, ...idsActividadesConReintento])];
+  const { data: entregasConRespuesta, error: entregasConRespuestaError } = idsActividadesConRespuesta.length
+    ? await cargarEntregasPaginadas<EntregaConRespuestaGrupo>(
         supabase,
         idsEstudiantesGrupo,
         "id, estudiante_id, actividad_id, respuesta",
-        idsActividadesConConfusion,
+        idsActividadesConRespuesta,
       )
-    : { data: [] as EntregaConfusionGrupo[], error: null };
-  revisarErrorConsulta(entregasConConfusionError, "No pudimos cargar los datos para detectar dificultades comunes.");
+    : { data: [] as EntregaConRespuestaGrupo[], error: null };
+  revisarErrorConsulta(entregasConRespuestaError, "No pudimos cargar los datos de las respuestas.");
 
-  const entregasSeguras = entregas ?? [];
+  const respuestaPorEntrega = new Map((entregasConRespuesta ?? []).map((entrega) => [entrega.id, entrega.respuesta]));
+  const entregasSeguras = (entregas ?? []).map((entrega) => ({
+    ...entrega,
+    respuesta: respuestaPorEntrega.get(entrega.id),
+  }));
+  const idsConfusionSet = new Set(idsActividadesConConfusion);
+  const entregasConConfusion = (entregasConRespuesta ?? []).filter((entrega) => idsConfusionSet.has(entrega.actividad_id));
   const entregasPorEstudiante = new Map<string, typeof entregasSeguras>();
   const entregasPorActividad = new Map<string, typeof entregasSeguras>();
   const ultimaEntregaPorEstudianteYActividad = new Map<string, typeof entregasSeguras[number]>();
@@ -256,16 +268,22 @@ export default async function DetalleGrupo({
     entregasPorActividad.set(entrega.actividad_id, deLaActividad);
     ultimaEntregaPorEstudianteYActividad.set(`${entrega.estudiante_id}:${entrega.actividad_id}`, entrega);
   }
-  const avanceDeActividadesAbiertas = calcularAvanceDeActividadesAbiertas({
-    actividades: (actividades ?? []).map((actividad) => ({ id: actividad.id, contenido: actividad.contenido })),
-    aperturas: (eventos ?? []).map((evento) => ({
-      tipo: evento.tipo,
-      actividad_id: evento.actividad_id,
-      fecha: evento.fecha,
-    })),
-    entregas: entregasSeguras,
-    estudiantesIds: idsEstudiantesGrupo,
-  });
+  const avanceDeActividadesAbiertas = esGrupoRevision
+    ? {
+        actividadesAbiertas: new Set<string>(),
+        completadasPorEstudiante: new Map<string, Set<string>>(idsEstudiantesGrupo.map((id) => [id, new Set<string>()])),
+        avancePorEstudiante: new Map<string, number>(idsEstudiantesGrupo.map((id) => [id, 0])),
+      }
+    : calcularAvanceDeActividadesAbiertas({
+        actividades: (actividades ?? []).map((actividad) => ({ id: actividad.id, contenido: actividad.contenido })),
+        aperturas: (eventos ?? []).map((evento) => ({
+          tipo: evento.tipo,
+          actividad_id: evento.actividad_id,
+          fecha: evento.fecha,
+        })),
+        entregas: entregasSeguras,
+        estudiantesIds: idsEstudiantesGrupo,
+      });
   const { actividadesAbiertas, completadasPorEstudiante, avancePorEstudiante } = avanceDeActividadesAbiertas;
 
   // La actividad se mide respecto al momento en que se solicita el panel.
@@ -321,7 +339,7 @@ export default async function DetalleGrupo({
       .filter((confianza) => confianza.momento === "inicio")
       .map((confianza) => [`${confianza.estudiante_id}:${confianza.unidad_id}`, confianza.valor]),
   );
-  const comparacionesConfianza = estudiantes.flatMap((estudiante) =>
+  const comparacionesConfianza = esGrupoRevision ? [] : estudiantes.flatMap((estudiante) =>
     (unidades ?? []).flatMap((unidad) => {
       const confianza = confianzaInicialPorClave.get(`${estudiante.id}:${unidad.id}`) ?? null;
       const puntajes = (actividades ?? [])
@@ -333,9 +351,7 @@ export default async function DetalleGrupo({
       return [casoCalibracion(confianza, promedio)];
     }),
   );
-  const comparacionesCercanas = comparacionesConfianza.filter(
-    (caso) => caso === "bien_calibrado_alto" || caso === "bien_calibrado_bajo",
-  ).length;
+  const comparacionesCercanas = comparacionesConfianza.filter(calibracionEsSolida).length;
   const calibracionPorcentaje = comparacionesConfianza.length > 0
     ? Math.round((comparacionesCercanas / comparacionesConfianza.length) * 100)
     : null;
@@ -346,10 +362,10 @@ export default async function DetalleGrupo({
   // tienen entregas para esa actividad.
   const hace7dias = hoy - 7 * 24 * 60 * 60 * 1000;
   const hace14dias = hoy - 14 * 24 * 60 * 60 * 1000;
-  const entregasSemanaActual = (entregas ?? []).filter(
+  const entregasSemanaActual = entregasSeguras.filter(
     (en) => new Date(en.created_at).getTime() >= hace7dias,
   );
-  const entregasSemanaAnterior = (entregas ?? []).filter((en) => {
+  const entregasSemanaAnterior = entregasSeguras.filter((en) => {
     const t = new Date(en.created_at).getTime();
     return t >= hace14dias && t < hace7dias;
   });
@@ -361,7 +377,7 @@ export default async function DetalleGrupo({
       ? Math.round(conPuntaje.reduce((s, en) => s + (en.puntaje_auto ?? 0), 0) / conPuntaje.length)
       : null;
   }
-  const precisionPorActividad = (actividades ?? [])
+  const precisionPorActividad = (esGrupoRevision ? [] : (actividades ?? []))
     .map((actividad) => {
       const puntajes = (entregasPorActividad.get(actividad.id) ?? [])
         .map((entrega) => entrega.puntaje_auto)
@@ -387,7 +403,7 @@ export default async function DetalleGrupo({
   // sino "el grupo confunde 'Receptor' con 'Emisor' en 5 entregas" — mismo
   // dato ya guardado en respuesta.elegidas, solo que agregado más fino.
   const confusionMap = new Map<string, { elemento: string; correcta: string; elegida: string; veces: number }>();
-  for (const en of entregasConConfusion ?? []) {
+  for (const en of (esGrupoRevision ? [] : entregasConConfusion)) {
     const respuesta = en.respuesta as { elegidas?: string[] } | null;
     const elegidas = respuesta?.elegidas ?? [];
     const actividad = actividadesMapa.get(en.actividad_id);
@@ -415,12 +431,14 @@ export default async function DetalleGrupo({
   const totalConfusiones = [...confusionMap.values()].reduce((total, confusion) => total + confusion.veces, 0);
 
   const alertas: AlertaDocente[] = [];
-  for (const e of porEstudiante) {
-    if (e.totalEntregas === 0) {
-      const diasDesdeAlta = Math.floor((hoy - new Date(e.created_at).getTime()) / (1000 * 60 * 60 * 24));
-      if (diasDesdeAlta >= 3) alertas.push({ tipo: "sin_comenzar", estudianteId: e.id, texto: `${e.nombre} todavía no ha empezado a practicar.` });
-    } else if (e.diasInactivo !== null && e.diasInactivo > DIAS_INACTIVIDAD) {
-      alertas.push({ tipo: "inactividad", estudianteId: e.id, texto: `${e.nombre} sin actividad hace ${e.diasInactivo} días.` });
+  if (!esGrupoRevision) {
+    for (const e of porEstudiante) {
+      if (e.totalEntregas === 0) {
+        const diasDesdeAlta = Math.floor((hoy - new Date(e.created_at).getTime()) / (1000 * 60 * 60 * 24));
+        if (diasDesdeAlta >= 3) alertas.push({ tipo: "sin_comenzar", estudianteId: e.id, texto: `${e.nombre} todavía no ha empezado a practicar.` });
+      } else if (e.diasInactivo !== null && e.diasInactivo > DIAS_INACTIVIDAD) {
+        alertas.push({ tipo: "inactividad", estudianteId: e.id, texto: `${e.nombre} sin actividad hace ${e.diasInactivo} días.` });
+      }
     }
   }
   return (
@@ -465,9 +483,9 @@ export default async function DetalleGrupo({
           { href: "#resumen", etiqueta: "Resumen" },
           { href: "#estudiantes", etiqueta: "Estudiantes" },
           { href: "#seguimiento", etiqueta: "Seguimiento" },
-          { href: "#analisis", etiqueta: "Análisis" },
-          { href: "#operacion", etiqueta: "Fechas y avisos" },
-          { href: "#atencion", etiqueta: "Alertas" },
+          ...(!esGrupoRevision ? [{ href: "#analisis", etiqueta: "Análisis" }] : []),
+          { href: "#operacion", etiqueta: esGrupoRevision ? "Avisos" : "Fechas y avisos" },
+          ...(!esGrupoRevision ? [{ href: "#atencion", etiqueta: "Alertas" }] : []),
         ].map((t) => (
           <a
             key={t.href}
@@ -480,7 +498,12 @@ export default async function DetalleGrupo({
       </nav>
 
       <section id="resumen" className="scroll-mt-16 flex flex-col gap-3 rounded-[1.7rem] border border-white/80 bg-white/80 p-4 shadow-[0_16px_34px_-28px_rgb(15_23_42/0.42)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-5" aria-labelledby="resumen-titulo">
-        <div><h2 id="resumen-titulo" className="text-lg font-bold text-slate-900 dark:text-slate-50">Pulso del grupo</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Métricas de las actividades que ya están disponibles.</p></div>
+        <div><h2 id="resumen-titulo" className="text-lg font-bold text-slate-900 dark:text-slate-50">{esGrupoRevision ? "Espacio de revisión" : "Pulso del grupo"}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{esGrupoRevision ? "Este grupo sirve para revisar recorridos y no alimenta las estadísticas académicas." : "Métricas de las actividades que ya están disponibles."}</p></div>
+        {esGrupoRevision ? (
+          <div className="rounded-2xl border border-violet-200 bg-violet-50/70 px-4 py-3 text-sm leading-relaxed text-violet-950 dark:border-violet-900/70 dark:bg-violet-950/25 dark:text-violet-100">
+            Las actividades permanecen disponibles sin calendario. Consulta las entregas en Seguimiento; sus resultados no se mezclan con avance, participación, calibración ni alertas del curso.
+          </div>
+        ) : (
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <MetricCard
             etiqueta="Participación"
@@ -501,7 +524,7 @@ export default async function DetalleGrupo({
             valor={calibracionPorcentaje === null ? "Sin datos" : `${calibracionPorcentaje}%`}
             descripcion={calibracionPorcentaje === null
               ? "Aún no hay unidades con confianza y resultado."
-              : "Confianza inicial y resultado cercanos en las unidades comparables."}
+              : "Confianza alineada y resultado sólido en las unidades comparables."}
             icon={Scale}
             tono="slate"
           />
@@ -513,6 +536,7 @@ export default async function DetalleGrupo({
             tono="amber"
           />
         </div>
+        )}
       </section>
 
       <div id="estudiantes" className="scroll-mt-16 flex flex-col gap-8">
@@ -545,6 +569,7 @@ export default async function DetalleGrupo({
         bitacoras={bitacoras ?? []}
       />
 
+      {!esGrupoRevision && (
       <section id="analisis" className="scroll-mt-20 flex flex-col gap-6 rounded-[1.7rem] border border-white/80 bg-white/80 p-4 shadow-[0_16px_34px_-28px_rgb(15_23_42/0.42)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-5" aria-labelledby="analisis-titulo">
         <div><p className="text-xs font-bold uppercase tracking-[0.13em] text-cyan-700 dark:text-cyan-300">Patrones del grupo</p><h2 id="analisis-titulo" className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-50">Análisis del grupo</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Úsalo para decidir qué explicar, reforzar o retomar en la siguiente sesión.</p></div>
         <section id="detalle" className="scroll-mt-16 flex flex-col gap-3" aria-labelledby="avance-unidad-titulo">
@@ -657,6 +682,7 @@ export default async function DetalleGrupo({
       )}
 
       </section>
+      )}
 
       <details id="operacion" className="scroll-mt-20 rounded-[1.45rem] border border-slate-200 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
         <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 marker:text-indigo-500 dark:text-slate-100">
@@ -689,6 +715,7 @@ export default async function DetalleGrupo({
         </div>
       </details>
 
+      {!esGrupoRevision && (
       <details id="atencion" className="scroll-mt-20 rounded-[1.45rem] border border-amber-200 bg-amber-50/50 shadow-sm backdrop-blur-sm dark:border-amber-900/60 dark:bg-amber-950/15">
         <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 marker:text-amber-600 dark:text-slate-100">
           Alertas de actividad
@@ -715,6 +742,7 @@ export default async function DetalleGrupo({
           )}
         </div>
       </details>
+      )}
 
       {!esGrupoRevision && (
         <section id="mantenimiento-progreso" className="scroll-mt-20" aria-labelledby="mantenimiento-progreso-titulo">
@@ -735,6 +763,7 @@ export default async function DetalleGrupo({
           />
         </section>
       )}
+
       <section id="eliminacion" className="scroll-mt-20 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/60 dark:bg-red-950/15" aria-labelledby="eliminacion-titulo">
         <h2 id="eliminacion-titulo" className="text-base font-semibold text-red-800 dark:text-red-200">Zona de riesgo</h2>
         <p className="mt-1 text-sm text-red-700 dark:text-red-300">Eliminar este grupo borra su información de forma permanente.</p>

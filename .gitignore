@@ -33,6 +33,14 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local assistant/editor configuration and generated review artifacts
+/.claude/
+/test-results/
+/playwright-report/
+/tmp/
+/deno.lock
+/docs/analisis-dev-001-migraciones.md
+
 # vercel
 .vercel
 

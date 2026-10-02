@@ -16,13 +16,13 @@ export function sanitizarContenidoOrdenarFragmentos(
 }
 
 // resultadoPorPosicion queda alineado con `secuencia` (la respuesta del
-// estudiante), no con el orden original de `fragmentos` — así el
-// componente puede pintar cada fragmento de su propia secuencia sin volver
-// a necesitar `orden_correcto`.
+// estudiante). Cada distractor, repetición o fragmento fuera de lugar cuenta
+// como un error; los fragmentos omitidos también se reflejan en el total.
 export function calificarOrden(contenido: ContenidoOrdenarFragmentos, secuencia: number[]) {
-  const resultadoPorPosicion = contenido.orden_correcto.map((idx, i) => secuencia[i] === idx);
+  const resultadoPorPosicion = secuencia.map((idx, i) => secuencia[i] === contenido.orden_correcto[i]);
+  const total = Math.max(contenido.orden_correcto.length, secuencia.length);
   const puntajeAuto = Math.round(
-    (resultadoPorPosicion.filter(Boolean).length / contenido.orden_correcto.length) * 100,
+    total === 0 ? 0 : (resultadoPorPosicion.filter(Boolean).length / total) * 100,
   );
   return { puntajeAuto, resultadoPorPosicion };
 }

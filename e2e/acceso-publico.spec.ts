@@ -29,7 +29,7 @@ test("el acceso estudiantil detiene un correo puesto por autocompletado", async 
 test("la información pública explica el uso educativo, de investigación y los borradores", async ({ page }) => {
   await page.goto("/privacidad");
 
-  await expect(page.getByText("M. en C. Monserrat Nieto Cuevas").first()).toBeVisible();
+  await expect(page.getByText(/La persona responsable y el primer punto de contacto/).first()).toBeVisible();
   await expect(page.getByText(/fines educativos/i)).toBeVisible();
   await expect(page.getByText(/investigación pedagógica/i)).toBeVisible();
   await expect(page.getByText(/Borradores antes de entregar/i)).toBeVisible();

@@ -30,6 +30,9 @@ function etiquetaCalibracion(confianza: number | null, resultado: number | null,
   if (caso === "subconfianza") {
     return { texto: `Resultado mayor a la ${termino.toLocaleLowerCase("es-MX")}`, clases: "bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-200" };
   }
+  if (caso === "bien_calibrado_bajo") {
+    return { texto: `${termino} cercana, resultado bajo`, clases: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200" };
+  }
   return { texto: `${termino} y resultado alineados`, clases: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200" };
 }
 

@@ -9,6 +9,16 @@ import { validarAccesoActividad, validarAccesoUnidad } from "@/lib/estudiante-en
 
 type Resultado = { ok: true } | { ok: false; error: string };
 
+function esGrupoRevision(grupos: unknown): boolean {
+  const grupo = Array.isArray(grupos) ? grupos[0] : grupos;
+  return Boolean(
+    grupo &&
+      typeof grupo === "object" &&
+      "modo" in grupo &&
+      (grupo as { modo?: unknown }).modo === "revision",
+  );
+}
+
 async function obtenerEstudiante() {
   const supabase = await createClient();
   const {
@@ -21,7 +31,7 @@ async function obtenerEstudiante() {
   const admin = createAdminClient();
   const { data: estudiante, error } = await admin
     .from("estudiantes")
-    .select("id, grupo_id, debe_cambiar_nip")
+    .select("id, grupo_id, debe_cambiar_nip, grupos(modo)")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -29,7 +39,15 @@ async function obtenerEstudiante() {
     return { ok: false as const, error: "No encontramos tu sesión de estudiante. Entra de nuevo." };
   }
 
-  return { ok: true as const, supabase, admin, estudiante };
+  return {
+    ok: true as const,
+    supabase,
+    admin,
+    estudiante: {
+      ...estudiante,
+      grupoEsRevision: esGrupoRevision(estudiante.grupos),
+    },
+  };
 }
 
 async function cargarActividad(
@@ -75,6 +93,7 @@ export async function guardarPrediccionActividad(
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: actividad.unidad_orden,
     grupoId: acceso.estudiante.grupo_id,
+    grupoEsRevision: acceso.estudiante.grupoEsRevision,
     tipoNombre: actividad.tipo_nombre,
   });
   if (!permitido.ok) return { ok: false, error: permitido.error };
@@ -114,6 +133,7 @@ export async function guardarReflexionActividad(
     requiereActividadId: actividad.requiere_actividad_id,
     unidadOrden: actividad.unidad_orden,
     grupoId: acceso.estudiante.grupo_id,
+    grupoEsRevision: acceso.estudiante.grupoEsRevision,
     tipoNombre: actividad.tipo_nombre,
   });
   if (!permitido.ok) return { ok: false, error: permitido.error };
@@ -173,6 +193,7 @@ export async function guardarReflexionUnidad(unidadId: string, texto: string): P
     acceso.admin,
     acceso.estudiante.id,
     unidadId,
+    { grupoEsRevision: acceso.estudiante.grupoEsRevision },
   );
   if (!accesoUnidad.ok) return { ok: false, error: accesoUnidad.error };
 
@@ -248,7 +269,10 @@ export async function guardarConfianzaUnidad(
     acceso.admin,
     acceso.estudiante.id,
     unidadId,
-    momento === "cierre",
+    {
+      requiereInicio: momento === "cierre",
+      grupoEsRevision: acceso.estudiante.grupoEsRevision,
+    },
   );
   if (!permitido.ok) return { ok: false, error: permitido.error };
 
@@ -346,7 +370,12 @@ export async function guardarBitacoraMeta(unidadId: string, meta: string): Promi
   if (errorTexto) return { ok: false, error: errorTexto };
   const acceso = await obtenerEstudiante();
   if (!acceso.ok) return acceso;
-  const permitido = await validarAccesoUnidad(acceso.admin, acceso.estudiante.id, unidadId, false);
+  const permitido = await validarAccesoUnidad(
+    acceso.admin,
+    acceso.estudiante.id,
+    unidadId,
+    { requiereInicio: false, grupoEsRevision: acceso.estudiante.grupoEsRevision },
+  );
   if (!permitido.ok) return { ok: false, error: permitido.error };
   const { data: existente } = await acceso.supabase
     .from("bitacora")

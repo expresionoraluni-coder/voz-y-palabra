@@ -5,12 +5,20 @@ export type CasoCalibracion =
   | "bien_calibrado_alto"
   | "bien_calibrado_bajo";
 
+export const TOLERANCIA_CALIBRACION_PUNTOS = 25;
+export const PUNTAJE_CALIBRACION_SOLIDA = 70;
+
 function casoCalibracionPct(confianzaPct: number | null, puntajeAuto: number | null): CasoCalibracion {
   if (confianzaPct == null || puntajeAuto == null) return "sin_puntaje";
   const diferencia = confianzaPct - puntajeAuto;
-  if (diferencia > 25) return "sobreconfianza";
-  if (diferencia < -25) return "subconfianza";
-  return puntajeAuto >= 70 ? "bien_calibrado_alto" : "bien_calibrado_bajo";
+  if (diferencia > TOLERANCIA_CALIBRACION_PUNTOS) return "sobreconfianza";
+  if (diferencia < -TOLERANCIA_CALIBRACION_PUNTOS) return "subconfianza";
+  return puntajeAuto >= PUNTAJE_CALIBRACION_SOLIDA ? "bien_calibrado_alto" : "bien_calibrado_bajo";
+}
+
+/** Una calibración sólida implica alineación y un resultado suficiente. */
+export function calibracionEsSolida(caso: CasoCalibracion): boolean {
+  return caso === "bien_calibrado_alto";
 }
 
 export function casoCalibracion(confianza: number | null, puntajeAuto: number | null): CasoCalibracion {
@@ -25,8 +33,9 @@ export function mensajeCalibracion(confianza: number, puntajeAuto: number): stri
     case "subconfianza":
       return `Tu nivel de seguridad era bajo (${confianza}/5), pero acertaste ${puntajeAuto}% (sabes más de lo que crees; confía un poco más en tus capacidades).`;
     case "bien_calibrado_alto":
+      return `Tu confianza (${confianza}/5) estuvo alineada y tu resultado fue sólido (${puntajeAuto}%).`;
     case "bien_calibrado_bajo":
-      return `Tu confianza (${confianza}/5) estuvo bien calibrada con tu resultado (${puntajeAuto}%).`;
+      return `Tu expectativa estuvo cerca de tu resultado (${puntajeAuto}%), pero todavía hay contenidos que conviene repasar antes de avanzar.`;
     default:
       return null;
   }
@@ -58,8 +67,9 @@ export function mensajeCalibracionUnidad(confianza: number | null, promedioUnida
     case "subconfianza":
       return `Al empezar registraste un nivel de seguridad de ${confianza}/5, pero tu resultado promedio fue ${promedioUnidad}% (sabes más de lo que creías).`;
     case "bien_calibrado_alto":
+      return `Tu confianza inicial (${confianza}/5) estuvo alineada y tu resultado promedio fue sólido (${promedioUnidad}%).`;
     case "bien_calibrado_bajo":
-      return `Tu confianza inicial (${confianza}/5) estuvo bien calibrada con tu resultado promedio en la unidad (${promedioUnidad}%).`;
+      return `Tu expectativa estuvo cerca del resultado promedio (${promedioUnidad}%), pero la unidad todavía necesita repaso y práctica.`;
     default:
       return null;
   }

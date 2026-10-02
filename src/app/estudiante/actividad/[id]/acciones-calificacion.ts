@@ -87,7 +87,17 @@ export async function calificarOrdenarFragmentos(actividadId: string, secuencia:
 
   const ctx = await obtenerContextoCalificacion(actividadId, "ordenar_fragmentos");
   if (!ctx.ok) return ctx;
-  const { puntajeAuto, resultadoPorPosicion } = calificarOrden(ctx.contexto.contenido as ContenidoOrdenarFragmentos, secuencia);
+  const contenido = ctx.contexto.contenido as ContenidoOrdenarFragmentos;
+  if (
+    !Array.isArray(contenido.fragmentos) ||
+    !Array.isArray(contenido.orden_correcto) ||
+    contenido.orden_correcto.length === 0 ||
+    secuencia.some((indice) => indice >= contenido.fragmentos.length) ||
+    new Set(secuencia).size !== secuencia.length
+  ) {
+    return { ok: false, error: "La secuencia no tiene un formato válido. Recarga la actividad e inténtalo de nuevo." };
+  }
+  const { puntajeAuto, resultadoPorPosicion } = calificarOrden(contenido, secuencia);
   return guardarEntregaInterna(ctx.contexto.supabase, actividadId, { orden: secuencia, resultadoPorPosicion }, puntajeAuto, "completada", ctx.contexto.estudianteId);
 }
 

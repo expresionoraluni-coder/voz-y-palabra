@@ -54,7 +54,7 @@ export default function Privacidad() {
 
       <section className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">Conservación, acceso y solicitudes</h2>
-        <p className="mt-2">La información se conserva conforme a las reglas institucionales del curso. Puedes pedir que se revise o corrija tu información por el canal institucional del curso. La docente responsable y primer punto de contacto es M. en C. Monserrat Nieto Cuevas.</p>
+        <p className="mt-2">La información se conserva conforme a las reglas institucionales del curso. Puedes pedir que se revise o corrija tu información por el canal institucional del curso. La persona responsable y el primer punto de contacto deben definirse y aprobarse institucionalmente antes de publicar esta política.</p>
       </section>
     </MarcoLegal>
   );
