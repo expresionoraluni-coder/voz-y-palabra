@@ -13,7 +13,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_MX",
     url: "/",
-    images: [{ url: "/og-image.svg", width: 1200, height: 630, type: "image/svg+xml" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, type: "image/png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Voz y Palabra · Expresión Oral y Escrita I",
+    description: "Plataforma de práctica para Expresión Oral y Escrita I.",
+    images: ["/og-image.png"],
   },
 };
 

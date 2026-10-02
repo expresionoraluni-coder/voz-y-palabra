@@ -42,9 +42,17 @@ npm run lint
 npm run typecheck
 npm run test:contracts
 npm run build
+npm run test:e2e:public
 ```
 
 `test:contracts` comprueba invariantes de seguridad en las Server Actions, el esquema y las funciones SQL. El workflow de GitHub también aplica las migraciones de Supabase en un entorno efímero y ejecuta pgTAP.
+
+Las pruebas E2E autenticadas se habilitan únicamente en una base efímera con
+`E2E_GROUP_CODE`, `E2E_STUDENT_NAME`, `E2E_STUDENT_NIP`,
+`E2E_TEACHER_EMAIL`, `E2E_TEACHER_PASSWORD`, `E2E_ADMIN_EMAIL` y
+`E2E_ADMIN_PASSWORD`. `E2E_ADMIN_MFA_CODE` es opcional; si no se define, la
+prueba confirma que el panel administrativo se detiene en la pantalla MFA.
+Nunca configures estas variables con cuentas de producción.
 
 ## Estructura funcional
 
@@ -68,6 +76,13 @@ Netlify usa `npm run build` y el plugin oficial de Next.js configurado en `netli
 La separación de entornos y el procedimiento de limpieza segura están documentados en [docs/entornos-y-despliegue.md](docs/entornos-y-despliegue.md). No apuntes pruebas de carga ni scripts de mantenimiento a la base productiva.
 
 Las rutas públicas conservan `connection()` en el layout raíz porque la CSP genera un nonce distinto por respuesta y Next.js lo necesita para inyectarlo en sus scripts; cambiarlo por cacheado estático requiere primero una CSP pública separada y una verificación de cabeceras en producción.
+
+El endpoint `GET /api/health` y los umbrales de alerta están documentados en
+[docs/observabilidad.md](docs/observabilidad.md). No registra datos personales
+y devuelve `503` sin detalles internos cuando la base no responde.
+
+La revisión de cuotas y la proyección de crecimiento del grupo están en
+[docs/consumo-cuotas.md](docs/consumo-cuotas.md).
 
 ## Datos y privacidad
 

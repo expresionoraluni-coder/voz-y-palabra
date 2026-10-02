@@ -2,6 +2,25 @@
 
 Este documento separa los controles técnicos ya implementados de las decisiones que debe aprobar la institución responsable. No sustituye el aviso de privacidad institucional ni asesoría jurídica.
 
+## Responsable y alcance declarados
+
+La responsable operativa del sitio es la **M. en C. Monserrat Nieto Cuevas**,
+adscrita al Instituto Politécnico Nacional, Centro de Estudios Científicos y
+Tecnológicos No. 1 «Gonzalo Vázquez Vela», Departamento de Unidades de
+Aprendizaje del Área Humanística, Academia de Lengua y Comunicación.
+
+El IPN y el CECyT 1 se consignan como adscripción académica; la responsable
+declara que no son responsables directos del sitio. El alcance actual se limita
+a estudiantes de primer semestre que cursan Expresión Oral y Escrita I con la
+M. en C. Monserrat Nieto Cuevas.
+
+Contacto de la responsable: [mnieto@ipn.mx](mailto:mnieto@ipn.mx).
+Contacto administrativo alterno: [digp.inv.ipn@gmail.com](mailto:digp.inv.ipn@gmail.com),
+gestionado por un integrante del equipo de investigación que también opera el
+perfil administrador, bajo autorización y supervisión de la responsable. Antes
+de publicar esta información como aviso legal debe revisarse con el área
+institucional correspondiente.
+
 ## Inventario y finalidad
 
 | Datos | Finalidad operativa | Acceso previsto |
@@ -18,7 +37,35 @@ No se debe escribir una contraseña, NIP, token ni información de terceras pers
 
 ## Alcance docente y educativo
 
-La persona responsable académica del curso y el primer punto de contacto deben definirse y aprobarse institucionalmente antes de publicar esta política. Los datos se usan con fines educativos para dar acceso, organizar actividades, conservar evidencias y orientar el aprendizaje. Podrán analizarse de forma agregada o anonimizada para investigación pedagógica y mejora del curso; no se emplearán nombres, identificadores ni respuestas atribuibles para ese fin sin la autorización institucional y, cuando corresponda, las autorizaciones aplicables.
+Los datos se usan con fines educativos para dar acceso, organizar actividades,
+conservar evidencias y orientar el aprendizaje. Durante el semestre, la
+responsable puede exportar nombre, resultados de actividades y reflexiones para
+analizar resultados, impacto, metacognición y autonomía.
+
+La responsable y su equipo de investigación pueden consultar esa exportación
+bajo compromisos éticos firmados y supervisión de la M. en C. Monserrat Nieto
+Cuevas. El análisis de investigación se realizará sobre el comportamiento
+general del grupo, no para perfilar o señalar a un estudiante específico. Antes
+de compartir resultados fuera del equipo autorizado deben retirarse nombres e
+identificadores o agregarse los datos de forma que no permitan reidentificar a
+una persona.
+
+## Conservación y cierre del semestre
+
+La regla operativa declarada es conservar la información durante el semestre
+en curso y un mes adicional. Al terminar ese plazo, la responsable debe:
+
+1. completar la exportación académica autorizada;
+2. verificar que el análisis de investigación use datos agregados o
+   desidentificados;
+3. eliminar cuentas, grupos, entregas, reflexiones, reportes y registros
+   asociados al semestre;
+4. registrar la fecha, el alcance y la persona que verificó la eliminación.
+
+La eliminación de copias de respaldo y de retenciones propias de Supabase,
+Netlify o el correo debe confirmarse en los acuerdos y configuraciones de cada
+proveedor; esta política no puede prometer una purga inmediata si el proveedor
+conserva respaldos por un periodo técnico adicional.
 
 Los borradores de respuestas abiertas se conservan solamente en el navegador y dispositivo que la persona estudiante está usando. No se envían a Supabase, no se califican y se eliminan al entregar la respuesta o cerrar sesión.
 Si una pestaña queda abandonada, el borrador se elimina automáticamente al superar 24 horas; la limpieza es oportunista al volver a leerlo y no requiere enviar el texto al servidor.
@@ -40,13 +87,13 @@ Si una pestaña queda abandonada, el borrador se elimina automáticamente al sup
 
 ## Decisiones institucionales pendientes antes de producción
 
-- [ ] Identificar a la institución responsable y publicar su denominación y medio de contacto.
+- [x] Identificar a la responsable operativa y publicar un medio de contacto; falta la revisión jurídica antes de presentarlo como aviso institucional.
 - [ ] Confirmar la base y el aviso aplicables al tratamiento de datos de estudiantes, especialmente si participan menores.
 - [ ] Aprobar qué campos son indispensables y retirar cualquier dato que no tenga una finalidad documentada.
-- [ ] Definir plazos concretos de conservación para cuentas, grupos, evidencias, reflexiones, avance, reportes, auditoría y respaldos.
-- [ ] Definir el cierre de curso: exportación institucional, anonimización o eliminación, responsables y fecha límite.
+- [x] Definir un plazo operativo: semestre en curso más un mes adicional.
+- [x] Definir el cierre de curso: exportación académica autorizada y eliminación posterior, bajo supervisión de la responsable.
 - [ ] Definir el procedimiento y plazo para solicitudes de acceso, corrección, exportación y eliminación.
-- [ ] Definir quién autoriza altas y bajas de docentes y administradores, y con qué periodicidad se revisan.
+- [x] Definir quién autoriza altas y bajas: actualmente solo la M. en C. Monserrat Nieto Cuevas; falta documentar la periodicidad de revisión.
 - [ ] Definir si el alta docente debe limitarse a dominios institucionales o a correos previamente autorizados; el código de invitación y la confirmación de correo prueban autorización y control del buzón, pero no por sí solos que la persona sea docente.
 - [ ] Confirmar proveedores, regiones, transferencias y acuerdos institucionales aplicables a Supabase y Netlify.
 - [ ] Aprobar un procedimiento de incidentes: detección, contención, comunicación, recuperación y registro.

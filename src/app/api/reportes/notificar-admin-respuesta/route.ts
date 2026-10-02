@@ -86,7 +86,6 @@ export async function POST(request: Request) {
   if (!reclamado) return new NextResponse(null, { status: 204 });
 
   const resultadoEnvio = await enviarAvisoCorreoAdministradores({
-    baseUrl: request.url,
     reporte,
     tipoAviso: "respuesta_reportante",
   });

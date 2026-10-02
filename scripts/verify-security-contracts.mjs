@@ -104,6 +104,8 @@ const migracionNotificacionesCorreo = await texto("supabase/migrations/202609220
 const notificarAdminReporte = await texto("src/app/api/reportes/notificar-admin/route.ts");
 const notificarAdminRespuesta = await texto("src/app/api/reportes/notificar-admin-respuesta/route.ts");
 const notificacionesCorreo = await texto("src/lib/reportes/notificaciones-correo.ts");
+const health = await texto("src/app/api/health/route.ts");
+const dependabot = await texto(".github/dependabot.yml");
 const migracionConversacionUnificada = await texto("supabase/migrations/20260922170642_unificar_conversacion_y_avisos_respuestas.sql");
 const atencionReporte = await texto("src/app/admin/reportes/reporte-atencion.tsx");
 const recuperacion = await texto("src/app/ingreso/recuperar/page.tsx");
@@ -488,7 +490,7 @@ if (!accionesCalificacion.includes("elegidas.length !== contenido.elementos.leng
 if (!cargaE2e.includes("E2E_PROJECT_REF") || !cargaE2e.includes("E2E_CONFIRMATION") || !cargaE2e.includes("E2E_ALLOW_PRODUCTION")) {
   failures.push("carga E2E: falta confirmar el proyecto objetivo y bloquear producción por defecto.");
 }
-if (!netlify.includes('NODE_VERSION = "22"') || !packageJson.includes('"eslint-config-next": "^16.3.4"')) {
+if (!netlify.includes('NODE_VERSION = "22"') || !packageJson.includes('"eslint-config-next": "^16.3.8"')) {
   failures.push("despliegue: falta fijar Node y alinear eslint-config-next con Next.");
 }
 
@@ -590,12 +592,46 @@ if (!ingresoEstudiante.includes("pareceCorreo") || !ingresoEstudiante.includes("
 if (
   !borradorLocal.includes("window.localStorage") ||
   !borradorLocal.includes("MAXIMO_CARACTERES_BORRADOR") ||
-  !borradorLocal.includes("limpiarBorradoresLocales")
+  !borradorLocal.includes("limpiarBorradoresLocales") ||
+  !borradorLocal.includes("window.localStorage.removeItem(clave)")
 ) {
   failures.push("borradores: deben guardarse localmente, con límite y limpieza al cerrar sesión.");
 }
+const limpiezaBorradores = borradorLocal.slice(borradorLocal.indexOf("export function limpiarBorradoresLocales"));
+if (limpiezaBorradores.includes("JSON.parse") || !limpiezaBorradores.includes("window.localStorage.removeItem(clave)")) {
+  failures.push("borradores: cerrar sesión debe eliminar también los borradores válidos, no solo los vencidos.");
+}
+if (
+  !proxy.includes('source: "/ingreso/estudiante/:path*"') ||
+  !proxy.includes('source: "/ingreso/profesora/:path*"') ||
+  !proxy.includes('source: "/ingreso/admin/:path*"') ||
+  !proxy.includes('source: "/ingreso/recuperar/:path*"') ||
+  !proxy.includes('source: "/auth/confirm/:path*"') ||
+  !proxy.includes('startsWith("/auth/confirm")')
+) {
+  failures.push("proxy: las rutas de credenciales y confirmación deben quedar cubiertas por CSP y no-store.");
+}
+if (
+  !notificacionesCorreo.includes("NEXT_PUBLIC_SITE_URL") ||
+  !notificacionesCorreo.includes("origenSitioCanonico") ||
+  notificacionesCorreo.includes("request.url") ||
+  notificacionesCorreo.includes("baseUrl")
+) {
+  failures.push("correo: los enlaces administrativos deben usar el origen canónico, nunca el Host de la petición.");
+}
 if (portada.includes("<Link href=\"/ingreso\">\n          <Boton") || cierreInteractivoUnidad.includes("<Link href={siguienteHref}>\n            <Boton")) {
   failures.push("accesibilidad: no debe anidarse un botón dentro de un enlace.");
+}
+if (
+  !health.includes('export async function GET()') ||
+  !health.includes('Cache-Control') ||
+  !health.includes('configuracion_plataforma') ||
+  health.includes('error.message')
+) {
+  failures.push("observabilidad: el health check debe ser no-store, consultar la base y no exponer errores internos.");
+}
+if (!dependabot.includes('package-ecosystem: npm') || !dependabot.includes('interval: weekly')) {
+  failures.push("dependencias: debe existir una actualización semanal automatizada.");
 }
 
 if (failures.length > 0) {

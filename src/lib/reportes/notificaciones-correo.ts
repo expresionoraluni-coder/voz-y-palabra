@@ -13,6 +13,19 @@ export type ReporteParaAvisoCorreo = {
 
 type TipoAviso = "reporte_nuevo" | "respuesta_reportante";
 
+const ORIGEN_PRODUCCION = "https://voz-y-palabra.netlify.app";
+
+function origenSitioCanonico() {
+  const candidato = process.env.NEXT_PUBLIC_SITE_URL?.trim() || ORIGEN_PRODUCCION;
+  try {
+    const origen = new URL(candidato);
+    if (origen.protocol !== "http:" && origen.protocol !== "https:") throw new Error("Origen inválido");
+    return origen.origin;
+  } catch {
+    return ORIGEN_PRODUCCION;
+  }
+}
+
 function textoSeguro(valor: string) {
   return valor.replace(/[&<>'"]/g, (caracter) => ({
     "&": "&amp;",
@@ -56,11 +69,9 @@ async function destinatariosAdministradores() {
  * estudiante o docente fuera de la plataforma.
  */
 export async function enviarAvisoCorreoAdministradores({
-  baseUrl,
   reporte,
   tipoAviso,
 }: {
-  baseUrl: string;
   reporte: ReporteParaAvisoCorreo;
   tipoAviso: TipoAviso;
 }): Promise<"enviado" | "sin_configuracion" | "sin_destinatario" | "fallo"> {
@@ -74,7 +85,9 @@ export async function enviarAvisoCorreoAdministradores({
   const categoria = ETIQUETAS_CATEGORIA[reporte.categoria] ?? reporte.categoria;
   const prioridad = PRIORIDADES_REPORTE[reporte.prioridad] ?? reporte.prioridad;
   const reportante = reporte.reportante_tipo === "estudiante" ? "Estudiante" : "Docente";
-  const enlace = new URL("/admin/reportes", baseUrl).toString();
+  // El Host de una petición no es una autoridad de navegación confiable para
+  // un correo dirigido a administración.
+  const enlace = new URL("/admin/reportes", origenSitioCanonico()).toString();
   const encabezado = tipoAviso === "reporte_nuevo"
     ? "Se registró un nuevo reporte en Voz y Palabra."
     : "Hay información nueva en un reporte de Voz y Palabra.";

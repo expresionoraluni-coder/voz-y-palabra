@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test:contracts": "node scripts/verify-security-contracts.mjs && node --experimental-strip-types --test scripts/auth-url.test.mts scripts/intentos-auto.test.mts scripts/eventos.test.mts scripts/dependencias-actividades.test.mts scripts/calibracion.test.mts scripts/orden-fragmentos.test.mts",
     "test:e2e": "playwright test",
+    "test:e2e:public": "playwright test e2e/acceso-publico.spec.ts e2e/accesibilidad.spec.ts",
     "catalog:export": "node scripts/export-catalog-seed.mjs"
   },
   "dependencies": {
@@ -22,7 +23,7 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.1",
     "lucide-react": "^1.24.0",
-    "next": "^16.3.4",
+    "next": "^16.3.8",
     "nodemailer": "^10.0.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -35,7 +36,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.4",
+    "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

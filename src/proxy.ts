@@ -72,7 +72,8 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/ingreso/estudiante") ||
     request.nextUrl.pathname.startsWith("/ingreso/profesora") ||
     request.nextUrl.pathname.startsWith("/ingreso/admin") ||
-    request.nextUrl.pathname.startsWith("/ingreso/recuperar")
+    request.nextUrl.pathname.startsWith("/ingreso/recuperar") ||
+    request.nextUrl.pathname.startsWith("/auth/confirm")
   ) {
     response.headers.set("Cache-Control", "private, no-store, max-age=0");
     response.headers.set("Pragma", "no-cache");
@@ -120,5 +121,10 @@ export const config = {
         { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
+    { source: "/ingreso/estudiante/:path*" },
+    { source: "/ingreso/profesora/:path*" },
+    { source: "/ingreso/admin/:path*" },
+    { source: "/ingreso/recuperar/:path*" },
+    { source: "/auth/confirm/:path*" },
   ],
 };

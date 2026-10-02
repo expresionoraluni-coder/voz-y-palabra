@@ -104,26 +104,20 @@ export function useBorradorLocal<T>({
   return { borrador, guardarBorrador, borrarBorrador };
 }
 
-/** Borra únicamente los borradores de Voz y Palabra del navegador actual. */
+/**
+ * Borra todos los borradores de Voz y Palabra del navegador actual.
+ *
+ * Se usa al cerrar sesión: conservar un borrador válido permitiría que el
+ * texto de una persona quedara disponible en un equipo compartido durante
+ * las 24 horas de retención normal. La limpieza por antigüedad sigue
+ * ocurriendo en `leerBorrador` cuando el formulario vuelve a abrirse.
+ */
 export function limpiarBorradoresLocales() {
   try {
     const claves = Array.from({ length: window.localStorage.length }, (_, indice) => window.localStorage.key(indice));
     claves.forEach((clave) => {
       if (!clave?.startsWith(PREFIJO_BORRADOR)) return;
-      const valor = window.localStorage.getItem(clave);
-      if (!valor) return;
-      try {
-        const analizado: unknown = JSON.parse(valor);
-        if (
-          !esEnvoltorioBorrador(analizado) ||
-          !Number.isFinite(analizado.actualizadoEn) ||
-          Date.now() - analizado.actualizadoEn > MAXIMA_ANTIGUEDAD_BORRADOR_MS
-        ) {
-          window.localStorage.removeItem(clave);
-        }
-      } catch {
-        window.localStorage.removeItem(clave);
-      }
+      window.localStorage.removeItem(clave);
     });
   } catch {
     // El cierre de sesión no debe fallar si el navegador niega este acceso.
