@@ -9,6 +9,7 @@ import UnidadCierre from "./unidad-cierre";
 import RespuestasCorrectas from "./respuestas-correctas";
 import { entregaCuentaComoCompletada, unidadEstaCompleta } from "@/lib/progreso-unidad";
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
+import { primeraUnidadSinReflexionDeCierre } from "@/lib/cierre-unidades-previas";
 
 export default async function CierreUnidadEstudiante({
   params,
@@ -25,7 +26,7 @@ export default async function CierreUnidadEstudiante({
 
   const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
-    .select("id, debe_cambiar_nip")
+    .select("id, debe_cambiar_nip, grupos(modo)")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -124,6 +125,12 @@ export default async function CierreUnidadEstudiante({
         redirect(`/estudiante/unidad/${unidadAnterior.id}`);
       }
     }
+  }
+
+  const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
+  if (grupo?.modo !== "revision") {
+    const cierrePendiente = await primeraUnidadSinReflexionDeCierre(admin, estudiante.id, unidad.orden);
+    if (cierrePendiente) redirect(`/estudiante/unidad/${cierrePendiente.id}/cierre`);
   }
 
   const listaActividades = actividades ?? [];

@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ExportarGrupo from "./exportar-grupo";
+import { borrarReflexionCierreUnidad } from "./acciones-reflexiones";
 import type { EstudianteResumen } from "./grupo-estudiantes-panel";
 import type {
   ActividadSeguimiento,
@@ -37,6 +39,7 @@ function etiquetaCalibracion(confianza: number | null, resultado: number | null,
 }
 
 export default function SeguimientoAprendizaje({
+  grupoId,
   nombreGrupo,
   codigoGrupo,
   estudiantes,
@@ -47,6 +50,7 @@ export default function SeguimientoAprendizaje({
   reflexiones,
   bitacoras,
 }: {
+  grupoId: string;
   nombreGrupo: string;
   codigoGrupo: string;
   estudiantes: EstudianteResumen[];
@@ -57,10 +61,13 @@ export default function SeguimientoAprendizaje({
   reflexiones: ReflexionSeguimiento[];
   bitacoras: BitacoraSeguimiento[];
 }) {
+  const router = useRouter();
   const [vista, setVista] = useState<Vista>("unidad");
   const [unidadId, setUnidadId] = useState(unidades[0]?.id ?? "");
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(0);
+  const [borrandoReflexion, setBorrandoReflexion] = useState<string | null>(null);
+  const [errorReflexion, setErrorReflexion] = useState<string | null>(null);
 
   const actividadesDeUnidad = useMemo(
     () => actividades.filter((actividad) => actividad.unidad_id === unidadId).sort((a, b) => a.orden - b.orden),
@@ -236,7 +243,7 @@ export default function SeguimientoAprendizaje({
                             <td className="px-3 py-3">
                               <details className="group">
                                 <summary className="cursor-pointer font-medium text-indigo-700 underline decoration-indigo-200 underline-offset-2 dark:text-indigo-300 dark:decoration-indigo-800">
-                                  Ver expectativa y reflexión
+                                  Ver expectativa y reflexión de cierre
                                 </summary>
                                 <div className="mt-2 flex flex-col gap-2 text-sm">
                                   <div>
@@ -246,6 +253,32 @@ export default function SeguimientoAprendizaje({
                                   <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reflexión de cierre</p>
                                     <p className="mt-1 whitespace-pre-wrap text-slate-700 dark:text-slate-300">{reflexion || "Sin reflexión de cierre"}</p>
+                                    {reflexion && (
+                                      <button
+                                        type="button"
+                                        disabled={borrandoReflexion === estudiante.id}
+                                        onClick={async () => {
+                                          if (!window.confirm(`¿Borrar la reflexión de cierre de ${estudiante.nombre} para la Unidad ${unidadSeleccionada?.orden ?? ""}? El estudiante tendrá que escribirla de nuevo antes de avanzar.`)) return;
+                                          setErrorReflexion(null);
+                                          setBorrandoReflexion(estudiante.id);
+                                          try {
+                                            const resultado = await borrarReflexionCierreUnidad(grupoId, estudiante.id, unidadId);
+                                            if (!resultado.ok) {
+                                              setErrorReflexion(resultado.error);
+                                              return;
+                                            }
+                                            router.refresh();
+                                          } catch {
+                                            setErrorReflexion("No pudimos borrar la reflexión. Intenta de nuevo.");
+                                          } finally {
+                                            setBorrandoReflexion(null);
+                                          }
+                                        }}
+                                        className="mt-2 min-h-9 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                                      >
+                                        {borrandoReflexion === estudiante.id ? "Borrando…" : "Borrar cierre de unidad"}
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </details>
@@ -257,6 +290,7 @@ export default function SeguimientoAprendizaje({
                   </table>
                 </div>
               )}
+              {errorReflexion && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{errorReflexion}</p>}
             </>
           ) : (
             <>

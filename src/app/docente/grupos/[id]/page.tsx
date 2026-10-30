@@ -549,6 +549,7 @@ export default async function DetalleGrupo({
       </div>
 
       <SeguimientoAprendizaje
+        grupoId={id}
         nombreGrupo={grupo.nombre}
         codigoGrupo={grupo.codigo_acceso}
         estudiantes={porEstudiante}

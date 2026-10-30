@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { primeraUnidadSinReflexionDeCierre } from "@/lib/cierre-unidades-previas";
 import { createClient } from "@/lib/supabase/server";
 import { mensajeError } from "@/lib/mensaje-error";
 import {
@@ -340,6 +341,15 @@ export async function validarAccesoActividad(
       ok: false,
       error: `Termina primero la Unidad ${unidadAnterior.orden}: registra tu confianza final.`,
       motivo: "unidad_anterior_confianza",
+    };
+  }
+
+  const cierrePendiente = await primeraUnidadSinReflexionDeCierre(admin, estudianteId, actividad.unidadOrden);
+  if (cierrePendiente) {
+    return {
+      ok: false,
+      error: `Termina primero la Unidad ${cierrePendiente.orden}: escribe su reflexión de cierre.`,
+      motivo: "unidad_anterior_reflexion_unidad",
     };
   }
 

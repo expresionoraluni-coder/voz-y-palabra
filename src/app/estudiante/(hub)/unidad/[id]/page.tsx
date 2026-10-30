@@ -20,6 +20,7 @@ import {
 import { revisarErrorConsulta } from "@/lib/revisar-error-consulta";
 import { actividadAbierta, fechaLarga } from "@/lib/eventos";
 import { esDependenciaDosNiveles } from "@/lib/dependencias-actividades";
+import { primeraUnidadSinReflexionDeCierre } from "@/lib/cierre-unidades-previas";
 
 export default async function UnidadEstudiante({
   params,
@@ -184,6 +185,24 @@ export default async function UnidadEstudiante({
           </div>
         );
       }
+    }
+  }
+
+  if (!esGrupoRevision) {
+    const cierrePendiente = await primeraUnidadSinReflexionDeCierre(admin, estudiante.id, unidad.orden);
+    if (cierrePendiente) {
+      const detalle = detalleBloqueoActividad("unidad_anterior_reflexion_unidad");
+      return (
+        <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 px-6 py-10">
+          <PageHeader volverHref="/estudiante/inicio" eyebrow={`Unidad ${unidad.orden}`} titulo={unidad.nombre} />
+          <EmptyState
+            icon={Lock}
+            titulo={`Termina primero la Unidad ${cierrePendiente.orden}`}
+            descripcion={detalle?.descripcion ?? "Escribe la reflexión de cierre pendiente para continuar."}
+            accion={<Link href={`/estudiante/unidad/${cierrePendiente.id}/cierre`}>Ir al cierre de la Unidad {cierrePendiente.orden} →</Link>}
+          />
+        </div>
+      );
     }
   }
 
