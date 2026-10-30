@@ -3601,6 +3601,20 @@ revoke execute on function public.proteger_reporte_atencion() from public, anon,
 
 drop policy if exists "administrador atiende reportes" on public.reportes;
 drop policy if exists "reportante confirma lectura del reporte" on public.reportes;
+create or replace function private.es_reportante_actual_de_reporte(p_reporte_id uuid)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.reportes r
+    where r.id = p_reporte_id and (
+      r.reportante_id = (select auth.uid())
+      or (r.reportante_tipo = 'estudiante' and r.estudiante_id = public.estudiante_actual())
+      or (r.reportante_tipo = 'docente' and r.docente_id = (select auth.uid()) and public.es_docente_activo())
+    )
+  );
+$$;
+revoke all on function private.es_reportante_actual_de_reporte(uuid) from public, anon;
+grant execute on function private.es_reportante_actual_de_reporte(uuid) to authenticated;
 create policy "administrador atiende o reportante confirma lectura" on public.reportes
   for update to authenticated
   using (public.es_administrador_activo() or private.es_reportante_actual_de_reporte(id))
@@ -3927,21 +3941,6 @@ grant select on public.reporte_mensajes, public.faq_interacciones to authenticat
 grant insert on public.reporte_mensajes to authenticated;
 
 grant usage on schema private to authenticated;
-
-create or replace function private.es_reportante_actual_de_reporte(p_reporte_id uuid)
-returns boolean language sql stable security definer set search_path = public
-as $$
-  select exists (
-    select 1 from public.reportes r
-    where r.id = p_reporte_id and (
-      r.reportante_id = (select auth.uid())
-      or (r.reportante_tipo = 'estudiante' and r.estudiante_id = public.estudiante_actual())
-      or (r.reportante_tipo = 'docente' and r.docente_id = (select auth.uid()) and public.es_docente_activo())
-    )
-  );
-$$;
-revoke all on function private.es_reportante_actual_de_reporte(uuid) from public, anon;
-grant execute on function private.es_reportante_actual_de_reporte(uuid) to authenticated;
 
 create or replace function private.puede_responder_reporte_actual(p_reporte_id uuid)
 returns boolean language sql stable security definer set search_path = public
