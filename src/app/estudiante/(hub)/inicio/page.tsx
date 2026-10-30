@@ -368,7 +368,9 @@ export default async function InicioEstudiante({
                 ? `Guarda tu reflexión de la Unidad ${unidadActiva.orden}`
                 : `Registra tu confianza final de la Unidad ${unidadActiva.orden}`,
               descripcion: faltaReflexionCierreActiva
-                ? "Después registrarás tu confianza final para cerrar la unidad."
+                ? confianzaCierreActiva
+                  ? "Tu nivel de seguridad final sigue guardado. Escribe la reflexión para continuar."
+                  : "Después registrarás tu confianza final para cerrar la unidad."
                 : "Es el último paso antes de continuar con la siguiente unidad.",
               href: `/estudiante/unidad/${unidadActiva.id}/cierre`,
               cta: "Cerrar unidad",

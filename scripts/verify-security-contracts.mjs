@@ -14,7 +14,7 @@ const requiredActions = [
 const failures = [];
 
 async function texto(ruta) {
-  return readFile(new URL(ruta, ROOT), "utf8");
+  return (await readFile(new URL(ruta, ROOT), "utf8")).replace(/\r\n/g, "\n");
 }
 
 for await (const ruta of glob("src/**/acciones*.ts", { cwd: ROOT.pathname })) {

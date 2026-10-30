@@ -26,7 +26,7 @@ export default async function CierreUnidadEstudiante({
 
   const { data: estudiante, error: estudianteError } = await admin
     .from("estudiantes")
-    .select("id, debe_cambiar_nip, grupos(modo)")
+    .select("id, debe_cambiar_nip")
     .eq("auth_user_id", user.id)
     .eq("activo", true)
     .single();
@@ -127,11 +127,8 @@ export default async function CierreUnidadEstudiante({
     }
   }
 
-  const grupo = Array.isArray(estudiante.grupos) ? estudiante.grupos[0] : estudiante.grupos;
-  if (grupo?.modo !== "revision") {
-    const cierrePendiente = await primeraUnidadSinReflexionDeCierre(admin, estudiante.id, unidad.orden);
-    if (cierrePendiente) redirect(`/estudiante/unidad/${cierrePendiente.id}/cierre`);
-  }
+  const cierrePendiente = await primeraUnidadSinReflexionDeCierre(admin, estudiante.id, unidad.orden);
+  if (cierrePendiente) redirect(`/estudiante/unidad/${cierrePendiente.id}/cierre`);
 
   const listaActividades = actividades ?? [];
   const idsActividad = new Set(listaActividades.map((actividad) => actividad.id));

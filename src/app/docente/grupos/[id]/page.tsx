@@ -461,7 +461,7 @@ export default async function DetalleGrupo({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-indigo-100">Lectura rápida</p>
               <h2 id="panorama-grupo" className="mt-1 text-2xl font-bold tracking-tight">{esGrupoRevision ? "Un entorno para revisar sin alterar el curso" : "Lo importante para acompañar hoy"}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-indigo-100">{esGrupoRevision ? "Las actividades se mantienen abiertas y sus recorridos no entran en las estadísticas académicas." : alertas.length > 0 ? `Hay ${alertas.length} ${alertas.length === 1 ? "señal" : "señales"} que conviene revisar antes de entrar al detalle.` : "No hay alertas prioritarias. Puedes explorar el avance, las entregas y las reflexiones del grupo."}</p>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-indigo-100">{esGrupoRevision ? "Las actividades no dependen del calendario. El cierre de cada unidad permite abrir la siguiente; sus recorridos no entran en las estadísticas académicas." : alertas.length > 0 ? `Hay ${alertas.length} ${alertas.length === 1 ? "señal" : "señales"} que conviene revisar antes de entrar al detalle.` : "No hay alertas prioritarias. Puedes explorar el avance, las entregas y las reflexiones del grupo."}</p>
             </div>
             <a href={alertas.length > 0 ? "#atencion" : "#seguimiento"} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
               {alertas.length > 0 ? <AlertTriangle className="size-4" aria-hidden="true" /> : <Activity className="size-4" aria-hidden="true" />}
@@ -471,7 +471,7 @@ export default async function DetalleGrupo({
           <div className="grid gap-2.5 sm:grid-cols-3">
             <a href="#estudiantes" className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><UsersRound className="size-4 text-cyan-100" aria-hidden="true" /><p className="mt-2 text-xl font-bold">{estudiantes.length}</p><p className="text-xs text-indigo-100">estudiantes activos</p></a>
             <a href="#atencion" className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><AlertTriangle className="size-4 text-amber-200" aria-hidden="true" /><p className="mt-2 text-xl font-bold">{alertas.length}</p><p className="text-xs text-indigo-100">casos para atender</p></a>
-            <a href="#operacion" className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><CalendarClock className="size-4 text-violet-100" aria-hidden="true" /><p className="mt-2 text-xl font-bold">{esGrupoRevision ? "Siempre" : `${eventos?.length ?? 0}`}</p><p className="text-xs text-indigo-100">{esGrupoRevision ? "actividades disponibles" : "fechas en el grupo"}</p></a>
+            <a href="#operacion" className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><CalendarClock className="size-4 text-violet-100" aria-hidden="true" /><p className="mt-2 text-xl font-bold">{esGrupoRevision ? "Sin fechas" : `${eventos?.length ?? 0}`}</p><p className="text-xs text-indigo-100">{esGrupoRevision ? "de apertura programadas" : "fechas en el grupo"}</p></a>
           </div>
         </div>
       </section>
@@ -501,7 +501,7 @@ export default async function DetalleGrupo({
         <div><h2 id="resumen-titulo" className="text-lg font-bold text-slate-900 dark:text-slate-50">{esGrupoRevision ? "Espacio de revisión" : "Pulso del grupo"}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{esGrupoRevision ? "Este grupo sirve para revisar recorridos y no alimenta las estadísticas académicas." : "Métricas de las actividades que ya están disponibles."}</p></div>
         {esGrupoRevision ? (
           <div className="rounded-2xl border border-violet-200 bg-violet-50/70 px-4 py-3 text-sm leading-relaxed text-violet-950 dark:border-violet-900/70 dark:bg-violet-950/25 dark:text-violet-100">
-            Las actividades permanecen disponibles sin calendario. Consulta las entregas en Seguimiento; sus resultados no se mezclan con avance, participación, calibración ni alertas del curso.
+            Las actividades no dependen del calendario. Para pasar a otra unidad, el estudiante debe guardar el cierre de la anterior. Consulta las entregas en Seguimiento; sus resultados no se mezclan con avance, participación, calibración ni alertas del curso.
           </div>
         ) : (
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">

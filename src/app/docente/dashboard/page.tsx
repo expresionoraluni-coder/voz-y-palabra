@@ -269,7 +269,7 @@ export default async function DashboardDocente() {
                             <ChevronRight className="size-4 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
                           </div>
                           <div className="rounded-2xl border border-violet-100 bg-violet-50/70 px-3.5 py-3 text-xs leading-relaxed text-violet-900 dark:border-violet-900/70 dark:bg-violet-950/30 dark:text-violet-100">
-                            Todas las actividades permanecen disponibles, sin calendario ni aperturas programadas.
+                            Sin fechas de apertura. Para pasar a otra unidad, el estudiante debe guardar su reflexión de cierre.
                           </div>
                           <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">Abrir espacio de revisión</p>
                         </>

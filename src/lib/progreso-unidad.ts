@@ -75,7 +75,7 @@ export function detalleBloqueoActividad(motivo: string | null | undefined) {
       return {
         titulo: "Escribe la reflexión de cierre",
         descripcion:
-          "Las actividades ya están terminadas. Ahora completa la reflexión final de la unidad anterior para abrir la siguiente.",
+          "Guarda la reflexión final de la unidad anterior para abrir la siguiente. Si aún faltan actividades, complétalas primero.",
       };
     case "unidad_anterior_confianza":
       return {

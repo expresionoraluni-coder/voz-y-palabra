@@ -78,10 +78,19 @@ export async function validarAccesoActividad(
   actividad: ActividadParaAcceso,
   opciones: { requiereInicio?: boolean; verificarApertura?: boolean } = {},
 ): Promise<{ ok: true } | { ok: false; error: string; motivo: MotivoBloqueoActividad }> {
-  // El grupo de revisión existe para comprobar todos los recorridos del
-  // estudiante. Su modo se determina del lado del servidor para la sesión
-  // actual y nunca concede acceso a otra cohorte.
-  if (actividad.grupoEsRevision) return { ok: true };
+  // El grupo de revisión omite fechas y requisitos entre actividades, pero
+  // también debe cerrar cada unidad antes de trabajar en la siguiente.
+  if (actividad.grupoEsRevision) {
+    const cierrePendiente = await primeraUnidadSinReflexionDeCierre(admin, estudianteId, actividad.unidadOrden);
+    if (cierrePendiente) {
+      return {
+        ok: false,
+        error: `Termina primero la Unidad ${cierrePendiente.orden}: escribe su reflexión de cierre.`,
+        motivo: "unidad_anterior_reflexion_unidad",
+      };
+    }
+    return { ok: true };
+  }
 
   // Todas las lecturas de avance se filtran por el estudiante previamente
   // resuelto desde auth.uid(). Se usa el cliente de servidor para no depender
