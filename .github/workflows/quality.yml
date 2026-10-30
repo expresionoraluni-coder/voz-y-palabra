@@ -48,7 +48,6 @@ jobs:
           mkdir -p .ci-supabase
           cd .ci-supabase
           supabase init
-          mkdir -p supabase/migrations supabase/tests
           cat ../supabase/schema.sql ../supabase/functions.sql > supabase/migrations/20260101000000_initial.sql
           cp ../supabase/tests/*.sql supabase/tests/
       - name: Iniciar base local
