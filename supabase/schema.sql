@@ -452,6 +452,15 @@ as $$
     and debe_cambiar_nip = false
 $$;
 
+create or replace function public.grupo_del_estudiante_actual()
+returns uuid language sql stable security definer set search_path = public
+as $$
+  select grupo_id
+  from public.estudiantes
+  where id = public.estudiante_actual()
+    and activo = true
+$$;
+
 -- Supabase asigna el rol `authenticated` a las sesiones anónimas de
 -- estudiantes. Este guard evita que ese rol se confunda con una cuenta
 -- docente en cualquier policy de escritura.
