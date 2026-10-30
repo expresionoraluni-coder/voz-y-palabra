@@ -4,6 +4,12 @@
 create extension if not exists pgcrypto with schema extensions;
 create extension if not exists unaccent with schema extensions;
 
+-- Este índice se crea antes de cargar functions.sql, así que necesita la
+-- función de normalización desde el esquema inicial.
+create or replace function public.normalizar_nombre(p_nombre text)
+returns text language sql immutable set search_path = public, extensions
+as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, '')), '\s+', ' ', 'g'))) $$;
+
 -- El límite por IP del ingreso usa un esquema no expuesto por el Data API.
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;

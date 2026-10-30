@@ -1,10 +1,6 @@
 -- Funciones de aplicación necesarias para reconstruir Voz y Palabra.
 -- Ejecutar después de schema.sql. No contiene datos ni claves.
 
-create or replace function public.normalizar_nombre(p_nombre text)
-returns text language sql immutable set search_path = public, extensions
-as $$ select upper(trim(regexp_replace(extensions.unaccent(coalesce(p_nombre, '')), '\s+', ' ', 'g'))) $$;
-
 -- Rate limit previo para ingreso. El helper vive en `private`; el wrapper
 -- expuesto solo permite ejecutar el pre-request y no recibe parámetros.
 create or replace function private.controlar_rate_limit_ingreso()
